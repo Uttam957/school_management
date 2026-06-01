@@ -6,7 +6,7 @@ import {
   UserCog
 } from 'lucide-react';
 
-export default function StaffDirectory() {
+export default function StaffDirectory({ readOnly = true }) {
   const [staffList, setStaffList] = useState([]);
   const [loading, setLoading] = useState(true);
   const [searchQuery, setSearchQuery] = useState('');
@@ -143,14 +143,16 @@ export default function StaffDirectory() {
                         >
                           <Mail size={12} />
                         </a>
-                        <button 
-                          onClick={() => handleDeleteStaff(s.id)}
-                          className="btn-secondary" 
-                          style={{ padding: '6px 10px', fontSize: '0.8rem', borderRadius: '8px', borderColor: 'rgb(var(--color-danger-rgb))', color: 'rgb(var(--color-danger-rgb))' }}
-                          title="Dismiss Staff"
-                        >
-                          <Trash2 size={12} />
-                        </button>
+                        {!readOnly && (
+                          <button 
+                            onClick={() => handleDeleteStaff(s.id)}
+                            className="btn-secondary" 
+                            style={{ padding: '6px 10px', fontSize: '0.8rem', borderRadius: '8px', borderColor: 'rgb(var(--color-danger-rgb))', color: 'rgb(var(--color-danger-rgb))' }}
+                            title="Dismiss Staff"
+                          >
+                            <Trash2 size={12} />
+                          </button>
+                        )}
                       </div>
                     </td>
                   </tr>

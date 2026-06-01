@@ -1,18 +1,21 @@
 import React from 'react';
-import { Users, UserCheck, UserCog, Shield, LogOut } from 'lucide-react';
+import { Users, UserCheck, UserCog, Shield, LogOut, LayoutDashboard } from 'lucide-react';
 import StudentDirectory from './StudentDirectory';
 import TeacherList from './TeacherList';
 import StaffDirectory from './StaffDirectory';
+import DashboardOverview from './DashboardOverview';
 
 export default function AdminPanel({ setActiveView, onLogout, adminView, setAdminView }) {
   const renderAdminContent = () => {
     switch (adminView) {
       case 'students':
-        return <StudentDirectory />;
+        return <StudentDirectory readOnly={false} />;
       case 'teachers':
-        return <TeacherList setActiveView={setActiveView} />;
+        return <TeacherList setActiveView={setActiveView} readOnly={false} />;
       case 'staff':
-        return <StaffDirectory />;
+        return <StaffDirectory readOnly={false} />;
+      case 'overview':
+        return <DashboardOverview />;
       default:
         return (
           <div className="admin-dashboard-grid">
@@ -48,6 +51,17 @@ export default function AdminPanel({ setActiveView, onLogout, adminView, setAdmi
               <h3>Staff List</h3>
               <p>View and manage all staff members</p>
             </div>
+
+            <div
+              className="glass-panel admin-dash-card"
+              onClick={() => setAdminView('overview')}
+            >
+              <div className="admin-dash-icon" style={{ color: 'hsl(var(--color-success))', background: 'rgba(hsl(var(--color-success)), 0.1)' }}>
+                <LayoutDashboard size={36} />
+              </div>
+              <h3>Main Dashboard</h3>
+              <p>View visual analytics and metrics overview</p>
+            </div>
           </div>
         );
     }
@@ -69,7 +83,7 @@ export default function AdminPanel({ setActiveView, onLogout, adminView, setAdmi
           <div>
             <h2 style={{ fontSize: '1.25rem', fontWeight: 700 }}>Admin Panel</h2>
             <p style={{ fontSize: '0.85rem', color: 'var(--text-muted)' }}>
-              {adminView === 'dashboard' ? 'Select a section to manage' : `Managing ${adminView}`}
+              {adminView === 'dashboard' ? 'Select a section to manage' : `Managing ${adminView === 'overview' ? 'Main Dashboard Overview' : adminView}`}
             </p>
           </div>
         </div>
@@ -86,10 +100,10 @@ export default function AdminPanel({ setActiveView, onLogout, adminView, setAdmi
           <button
             onClick={onLogout}
             className="btn-secondary"
-            style={{ padding: '8px 16px', fontSize: '0.85rem', color: 'rgb(var(--color-danger-rgb))' }}
+            style={{ padding: '8px 16px', fontSize: '0.85rem', color: 'rgb(var(--color-danger-rgb))', display: 'flex', alignItems: 'center', gap: '6px' }}
           >
             <LogOut size={16} />
-            Sign Out
+            Back to Main Dashboard
           </button>
         </div>
       </div>

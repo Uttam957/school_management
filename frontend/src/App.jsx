@@ -12,6 +12,10 @@ import SchoolProfile from './pages/SchoolProfile';
 import RegisterStudent from './pages/RegisterStudent';
 import AdminLogin from './pages/AdminLogin';
 import AdminPanel from './pages/AdminPanel';
+import RecepLogin from './pages/RecepLogin';
+import RecepPanel from './pages/RecepPanel';
+import TeacherLogin from './pages/TeacherLogin';
+import TeacherPanel from './pages/TeacherPanel';
 
 
 import './App.css';
@@ -25,6 +29,12 @@ export default function App() {
   const [isAdmin, setIsAdmin] = useState(false);
   const [showAdminLogin, setShowAdminLogin] = useState(false);
   const [adminView, setAdminView] = useState('dashboard');
+  const [isRecep, setIsRecep] = useState(false);
+  const [showRecepLogin, setShowRecepLogin] = useState(false);
+  const [recepView, setRecepView] = useState('dashboard');
+  const [isTeacher, setIsTeacher] = useState(false);
+  const [showTeacherLogin, setShowTeacherLogin] = useState(false);
+  const [teacherView, setTeacherView] = useState('dashboard');
 
 
   const fetchSchoolDetails = async () => {
@@ -64,6 +74,10 @@ export default function App() {
     const path = window.location.pathname;
     if (path === '/admin/login') {
       setShowAdminLogin(true);
+    } else if (path === '/receptionist/login') {
+      setShowRecepLogin(true);
+    } else if (path === '/teacher/login') {
+      setShowTeacherLogin(true);
     } else if (path === '/register-student') setActiveView('register-student');
     else if (path === '/add-teacher') setActiveView('add-teacher');
     else if (path === '/add-staff') setActiveView('add-staff');
@@ -73,8 +87,16 @@ export default function App() {
   useEffect(() => {
     if (showAdminLogin) {
       window.history.pushState(null, '', '/admin/login');
+    } else if (showRecepLogin) {
+      window.history.pushState(null, '', '/receptionist/login');
+    } else if (showTeacherLogin) {
+      window.history.pushState(null, '', '/teacher/login');
     } else if (isAdmin) {
       window.history.pushState(null, '', '/admin');
+    } else if (isRecep) {
+      window.history.pushState(null, '', '/receptionist');
+    } else if (isTeacher) {
+      window.history.pushState(null, '', '/teacher');
     } else if (activeView === 'register-student') {
       window.history.pushState(null, '', '/register-student');
     } else if (activeView === 'add-staff') {
@@ -84,11 +106,15 @@ export default function App() {
     } else {
       window.history.pushState(null, '', `/${activeView}`);
     }
-  }, [activeView, showAdminLogin, isAdmin]);
+  }, [activeView, showAdminLogin, isAdmin, showRecepLogin, isRecep]);
 
   const handleAdminLogin = () => {
     setIsAdmin(true);
     setShowAdminLogin(false);
+    setIsRecep(false);
+    setShowRecepLogin(false);
+    setIsTeacher(false);
+    setShowTeacherLogin(false);
     setAdminView('dashboard');
   };
 
@@ -98,15 +124,63 @@ export default function App() {
     setActiveView('overview');
   };
 
+  const handleRecepLogin = () => {
+    setIsRecep(true);
+    setShowRecepLogin(false);
+    setIsAdmin(false);
+    setShowAdminLogin(false);
+    setIsTeacher(false);
+    setShowTeacherLogin(false);
+    setRecepView('dashboard');
+  };
+
+  const handleRecepLogout = () => {
+    setIsRecep(false);
+    setRecepView('dashboard');
+    setActiveView('overview');
+  };
+
+  const handleTeacherLogin = () => {
+    setIsTeacher(true);
+    setShowTeacherLogin(false);
+    setIsAdmin(false);
+    setShowAdminLogin(false);
+    setIsRecep(false);
+    setShowRecepLogin(false);
+    setTeacherView('dashboard');
+  };
+
+  const handleTeacherLogout = () => {
+    setIsTeacher(false);
+    setTeacherView('dashboard');
+    setActiveView('overview');
+  };
+
 
 
   const renderCurrentView = () => {
     if (showAdminLogin) {
-      return <AdminLogin onLogin={handleAdminLogin} />;
+      return <AdminLogin onLogin={handleAdminLogin} onCancel={() => { setShowAdminLogin(false); setActiveView('overview'); }} />;
+    }
+
+    if (showRecepLogin) {
+      return <RecepLogin onLogin={handleRecepLogin} onCancel={() => { setShowRecepLogin(false); setActiveView('overview'); }} />;
     }
 
     if (isAdmin) {
       return <AdminPanel setActiveView={setActiveView} onLogout={handleAdminLogout} adminView={adminView} setAdminView={setAdminView} />;
+    }
+
+    if (isRecep) {
+      return <RecepPanel setActiveView={setActiveView} onLogout={handleRecepLogout} recepView={recepView} setRecepView={setRecepView} />;
+    }
+
+    if (showTeacherLogin) {
+      return <TeacherLogin onLogin={handleTeacherLogin} onCancel={() => { setShowTeacherLogin(false); setActiveView('overview'); }} />;
+    }
+
+    if (isTeacher) {
+      return <TeacherPanel setActiveView={setActiveView} onLogout={handleTeacherLogout} teacherView={teacherView} setTeacherView={setTeacherView} />;
     }
 
     switch (activeView) {
@@ -133,7 +207,7 @@ export default function App() {
     }
   };
 
-  const showSidebar = !showAdminLogin;
+  const showSidebar = !showAdminLogin && !showRecepLogin && !showTeacherLogin;
 
   return (
     <div className="app-container">
@@ -143,6 +217,16 @@ export default function App() {
           setActiveView={(view) => {
             if (view === 'admin-login') {
               setShowAdminLogin(true);
+              setShowRecepLogin(false);
+              setShowTeacherLogin(false);
+            } else if (view === 'recep-login') {
+              setShowRecepLogin(true);
+              setShowAdminLogin(false);
+              setShowTeacherLogin(false);
+            } else if (view === 'teacher-login') {
+              setShowTeacherLogin(true);
+              setShowAdminLogin(false);
+              setShowRecepLogin(false);
             } else {
               setActiveView(view);
             }
@@ -156,6 +240,14 @@ export default function App() {
           onAdminLogout={handleAdminLogout}
           adminView={adminView}
           setAdminView={setAdminView}
+          isRecep={isRecep}
+          onRecepLogout={handleRecepLogout}
+          recepView={recepView}
+          setRecepView={setRecepView}
+          isTeacher={isTeacher}
+          onTeacherLogout={handleTeacherLogout}
+          teacherView={teacherView}
+          setTeacherView={setTeacherView}
         />
       )}
 
@@ -175,8 +267,8 @@ export default function App() {
         />
       )}
 
-      <div className="app-content" style={showAdminLogin ? { padding: 0 } : {}}>
-        {!showAdminLogin && (
+      <div className="app-content" style={(showAdminLogin || showRecepLogin || showTeacherLogin) ? { padding: 0 } : {}}>
+        {!showAdminLogin && !showRecepLogin && !showTeacherLogin && (
           <Header
             activeView={activeView}
             isCollapsed={isCollapsed}
@@ -189,7 +281,7 @@ export default function App() {
           />
         )}
 
-        <main style={showAdminLogin ? { flex: 1, display: 'flex' } : { flex: 1, marginTop: '10px' }}>
+        <main style={(showAdminLogin || showRecepLogin || showTeacherLogin) ? { flex: 1, display: 'flex' } : { flex: 1, marginTop: '10px' }}>
           {renderCurrentView()}
         </main>
       </div>

@@ -27,7 +27,6 @@ export default function SchoolProfile({ schoolDetails, fetchSchoolDetails }) {
     email: '',
     ratePerStudent: '',
     razorpayAccountId: '',
-    attendanceMode: 'Teacher Marking',
     adminName: '',
     adminEmail: '',
     adminPassword: ''
@@ -61,12 +60,6 @@ export default function SchoolProfile({ schoolDetails, fetchSchoolDetails }) {
     });
   };
 
-  const handleSelectMode = (mode) => {
-    setFormData({
-      ...formData,
-      attendanceMode: mode
-    });
-  };
 
   const handleOpenModal = () => {
     // Reset form to be completely clean/empty by default when adding a school
@@ -80,7 +73,6 @@ export default function SchoolProfile({ schoolDetails, fetchSchoolDetails }) {
       email: '',
       ratePerStudent: '',
       razorpayAccountId: '',
-      attendanceMode: 'Teacher Marking',
       adminName: '',
       adminEmail: '',
       adminPassword: ''
@@ -568,106 +560,7 @@ export default function SchoolProfile({ schoolDetails, fetchSchoolDetails }) {
                 </div>
               </div>
 
-              {/* SECTION B: ATTENDANCE MODE */}
-              <div style={{ display: 'flex', flexDirection: 'column', gap: '14px' }}>
-                <span style={{ 
-                  fontSize: '0.75rem', 
-                  fontWeight: 700, 
-                  color: '#64748b', 
-                  letterSpacing: '0.08em', 
-                  textTransform: 'uppercase' 
-                }}>
-                  Attendance Mode
-                </span>
-                
-                <div style={{ display: 'flex', gap: '16px', flexWrap: 'wrap' }}>
-                  
-                  {/* Option 1: Teacher Marking */}
-                  <div 
-                    onClick={() => handleSelectMode('Teacher Marking')}
-                    style={{
-                      flex: '1 1 280px',
-                      padding: '16px 20px',
-                      borderRadius: '12px',
-                      border: formData.attendanceMode === 'Teacher Marking' ? '2px solid #6366f1' : '1px solid #cbd5e1',
-                      background: formData.attendanceMode === 'Teacher Marking' ? '#f5f3ff' : '#ffffff',
-                      display: 'flex',
-                      alignItems: 'center',
-                      gap: '16px',
-                      cursor: 'pointer',
-                      transition: 'all 0.2s ease',
-                      textAlign: 'left'
-                    }}
-                  >
-                    <div style={{
-                      width: '20px',
-                      height: '20px',
-                      borderRadius: '50%',
-                      border: `2px solid ${formData.attendanceMode === 'Teacher Marking' ? '#6366f1' : '#cbd5e1'}`,
-                      display: 'flex',
-                      alignItems: 'center',
-                      justifyContent: 'center',
-                      flexShrink: 0
-                    }}>
-                      <div style={{
-                        width: '10px',
-                        height: '10px',
-                        borderRadius: '50%',
-                        background: formData.attendanceMode === 'Teacher Marking' ? '#6366f1' : 'transparent'
-                      }} />
-                    </div>
-                    <div style={{ display: 'flex', flexDirection: 'column' }}>
-                      <strong style={{ fontSize: '0.9rem', color: '#0f172a' }}>Teacher Marking</strong>
-                      <span style={{ fontSize: '0.75rem', color: '#475569', marginTop: '2px' }}>
-                        Teachers mark students manually; QR for staff only
-                      </span>
-                    </div>
-                  </div>
 
-                  {/* Option 2: QR Scanner */}
-                  <div 
-                    onClick={() => handleSelectMode('QR Scanner')}
-                    style={{
-                      flex: '1 1 280px',
-                      padding: '16px 20px',
-                      borderRadius: '12px',
-                      border: formData.attendanceMode === 'QR Scanner' ? '2px solid #6366f1' : '1px solid #cbd5e1',
-                      background: formData.attendanceMode === 'QR Scanner' ? '#f5f3ff' : '#ffffff',
-                      display: 'flex',
-                      alignItems: 'center',
-                      gap: '16px',
-                      cursor: 'pointer',
-                      transition: 'all 0.2s ease',
-                      textAlign: 'left'
-                    }}
-                  >
-                    <div style={{
-                      width: '20px',
-                      height: '20px',
-                      borderRadius: '50%',
-                      border: `2px solid ${formData.attendanceMode === 'QR Scanner' ? '#6366f1' : '#cbd5e1'}`,
-                      display: 'flex',
-                      alignItems: 'center',
-                      justifyContent: 'center',
-                      flexShrink: 0
-                    }}>
-                      <div style={{
-                        width: '10px',
-                        height: '10px',
-                        borderRadius: '50%',
-                        background: formData.attendanceMode === 'QR Scanner' ? '#6366f1' : 'transparent'
-                      }} />
-                    </div>
-                    <div style={{ display: 'flex', flexDirection: 'column' }}>
-                      <strong style={{ fontSize: '0.9rem', color: '#0f172a' }}>QR Scanner</strong>
-                      <span style={{ fontSize: '0.75rem', color: '#475569', marginTop: '2px' }}>
-                        All attendance via webcam QR scan
-                      </span>
-                    </div>
-                  </div>
-
-                </div>
-              </div>
 
               {/* SECTION C: SCHOOL ADMIN LOGIN */}
               <div style={{ display: 'flex', flexDirection: 'column', gap: '14px' }}>

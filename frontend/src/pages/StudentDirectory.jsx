@@ -21,7 +21,7 @@ import {
   Info
 } from 'lucide-react';
 
-export default function StudentDirectory() {
+export default function StudentDirectory({ readOnly = true }) {
   const [students, setStudents] = useState([]);
   const [loading, setLoading] = useState(true);
   const [totalCount, setTotalCount] = useState(0);
@@ -277,14 +277,16 @@ export default function StudentDirectory() {
                             >
                               <Info size={12} /> Inspect
                             </button>
-                            <button 
-                              onClick={() => handleDeleteStudent(stu.id, stu.name)}
-                              className="btn-danger" 
-                              style={{ padding: '6px 8px', borderRadius: '8px', background: 'rgba(var(--color-danger-rgb), 0.1)', border: '1px solid rgba(var(--color-danger-rgb), 0.2)', color: 'rgb(var(--color-danger-rgb))' }}
-                              title="Delete profile"
-                            >
-                              <Trash2 size={14} />
-                            </button>
+                            {!readOnly && (
+                              <button 
+                                onClick={() => handleDeleteStudent(stu.id, stu.name)}
+                                className="btn-danger" 
+                                style={{ padding: '6px 8px', borderRadius: '8px', background: 'rgba(var(--color-danger-rgb), 0.1)', border: '1px solid rgba(var(--color-danger-rgb), 0.2)', color: 'rgb(var(--color-danger-rgb))' }}
+                                title="Delete profile"
+                              >
+                                <Trash2 size={14} />
+                              </button>
+                            )}
                           </div>
                         </td>
                       </tr>

@@ -7,7 +7,8 @@
     "dev": "vite",
     "build": "vite build",
     "lint": "eslint .",
-    "preview": "vite preview"
+    "preview": "vite preview",
+    "delete-obsolete": "node delete_files.js"
   },
   "dependencies": {
     "lucide-react": "^1.17.0",

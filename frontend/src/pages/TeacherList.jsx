@@ -23,7 +23,7 @@ import {
   Clock
 } from 'lucide-react';
 
-export default function TeacherList({ setActiveView }) {
+export default function TeacherList({ setActiveView, readOnly = true }) {
   const [teachers, setTeachers] = useState([]);
   const [loading, setLoading] = useState(true);
   const [totalCount, setTotalCount] = useState(0);
@@ -350,15 +350,19 @@ export default function TeacherList({ setActiveView }) {
                               style={{ padding: '6px 10px', fontSize: '0.75rem', borderRadius: '8px', display: 'flex', alignItems: 'center', gap: '4px' }}>
                               <Info size={12} /> View
                             </button>
-                            <button onClick={() => openEditModal(t)} className="btn-secondary" 
-                              style={{ padding: '6px 10px', fontSize: '0.75rem', borderRadius: '8px', display: 'flex', alignItems: 'center', gap: '4px' }}>
-                              <Edit3 size={12} /> Edit
-                            </button>
-                            <button onClick={() => handleDeleteTeacher(t.employeeId || t.id, t.fullName || t.name)} className="btn-danger"
-                              style={{ padding: '6px 8px', borderRadius: '8px', background: 'rgba(var(--color-danger-rgb), 0.1)', border: '1px solid rgba(var(--color-danger-rgb), 0.2)', color: 'rgb(var(--color-danger-rgb))' }}
-                              title="Delete profile">
-                              <Trash2 size={14} />
-                            </button>
+                            {!readOnly && (
+                              <>
+                                <button onClick={() => openEditModal(t)} className="btn-secondary" 
+                                  style={{ padding: '6px 10px', fontSize: '0.75rem', borderRadius: '8px', display: 'flex', alignItems: 'center', gap: '4px' }}>
+                                  <Edit3 size={12} /> Edit
+                                </button>
+                                <button onClick={() => handleDeleteTeacher(t.employeeId || t.id, t.fullName || t.name)} className="btn-danger"
+                                  style={{ padding: '6px 8px', borderRadius: '8px', background: 'rgba(var(--color-danger-rgb), 0.1)', border: '1px solid rgba(var(--color-danger-rgb), 0.2)', color: 'rgb(var(--color-danger-rgb))' }}
+                                  title="Delete profile">
+                                  <Trash2 size={14} />
+                                </button>
+                              </>
+                            )}
                           </div>
                         </td>
                       </tr>

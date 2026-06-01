@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { UserPlus, Mail, Lock, Eye, EyeOff, AlertCircle } from 'lucide-react';
 
-export default function RecepLogin({ onLogin }) {
+export default function RecepLogin({ onLogin, onCancel }) {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [showPassword, setShowPassword] = useState(false);
@@ -93,6 +93,15 @@ export default function RecepLogin({ onLogin }) {
                 Sign In
               </>
             )}
+          </button>
+
+          <button
+            type="button"
+            onClick={onCancel}
+            className="btn-secondary"
+            style={{ width: '100%', justifyContent: 'center', marginTop: '12px', padding: '14px 24px', fontSize: '0.95rem' }}
+          >
+            Back to Main Dashboard
           </button>
         </form>
 

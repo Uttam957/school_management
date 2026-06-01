@@ -5,6 +5,7 @@ import path from 'path';
 import { fileURLToPath } from 'url';
 import studentRoutes from './routes/studentRoutes.js';
 import teacherRoutes from './routes/teacherRoutes.js';
+import attendanceRoutes from './routes/attendanceRoutes.js';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -61,6 +62,11 @@ app.use('/api/students', studentRoutes);
 // 2. TEACHERS ROUTER
 // ==========================================
 app.use('/api/teachers', teacherRoutes);
+
+// ==========================================
+// 2A. ATTENDANCE ROUTER
+// ==========================================
+app.use('/api/attendance', attendanceRoutes);
 
 // ==========================================
 // 2B. STAFF ENDPOINTS
@@ -206,7 +212,6 @@ app.post('/api/school', (req, res) => {
     email, 
     ratePerStudent, 
     razorpayAccountId, 
-    attendanceMode, 
     adminName, 
     adminEmail, 
     adminPassword 
@@ -238,7 +243,6 @@ app.post('/api/school', (req, res) => {
     email: email || '',
     ratePerStudent: ratePerStudent || '250.00',
     razorpayAccountId: razorpayAccountId || '',
-    attendanceMode: attendanceMode || 'Teacher Marking',
     adminName: adminName || 'Rajesh Kumar',
     adminEmail,
     adminPassword: savedPassword,
@@ -262,12 +266,7 @@ app.get('/api/overview', (req, res) => {
   const totalTeachers = db.teachers.length;
   const totalStaff = (db.staff || []).length;
 
-  // Calculate attendance averages
-  let attendanceRate = '0%';
-  if (totalStudents > 0) {
-    const totalPercentage = db.students.reduce((acc, curr) => acc + parseFloat(curr.attendance || 0), 0);
-    attendanceRate = `${(totalPercentage / totalStudents).toFixed(1)}%`;
-  }
+
 
   // Calculate monthly revenue collections
   const revenueTotal = db.invoices
@@ -279,7 +278,6 @@ app.get('/api/overview', (req, res) => {
     totalStudents: totalStudents.toString(),
     totalTeachers: totalTeachers.toString(),
     totalStaff: totalStaff.toString(),
-    attendanceRate,
     revenueTotal: `$${revenueTotal.toLocaleString()}`,
     activities: db.activities.slice(0, 5),
     studentsList: db.students,
@@ -287,7 +285,6 @@ app.get('/api/overview', (req, res) => {
     staffList: db.staff || [],
     invoicesList: db.invoices,
     school: db.school || { name: "Aether Academy", principal: "Alex Devlin" }
-  });
 });
 
 // Start Server

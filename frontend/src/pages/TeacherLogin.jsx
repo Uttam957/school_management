@@ -14,7 +14,7 @@ export default function TeacherLogin({ onLogin }) {
     setLoading(true);
 
     setTimeout(() => {
-      if (email === 'uttam7878@gmail.com' && password === 'uttam@2004') {
+      if (email === 'uttam306115@gmail.com' && password === 'uttam@2004') {
         onLogin();
       } else {
         setError('Invalid email or password. Please try again.');
