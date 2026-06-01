@@ -1,0 +1,45 @@
+{
+  "students": [],
+  "teachers": [],
+  "staff": [],
+  "timetables": [],
+  "invoices": [],
+  "activities": [
+    {
+      "id": "ACT-1780056281805",
+      "type": "alert",
+      "title": "Faculty Dismissed",
+      "desc": "uttam rajpurohit was removed from the roster",
+      "time": "Just now",
+      "timestamp": "2026-05-29T12:04:41.805Z",
+      "color": "rgb(var(--color-danger-rgb))",
+      "bg": "rgba(var(--color-danger-rgb), 0.1)"
+    },
+    {
+      "id": "ACT-1780056253127",
+      "type": "registration",
+      "title": "New Faculty Registered",
+      "desc": "uttam rajpurohit joined Social Science Department as Full Time",
+      "time": "Just now",
+      "timestamp": "2026-05-29T12:04:13.127Z",
+      "color": "hsl(var(--color-secondary))",
+      "bg": "rgba(hsl(var(--color-secondary)), 0.1)"
+    }
+  ],
+  "school": {
+    "name": "Dashboard",
+    "subdomain": "dps",
+    "address": "123 Main Road, New Delhi",
+    "city": "New Delhi",
+    "state": "Delhi",
+    "phone": "011-1234567",
+    "email": "admin@dps.edu",
+    "ratePerStudent": "250.00",
+    "razorpayAccountId": "acc_123xyz",
+    "attendanceMode": "Teacher Marking",
+    "adminName": "Rajesh Kumar",
+    "adminEmail": "admin@dps.edu",
+    "adminPassword": "adminpassword",
+    "principal": "Rajesh Kumar"
+  }
+}
