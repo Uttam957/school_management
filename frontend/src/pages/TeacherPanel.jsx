@@ -24,6 +24,8 @@ import {
   Info
 } from 'lucide-react';
 import StudentDirectory from './StudentDirectory';
+import TeacherList from './TeacherList';
+import StaffDirectory from './StaffDirectory';
 
 export default function TeacherPanel({ setActiveView, onLogout, teacherView, setTeacherView }) {
   // Global filter states
@@ -35,11 +37,37 @@ export default function TeacherPanel({ setActiveView, onLogout, teacherView, set
   // Notification states
   const [notification, setNotification] = useState(null);
 
+  // Cohort states for today's status cards
+  const [cohortData, setCohortData] = useState([]);
+  const [loadingCohort, setLoadingCohort] = useState(false);
+
   // Trigger notification helper
   const showToast = (message, type = 'success') => {
     setNotification({ message, type });
     setTimeout(() => setNotification(null), 3500);
   };
+
+  const fetchCohortData = async () => {
+    try {
+      setLoadingCohort(true);
+      // Fetch for today's present date '2026-06-01'
+      const res = await fetch('/api/attendance/reports/class?date=2026-06-01');
+      if (res.ok) {
+        const data = await res.json();
+        setCohortData(data);
+      }
+    } catch (err) {
+      console.error('Error loading dashboard cohort data:', err);
+    } finally {
+      setLoadingCohort(false);
+    }
+  };
+
+  useEffect(() => {
+    if (teacherView === 'dashboard') {
+      fetchCohortData();
+    }
+  }, [teacherView]);
 
   // Subheader Text
   const getSubheaderText = () => {
@@ -50,6 +78,8 @@ export default function TeacherPanel({ setActiveView, onLogout, teacherView, set
       case 'class-reports': return 'Evaluate overall cohort averages and stats';
       case 'monthly-calendar': return 'Monthly calendar tracker grid per student';
       case 'students': return 'Access complete student academic records directory';
+      case 'teacher-list': return 'View faculty roster and teacher profiles';
+      case 'staff': return 'View non-academic staff directory';
       default: return 'Faculty dashboard & registration telemetries';
     }
   };
@@ -83,12 +113,6 @@ export default function TeacherPanel({ setActiveView, onLogout, teacherView, set
             showToast={showToast}
           />
         );
-      case 'class-reports':
-        return (
-          <ClassReportsView 
-            showToast={showToast}
-          />
-        );
       case 'monthly-calendar':
         return (
           <MonthlyCalendarView 
@@ -97,55 +121,176 @@ export default function TeacherPanel({ setActiveView, onLogout, teacherView, set
         );
       case 'students':
         return <StudentDirectory readOnly={true} />;
+      case 'teacher-list':
+        return <TeacherList setActiveView={setActiveView} readOnly={true} />;
+      case 'staff':
+        return <StaffDirectory readOnly={true} />;
       default:
         return (
-          <div className="admin-dashboard-grid" style={{ gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))', gap: '24px' }}>
-            <div className="glass-panel admin-dash-card" onClick={() => setTeacherView('mark-attendance')}>
-              <div className="admin-dash-icon" style={{ color: 'hsl(var(--color-primary))', background: 'rgba(hsl(var(--color-primary)), 0.1)' }}>
-                <ClipboardCheck size={36} />
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '40px' }}>
+            
+            {/* Top Sleek Grid Navigation */}
+            <div className="admin-dashboard-grid" style={{ gridTemplateColumns: 'repeat(auto-fit, minmax(210px, 1fr))', gap: '20px' }}>
+              <div className="glass-panel admin-dash-card" onClick={() => setTeacherView('mark-attendance')} style={{ padding: '20px' }}>
+                <div className="admin-dash-icon" style={{ color: 'hsl(var(--color-primary))', background: 'rgba(hsl(var(--color-primary)), 0.1)', width: '56px', height: '56px', borderRadius: '12px' }}>
+                  <ClipboardCheck size={28} />
+                </div>
+                <h3 style={{ fontSize: '1.05rem', fontWeight: 700, marginTop: '12px' }}>Mark Attendance</h3>
+                <p style={{ fontSize: '0.8rem', color: 'var(--text-muted)' }}>Roster and log daily student attendance</p>
               </div>
-              <h3>Mark Attendance</h3>
-              <p>Roster and log daily student attendance</p>
+
+              <div className="glass-panel admin-dash-card" onClick={() => setTeacherView('attendance-history')} style={{ padding: '20px' }}>
+                <div className="admin-dash-icon" style={{ color: 'hsl(var(--color-warning))', background: 'rgba(hsl(var(--color-warning)), 0.1)', width: '56px', height: '56px', borderRadius: '12px' }}>
+                  <List size={28} />
+                </div>
+                <h3 style={{ fontSize: '1.05rem', fontWeight: 700, marginTop: '12px' }}>Attendance History</h3>
+                <p style={{ fontSize: '0.8rem', color: 'var(--text-muted)' }}>Review and edit past rosters</p>
+              </div>
+
+              <div className="glass-panel admin-dash-card" onClick={() => setTeacherView('student-reports')} style={{ padding: '20px' }}>
+                <div className="admin-dash-icon" style={{ color: 'hsl(var(--color-success))', background: 'rgba(hsl(var(--color-success)), 0.1)', width: '56px', height: '56px', borderRadius: '12px' }}>
+                  <Users size={28} />
+                </div>
+                <h3 style={{ fontSize: '1.05rem', fontWeight: 700, marginTop: '12px' }}>Student Reports</h3>
+                <p style={{ fontSize: '0.8rem', color: 'var(--text-muted)' }}>Metrics logs & Excel/PDF exports</p>
+              </div>
+
+              <div className="glass-panel admin-dash-card" onClick={() => setTeacherView('monthly-calendar')} style={{ padding: '20px' }}>
+                <div className="admin-dash-icon" style={{ color: 'hsl(var(--color-info))', background: 'rgba(hsl(var(--color-info)), 0.1)', width: '56px', height: '56px', borderRadius: '12px' }}>
+                  <School size={28} />
+                </div>
+                <h3 style={{ fontSize: '1.05rem', fontWeight: 700, marginTop: '12px' }}>Monthly Calendar</h3>
+                <p style={{ fontSize: '0.8rem', color: 'var(--text-muted)' }}>Monthly visual attendance calendar grid</p>
+              </div>
+
+              <div className="glass-panel admin-dash-card" onClick={() => setTeacherView('students')} style={{ padding: '20px' }}>
+                <div className="admin-dash-icon" style={{ color: 'hsl(var(--color-secondary))', background: 'rgba(hsl(var(--color-secondary)), 0.1)', width: '56px', height: '56px', borderRadius: '12px' }}>
+                  <Users size={28} />
+                </div>
+                <h3 style={{ fontSize: '1.05rem', fontWeight: 700, marginTop: '12px' }}>Student Directory</h3>
+                <p style={{ fontSize: '0.8rem', color: 'var(--text-muted)' }}>Search, filter, and view student profiles</p>
+              </div>
+
+              <div className="glass-panel admin-dash-card" onClick={() => setTeacherView('teacher-list')} style={{ padding: '20px' }}>
+                <div className="admin-dash-icon" style={{ color: 'hsl(30, 85%, 65%)', background: 'rgba(251, 146, 60, 0.1)', width: '56px', height: '56px', borderRadius: '12px' }}>
+                  <UserCheck size={28} />
+                </div>
+                <h3 style={{ fontSize: '1.05rem', fontWeight: 700, marginTop: '12px' }}>Teacher Directory</h3>
+                <p style={{ fontSize: '0.8rem', color: 'var(--text-muted)' }}>View faculty roster and profiles</p>
+              </div>
+
+              <div className="glass-panel admin-dash-card" onClick={() => setTeacherView('staff')} style={{ padding: '20px' }}>
+                <div className="admin-dash-icon" style={{ color: 'hsl(260, 85%, 65%)', background: 'rgba(168, 85, 247, 0.1)', width: '56px', height: '56px', borderRadius: '12px' }}>
+                  <UserCog size={28} />
+                </div>
+                <h3 style={{ fontSize: '1.05rem', fontWeight: 700, marginTop: '12px' }}>Staff Directory</h3>
+                <p style={{ fontSize: '0.8rem', color: 'var(--text-muted)' }}>View non-academic staff members</p>
+              </div>
             </div>
 
-            <div className="glass-panel admin-dash-card" onClick={() => setTeacherView('attendance-history')}>
-              <div className="admin-dash-icon" style={{ color: 'hsl(var(--color-warning))', background: 'rgba(hsl(var(--color-warning)), 0.1)' }}>
-                <List size={36} />
+            {/* Live Today Attendance Cohorts Section */}
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '12px' }}>
+                <div>
+                  <h3 style={{ fontSize: '1.2rem', fontWeight: 800, color: 'var(--text-main)', display: 'flex', alignItems: 'center', gap: '8px' }}>
+                    <TrendingUp size={20} style={{ color: 'hsl(var(--color-success))' }} /> Today's Live Attendance Dashboard
+                  </h3>
+                  <p style={{ fontSize: '0.8rem', color: 'var(--text-muted)', marginTop: '2px' }}>Class-wise and section-wise current roster tallies for June 01, 2026</p>
+                </div>
+                <div style={{
+                  background: 'rgba(255,255,255,0.03)',
+                  padding: '6px 16px',
+                  borderRadius: '30px',
+                  border: '1px solid var(--border-glass)',
+                  fontSize: '0.8rem',
+                  fontWeight: 600,
+                  color: 'hsl(var(--color-success))'
+                }}>
+                  Present Date: June 01, 2026
+                </div>
               </div>
-              <h3>Attendance History</h3>
-              <p>Review and edit past rosters</p>
-            </div>
 
-            <div className="glass-panel admin-dash-card" onClick={() => setTeacherView('student-reports')}>
-              <div className="admin-dash-icon" style={{ color: 'hsl(var(--color-success))', background: 'rgba(hsl(var(--color-success)), 0.1)' }}>
-                <Users size={36} />
-              </div>
-              <h3>Student Reports</h3>
-              <p>Metrics logs & Excel/PDF exports</p>
-            </div>
+              {loadingCohort ? (
+                <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', minHeight: '240px', flexDirection: 'column', gap: '12px' }}>
+                  <Loader2 className="animate-spin" size={32} style={{ color: 'hsl(var(--color-primary))' }} />
+                  <p style={{ fontSize: '0.85rem', color: 'var(--text-muted)' }}>Loading live today's rosters...</p>
+                </div>
+              ) : cohortData.length === 0 ? (
+                <div className="glass-panel" style={{ padding: '40px 20px', textAlign: 'center', color: 'var(--text-muted)' }}>
+                  No students or attendance records found in the database.
+                </div>
+              ) : (
+                <div className="admin-dashboard-grid" style={{ gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))', gap: '20px' }}>
+                  {cohortData.map((r, i) => {
+                    const percentage = r.attendancePercentage;
+                    const ringColor = percentage >= 90 ? '#10b981' : percentage >= 75 ? '#f59e0b' : '#ef4444';
+                    
+                    return (
+                      <div className="glass-panel" key={i} style={{ padding: '24px', borderRadius: '16px', display: 'flex', flexDirection: 'column', gap: '16px', background: 'rgba(255,255,255,0.01)', border: '1px solid rgba(255,255,255,0.05)', transition: 'all 0.2s ease' }}>
+                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                          <div>
+                            <span style={{ fontSize: '0.75rem', fontWeight: 800, textTransform: 'uppercase', color: 'hsl(var(--color-secondary))', letterSpacing: '0.05em' }}>
+                              Grade {r.studentClass} - Section {r.section}
+                            </span>
+                            <h4 style={{ fontSize: '1.05rem', fontWeight: 700, color: 'var(--text-main)', marginTop: '4px' }}>Roster Attendance</h4>
+                          </div>
+                          <div style={{
+                            width: '46px',
+                            height: '46px',
+                            borderRadius: '50%',
+                            background: 'rgba(255,255,255,0.03)',
+                            border: `2px solid ${ringColor}`,
+                            display: 'flex',
+                            alignItems: 'center',
+                            justifyContent: 'center',
+                            fontWeight: 800,
+                            fontSize: '0.85rem',
+                            color: ringColor
+                          }}>
+                            {percentage}%
+                          </div>
+                        </div>
 
-            <div className="glass-panel admin-dash-card" onClick={() => setTeacherView('class-reports')}>
-              <div className="admin-dash-icon" style={{ color: 'hsl(var(--color-danger))', background: 'rgba(hsl(var(--color-danger)), 0.1)' }}>
-                <UserCheck size={36} />
-              </div>
-              <h3>Class Reports</h3>
-              <p>Review class participation trends</p>
-            </div>
+                        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, 1fr)', gap: '10px' }}>
+                          <div style={{ background: 'rgba(255,255,255,0.01)', padding: '8px 12px', borderRadius: '8px', border: '1px solid rgba(255,255,255,0.02)' }}>
+                            <div style={{ fontSize: '0.65rem', color: 'var(--text-muted)', textTransform: 'uppercase', fontWeight: 700 }}>Total students</div>
+                            <div style={{ fontSize: '1.05rem', fontWeight: 700, color: 'var(--text-main)', marginTop: '2px' }}>{r.totalStudents}</div>
+                          </div>
+                          <div style={{ background: 'rgba(16, 185, 129, 0.03)', padding: '8px 12px', borderRadius: '8px', border: '1px solid rgba(16, 185, 129, 0.06)' }}>
+                            <div style={{ fontSize: '0.65rem', color: '#10b981', textTransform: 'uppercase', fontWeight: 700 }}>Present</div>
+                            <div style={{ fontSize: '1.05rem', fontWeight: 700, color: '#10b981', marginTop: '2px' }}>{r.presentStudents}</div>
+                          </div>
+                          <div style={{ background: 'rgba(239, 68, 68, 0.03)', padding: '8px 12px', borderRadius: '8px', border: '1px solid rgba(239, 68, 68, 0.06)' }}>
+                            <div style={{ fontSize: '0.65rem', color: '#ef4444', textTransform: 'uppercase', fontWeight: 700 }}>Absent</div>
+                            <div style={{ fontSize: '1.05rem', fontWeight: 700, color: '#ef4444', marginTop: '2px' }}>{r.absentStudents}</div>
+                          </div>
+                          <div style={{ background: 'rgba(249, 115, 22, 0.03)', padding: '8px 12px', borderRadius: '8px', border: '1px solid rgba(249, 115, 22, 0.06)' }}>
+                            <div style={{ fontSize: '0.65rem', color: '#f97316', textTransform: 'uppercase', fontWeight: 700 }}>Late/Leave</div>
+                            <div style={{ fontSize: '1.05rem', fontWeight: 700, color: '#f97316', marginTop: '2px' }}>{r.lateStudents + r.leaveStudents}</div>
+                          </div>
+                        </div>
 
-            <div className="glass-panel admin-dash-card" onClick={() => setTeacherView('monthly-calendar')}>
-              <div className="admin-dash-icon" style={{ color: 'hsl(var(--color-info))', background: 'rgba(hsl(var(--color-info)), 0.1)' }}>
-                <School size={36} />
-              </div>
-              <h3>Monthly Calendar</h3>
-              <p>Monthly visual attendance calendar grid</p>
-            </div>
-
-            <div className="glass-panel admin-dash-card" onClick={() => setTeacherView('students')}>
-              <div className="admin-dash-icon" style={{ color: 'hsl(var(--color-secondary))', background: 'rgba(hsl(var(--color-secondary)), 0.1)' }}>
-                <Users size={36} />
-              </div>
-              <h3>Student Directory</h3>
-              <p>Search, filter, and view student profiles</p>
+                        {/* Progress Bar showing how many students are marked */}
+                        <div style={{ display: 'flex', flexDirection: 'column', gap: '6px', marginTop: '4px' }}>
+                          <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.7rem', color: 'var(--text-muted)', fontWeight: 600 }}>
+                            <span>Marking Progress</span>
+                            <span>{r.markedStudents} of {r.totalStudents} marked</span>
+                          </div>
+                          <div style={{ height: '6px', background: 'rgba(255,255,255,0.05)', borderRadius: '3px', overflow: 'hidden' }}>
+                            <div style={{
+                              height: '100%',
+                              width: `${(r.markedStudents / r.totalStudents) * 100}%`,
+                              background: 'linear-gradient(90deg, hsl(var(--color-primary)) 0%, hsl(var(--color-secondary)) 100%)',
+                              borderRadius: '3px',
+                              transition: 'width 0.4s ease'
+                            }} />
+                          </div>
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+              )}
             </div>
           </div>
         );
@@ -227,7 +372,7 @@ export default function TeacherPanel({ setActiveView, onLogout, teacherView, set
 // ============================================================================
 // TAB A: ROSTER DAILY MARKING VIEW
 // ============================================================================
-function MarkAttendanceView({ date, setDate, studentClass, setClass, section, setSection, search, setSearch, showToast }) {
+export function MarkAttendanceView({ date, setDate, studentClass, setClass, section, setSection, search, setSearch, showToast }) {
   const [roster, setRoster] = useState([]);
   const [loading, setLoading] = useState(false);
   const [saving, setSaving] = useState(false);
@@ -698,7 +843,7 @@ function MarkAttendanceView({ date, setDate, studentClass, setClass, section, se
 // ============================================================================
 // TAB B: ATTENDANCE HISTORY LOG VIEW
 // ============================================================================
-function AttendanceHistoryView({ showToast }) {
+export function AttendanceHistoryView({ showToast }) {
   const [date, setDate] = useState(new Date().toISOString().split('T')[0]);
   const [studentClass, setClass] = useState('IX');
   const [section, setSection] = useState('A');
@@ -994,7 +1139,7 @@ function AttendanceHistoryView({ showToast }) {
 // ============================================================================
 // TAB C: STUDENT REPORT VIEW WITH PDF/CSV EXPORTS
 // ============================================================================
-function StudentReportsView({ showToast }) {
+export function StudentReportsView({ showToast }) {
   const [studentClass, setClass] = useState('All');
   const [section, setSection] = useState('All');
   const [search, setSearch] = useState('');
@@ -1193,7 +1338,7 @@ function StudentReportsView({ showToast }) {
 // ============================================================================
 // TAB D: CLASS COHORT REPORT VIEW
 // ============================================================================
-function ClassReportsView({ showToast }) {
+export function ClassReportsView({ showToast }) {
   const [reports, setReports] = useState([]);
   const [loading, setLoading] = useState(false);
 
@@ -1282,7 +1427,7 @@ function ClassReportsView({ showToast }) {
 // ============================================================================
 // TAB E: MONTHLY INTERACTIVE CALENDAR VIEW
 // ============================================================================
-function MonthlyCalendarView({ showToast }) {
+export function MonthlyCalendarView({ showToast }) {
   const [studentsList, setStudentsList] = useState([]);
   const [selectedStudent, setSelectedStudent] = useState('');
   const [selectedMonth, setSelectedMonth] = useState(new Date().getMonth() + 1); // 1-12

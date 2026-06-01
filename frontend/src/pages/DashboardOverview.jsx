@@ -7,7 +7,11 @@ import {
   BookOpen, 
   TrendingUp, 
   DollarSign,
-  Activity
+  Activity,
+  UserX,
+  CreditCard,
+  TrendingDown,
+  AlertCircle
 } from 'lucide-react';
 
 export default function DashboardOverview() {
@@ -19,7 +23,13 @@ export default function DashboardOverview() {
     studentsList: [],
     teachersList: [],
     staffList: [],
-    invoicesList: []
+    invoicesList: [],
+    totalAbsentees: 0,
+    activeAttendanceDate: '',
+    totalFeeCollected: 0,
+    totalPendingFees: 0,
+    totalPayments: 0,
+    monthlyData: []
   });
   const [loading, setLoading] = useState(true);
 
@@ -50,7 +60,7 @@ export default function DashboardOverview() {
     );
   }
 
-  // 1. Calculate Tuition Collection Percentage
+  // 1. Calculate Tuition Collection Percentage from invoices fallback
   const invoices = overviewData.invoicesList || [];
   const paidInvoices = invoices.filter(inv => inv.status === 'Paid');
   const collectionPercent = invoices.length > 0 ? Math.round((paidInvoices.length / invoices.length) * 100) : 0;
@@ -89,99 +99,163 @@ export default function DashboardOverview() {
   return (
     <div className="animate-slide-up" style={{ display: 'flex', flexDirection: 'column', gap: '32px', paddingBottom: '40px' }}>
       
-      {/* SECTION 1: HEADER TELEMETRY COUNTS WITH MINI SPARKLINE GRAPHS */}
-      <div className="admin-dashboard-grid" style={{ gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))', gap: '24px' }}>
+      {/* SECTION 1: HEADER TELEMETRY GRID */}
+      <div className="admin-dashboard-grid" style={{ gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))', gap: '20px' }}>
         
         {/* Card 1: Students Count Card */}
-        <div className="glass-panel" style={{ padding: '24px', display: 'flex', flexDirection: 'column', gap: '12px', position: 'relative', overflow: 'hidden' }}>
+        <div className="glass-panel" style={{ padding: '20px', display: 'flex', flexDirection: 'column', gap: '8px', position: 'relative', overflow: 'hidden' }}>
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
             <div>
-              <span style={{ fontSize: '0.8rem', color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.05em', fontWeight: 600 }}>Total Students</span>
-              <h2 style={{ fontSize: '2.5rem', fontWeight: 800, marginTop: '4px', color: 'var(--text-main)' }}>{overviewData.totalStudents}</h2>
+              <span style={{ fontSize: '0.75rem', color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.05em', fontWeight: 600 }}>Total Students</span>
+              <h2 style={{ fontSize: '2.1rem', fontWeight: 800, marginTop: '4px', color: 'var(--text-main)', letterSpacing: '-0.02em' }}>{overviewData.totalStudents}</h2>
             </div>
-            <div style={{ padding: '10px', borderRadius: '12px', background: 'rgba(hsl(var(--color-primary)), 0.1)', color: 'hsl(var(--color-primary))' }}>
-              <Users size={24} />
+            <div style={{ padding: '8px', borderRadius: '10px', background: 'rgba(hsl(var(--color-primary)), 0.1)', color: 'hsl(var(--color-primary))' }}>
+              <Users size={20} />
             </div>
           </div>
-          <div style={{ display: 'flex', alignItems: 'center', gap: '8px', fontSize: '0.8rem' }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '6px', fontSize: '0.75rem', marginTop: '4px' }}>
             <span style={{ color: 'rgb(var(--color-success-rgb))', fontWeight: 700, display: 'inline-flex', alignItems: 'center', gap: '2px' }}>
-              <TrendingUp size={14} /> +12%
+              <TrendingUp size={12} /> +12%
             </span>
-            <span style={{ color: 'var(--text-muted)' }}>this academic term</span>
-          </div>
-          {/* Mini Sparkline Line chart SVG */}
-          <div style={{ width: '100%', height: '40px', marginTop: '8px' }}>
-            <svg viewBox="0 0 100 20" width="100%" height="100%" preserveAspectRatio="none">
-              <path d="M 0 18 Q 20 15 40 10 T 80 5 T 100 2" fill="none" stroke="rgba(hsl(var(--color-primary)), 0.75)" strokeWidth="2.5" strokeLinecap="round" />
-              <path d="M 0 18 Q 20 15 40 10 T 80 5 T 100 2 L 100 20 L 0 20 Z" fill="rgba(hsl(var(--color-primary)), 0.05)" />
-            </svg>
+            <span style={{ color: 'var(--text-muted)' }}>this term</span>
           </div>
         </div>
 
-        {/* Card 2: Teachers Count Card */}
-        <div className="glass-panel" style={{ padding: '24px', display: 'flex', flexDirection: 'column', gap: '12px', position: 'relative', overflow: 'hidden' }}>
+        {/* Card 2: Daily Absentees Card */}
+        <div className="glass-panel" style={{ padding: '20px', display: 'flex', flexDirection: 'column', gap: '8px', position: 'relative', overflow: 'hidden' }}>
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
             <div>
-              <span style={{ fontSize: '0.8rem', color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.05em', fontWeight: 600 }}>Total Teachers</span>
-              <h2 style={{ fontSize: '2.5rem', fontWeight: 800, marginTop: '4px', color: 'var(--text-main)' }}>{overviewData.totalTeachers}</h2>
+              <span style={{ fontSize: '0.75rem', color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.05em', fontWeight: 600 }}>Daily Absentees</span>
+              <h2 style={{ fontSize: '2.1rem', fontWeight: 800, marginTop: '4px', color: 'var(--text-main)', letterSpacing: '-0.02em' }}>{overviewData.totalAbsentees}</h2>
             </div>
-            <div style={{ padding: '10px', borderRadius: '12px', background: 'rgba(hsl(var(--color-secondary)), 0.1)', color: 'hsl(var(--color-secondary))' }}>
-              <UserCheck size={24} />
+            <div style={{ padding: '8px', borderRadius: '10px', background: 'rgba(239, 68, 68, 0.1)', color: '#ef4444' }}>
+              <UserX size={20} />
             </div>
           </div>
-          <div style={{ display: 'flex', alignItems: 'center', gap: '8px', fontSize: '0.8rem' }}>
-            <span style={{ color: 'rgb(var(--color-success-rgb))', fontWeight: 700, display: 'inline-flex', alignItems: 'center', gap: '2px' }}>
-              <Activity size={14} /> 100%
-            </span>
-            <span style={{ color: 'var(--text-muted)' }}>faculty operational status</span>
-          </div>
-          {/* Mini Sparkline Line chart SVG */}
-          <div style={{ width: '100%', height: '40px', marginTop: '8px' }}>
-            <svg viewBox="0 0 100 20" width="100%" height="100%" preserveAspectRatio="none">
-              <path d="M 0 8 Q 20 18 40 5 T 80 12 T 100 3" fill="none" stroke="rgba(hsl(var(--color-secondary)), 0.75)" strokeWidth="2.5" strokeLinecap="round" />
-              <path d="M 0 8 Q 20 18 40 5 T 80 12 T 100 3 L 100 20 L 0 20 Z" fill="rgba(hsl(var(--color-secondary)), 0.05)" />
-            </svg>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '6px', fontSize: '0.75rem', marginTop: '4px' }}>
+            <span style={{ color: '#ef4444', fontWeight: 700 }}>Active Date:</span>
+            <span style={{ color: 'var(--text-muted)', fontWeight: 500 }}>{overviewData.activeAttendanceDate || 'N/A'}</span>
           </div>
         </div>
 
-        {/* Card 3: Staff Count Card */}
-        <div className="glass-panel" style={{ padding: '24px', display: 'flex', flexDirection: 'column', gap: '12px', position: 'relative', overflow: 'hidden' }}>
+        {/* Card 3: Fees Collected Card */}
+        <div className="glass-panel" style={{ padding: '20px', display: 'flex', flexDirection: 'column', gap: '8px', position: 'relative', overflow: 'hidden' }}>
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
             <div>
-              <span style={{ fontSize: '0.8rem', color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.05em', fontWeight: 600 }}>Total Staff</span>
-              <h2 style={{ fontSize: '2.5rem', fontWeight: 800, marginTop: '4px', color: 'var(--text-main)' }}>{overviewData.totalStaff}</h2>
+              <span style={{ fontSize: '0.75rem', color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.05em', fontWeight: 600 }}>Total Collected</span>
+              <h2 style={{ fontSize: '2.1rem', fontWeight: 800, marginTop: '4px', color: 'var(--text-main)', letterSpacing: '-0.02em' }}>
+                ${(overviewData.totalFeeCollected || 0).toLocaleString()}
+              </h2>
             </div>
-            <div style={{ padding: '10px', borderRadius: '12px', background: 'rgba(hsl(var(--color-info)), 0.1)', color: 'hsl(var(--color-info))' }}>
-              <UserCog size={24} />
+            <div style={{ padding: '8px', borderRadius: '10px', background: 'rgba(16, 185, 129, 0.1)', color: '#10b981' }}>
+              <DollarSign size={20} />
             </div>
           </div>
-          <div style={{ display: 'flex', alignItems: 'center', gap: '8px', fontSize: '0.8rem' }}>
-            <span style={{ color: 'hsl(var(--color-info))', fontWeight: 700, display: 'inline-flex', alignItems: 'center', gap: '2px' }}>
-              <BookOpen size={14} /> 6 Departments
+          <div style={{ display: 'flex', alignItems: 'center', gap: '6px', fontSize: '0.75rem', marginTop: '4px' }}>
+            <span style={{ color: '#10b981', fontWeight: 700, display: 'inline-flex', alignItems: 'center', gap: '2px' }}>
+              <TrendingUp size={12} /> Live
             </span>
-            <span style={{ color: 'var(--text-muted)' }}>operations roster</span>
+            <span style={{ color: 'var(--text-muted)' }}>fee collections</span>
           </div>
-          {/* Mini Sparkline Line chart SVG */}
-          <div style={{ width: '100%', height: '40px', marginTop: '8px' }}>
-            <svg viewBox="0 0 100 20" width="100%" height="100%" preserveAspectRatio="none">
-              <path d="M 0 15 Q 30 2 60 18 T 100 8" fill="none" stroke="rgba(hsl(var(--color-info)), 0.75)" strokeWidth="2.5" strokeLinecap="round" />
-              <path d="M 0 15 Q 30 2 60 18 T 100 8 L 100 20 L 0 20 Z" fill="rgba(hsl(var(--color-info)), 0.05)" />
-            </svg>
+        </div>
+
+        {/* Card 4: Outstanding Dues Card */}
+        <div className="glass-panel" style={{ padding: '20px', display: 'flex', flexDirection: 'column', gap: '8px', position: 'relative', overflow: 'hidden' }}>
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
+            <div>
+              <span style={{ fontSize: '0.75rem', color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.05em', fontWeight: 600 }}>Outstanding Dues</span>
+              <h2 style={{ fontSize: '2.1rem', fontWeight: 800, marginTop: '4px', color: 'var(--text-main)', letterSpacing: '-0.02em' }}>
+                ${(overviewData.totalPendingFees || 0).toLocaleString()}
+              </h2>
+            </div>
+            <div style={{ padding: '8px', borderRadius: '10px', background: 'rgba(245, 158, 11, 0.1)', color: '#f59e0b' }}>
+              <CreditCard size={20} />
+            </div>
+          </div>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '6px', fontSize: '0.75rem', marginTop: '4px' }}>
+            <span style={{ color: '#f59e0b', fontWeight: 700, display: 'inline-flex', alignItems: 'center', gap: '2px' }}>
+              <AlertCircle size={12} /> Pending
+            </span>
+            <span style={{ color: 'var(--text-muted)' }}>receivable amount</span>
+          </div>
+        </div>
+
+        {/* Card 5: Total Payments (Expenses) Card */}
+        <div className="glass-panel" style={{ padding: '20px', display: 'flex', flexDirection: 'column', gap: '8px', position: 'relative', overflow: 'hidden' }}>
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
+            <div>
+              <span style={{ fontSize: '0.75rem', color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.05em', fontWeight: 600 }}>Total Payments</span>
+              <h2 style={{ fontSize: '2.1rem', fontWeight: 800, marginTop: '4px', color: 'var(--text-main)', letterSpacing: '-0.02em' }}>
+                ${(overviewData.totalPayments || 0).toLocaleString()}
+              </h2>
+            </div>
+            <div style={{ padding: '8px', borderRadius: '10px', background: 'rgba(239, 68, 68, 0.1)', color: '#ef4444' }}>
+              <TrendingDown size={20} />
+            </div>
+          </div>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '6px', fontSize: '0.75rem', marginTop: '4px' }}>
+            <span style={{ color: '#ef4444', fontWeight: 700 }}>Expenses</span>
+            <span style={{ color: 'var(--text-muted)' }}>&amp; payroll paid</span>
           </div>
         </div>
 
       </div>
 
-      {/* SECTION 2: SINGLE TUITION REVENUE PROGRESS AND METRICS SPARK CARDS */}
-      <div className="chart-grid" style={{ gridTemplateColumns: '1fr', gap: '24px' }}>
+      {/* SECTION 2: CHARTS & PROGRESS */}
+      <div className="chart-grid" style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(360px, 1fr))', gap: '24px' }}>
         
-        {/* Full Width Gauge: Tuition Revenue Progress */}
-        <div className="glass-panel" style={{ padding: '32px', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '24px', textAlign: 'center' }}>
-          <h3 style={{ fontSize: '1.1rem', fontWeight: 700, alignSelf: 'flex-start', margin: 0, borderBottom: '1px solid var(--border-glass)', width: '100%', paddingBottom: '12px' }}>Tuition Collections Progress</h3>
-          
-          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '48px', flexWrap: 'wrap', width: '100%', padding: '10px 0' }}>
+        {/* Dual Bar Chart: Monthly Revenue vs Expenses */}
+        {overviewData.monthlyData && overviewData.monthlyData.length > 0 && (
+          <div className="glass-panel" style={{ padding: '28px', display: 'flex', flexDirection: 'column', gap: '20px' }}>
+            <h3 style={{ fontSize: '1.05rem', fontWeight: 700, margin: 0, borderBottom: '1px solid var(--border-glass)', paddingBottom: '10px', display: 'flex', alignItems: 'center', gap: '8px', color: 'var(--text-main)' }}>
+              <TrendingUp size={18} style={{ color: '#10b981' }} /> Monthly Revenue vs Expenses
+            </h3>
             
-            <div style={{ position: 'relative', width: '160px', height: '160px', flexShrink: 0 }}>
+            <div style={{ display: 'flex', alignItems: 'flex-end', gap: '16px', height: '170px', padding: '10px 10px 0 10px', marginTop: '10px' }}>
+              {overviewData.monthlyData.map((m, i) => {
+                const maxVal = Math.max(...overviewData.monthlyData.map(d => Math.max(d.fees, d.expenses, 1)));
+                const feeH = maxVal > 0 ? (m.fees / maxVal) * 130 : 4;
+                const expH = maxVal > 0 ? (m.expenses / maxVal) * 130 : 4;
+                return (
+                  <div key={i} style={{ flex: 1, display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '8px' }}>
+                    <div style={{ display: 'flex', gap: '6px', alignItems: 'flex-end', height: '130px' }}>
+                      {/* Revenue Bar */}
+                      <div style={{
+                        width: '14px', height: `${Math.max(feeH, 4)}px`, borderRadius: '3px 3px 0 0',
+                        background: 'linear-gradient(180deg, #10b981 0%, #059669 100%)', transition: 'all 0.4s cubic-bezier(0.4, 0, 0.2, 1)',
+                        boxShadow: '0 2px 8px rgba(16, 185, 129, 0.2)'
+                      }} title={`Revenue: $${m.fees.toLocaleString()}`} />
+                      {/* Expenses Bar */}
+                      <div style={{
+                        width: '14px', height: `${Math.max(expH, 4)}px`, borderRadius: '3px 3px 0 0',
+                        background: 'linear-gradient(180deg, #ef4444 0%, #dc2626 100%)', transition: 'all 0.4s cubic-bezier(0.4, 0, 0.2, 1)',
+                        boxShadow: '0 2px 8px rgba(239, 68, 68, 0.2)'
+                      }} title={`Expenses: $${m.expenses.toLocaleString()}`} />
+                    </div>
+                    <span style={{ fontSize: '0.65rem', color: 'var(--text-muted)', fontWeight: 600 }}>{m.month.split(' ')[0]}</span>
+                  </div>
+                );
+              })}
+            </div>
+            
+            <div style={{ display: 'flex', gap: '20px', justifyContent: 'center', borderTop: '1px solid var(--border-glass)', paddingTop: '12px' }}>
+              <span style={{ fontSize: '0.72rem', display: 'flex', alignItems: 'center', gap: '6px', color: 'var(--text-muted)' }}>
+                <span style={{ width: '8px', height: '8px', borderRadius: '50%', background: '#10b981' }} /> Revenue
+              </span>
+              <span style={{ fontSize: '0.72rem', display: 'flex', alignItems: 'center', gap: '6px', color: 'var(--text-muted)' }}>
+                <span style={{ width: '8px', height: '8px', borderRadius: '50%', background: '#ef4444' }} /> Expenses
+              </span>
+            </div>
+          </div>
+        )}
+
+        {/* Circular Gauge: Tuition Collections Progress */}
+        <div className="glass-panel" style={{ padding: '28px', display: 'flex', flexDirection: 'column', gap: '20px' }}>
+          <h3 style={{ fontSize: '1.05rem', fontWeight: 700, margin: 0, borderBottom: '1px solid var(--border-glass)', paddingBottom: '10px', color: 'var(--text-main)' }}>Tuition Collections Progress</h3>
+          
+          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '32px', flexWrap: 'wrap', height: '100%' }}>
+            
+            <div style={{ position: 'relative', width: '130px', height: '130px', flexShrink: 0 }}>
               {/* SVG Circular Gauge */}
               <svg width="100%" height="100%" viewBox="0 0 36 36" style={{ transform: 'rotate(-90deg)', width: '100%', height: '100%' }}>
                 <path
@@ -202,25 +276,25 @@ export default function DashboardOverview() {
               </svg>
               {/* Center Text */}
               <div style={{ position: 'absolute', top: '50%', left: '50%', transform: 'translate(-50%, -50%)', display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
-                <span style={{ fontSize: '2rem', fontWeight: 800, color: 'var(--text-main)', lineHeight: 1 }}>{collectionPercent}%</span>
-                <span style={{ fontSize: '0.75rem', color: 'var(--text-muted)', marginTop: '4px', textTransform: 'uppercase', letterSpacing: '0.05em' }}>Collected</span>
+                <span style={{ fontSize: '1.75rem', fontWeight: 800, color: 'var(--text-main)', lineHeight: 1 }}>{collectionPercent}%</span>
+                <span style={{ fontSize: '0.65rem', color: 'var(--text-muted)', marginTop: '2px', textTransform: 'uppercase', letterSpacing: '0.05em' }}>Collected</span>
               </div>
             </div>
 
-            <div style={{ display: 'flex', flexDirection: 'column', gap: '20px', minWidth: '220px', alignItems: 'flex-start' }}>
-              <div style={{ textAlign: 'left' }}>
-                <span style={{ display: 'block', color: 'var(--text-muted)', fontSize: '0.75rem', letterSpacing: '0.04em', textTransform: 'uppercase' }}>Total Invoiced Tuition</span>
-                <strong style={{ color: 'var(--text-main)', fontSize: '1.75rem', fontWeight: 800 }}>${totalAmountBilled.toLocaleString()}</strong>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '12px', minWidth: '180px' }}>
+              <div>
+                <span style={{ display: 'block', color: 'var(--text-muted)', fontSize: '0.7rem', textTransform: 'uppercase', letterSpacing: '0.04em' }}>Total Invoiced</span>
+                <strong style={{ color: 'var(--text-main)', fontSize: '1.35rem', fontWeight: 800 }}>${totalAmountBilled.toLocaleString()}</strong>
               </div>
-              <div style={{ display: 'flex', gap: '30px', fontSize: '0.85rem', width: '100%', borderTop: '1px solid var(--border-glass)', paddingTop: '16px' }}>
-                <div style={{ textAlign: 'left' }}>
-                  <span style={{ display: 'block', color: 'var(--text-muted)', fontSize: '0.7rem', textTransform: 'uppercase' }}>PAID TUITION</span>
-                  <strong style={{ color: 'rgb(var(--color-success-rgb))', fontSize: '1.1rem', fontWeight: 700 }}>${totalAmountPaid.toLocaleString()}</strong>
+              <div style={{ display: 'flex', gap: '20px', fontSize: '0.8rem', borderTop: '1px solid var(--border-glass)', paddingTop: '10px' }}>
+                <div>
+                  <span style={{ display: 'block', color: 'var(--text-muted)', fontSize: '0.65rem', textTransform: 'uppercase' }}>Paid</span>
+                  <strong style={{ color: 'rgb(var(--color-success-rgb))', fontSize: '0.95rem', fontWeight: 700 }}>${totalAmountPaid.toLocaleString()}</strong>
                 </div>
                 <div style={{ borderLeft: '1px solid var(--border-glass)' }}></div>
-                <div style={{ textAlign: 'left' }}>
-                  <span style={{ display: 'block', color: 'var(--text-muted)', fontSize: '0.7rem', textTransform: 'uppercase' }}>OUTSTANDING</span>
-                  <strong style={{ color: 'rgb(var(--color-danger-rgb))', fontSize: '1.1rem', fontWeight: 700 }}>${totalAmountPending.toLocaleString()}</strong>
+                <div>
+                  <span style={{ display: 'block', color: 'var(--text-muted)', fontSize: '0.65rem', textTransform: 'uppercase' }}>Due</span>
+                  <strong style={{ color: 'rgb(var(--color-danger-rgb))', fontSize: '0.95rem', fontWeight: 700 }}>${totalAmountPending.toLocaleString()}</strong>
                 </div>
               </div>
             </div>
@@ -231,17 +305,17 @@ export default function DashboardOverview() {
       </div>
 
       {/* SECTION 3: ACADEMY DEMOGRAPHICS & COHORT DISTRIBUTION BAR GRAPH */}
-      <div className="chart-grid" style={{ gridTemplateColumns: 'repeat(auto-fit, minmax(320px, 1fr))', gap: '24px' }}>
+      <div className="chart-grid" style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(320px, 1fr))', gap: '24px' }}>
         
         {/* Diversity & Ratios Panel */}
         <div className="glass-panel" style={{ padding: '28px', display: 'flex', flexDirection: 'column', gap: '20px' }}>
-          <h3 style={{ fontSize: '1.05rem', fontWeight: 700, margin: 0, borderBottom: '1px solid var(--border-glass)', paddingBottom: '10px' }}>Demographics & Ratios</h3>
+          <h3 style={{ fontSize: '1.05rem', fontWeight: 700, margin: 0, borderBottom: '1px solid var(--border-glass)', paddingBottom: '10px', color: 'var(--text-main)' }}>Demographics & Ratios</h3>
           
           {/* 1. Student-Teacher Ratio progress bar */}
           <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
             <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.85rem' }}>
-              <span style={{ fontWeight: 500 }}>Student-to-Teacher Ratio</span>
-              <strong>{studentToTeacherRatio} : 1</strong>
+              <span style={{ fontWeight: 500, color: 'var(--text-main)' }}>Student-to-Teacher Ratio</span>
+              <strong style={{ color: 'var(--text-main)' }}>{studentToTeacherRatio} : 1</strong>
             </div>
             <div style={{ height: '8px', background: 'rgba(255,255,255,0.03)', borderRadius: '4px', overflow: 'hidden' }}>
               <div style={{ height: '100%', width: `${Math.min((studentCount / Math.max(teacherCount, 1)) * 10, 100)}%`, background: 'linear-gradient(90deg, hsl(var(--color-primary)) 0%, hsl(var(--color-info)) 100%)', borderRadius: '4px' }}></div>
@@ -252,7 +326,7 @@ export default function DashboardOverview() {
           {/* 2. Gender diversity progress bar */}
           <div style={{ display: 'flex', flexDirection: 'column', gap: '8px', marginTop: '8px' }}>
             <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.85rem' }}>
-              <span style={{ fontWeight: 500 }}>Student Gender Balance</span>
+              <span style={{ fontWeight: 500, color: 'var(--text-main)' }}>Student Gender Balance</span>
               <span style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>{malePercent}% M / {femalePercent}% F</span>
             </div>
             <div style={{ height: '8px', background: 'hsl(var(--color-secondary))', borderRadius: '4px', overflow: 'hidden', display: 'flex' }}>
@@ -267,7 +341,7 @@ export default function DashboardOverview() {
 
         {/* Cohort Grade Spread Vertical Bar Chart */}
         <div className="glass-panel" style={{ padding: '28px', display: 'flex', flexDirection: 'column', gap: '20px' }}>
-          <h3 style={{ fontSize: '1.05rem', fontWeight: 700, margin: 0, borderBottom: '1px solid var(--border-glass)', paddingBottom: '10px' }}>Enrollment per Cohort</h3>
+          <h3 style={{ fontSize: '1.05rem', fontWeight: 700, margin: 0, borderBottom: '1px solid var(--border-glass)', paddingBottom: '10px', color: 'var(--text-main)' }}>Enrollment per Cohort</h3>
           
           <div className="svg-chart-container" style={{ height: '140px', marginTop: '10px' }}>
             <div className="bar-chart" style={{ paddingLeft: '20px', paddingRight: '20px' }}>

@@ -386,6 +386,9 @@ export const getStudentAttendanceReport = (req, res) => {
 // 4. CLASS COHORT REPORT
 export const getClassAttendanceReport = (req, res) => {
   try {
+    const { date } = req.query;
+    const todayStr = date || new Date().toLocaleDateString('en-CA'); // 'en-CA' outputs YYYY-MM-DD in local time
+    
     const db = readDb();
     const students = db.students || [];
     const attendanceRecords = db.attendance || [];
@@ -411,24 +414,39 @@ export const getClassAttendanceReport = (req, res) => {
       
       // Calculate overall counts for all student logs in this class
       const classLogs = attendanceRecords.filter(att => group.studentIds.includes(att.studentId));
-      const totalLogs = classLogs.length;
+      
+      // Filter for target date records
+      const targetDateLogs = classLogs.filter(att => att.attendanceDate === todayStr);
 
-      const present = classLogs.filter(att => att.attendanceStatus === 'Present').length;
-      const absent = classLogs.filter(att => att.attendanceStatus === 'Absent').length;
-      const leave = classLogs.filter(att => att.attendanceStatus === 'Leave').length;
-      const late = classLogs.filter(att => att.attendanceStatus === 'Late').length;
+      const present = targetDateLogs.filter(att => att.attendanceStatus === 'Present').length;
+      const absent = targetDateLogs.filter(att => att.attendanceStatus === 'Absent').length;
+      const leave = targetDateLogs.filter(att => att.attendanceStatus === 'Leave').length;
+      const late = targetDateLogs.filter(att => att.attendanceStatus === 'Late').length;
 
       let attendancePercentage = 100;
-      if (totalLogs > 0) {
-        attendancePercentage = Math.round(((present + late) / totalLogs) * 100);
+      const markedCount = targetDateLogs.length;
+      if (markedCount > 0) {
+        attendancePercentage = Math.round(((present + late) / markedCount) * 100);
+      } else {
+        // If no records marked for this specific date, default percentage to 100% or 0% depending on style
+        // Let's use 100% or calculate historical average
+        const totalLogs = classLogs.length;
+        if (totalLogs > 0) {
+          const histPresent = classLogs.filter(att => att.attendanceStatus === 'Present').length;
+          const histLate = classLogs.filter(att => att.attendanceStatus === 'Late').length;
+          attendancePercentage = Math.round(((histPresent + histLate) / totalLogs) * 100);
+        }
       }
 
       return {
         studentClass: group.studentClass,
         section: group.section,
         totalStudents,
-        presentStudents: classLogs.filter(att => att.attendanceStatus === 'Present' && att.attendanceDate === new Date().toISOString().split('T')[0]).length, // Live present today
-        absentStudents: classLogs.filter(att => att.attendanceStatus === 'Absent' && att.attendanceDate === new Date().toISOString().split('T')[0]).length, // Live absent today
+        presentStudents: present,
+        absentStudents: absent,
+        leaveStudents: leave,
+        lateStudents: late,
+        markedStudents: markedCount,
         attendancePercentage
       };
     });

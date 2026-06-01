@@ -16,6 +16,8 @@ import RecepLogin from './pages/RecepLogin';
 import RecepPanel from './pages/RecepPanel';
 import TeacherLogin from './pages/TeacherLogin';
 import TeacherPanel from './pages/TeacherPanel';
+import AccountantLogin from './pages/AccountantLogin';
+import AccountantPanel from './pages/AccountantPanel';
 
 
 import './App.css';
@@ -35,6 +37,9 @@ export default function App() {
   const [isTeacher, setIsTeacher] = useState(false);
   const [showTeacherLogin, setShowTeacherLogin] = useState(false);
   const [teacherView, setTeacherView] = useState('dashboard');
+  const [isAccountant, setIsAccountant] = useState(false);
+  const [showAccountantLogin, setShowAccountantLogin] = useState(false);
+  const [accountantView, setAccountantView] = useState('dashboard');
 
 
   const fetchSchoolDetails = async () => {
@@ -78,6 +83,8 @@ export default function App() {
       setShowRecepLogin(true);
     } else if (path === '/teacher/login') {
       setShowTeacherLogin(true);
+    } else if (path === '/accountant/login') {
+      setShowAccountantLogin(true);
     } else if (path === '/register-student') setActiveView('register-student');
     else if (path === '/add-teacher') setActiveView('add-teacher');
     else if (path === '/add-staff') setActiveView('add-staff');
@@ -91,10 +98,14 @@ export default function App() {
       window.history.pushState(null, '', '/receptionist/login');
     } else if (showTeacherLogin) {
       window.history.pushState(null, '', '/teacher/login');
+    } else if (showAccountantLogin) {
+      window.history.pushState(null, '', '/accountant/login');
     } else if (isAdmin) {
       window.history.pushState(null, '', '/admin');
     } else if (isRecep) {
       window.history.pushState(null, '', '/receptionist');
+    } else if (isAccountant) {
+      window.history.pushState(null, '', '/accountant');
     } else if (isTeacher) {
       window.history.pushState(null, '', '/teacher');
     } else if (activeView === 'register-student') {
@@ -106,7 +117,7 @@ export default function App() {
     } else {
       window.history.pushState(null, '', `/${activeView}`);
     }
-  }, [activeView, showAdminLogin, isAdmin, showRecepLogin, isRecep]);
+  }, [activeView, showAdminLogin, isAdmin, showRecepLogin, isRecep, showAccountantLogin, isAccountant]);
 
   const handleAdminLogin = () => {
     setIsAdmin(true);
@@ -156,6 +167,24 @@ export default function App() {
     setActiveView('overview');
   };
 
+  const handleAccountantLogin = () => {
+    setIsAccountant(true);
+    setShowAccountantLogin(false);
+    setIsAdmin(false);
+    setShowAdminLogin(false);
+    setIsRecep(false);
+    setShowRecepLogin(false);
+    setIsTeacher(false);
+    setShowTeacherLogin(false);
+    setAccountantView('dashboard');
+  };
+
+  const handleAccountantLogout = () => {
+    setIsAccountant(false);
+    setAccountantView('dashboard');
+    setActiveView('overview');
+  };
+
 
 
   const renderCurrentView = () => {
@@ -179,8 +208,16 @@ export default function App() {
       return <TeacherLogin onLogin={handleTeacherLogin} onCancel={() => { setShowTeacherLogin(false); setActiveView('overview'); }} />;
     }
 
+    if (showAccountantLogin) {
+      return <AccountantLogin onLogin={handleAccountantLogin} onCancel={() => { setShowAccountantLogin(false); setActiveView('overview'); }} />;
+    }
+
     if (isTeacher) {
       return <TeacherPanel setActiveView={setActiveView} onLogout={handleTeacherLogout} teacherView={teacherView} setTeacherView={setTeacherView} />;
+    }
+
+    if (isAccountant) {
+      return <AccountantPanel setActiveView={setActiveView} onLogout={handleAccountantLogout} accountantView={accountantView} setAccountantView={setAccountantView} />;
     }
 
     switch (activeView) {
@@ -207,7 +244,7 @@ export default function App() {
     }
   };
 
-  const showSidebar = !showAdminLogin && !showRecepLogin && !showTeacherLogin;
+  const showSidebar = !showAdminLogin && !showRecepLogin && !showTeacherLogin && !showAccountantLogin;
 
   return (
     <div className="app-container">
@@ -219,14 +256,22 @@ export default function App() {
               setShowAdminLogin(true);
               setShowRecepLogin(false);
               setShowTeacherLogin(false);
+              setShowAccountantLogin(false);
             } else if (view === 'recep-login') {
               setShowRecepLogin(true);
               setShowAdminLogin(false);
               setShowTeacherLogin(false);
+              setShowAccountantLogin(false);
             } else if (view === 'teacher-login') {
               setShowTeacherLogin(true);
               setShowAdminLogin(false);
               setShowRecepLogin(false);
+              setShowAccountantLogin(false);
+            } else if (view === 'accountant-login') {
+              setShowAccountantLogin(true);
+              setShowAdminLogin(false);
+              setShowRecepLogin(false);
+              setShowTeacherLogin(false);
             } else {
               setActiveView(view);
             }
@@ -248,6 +293,10 @@ export default function App() {
           onTeacherLogout={handleTeacherLogout}
           teacherView={teacherView}
           setTeacherView={setTeacherView}
+          isAccountant={isAccountant}
+          onAccountantLogout={handleAccountantLogout}
+          accountantView={accountantView}
+          setAccountantView={setAccountantView}
         />
       )}
 
@@ -267,8 +316,8 @@ export default function App() {
         />
       )}
 
-      <div className="app-content" style={(showAdminLogin || showRecepLogin || showTeacherLogin) ? { padding: 0 } : {}}>
-        {!showAdminLogin && !showRecepLogin && !showTeacherLogin && (
+      <div className="app-content" style={(showAdminLogin || showRecepLogin || showTeacherLogin || showAccountantLogin) ? { padding: 0 } : {}}>
+        {!showAdminLogin && !showRecepLogin && !showTeacherLogin && !showAccountantLogin && (
           <Header
             activeView={activeView}
             isCollapsed={isCollapsed}
@@ -281,7 +330,7 @@ export default function App() {
           />
         )}
 
-        <main style={(showAdminLogin || showRecepLogin || showTeacherLogin) ? { flex: 1, display: 'flex' } : { flex: 1, marginTop: '10px' }}>
+        <main style={(showAdminLogin || showRecepLogin || showTeacherLogin || showAccountantLogin) ? { flex: 1, display: 'flex' } : { flex: 1, marginTop: '10px' }}>
           {renderCurrentView()}
         </main>
       </div>

@@ -6,6 +6,7 @@ import { fileURLToPath } from 'url';
 import studentRoutes from './routes/studentRoutes.js';
 import teacherRoutes from './routes/teacherRoutes.js';
 import attendanceRoutes from './routes/attendanceRoutes.js';
+import financeRoutes from './routes/financeRoutes.js';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -67,6 +68,11 @@ app.use('/api/teachers', teacherRoutes);
 // 2A. ATTENDANCE ROUTER
 // ==========================================
 app.use('/api/attendance', attendanceRoutes);
+
+// ==========================================
+// 2B. FINANCE ROUTER
+// ==========================================
+app.use('/api/finance', financeRoutes);
 
 // ==========================================
 // 2B. STAFF ENDPOINTS
@@ -266,12 +272,74 @@ app.get('/api/overview', (req, res) => {
   const totalTeachers = db.teachers.length;
   const totalStaff = (db.staff || []).length;
 
+  // Calculate daily attendance (absentees)
+  const attendance = db.attendance || [];
+  const todayStr = new Date().toLocaleDateString('en-CA'); // 'en-CA' prints YYYY-MM-DD
+  const uniqueDates = [...new Set(attendance.map(a => a.attendanceDate))].sort().reverse();
+  const activeAttendanceDate = uniqueDates.includes(todayStr) ? todayStr : (uniqueDates[0] || todayStr);
+  const totalAbsentees = attendance.filter(a => a.attendanceDate === activeAttendanceDate && a.attendanceStatus === 'Absent').length;
 
+  // Calculate financial metrics
+  const totalFeeCollected = (db.fees || [])
+    .filter(f => f.paymentStatus === 'Paid')
+    .reduce((sum, f) => sum + (f.paidAmount || 0), 0);
 
-  // Calculate monthly revenue collections
+  const totalPendingFees = (db.fees || [])
+    .filter(f => f.paymentStatus === 'Pending' || f.paymentStatus === 'Partial')
+    .reduce((sum, f) => sum + (f.dueAmount || 0), 0);
+
+  const totalExpenses = (db.expenses || [])
+    .reduce((sum, e) => sum + (e.amount || 0), 0);
+
+  const totalPayrollPaid = (db.payroll || [])
+    .filter(p => p.paymentStatus === 'Paid')
+    .reduce((sum, p) => sum + (p.netSalary || 0), 0);
+
+  const totalStaffPaymentsPaid = (db.staffPayments || [])
+    .filter(p => p.paymentStatus === 'Paid')
+    .reduce((sum, p) => sum + (p.netSalary || 0), 0);
+
+  const totalPayments = totalExpenses + totalPayrollPaid + totalStaffPaymentsPaid;
+
   const revenueTotal = db.invoices
     .filter(inv => inv.status === 'Paid')
     .reduce((acc, curr) => acc + parseInt(curr.amount.replace(/[^0-9]/g, '') || 0), 0);
+
+  // Compute 6-month historical monthly revenue vs expense array
+  const monthlyData = [];
+  for (let i = 5; i >= 0; i--) {
+    const d = new Date();
+    d.setMonth(d.getMonth() - i);
+    const monthStr = d.toLocaleDateString('en-US', { month: 'short', year: 'numeric' });
+    const yearMonth = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`;
+
+    const monthFees = (db.fees || [])
+      .filter(f => f.paymentStatus === 'Paid' && f.paymentDate?.startsWith(yearMonth))
+      .reduce((sum, f) => sum + (f.paidAmount || 0), 0);
+
+    const monthIncome = (db.income || [])
+      .filter(inc => inc.date?.startsWith(yearMonth))
+      .reduce((sum, inc) => sum + (inc.amount || 0), 0);
+
+    const monthExpenses = (db.expenses || [])
+      .filter(e => e.date?.startsWith(yearMonth))
+      .reduce((sum, e) => sum + (e.amount || 0), 0);
+
+    const monthPayroll = (db.payroll || [])
+      .filter(p => p.paymentStatus === 'Paid' && p.paymentDate?.startsWith(yearMonth))
+      .reduce((sum, p) => sum + (p.netSalary || 0), 0);
+
+    const monthStaffPayments = (db.staffPayments || [])
+      .filter(p => p.paymentStatus === 'Paid' && p.paymentDate?.startsWith(yearMonth))
+      .reduce((sum, p) => sum + (p.netSalary || 0), 0);
+
+    monthlyData.push({
+      month: monthStr,
+      fees: monthFees + monthIncome,
+      expenses: monthExpenses + monthPayroll + monthStaffPayments,
+      profit: (monthFees + monthIncome) - (monthExpenses + monthPayroll + monthStaffPayments)
+    });
+  }
 
   // Return telemetry payload
   res.json({
@@ -284,7 +352,14 @@ app.get('/api/overview', (req, res) => {
     teachersList: db.teachers,
     staffList: db.staff || [],
     invoicesList: db.invoices,
-    school: db.school || { name: "Aether Academy", principal: "Alex Devlin" }
+    school: db.school || { name: "Aether Academy", principal: "Alex Devlin" },
+    totalAbsentees,
+    activeAttendanceDate,
+    totalFeeCollected,
+    totalPendingFees,
+    totalPayments,
+    monthlyData
+  });
 });
 
 // Start Server
