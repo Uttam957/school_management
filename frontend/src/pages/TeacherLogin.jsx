@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
-import { UserCheck, Mail, Lock, Eye, EyeOff, AlertCircle } from 'lucide-react';
+import { UserCheck, Mail, Lock, Eye, EyeOff, AlertCircle, ArrowLeft } from 'lucide-react';
 
-export default function TeacherLogin({ onLogin }) {
+export default function TeacherLogin({ onLogin, onCancel }) {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [showPassword, setShowPassword] = useState(false);
@@ -93,6 +93,16 @@ export default function TeacherLogin({ onLogin }) {
                 Sign In
               </>
             )}
+          </button>
+
+          <button
+            type="button"
+            onClick={onCancel}
+            className="btn-secondary"
+            style={{ width: '100%', justifyContent: 'center', marginTop: '12px', padding: '14px 24px', fontSize: '0.95rem' }}
+          >
+            <ArrowLeft size={16} />
+            Back to Main Dashboard
           </button>
         </form>
 

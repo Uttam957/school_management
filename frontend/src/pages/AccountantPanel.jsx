@@ -4,7 +4,7 @@ import {
   PieChart, FileText, Download, Search, Filter, Plus, CheckCircle, AlertCircle,
   Loader2, Calculator, Receipt, Wallet, Building2, ArrowUpRight, ArrowDownRight,
   ChevronDown, Printer, X, IndianRupee, BookOpen, Banknote, HandCoins, CircleDollarSign,
-  ClipboardList, BarChart3, Calendar, Eye, UserCog, UserPlus, Pencil, Trash2
+  ClipboardList, BarChart3, Calendar, Eye, UserCog, UserPlus, Pencil, Trash2, LogOut
 } from 'lucide-react';
 
 import StudentDirectory from './StudentDirectory';
@@ -23,6 +23,7 @@ export default function AccountantPanel({ setActiveView, onLogout, accountantVie
 
   const renderContent = () => {
     switch (accountantView) {
+      case 'dashboard': return <DashboardView setAccountantView={setAccountantView} />;
       case 'collect-fees': return <CollectFeesView showToast={showToast} />;
       case 'fee-structure': return <FeeStructureView showToast={showToast} />;
       case 'payroll': return <PayrollView showToast={showToast} />;
@@ -46,7 +47,7 @@ export default function AccountantPanel({ setActiveView, onLogout, accountantVie
   };
 
   return (
-    <div className="animate-slide-up" style={{ display: 'flex', flexDirection: 'column', gap: '24px', paddingBottom: '40px' }}>
+    <div className="finance-subadmin animate-slide-up" style={{ display: 'flex', flexDirection: 'column', gap: '24px', paddingBottom: '40px' }}>
       {notification && (
         <div style={{
           position: 'fixed', top: '20px', right: '20px', padding: '16px 24px', borderRadius: '12px',
@@ -60,11 +61,18 @@ export default function AccountantPanel({ setActiveView, onLogout, accountantVie
       )}
 
       {/* Page Header */}
-      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '12px' }}>
-        <div>
-          <h2 style={{ fontSize: '1.5rem', fontWeight: 800, color: 'var(--text-main)', display: 'flex', alignItems: 'center', gap: '10px' }}>
-            <Calculator size={24} style={{ color: '#10b981' }} />
-            {accountantView === 'dashboard' ? 'Finance Dashboard' :
+      <div className="admin-panel-header glass-panel">
+        <div style={{ display: 'flex', alignItems: 'center', gap: '14px' }}>
+          <div style={{
+            padding: '10px',
+            borderRadius: '12px',
+            background: 'rgba(16, 185, 129, 0.1)',
+            color: '#10b981'
+          }}>
+            <Calculator size={24} />
+          </div>
+          <div>
+            <h2 style={{ fontSize: '1.25rem', fontWeight: 700 }}>{accountantView === 'dashboard' ? 'Finance Panel' :
              accountantView === 'collect-fees' ? 'Student Fee Collection' :
              accountantView === 'fee-structure' ? 'Fee Structure Configuration' :
              accountantView === 'payroll' ? 'Teacher Payroll Management' :
@@ -79,17 +87,35 @@ export default function AccountantPanel({ setActiveView, onLogout, accountantVie
              accountantView === 'staff' ? 'Staff Directory' :
              accountantView === 'register-student' ? 'Register Student' :
              accountantView === 'add-teacher' ? 'Add Teacher' :
-             accountantView === 'add-staff' ? 'Add Staff' : 'Finance Dashboard'}
-          </h2>
-          <p style={{ fontSize: '0.8rem', color: 'var(--text-muted)', marginTop: '4px' }}>
-            Comprehensive financial management and accounting portal
-          </p>
+             accountantView === 'add-staff' ? 'Add Staff' : 'Student Fee Collection'}</h2>
+            <p style={{ fontSize: '0.85rem', color: 'var(--text-muted)' }}>
+              Comprehensive financial management and accounting portal
+            </p>
+          </div>
         </div>
-        <div style={{
-          background: 'rgba(16, 185, 129, 0.08)', padding: '6px 16px', borderRadius: '30px',
-          border: '1px solid rgba(16, 185, 129, 0.15)', fontSize: '0.78rem', fontWeight: 600, color: '#10b981'
-        }}>
-          FY 2026-2027
+        <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+          <div style={{
+            background: 'rgba(16, 185, 129, 0.08)', padding: '6px 16px', borderRadius: '30px',
+            border: '1px solid rgba(16, 185, 129, 0.15)', fontSize: '0.78rem', fontWeight: 600, color: '#10b981'
+          }}>
+            FY 2026-2027
+          </div>
+          <button
+            onClick={onLogout}
+            className="btn-secondary"
+            style={{ padding: '8px 16px', fontSize: '0.85rem', color: 'rgb(var(--color-danger-rgb))', display: 'flex', alignItems: 'center', gap: '6px' }}
+          >
+            <LogOut size={16} />
+            Sign Out
+          </button>
+          <button
+            onClick={onLogout}
+            className="btn-primary"
+            style={{ padding: '8px 16px', fontSize: '0.85rem', display: 'flex', alignItems: 'center', gap: '6px' }}
+          >
+            <LayoutDashboard size={16} />
+            Main Dashboard
+          </button>
         </div>
       </div>
 
@@ -120,12 +146,12 @@ function DashboardView({ setAccountantView }) {
   );
 
   const cards = [
-    { label: 'Total Fee Collection', value: `₹${(data?.totalFeeCollected || 0).toLocaleString()}`, icon: IndianRupee, color: '#10b981', bg: 'rgba(16,185,129,0.08)', trend: '+12.5%', up: true },
-    { label: 'Pending Fees', value: `₹${(data?.totalPendingFees || 0).toLocaleString()}`, icon: AlertCircle, color: '#f59e0b', bg: 'rgba(245,158,11,0.08)', trend: `${data?.totalFeeRecords || 0} records`, up: false },
-    { label: 'Monthly Expenses', value: `₹${(data?.totalExpenses || 0).toLocaleString()}`, icon: TrendingDown, color: '#ef4444', bg: 'rgba(239,68,68,0.08)', trend: '-3.2%', up: false },
-    { label: 'Net Profit', value: `₹${(data?.netProfit || 0).toLocaleString()}`, icon: TrendingUp, color: '#8b5cf6', bg: 'rgba(139,92,246,0.08)', trend: '+8.1%', up: true },
-    { label: 'Total Payroll Paid', value: `₹${(data?.totalPayrollPaid || 0).toLocaleString()}`, icon: Banknote, color: '#06b6d4', bg: 'rgba(6,182,212,0.08)', trend: `${data?.totalTeachers || 0} teachers`, up: true },
-    { label: 'Other Income', value: `₹${(data?.totalIncome || 0).toLocaleString()}`, icon: HandCoins, color: '#ec4899', bg: 'rgba(236,72,153,0.08)', trend: 'Grants & Donations', up: true },
+    { label: 'Total Fee Collection', value: `₹${(data?.totalFeeCollected || 0).toLocaleString()}`, icon: IndianRupee, color: '#10b981', bg: 'rgba(16,185,129,0.08)', trend: '0.0%', up: true },
+    { label: 'Pending Fees', value: `₹${(data?.totalPendingFees || 0).toLocaleString()}`, icon: AlertCircle, color: '#f59e0b', bg: 'rgba(245,158,11,0.08)', trend: `0 records`, up: false },
+    { label: 'Monthly Expenses', value: `₹${(data?.totalExpenses || 0).toLocaleString()}`, icon: TrendingDown, color: '#ef4444', bg: 'rgba(239,68,68,0.08)', trend: '0.0%', up: false },
+    { label: 'Net Profit', value: `₹${(data?.netProfit || 0).toLocaleString()}`, icon: TrendingUp, color: '#8b5cf6', bg: 'rgba(139,92,246,0.08)', trend: '0.0%', up: true },
+    { label: 'Total Payroll Paid', value: `₹${(data?.totalPayrollPaid || 0).toLocaleString()}`, icon: Banknote, color: '#06b6d4', bg: 'rgba(6,182,212,0.08)', trend: `0 teachers`, up: true },
+    { label: 'Other Income', value: `₹${(data?.totalIncome || 0).toLocaleString()}`, icon: HandCoins, color: '#ec4899', bg: 'rgba(236,72,153,0.08)', trend: '0 records', up: true },
   ];
 
   const quickActions = [
@@ -215,38 +241,47 @@ function DashboardView({ setAccountantView }) {
           <h3 style={{ fontSize: '1rem', fontWeight: 700, color: 'var(--text-main)', marginBottom: '24px', display: 'flex', alignItems: 'center', gap: '8px' }}>
             <BarChart3 size={18} style={{ color: '#10b981' }} /> Monthly Revenue vs Expenses (Last 6 Months)
           </h3>
-          <div style={{ display: 'flex', alignItems: 'flex-end', gap: '20px', height: '200px', padding: '0 10px' }}>
-            {data.monthlyData.map((m, i) => {
-              const maxVal = Math.max(...data.monthlyData.map(d => Math.max(d.fees, d.expenses, 1)));
-              const feeH = maxVal > 0 ? (m.fees / maxVal) * 160 : 4;
-              const expH = maxVal > 0 ? (m.expenses / maxVal) * 160 : 4;
-              return (
-                <div key={i} style={{ flex: 1, display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '8px' }}>
-                  <div style={{ display: 'flex', gap: '4px', alignItems: 'flex-end', height: '170px' }}>
-                    <div style={{
-                      width: '20px', height: `${Math.max(feeH, 4)}px`, borderRadius: '4px 4px 0 0',
-                      background: 'linear-gradient(180deg, #10b981 0%, #059669 100%)', transition: 'height 0.5s ease',
-                      minHeight: '4px'
-                    }} title={`Fees: ₹${m.fees.toLocaleString()}`} />
-                    <div style={{
-                      width: '20px', height: `${Math.max(expH, 4)}px`, borderRadius: '4px 4px 0 0',
-                      background: 'linear-gradient(180deg, #ef4444 0%, #dc2626 100%)', transition: 'height 0.5s ease',
-                      minHeight: '4px'
-                    }} title={`Expenses: ₹${m.expenses.toLocaleString()}`} />
-                  </div>
-                  <span style={{ fontSize: '0.65rem', color: 'var(--text-muted)', fontWeight: 600 }}>{m.month}</span>
-                </div>
-              );
-            })}
-          </div>
-          <div style={{ display: 'flex', gap: '24px', marginTop: '16px', justifyContent: 'center' }}>
-            <span style={{ fontSize: '0.72rem', display: 'flex', alignItems: 'center', gap: '6px', color: 'var(--text-muted)' }}>
-              <span style={{ width: '10px', height: '10px', borderRadius: '2px', background: '#10b981' }} /> Revenue
-            </span>
-            <span style={{ fontSize: '0.72rem', display: 'flex', alignItems: 'center', gap: '6px', color: 'var(--text-muted)' }}>
-              <span style={{ width: '10px', height: '10px', borderRadius: '2px', background: '#ef4444' }} /> Expenses
-            </span>
-          </div>
+          {(!data || (data.totalFeeCollected === 0 && data.totalExpenses === 0)) ? (
+            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', height: '200px', flexDirection: 'column', gap: '4px' }}>
+              <span style={{ fontWeight: 600, color: 'var(--text-main)', fontSize: '0.88rem' }}>No data available</span>
+              <span style={{ color: 'var(--text-muted)', fontSize: '0.8rem' }}>Data will appear once records are added</span>
+            </div>
+          ) : (
+            <>
+              <div style={{ display: 'flex', alignItems: 'flex-end', gap: '20px', height: '200px', padding: '0 10px' }}>
+                {data.monthlyData.map((m, i) => {
+                  const maxVal = Math.max(...data.monthlyData.map(d => Math.max(d.fees, d.expenses, 1)));
+                  const feeH = maxVal > 0 ? (m.fees / maxVal) * 160 : 4;
+                  const expH = maxVal > 0 ? (m.expenses / maxVal) * 160 : 4;
+                  return (
+                    <div key={i} style={{ flex: 1, display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '8px' }}>
+                      <div style={{ display: 'flex', gap: '4px', alignItems: 'flex-end', height: '170px' }}>
+                        <div style={{
+                          width: '20px', height: `${Math.max(feeH, 4)}px`, borderRadius: '4px 4px 0 0',
+                          background: 'linear-gradient(180deg, #10b981 0%, #059669 100%)', transition: 'height 0.5s ease',
+                          minHeight: '4px'
+                        }} title={`Fees: ₹${m.fees.toLocaleString()}`} />
+                        <div style={{
+                          width: '20px', height: `${Math.max(expH, 4)}px`, borderRadius: '4px 4px 0 0',
+                          background: 'linear-gradient(180deg, #ef4444 0%, #dc2626 100%)', transition: 'height 0.5s ease',
+                          minHeight: '4px'
+                        }} title={`Expenses: ₹${m.expenses.toLocaleString()}`} />
+                      </div>
+                      <span style={{ fontSize: '0.65rem', color: 'var(--text-muted)', fontWeight: 600 }}>{m.month}</span>
+                    </div>
+                  );
+                })}
+              </div>
+              <div style={{ display: 'flex', gap: '24px', marginTop: '16px', justifyContent: 'center' }}>
+                <span style={{ fontSize: '0.72rem', display: 'flex', alignItems: 'center', gap: '6px', color: 'var(--text-muted)' }}>
+                  <span style={{ width: '10px', height: '10px', borderRadius: '2px', background: '#10b981' }} /> Revenue
+                </span>
+                <span style={{ fontSize: '0.72rem', display: 'flex', alignItems: 'center', gap: '6px', color: 'var(--text-muted)' }}>
+                  <span style={{ width: '10px', height: '10px', borderRadius: '2px', background: '#ef4444' }} /> Expenses
+                </span>
+              </div>
+            </>
+          )}
         </div>
       )}
     </div>
@@ -435,12 +470,12 @@ export function CollectFeesView({ showToast }) {
   };
 
   const inputStyle = {
-    width: '100%', padding: '10px 14px', background: 'rgba(255,255,255,0.04)',
-    border: '1px solid rgba(255,255,255,0.08)', borderRadius: '10px', color: '#fff',
+    width: '100%', padding: '10px 14px', background: 'var(--bg-form)',
+    border: '1.5px solid var(--border-glass)', borderRadius: '10px', color: 'var(--text-main)',
     fontSize: '0.85rem', outline: 'none', boxSizing: 'border-box'
   };
-  const labelStyle = { fontSize: '0.72rem', fontWeight: 700, color: 'rgba(255,255,255,0.5)', textTransform: 'uppercase', letterSpacing: '0.04em', marginBottom: '6px', display: 'block' };
-  const optionStyle = { background: '#131324', color: '#fff' };
+  const labelStyle = { fontSize: '0.72rem', fontWeight: 700, color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.04em', marginBottom: '6px', display: 'block' };
+  const optionStyle = { background: 'var(--bg-form)', color: 'var(--text-main)' };
 
   const filteredStudentsForSelect = students.filter(s => {
     const name = (s.fullName || s.name || '').toLowerCase();
@@ -455,20 +490,17 @@ export function CollectFeesView({ showToast }) {
     <div style={{ display: 'flex', flexDirection: 'column', gap: '24px' }}>
       {/* Receipt Modal */}
       {receiptData && (
-        <div style={{
-          position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.6)', backdropFilter: 'blur(6px)',
-          display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 99999, padding: '20px'
-        }} onClick={() => setReceiptData(null)}>
+        <div className="modal-overlay" onClick={() => setReceiptData(null)}>
           <div onClick={e => e.stopPropagation()} style={{
-            width: '100%', maxWidth: '440px', background: '#1a1a2e', borderRadius: '20px',
-            border: '1px solid rgba(255,255,255,0.08)', padding: '32px', boxShadow: '0 25px 50px rgba(0,0,0,0.4)'
+            width: '100%', maxWidth: '440px', background: 'var(--bg-elevated)', borderRadius: '20px',
+            border: '1px solid var(--border-glass)', padding: '32px', boxShadow: 'var(--shadow-lg)'
           }}>
             <div style={{ textAlign: 'center', marginBottom: '24px' }}>
               <CheckCircle size={40} style={{ color: '#10b981', marginBottom: '12px' }} />
-              <h3 style={{ fontSize: '1.2rem', fontWeight: 800, color: '#fff' }}>Payment Receipt</h3>
+              <h3 style={{ fontSize: '1.2rem', fontWeight: 800, color: 'var(--text-main)' }}>Payment Receipt</h3>
               <p style={{ fontSize: '0.8rem', color: 'var(--text-muted)' }}>{receiptData.receiptNumber}</p>
             </div>
-            <div style={{ display: 'flex', flexDirection: 'column', gap: '10px', padding: '16px', background: 'rgba(255,255,255,0.02)', borderRadius: '12px', border: '1px solid rgba(255,255,255,0.04)' }}>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '10px', padding: '16px', background: 'var(--bg-card-subtle)', borderRadius: '12px', border: '1px solid var(--border-subtle)' }}>
               {[
                 ['Student', receiptData.studentName],
                 ['Class', `${receiptData.studentClass}-${receiptData.section}`],
@@ -485,7 +517,7 @@ export function CollectFeesView({ showToast }) {
               ].map(([k, v], i) => (
                 <div key={i} style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.8rem' }}>
                   <span style={{ color: 'var(--text-muted)', fontWeight: 600 }}>{k}</span>
-                  <span style={{ color: '#fff', fontWeight: 700 }}>{v}</span>
+                  <span style={{ color: 'var(--text-main)', fontWeight: 700 }}>{v}</span>
                 </div>
               ))}
             </div>
@@ -498,8 +530,8 @@ export function CollectFeesView({ showToast }) {
                 <Printer size={16} /> Print Receipt
               </button>
               <button onClick={() => setReceiptData(null)} style={{
-                padding: '12px 20px', background: 'rgba(255,255,255,0.05)', border: '1px solid rgba(255,255,255,0.1)',
-                borderRadius: '10px', color: '#fff', fontWeight: 600, cursor: 'pointer', fontSize: '0.85rem'
+                padding: '12px 20px', background: 'var(--bg-card-subtle)', border: '1px solid var(--border-subtle)',
+                borderRadius: '10px', color: 'var(--text-main)', fontWeight: 600, cursor: 'pointer', fontSize: '0.85rem'
               }}>Close</button>
             </div>
           </div>
@@ -535,13 +567,10 @@ export function CollectFeesView({ showToast }) {
 
       {/* Collection Form Modal */}
       {showForm && (
-        <div style={{
-          position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.6)', backdropFilter: 'blur(6px)',
-          display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 99999, padding: '20px'
-        }} onClick={() => setShowForm(false)}>
-          <div onClick={e => e.stopPropagation()} className="glass-panel animate-scale-up" style={{
-            width: '100%', maxWidth: '650px', background: '#131324', borderRadius: '20px',
-            border: '1px solid rgba(255,255,255,0.08)', padding: '32px', boxShadow: '0 25px 50px rgba(0,0,0,0.5)',
+        <div className="modal-overlay" onClick={() => setShowForm(false)}>
+          <div onClick={e => e.stopPropagation()} className="animate-scale-up" style={{
+            width: '100%', maxWidth: '650px', background: 'var(--bg-elevated)', borderRadius: '20px',
+            border: '1px solid var(--border-glass)', padding: '32px', boxShadow: 'var(--shadow-lg)',
             maxHeight: '90vh', overflowY: 'auto'
           }}>
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '24px' }}>
@@ -577,8 +606,8 @@ export function CollectFeesView({ showToast }) {
                       right: 0,
                       maxHeight: '200px',
                       overflowY: 'auto',
-                      background: '#131324',
-                      border: '1px solid rgba(255,255,255,0.08)',
+                      background: 'var(--bg-elevated)',
+                      border: '1px solid var(--border-glass)',
                       borderRadius: '10px',
                       zIndex: 1000,
                       marginTop: '4px',
@@ -594,15 +623,15 @@ export function CollectFeesView({ showToast }) {
                             style={{
                               padding: '10px 14px',
                               fontSize: '0.85rem',
-                              color: '#fff',
+                              color: 'var(--text-main)',
                               cursor: 'pointer',
-                              borderBottom: '1px solid rgba(255,255,255,0.02)',
+                              borderBottom: '1px solid var(--border-subtle)',
                               transition: 'background 0.15s',
                               display: 'flex',
                               justifyContent: 'space-between',
                               alignItems: 'center'
                             }}
-                            onMouseEnter={e => e.currentTarget.style.background = 'rgba(255,255,255,0.05)'}
+                            onMouseEnter={e => e.currentTarget.style.background = 'var(--bg-card-subtle)'}
                             onMouseLeave={e => e.currentTarget.style.background = 'transparent'}
                           >
                             <span>{s.fullName || s.name}</span>
@@ -648,11 +677,11 @@ export function CollectFeesView({ showToast }) {
               </div>
               <div style={{ display: 'flex', gap: '12px', marginTop: '10px', justifyContent: 'flex-end' }}>
                 <button type="button" onClick={() => setShowForm(false)} style={{
-                  padding: '12px 24px', background: 'rgba(255,255,255,0.05)', border: '1px solid rgba(255,255,255,0.1)',
-                  borderRadius: '10px', color: '#fff', fontWeight: 600, cursor: 'pointer', fontSize: '0.85rem', transition: 'background 0.2s',
+                  padding: '12px 24px', background: 'var(--bg-card-subtle)', border: '1px solid var(--border-subtle)',
+                  borderRadius: '10px', color: 'var(--text-main)', fontWeight: 600, cursor: 'pointer', fontSize: '0.85rem', transition: 'background 0.2s',
                   display: 'flex', alignItems: 'center', gap: '6px'
-                }} onMouseEnter={e => e.currentTarget.style.background = 'rgba(255,255,255,0.08)'}
-                   onMouseLeave={e => e.currentTarget.style.background = 'rgba(255,255,255,0.05)'}><X size={16} /> Close</button>
+                }} onMouseEnter={e => e.currentTarget.style.background = 'var(--border-subtle)'}
+                   onMouseLeave={e => e.currentTarget.style.background = 'var(--bg-card-subtle)'}><X size={16} /> Close</button>
                 <button type="submit" style={{
                   padding: '12px 28px', background: 'linear-gradient(135deg, #10b981, #059669)',
                   border: 'none', borderRadius: '10px', color: '#fff', fontWeight: 700, cursor: 'pointer',
@@ -782,12 +811,12 @@ export function FeeStructureView({ showToast }) {
   };
 
   const inputStyle = {
-    width: '100%', padding: '10px 14px', background: 'rgba(255,255,255,0.04)',
-    border: '1px solid rgba(255,255,255,0.08)', borderRadius: '10px', color: '#fff',
+    width: '100%', padding: '10px 14px', background: 'var(--bg-form)',
+    border: '1.5px solid var(--border-glass)', borderRadius: '10px', color: 'var(--text-main)',
     fontSize: '0.85rem', outline: 'none', boxSizing: 'border-box'
   };
-  const labelStyle = { fontSize: '0.72rem', fontWeight: 700, color: 'rgba(255,255,255,0.5)', textTransform: 'uppercase', letterSpacing: '0.04em', marginBottom: '6px', display: 'block' };
-  const optionStyle = { background: '#131324', color: '#fff' };
+  const labelStyle = { fontSize: '0.72rem', fontWeight: 700, color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.04em', marginBottom: '6px', display: 'block' };
+  const optionStyle = { background: 'var(--bg-form)', color: 'var(--text-main)' };
 
   const total = Number(form.admissionFee || 0) + Number(form.tuitionFee || 0) + Number(form.examFee || 0) +
     Number(form.transportFee || 0) + Number(form.hostelFee || 0) + Number(form.libraryFee || 0) + Number(form.otherCharges || 0);
@@ -805,13 +834,10 @@ export function FeeStructureView({ showToast }) {
       </div>
 
       {showForm && (
-        <div style={{
-          position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.6)', backdropFilter: 'blur(6px)',
-          display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 99999, padding: '20px'
-        }} onClick={() => setShowForm(false)}>
+        <div className="modal-overlay" onClick={() => setShowForm(false)}>
           <div onClick={e => e.stopPropagation()} className="animate-scale-up" style={{
-            width: '100%', maxWidth: '650px', background: '#131324', borderRadius: '20px',
-            border: '1px solid rgba(255,255,255,0.08)', padding: '32px', boxShadow: '0 25px 50px rgba(0,0,0,0.5)',
+            width: '100%', maxWidth: '650px', background: 'var(--bg-elevated)', borderRadius: '20px',
+            border: '1px solid var(--border-glass)', padding: '32px', boxShadow: 'var(--shadow-lg)',
             maxHeight: '90vh', overflowY: 'auto'
           }}>
             <form onSubmit={handleSubmit} style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>
@@ -848,11 +874,11 @@ export function FeeStructureView({ showToast }) {
                   display: 'flex', alignItems: 'center', gap: '6px', fontSize: '0.85rem'
                 }}><CheckCircle size={16} /> Save Fee Structure</button>
                 <button type="button" onClick={() => setShowForm(false)} style={{
-                  padding: '12px 24px', background: 'rgba(255,255,255,0.05)', border: '1px solid rgba(255,255,255,0.1)',
-                  borderRadius: '10px', color: '#fff', fontWeight: 600, cursor: 'pointer', fontSize: '0.85rem', transition: 'background 0.2s',
+                  padding: '12px 24px', background: 'var(--bg-card-subtle)', border: '1px solid var(--border-subtle)',
+                  borderRadius: '10px', color: 'var(--text-main)', fontWeight: 600, cursor: 'pointer', fontSize: '0.85rem', transition: 'background 0.2s',
                   display: 'flex', alignItems: 'center', gap: '6px'
-                }} onMouseEnter={e => e.currentTarget.style.background = 'rgba(255,255,255,0.08)'}
-                   onMouseLeave={e => e.currentTarget.style.background = 'rgba(255,255,255,0.05)'}><X size={16} /> Close</button>
+                }} onMouseEnter={e => e.currentTarget.style.background = 'var(--border-subtle)'}
+                   onMouseLeave={e => e.currentTarget.style.background = 'var(--bg-card-subtle)'}><X size={16} /> Close</button>
               </div>
             </form>
           </div>
@@ -1036,12 +1062,12 @@ export function StaffPaymentStructureView({ showToast }) {
     - Number(form.deductions || 0) - Number(form.pfDeduction || 0) - Number(form.taxDeduction || 0);
 
   const inputStyle = {
-    width: '100%', padding: '10px 14px', background: 'rgba(255,255,255,0.04)',
-    border: '1px solid rgba(255,255,255,0.08)', borderRadius: '10px', color: '#fff',
+    width: '100%', padding: '10px 14px', background: 'var(--bg-form)',
+    border: '1.5px solid var(--border-glass)', borderRadius: '10px', color: 'var(--text-main)',
     fontSize: '0.85rem', outline: 'none', boxSizing: 'border-box'
   };
-  const labelStyle = { fontSize: '0.72rem', fontWeight: 700, color: 'rgba(255,255,255,0.5)', textTransform: 'uppercase', letterSpacing: '0.04em', marginBottom: '6px', display: 'block' };
-  const optionStyle = { background: '#131324', color: '#fff' };
+  const labelStyle = { fontSize: '0.72rem', fontWeight: 700, color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.04em', marginBottom: '6px', display: 'block' };
+  const optionStyle = { background: 'var(--bg-form)', color: 'var(--text-main)' };
 
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: '24px' }}>
@@ -1056,13 +1082,10 @@ export function StaffPaymentStructureView({ showToast }) {
       </div>
 
       {showForm && (
-        <div style={{
-          position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.6)', backdropFilter: 'blur(6px)',
-          display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 99999, padding: '20px'
-        }} onClick={() => setShowForm(false)}>
+        <div className="modal-overlay" onClick={() => setShowForm(false)}>
           <div onClick={e => e.stopPropagation()} className="animate-scale-up" style={{
-            width: '100%', maxWidth: '650px', background: '#131324', borderRadius: '20px',
-            border: '1px solid rgba(255,255,255,0.08)', padding: '32px', boxShadow: '0 25px 50px rgba(0,0,0,0.5)',
+            width: '100%', maxWidth: '650px', background: 'var(--bg-elevated)', borderRadius: '20px',
+            border: '1px solid var(--border-glass)', padding: '32px', boxShadow: 'var(--shadow-lg)',
             maxHeight: '90vh', overflowY: 'auto'
           }}>
             <form onSubmit={handleSubmit} style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>
@@ -1107,11 +1130,11 @@ export function StaffPaymentStructureView({ showToast }) {
                   display: 'flex', alignItems: 'center', gap: '6px', fontSize: '0.85rem'
                 }}><CheckCircle size={16} /> Save Staff Structure</button>
                 <button type="button" onClick={() => setShowForm(false)} style={{
-                  padding: '12px 24px', background: 'rgba(255,255,255,0.05)', border: '1px solid rgba(255,255,255,0.1)',
-                  borderRadius: '10px', color: '#fff', fontWeight: 600, cursor: 'pointer', fontSize: '0.85rem', transition: 'background 0.2s',
+                  padding: '12px 24px', background: 'var(--bg-card-subtle)', border: '1px solid var(--border-subtle)',
+                  borderRadius: '10px', color: 'var(--text-main)', fontWeight: 600, cursor: 'pointer', fontSize: '0.85rem', transition: 'background 0.2s',
                   display: 'flex', alignItems: 'center', gap: '6px'
-                }} onMouseEnter={e => e.currentTarget.style.background = 'rgba(255,255,255,0.08)'}
-                   onMouseLeave={e => e.currentTarget.style.background = 'rgba(255,255,255,0.05)'}><X size={16} /> Close</button>
+                }} onMouseEnter={e => e.currentTarget.style.background = 'var(--border-subtle)'}
+                   onMouseLeave={e => e.currentTarget.style.background = 'var(--bg-card-subtle)'}><X size={16} /> Close</button>
               </div>
             </form>
           </div>
@@ -1325,12 +1348,12 @@ export function StaffPaymentsView({ showToast }) {
   };
 
   const inputStyle = {
-    width: '100%', padding: '10px 14px', background: 'rgba(255,255,255,0.04)',
-    border: '1px solid rgba(255,255,255,0.08)', borderRadius: '10px', color: '#fff',
+    width: '100%', padding: '10px 14px', background: 'var(--bg-form)',
+    border: '1.5px solid var(--border-glass)', borderRadius: '10px', color: 'var(--text-main)',
     fontSize: '0.85rem', outline: 'none', boxSizing: 'border-box'
   };
-  const labelStyle = { fontSize: '0.72rem', fontWeight: 700, color: 'rgba(255,255,255,0.5)', textTransform: 'uppercase', letterSpacing: '0.04em', marginBottom: '6px', display: 'block' };
-  const optionStyle = { background: '#131324', color: '#fff' };
+  const labelStyle = { fontSize: '0.72rem', fontWeight: 700, color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.04em', marginBottom: '6px', display: 'block' };
+  const optionStyle = { background: 'var(--bg-form)', color: 'var(--text-main)' };
 
   const filteredStaffForSelect = staff.filter(s => {
     const name = (s.name || '').toLowerCase();
@@ -1364,13 +1387,10 @@ export function StaffPaymentsView({ showToast }) {
       </div>
 
       {showForm && (
-        <div style={{
-          position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.6)', backdropFilter: 'blur(6px)',
-          display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 99999, padding: '20px'
-        }} onClick={() => setShowForm(false)}>
+        <div className="modal-overlay" onClick={() => setShowForm(false)}>
           <div onClick={e => e.stopPropagation()} className="animate-scale-up" style={{
-            width: '100%', maxWidth: '650px', background: '#131324', borderRadius: '20px',
-            border: '1px solid rgba(255,255,255,0.08)', padding: '32px', boxShadow: '0 25px 50px rgba(0,0,0,0.5)',
+            width: '100%', maxWidth: '650px', background: 'var(--bg-elevated)', borderRadius: '20px',
+            border: '1px solid var(--border-glass)', padding: '32px', boxShadow: 'var(--shadow-lg)',
             maxHeight: '90vh', overflowY: 'auto'
           }}>
             <form onSubmit={handleSubmit} style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>
@@ -1405,12 +1425,12 @@ export function StaffPaymentsView({ showToast }) {
                       right: 0,
                       maxHeight: '200px',
                       overflowY: 'auto',
-                      background: '#131324',
-                      border: '1px solid rgba(255,255,255,0.08)',
+                      background: 'var(--bg-elevated)',
+                      border: '1px solid var(--border-glass)',
                       borderRadius: '10px',
                       zIndex: 1000,
                       marginTop: '4px',
-                      boxShadow: '0 10px 25px rgba(0,0,0,0.5)'
+                      boxShadow: 'var(--shadow-lg)'
                     }}>
                       {filteredStaffForSelect.length === 0 ? (
                         <div style={{ padding: '10px 14px', fontSize: '0.85rem', color: 'var(--text-muted)' }}>No matches found</div>
@@ -1422,15 +1442,15 @@ export function StaffPaymentsView({ showToast }) {
                             style={{
                               padding: '10px 14px',
                               fontSize: '0.85rem',
-                              color: '#fff',
+                              color: 'var(--text-main)',
                               cursor: 'pointer',
-                              borderBottom: '1px solid rgba(255,255,255,0.02)',
+                              borderBottom: '1px solid var(--border-subtle)',
                               transition: 'background 0.15s',
                               display: 'flex',
                               justifyContent: 'space-between',
                               alignItems: 'center'
                             }}
-                            onMouseEnter={e => e.currentTarget.style.background = 'rgba(255,255,255,0.05)'}
+                            onMouseEnter={e => e.currentTarget.style.background = 'var(--bg-card-subtle)'}
                             onMouseLeave={e => e.currentTarget.style.background = 'transparent'}
                           >
                             <span>{s.name}</span>
@@ -1468,11 +1488,11 @@ export function StaffPaymentsView({ showToast }) {
                   display: 'flex', alignItems: 'center', gap: '6px', fontSize: '0.85rem'
                 }}><CheckCircle size={16} /> Process & Pay</button>
                 <button type="button" onClick={() => setShowForm(false)} style={{
-                  padding: '12px 24px', background: 'rgba(255,255,255,0.05)', border: '1px solid rgba(255,255,255,0.1)',
-                  borderRadius: '10px', color: '#fff', fontWeight: 600, cursor: 'pointer', fontSize: '0.85rem', transition: 'background 0.2s',
+                  padding: '12px 24px', background: 'var(--bg-card-subtle)', border: '1px solid var(--border-subtle)',
+                  borderRadius: '10px', color: 'var(--text-main)', fontWeight: 600, cursor: 'pointer', fontSize: '0.85rem', transition: 'background 0.2s',
                   display: 'flex', alignItems: 'center', gap: '6px'
-                }} onMouseEnter={e => e.currentTarget.style.background = 'rgba(255,255,255,0.08)'}
-                   onMouseLeave={e => e.currentTarget.style.background = 'rgba(255,255,255,0.05)'}><X size={16} /> Close</button>
+                }} onMouseEnter={e => e.currentTarget.style.background = 'var(--border-subtle)'}
+                   onMouseLeave={e => e.currentTarget.style.background = 'var(--bg-card-subtle)'}><X size={16} /> Close</button>
               </div>
             </form>
           </div>
@@ -1644,12 +1664,12 @@ export function PayrollView({ showToast }) {
   };
 
   const inputStyle = {
-    width: '100%', padding: '10px 14px', background: 'rgba(255,255,255,0.04)',
-    border: '1px solid rgba(255,255,255,0.08)', borderRadius: '10px', color: '#fff',
+    width: '100%', padding: '10px 14px', background: 'var(--bg-form)',
+    border: '1.5px solid var(--border-glass)', borderRadius: '10px', color: 'var(--text-main)',
     fontSize: '0.85rem', outline: 'none', boxSizing: 'border-box'
   };
-  const labelStyle = { fontSize: '0.72rem', fontWeight: 700, color: 'rgba(255,255,255,0.5)', textTransform: 'uppercase', letterSpacing: '0.04em', marginBottom: '6px', display: 'block' };
-  const optionStyle = { background: '#131324', color: '#fff' };
+  const labelStyle = { fontSize: '0.72rem', fontWeight: 700, color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.04em', marginBottom: '6px', display: 'block' };
+  const optionStyle = { background: 'var(--bg-form)', color: 'var(--text-main)' };
 
   const filteredTeachersForSelect = teachers.filter(t => {
     const name = (t.name || '').toLowerCase();
@@ -1684,13 +1704,10 @@ export function PayrollView({ showToast }) {
       </div>
 
       {showForm && (
-        <div style={{
-          position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.6)', backdropFilter: 'blur(6px)',
-          display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 99999, padding: '20px'
-        }} onClick={() => setShowForm(false)}>
+        <div className="modal-overlay" onClick={() => setShowForm(false)}>
           <div onClick={e => e.stopPropagation()} className="animate-scale-up" style={{
-            width: '100%', maxWidth: '650px', background: '#131324', borderRadius: '20px',
-            border: '1px solid rgba(255,255,255,0.08)', padding: '32px', boxShadow: '0 25px 50px rgba(0,0,0,0.5)',
+            width: '100%', maxWidth: '650px', background: 'var(--bg-elevated)', borderRadius: '20px',
+            border: '1px solid var(--border-glass)', padding: '32px', boxShadow: 'var(--shadow-lg)',
             maxHeight: '90vh', overflowY: 'auto'
           }}>
             <form onSubmit={handleSubmit} style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>
@@ -1725,12 +1742,12 @@ export function PayrollView({ showToast }) {
                       right: 0,
                       maxHeight: '200px',
                       overflowY: 'auto',
-                      background: '#131324',
-                      border: '1px solid rgba(255,255,255,0.08)',
+                      background: 'var(--bg-elevated)',
+                      border: '1px solid var(--border-glass)',
                       borderRadius: '10px',
                       zIndex: 1000,
                       marginTop: '4px',
-                      boxShadow: '0 10px 25px rgba(0,0,0,0.5)'
+                      boxShadow: 'var(--shadow-lg)'
                     }}>
                       {filteredTeachersForSelect.length === 0 ? (
                         <div style={{ padding: '10px 14px', fontSize: '0.85rem', color: 'var(--text-muted)' }}>No matches found</div>
@@ -1742,15 +1759,15 @@ export function PayrollView({ showToast }) {
                             style={{
                               padding: '10px 14px',
                               fontSize: '0.85rem',
-                              color: '#fff',
+                              color: 'var(--text-main)',
                               cursor: 'pointer',
-                              borderBottom: '1px solid rgba(255,255,255,0.02)',
+                              borderBottom: '1px solid var(--border-subtle)',
                               transition: 'background 0.15s',
                               display: 'flex',
                               justifyContent: 'space-between',
                               alignItems: 'center'
                             }}
-                            onMouseEnter={e => e.currentTarget.style.background = 'rgba(255,255,255,0.05)'}
+                            onMouseEnter={e => e.currentTarget.style.background = 'var(--bg-card-subtle)'}
                             onMouseLeave={e => e.currentTarget.style.background = 'transparent'}
                           >
                             <span>{t.name}</span>
@@ -1817,11 +1834,11 @@ export function PayrollView({ showToast }) {
                   display: 'flex', alignItems: 'center', gap: '6px', fontSize: '0.85rem'
                 }}><CheckCircle size={16} /> Process & Pay</button>
                 <button type="button" onClick={() => setShowForm(false)} style={{
-                  padding: '12px 24px', background: 'rgba(255,255,255,0.05)', border: '1px solid rgba(255,255,255,0.1)',
-                  borderRadius: '10px', color: '#fff', fontWeight: 600, cursor: 'pointer', fontSize: '0.85rem', transition: 'background 0.2s',
+                  padding: '12px 24px', background: 'var(--bg-card-subtle)', border: '1px solid var(--border-subtle)',
+                  borderRadius: '10px', color: 'var(--text-main)', fontWeight: 600, cursor: 'pointer', fontSize: '0.85rem', transition: 'background 0.2s',
                   display: 'flex', alignItems: 'center', gap: '6px'
-                }} onMouseEnter={e => e.currentTarget.style.background = 'rgba(255,255,255,0.08)'}
-                   onMouseLeave={e => e.currentTarget.style.background = 'rgba(255,255,255,0.05)'}><X size={16} /> Close</button>
+                }} onMouseEnter={e => e.currentTarget.style.background = 'var(--border-subtle)'}
+                   onMouseLeave={e => e.currentTarget.style.background = 'var(--bg-card-subtle)'}><X size={16} /> Close</button>
               </div>
             </form>
           </div>
@@ -1880,161 +1897,295 @@ export function PayrollView({ showToast }) {
    ============================================================ */
 export function ExpensesView({ showToast }) {
   const [expenses, setExpenses] = useState([]);
+  const [income, setIncome] = useState([]);
+  const [fees, setFees] = useState([]);
+  const [overview, setOverview] = useState(null);
   const [loading, setLoading] = useState(true);
-  const [showForm, setShowForm] = useState(false);
   const [filterCat, setFilterCat] = useState('All');
   const [search, setSearch] = useState('');
-  const [form, setForm] = useState({ title: '', category: 'Maintenance', amount: '', description: '', date: new Date().toISOString().split('T')[0], paidBy: '' });
 
-  const categories = ['Maintenance', 'Salary', 'Stationery', 'Transport', 'Internet', 'Electricity', 'Events', 'Infrastructure', 'Other'];
-
-  const fetchExpenses = () => {
-    const params = new URLSearchParams();
-    if (filterCat !== 'All') params.set('category', filterCat);
-    if (search) params.set('search', search);
-    fetch(`/api/finance/expenses?${params}`)
-      .then(r => r.json())
-      .then(d => { setExpenses(d); setLoading(false); })
-      .catch(() => setLoading(false));
+  const categories = {
+    'Office & Administrative': ['Stationery', 'Printing', 'Internet Bills', 'Telephone Bills', 'Office Supplies'],
+    'Staff Welfare': ['Tea & Refreshments', 'Snacks', 'Staff Meetings', 'Staff Events', 'Training Programs'],
+    'Furniture & Equipment': ['Classroom Furniture', 'Office Furniture', 'Laboratory Equipment', 'Sports Equipment', 'Computers', 'Smart Boards', 'Projectors'],
+    'Building & Renovation': ['Construction', 'Painting', 'Flooring', 'Plumbing', 'Electrical Work', 'Classroom Renovation', 'Washroom Renovation', 'Roof Repair', 'Boundary Wall Repair'],
+    'Utilities': ['Electricity', 'Water', 'Gas', 'Generator Fuel', 'Solar Maintenance'],
+    'Transportation': ['Fuel', 'Vehicle Maintenance', 'Repairs', 'Insurance'],
+    'Maintenance & Repair': ['AC Repair', 'CCTV Maintenance', 'Computer Repair', 'Furniture Repair', 'Playground Maintenance'],
+    'Academic Expenses': ['Books', 'Library', 'Laboratory Materials', 'Examination Materials', 'Software Licenses'],
+    'Events & Functions': ['Annual Day', 'Sports Day', 'Science Exhibition', 'Seminars', 'Other Events'],
+    'Salary': ['Teacher Salaries', 'Staff Payroll'],
+    'Other Expenses': ['Miscellaneous Overhead']
   };
 
-  useEffect(() => { fetchExpenses(); }, [filterCat, search]);
 
-  const handleSubmit = async (e) => {
-    e.preventDefault();
-    try {
-      const res = await fetch('/api/finance/expenses', {
-        method: 'POST', headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(form)
-      });
-      if (res.ok) {
-        showToast(`Expense of ₹${Number(form.amount).toLocaleString()} recorded!`);
-        setShowForm(false);
-        setForm({ title: '', category: 'Maintenance', amount: '', description: '', date: new Date().toISOString().split('T')[0], paidBy: '' });
-        fetchExpenses();
-      } else { showToast('Failed to add expense', 'error'); }
-    } catch { showToast('Network error', 'error'); }
+
+  const fetchData = () => {
+    Promise.all([
+      fetch('/api/finance/overview').then(r => r.ok ? r.json() : null),
+      fetch('/api/finance/fees').then(r => r.ok ? r.json() : []),
+      fetch('/api/finance/income').then(r => r.ok ? r.json() : []),
+      fetch('/api/finance/expenses').then(r => r.ok ? r.json() : []),
+    ]).then(([overviewData, feesData, incomeData, expensesData]) => {
+      setOverview(overviewData);
+      setFees(feesData);
+      setIncome(incomeData);
+      setExpenses(expensesData);
+      setLoading(false);
+    }).catch(err => {
+      console.error(err);
+      setLoading(false);
+    });
   };
 
-  const totalExpenses = expenses.reduce((s, e) => s + (e.amount || 0), 0);
+  useEffect(() => {
+    fetchData();
+  }, []);
+
+
+
+  // Calculations
+  const calculatedTotalExpenses = expenses.filter(e => e.status !== 'Rejected').reduce((s, e) => s + (e.amount || 0), 0);
+  const totalTuitionFees = fees.filter(f => f.paymentStatus === 'Paid').reduce((sum, f) => sum + (f.paidAmount || 0), 0);
+  const totalOtherIncome = income.reduce((sum, i) => sum + (i.amount || 0), 0);
+  const calculatedTotalIncome = totalTuitionFees + totalOtherIncome;
+  const netBalance = calculatedTotalIncome - calculatedTotalExpenses;
+
+  const salaryOverhead = expenses.filter(e => e.category === 'Salary').reduce((sum, e) => sum + (e.amount || 0), 0);
+  const operatingOverhead = calculatedTotalExpenses - salaryOverhead;
+
+  // Filter & Search
+  const filteredExpenses = expenses.filter(e => {
+    const matchSearch = e.title?.toLowerCase().includes(search.toLowerCase()) || 
+                        e.expenseId?.toLowerCase().includes(search.toLowerCase()) ||
+                        e.vendor?.name?.toLowerCase().includes(search.toLowerCase());
+    const matchCat = filterCat === 'All' || e.category === filterCat;
+    return matchSearch && matchCat;
+  });
+
+  // Group by category
+  const categoryGroups = {};
+  expenses.forEach(e => {
+    const cat = e.category || 'Other';
+    categoryGroups[cat] = (categoryGroups[cat] || 0) + (e.amount || 0);
+  });
 
   const inputStyle = {
-    width: '100%', padding: '10px 14px', background: 'rgba(255,255,255,0.04)',
-    border: '1px solid rgba(255,255,255,0.08)', borderRadius: '10px', color: '#fff',
+    width: '100%', padding: '10px 14px', background: 'var(--bg-form)',
+    border: '1.5px solid var(--border-glass)', borderRadius: '10px', color: 'var(--text-main)',
     fontSize: '0.85rem', outline: 'none', boxSizing: 'border-box'
   };
-  const labelStyle = { fontSize: '0.72rem', fontWeight: 700, color: 'rgba(255,255,255,0.5)', textTransform: 'uppercase', letterSpacing: '0.04em', marginBottom: '6px', display: 'block' };
-  const optionStyle = { background: '#131324', color: '#fff' };
+  const labelStyle = { fontSize: '0.72rem', fontWeight: 700, color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.04em', marginBottom: '6px', display: 'block' };
+  const optionStyle = { background: 'var(--bg-form)', color: 'var(--text-main)' };
+
+  if (loading) {
+    return (
+      <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', minHeight: '300px' }}>
+        <Loader2 className="animate-spin" size={32} style={{ color: '#ef4444' }} />
+      </div>
+    );
+  }
 
   return (
-    <div style={{ display: 'flex', flexDirection: 'column', gap: '24px' }}>
-      {/* Summary Card */}
-      <div className="glass-panel" style={{ padding: '20px 24px', borderRadius: '14px', display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '12px' }}>
-        <div>
-          <p style={{ fontSize: '0.72rem', color: 'var(--text-muted)', fontWeight: 700, textTransform: 'uppercase' }}>Total Expenses</p>
-          <h3 style={{ fontSize: '1.5rem', fontWeight: 800, color: '#ef4444', marginTop: '4px' }}>₹{totalExpenses.toLocaleString()}</h3>
+    <div style={{ display: 'flex', flexDirection: 'column', gap: '28px' }}>
+      
+      {/* KPI Cards Grid */}
+      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))', gap: '20px' }}>
+        <div className="glass-panel" style={{ padding: '20px 24px', borderRadius: '14px', borderLeft: '4px solid #ef4444' }}>
+          <p style={{ fontSize: '0.7rem', color: 'var(--text-muted)', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.05em' }}>Total Expenses (Outflow)</p>
+          <h3 style={{ fontSize: '1.6rem', fontWeight: 800, color: '#ef4444', marginTop: '6px' }}>₹{calculatedTotalExpenses.toLocaleString()}</h3>
+          <span style={{ fontSize: '0.72rem', color: 'var(--text-muted)' }}>Salary + Operating overheads</span>
         </div>
-        <span style={{ fontSize: '0.8rem', color: 'var(--text-muted)' }}>{expenses.length} records</span>
+        <div className="glass-panel" style={{ padding: '20px 24px', borderRadius: '14px', borderLeft: '4px solid #10b981' }}>
+          <p style={{ fontSize: '0.7rem', color: 'var(--text-muted)', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.05em' }}>Total Income (Revenue)</p>
+          <h3 style={{ fontSize: '1.6rem', fontWeight: 800, color: '#10b981', marginTop: '6px' }}>₹{calculatedTotalIncome.toLocaleString()}</h3>
+          <span style={{ fontSize: '0.72rem', color: 'var(--text-muted)' }}>Fees + Auxiliary Income</span>
+        </div>
+        <div className="glass-panel" style={{ padding: '20px 24px', borderRadius: '14px', borderLeft: `4px solid ${netBalance >= 0 ? '#10b981' : '#ef4444'}` }}>
+          <p style={{ fontSize: '0.7rem', color: 'var(--text-muted)', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.05em' }}>Net balance</p>
+          <h3 style={{ fontSize: '1.6rem', fontWeight: 800, color: netBalance >= 0 ? '#10b981' : '#ef4444', marginTop: '6px' }}>
+            {netBalance >= 0 ? '+' : ''}₹{netBalance.toLocaleString()}
+          </h3>
+          <span style={{ fontSize: '0.72rem', color: 'var(--text-muted)' }}>{netBalance >= 0 ? 'Surplus Reserve' : 'Deficit Shortfall'}</span>
+        </div>
+        <div className="glass-panel" style={{ padding: '20px 24px', borderRadius: '14px', borderLeft: '4px solid #f59e0b' }}>
+          <p style={{ fontSize: '0.7rem', color: 'var(--text-muted)', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.05em' }}>Operating Overhead</p>
+          <h3 style={{ fontSize: '1.6rem', fontWeight: 800, color: '#f59e0b', marginTop: '6px' }}>₹{operatingOverhead.toLocaleString()}</h3>
+          <span style={{ fontSize: '0.72rem', color: 'var(--text-muted)' }}>Utilities, Supplies & Renovations</span>
+        </div>
       </div>
 
-      <div style={{ display: 'flex', gap: '12px', flexWrap: 'wrap', alignItems: 'center' }}>
-        <button onClick={() => setShowForm(true)} style={{
-          padding: '10px 20px', background: 'linear-gradient(135deg, #ef4444, #dc2626)', border: 'none',
-          borderRadius: '10px', color: '#fff', fontWeight: 700, cursor: 'pointer', display: 'flex',
-          alignItems: 'center', gap: '6px', fontSize: '0.85rem'
-        }}>
-          <Plus size={16} /> Add Expense
-        </button>
-        <div style={{ flex: 1 }} />
+      {/* Graphs Grid */}
+      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(360px, 1fr))', gap: '24px' }}>
+        
+        {/* Category breakdown */}
+        <div className="glass-panel" style={{ padding: '24px', borderRadius: '16px' }}>
+          <h3 style={{ fontSize: '0.92rem', fontWeight: 700, color: 'var(--text-main)', marginBottom: '20px', display: 'flex', alignItems: 'center', gap: '8px' }}>
+            <PieChart size={18} style={{ color: '#ef4444' }} /> Category Wise Overhead Breakdown
+          </h3>
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '14px' }}>
+            {calculatedTotalExpenses === 0 || Object.entries(categoryGroups).length === 0 ? (
+              <div style={{ textAlign: 'center', padding: '40px 10px', color: 'var(--text-muted)', fontSize: '0.82rem', display: 'flex', flexDirection: 'column', gap: '4px', alignItems: 'center', justifyContent: 'center' }}>
+                <span style={{ fontWeight: 600, color: 'var(--text-main)' }}>No data available</span>
+                <span>Data will appear once records are added</span>
+              </div>
+            ) : (
+              Object.entries(categoryGroups)
+                .sort((a,b) => b[1] - a[1])
+                .map(([cat, val]) => {
+                  const maxVal = Math.max(...Object.values(categoryGroups), 1);
+                  const percent = Math.round((val / maxVal) * 100);
+                  const share = calculatedTotalExpenses > 0 ? Math.round((val / calculatedTotalExpenses) * 100) : 0;
+                  const catColors = { 
+                    Maintenance: '#3b82f6', Salary: '#8b5cf6', Stationery: '#f59e0b', 
+                    Utilities: '#06b6d4', Transportation: '#10b981', Events: '#f97316', 
+                    'Furniture & Equipment': '#ec4899', 'Building & Renovation': '#ef4444',
+                    Other: '#6b7280' 
+                  };
+                  const color = catColors[cat] || '#6b7280';
+                  return (
+                    <div key={cat} style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
+                      <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.78rem' }}>
+                        <span style={{ fontWeight: 600, color: 'var(--text-main)' }}>{cat}</span>
+                        <span style={{ fontWeight: 700, color: 'var(--text-muted)' }}>₹{val.toLocaleString()} ({share}%)</span>
+                      </div>
+                      <div style={{ width: '100%', height: '8px', background: 'rgba(255,255,255,0.03)', borderRadius: '4px', overflow: 'hidden' }}>
+                        <div style={{ width: `${percent}%`, height: '100%', background: color, borderRadius: '4px' }} />
+                      </div>
+                    </div>
+                  );
+                })
+            )}
+          </div>
+        </div>
+
+        {/* Monthly Trend */}
+        <div className="glass-panel" style={{ padding: '24px', borderRadius: '16px' }}>
+          <h3 style={{ fontSize: '0.92rem', fontWeight: 700, color: 'var(--text-main)', marginBottom: '20px', display: 'flex', alignItems: 'center', gap: '8px' }}>
+            <BarChart3 size={18} style={{ color: '#ef4444' }} /> Monthly Expenditure Trend (Last 6 Months)
+          </h3>
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '14px' }}>
+            {calculatedTotalExpenses === 0 || !overview?.monthlyData || overview.monthlyData.length === 0 ? (
+              <div style={{ textAlign: 'center', padding: '40px 10px', color: 'var(--text-muted)', fontSize: '0.82rem', display: 'flex', flexDirection: 'column', gap: '4px', alignItems: 'center', justifyContent: 'center' }}>
+                <span style={{ fontWeight: 600, color: 'var(--text-main)' }}>No data available</span>
+                <span>Data will appear once records are added</span>
+              </div>
+            ) : (
+              overview.monthlyData.map((m, idx) => {
+                const maxExpenses = Math.max(...(overview?.monthlyData?.map(o => o.expenses) || [1]));
+                const percent = Math.round((m.expenses / maxExpenses) * 100);
+                return (
+                  <div key={idx} style={{ display: 'grid', gridTemplateColumns: '80px 1fr', alignItems: 'center', gap: '12px' }}>
+                    <span style={{ fontSize: '0.78rem', fontWeight: 600, color: 'var(--text-muted)' }}>{m.month}</span>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                      <div style={{ width: '100%', height: '10px', background: 'rgba(255,255,255,0.02)', borderRadius: '5px', overflow: 'hidden' }}>
+                        <div style={{ width: `${percent}%`, height: '100%', background: 'linear-gradient(90deg, #ef4444, #ef444499)', borderRadius: '5px' }} />
+                      </div>
+                      <span style={{ fontSize: '0.72rem', fontWeight: 700, color: '#ef4444', minWidth: '60px' }}>₹{m.expenses.toLocaleString()}</span>
+                    </div>
+                  </div>
+                );
+              })
+            )}
+          </div>
+        </div>
+
+      </div>
+
+      {/* Filter Toolbar */}
+      <div className="glass-panel" style={{ padding: '16px 20px', borderRadius: '12px', display: 'flex', gap: '12px', flexWrap: 'wrap', alignItems: 'center' }}>
         <div style={{ position: 'relative' }}>
           <Search size={16} style={{ position: 'absolute', left: '12px', top: '50%', transform: 'translateY(-50%)', color: 'var(--text-muted)' }} />
-          <input value={search} onChange={e => setSearch(e.target.value)} placeholder="Search..." style={{ ...inputStyle, paddingLeft: '36px', width: '200px' }} />
+          <input value={search} onChange={e => setSearch(e.target.value)} placeholder="Search Ledger..." style={{ ...inputStyle, paddingLeft: '36px', width: '220px' }} />
         </div>
-        <select value={filterCat} onChange={e => setFilterCat(e.target.value)} style={{ ...inputStyle, width: '150px', cursor: 'pointer' }}>
+        <select value={filterCat} onChange={e => setFilterCat(e.target.value)} style={{ ...inputStyle, width: '160px', cursor: 'pointer' }}>
           <option value="All" style={optionStyle}>All Categories</option>
-          {categories.map(c => <option key={c} value={c} style={optionStyle}>{c}</option>)}
+          {Object.keys(categories).map(c => <option key={c} value={c} style={optionStyle}>{c}</option>)}
         </select>
       </div>
 
-      {showForm && (
-        <div style={{
-          position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.6)', backdropFilter: 'blur(6px)',
-          display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 99999, padding: '20px'
-        }} onClick={() => setShowForm(false)}>
-          <div onClick={e => e.stopPropagation()} className="animate-scale-up" style={{
-            width: '100%', maxWidth: '650px', background: '#131324', borderRadius: '20px',
-            border: '1px solid rgba(255,255,255,0.08)', padding: '32px', boxShadow: '0 25px 50px rgba(0,0,0,0.5)',
-            maxHeight: '90vh', overflowY: 'auto'
-          }}>
-            <form onSubmit={handleSubmit} style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>
-              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                <h3 style={{ fontSize: '1rem', fontWeight: 800, color: 'var(--text-main)', display: 'flex', alignItems: 'center', gap: '8px', margin: 0 }}>
-                  <TrendingDown size={18} style={{ color: '#ef4444' }} /> Record New Expense
-                </h3>
-              </div>
-              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: '16px' }}>
-                <div><label style={labelStyle}>Title</label><input value={form.title} onChange={e => setForm({ ...form, title: e.target.value })} required placeholder="Internet Bill" style={inputStyle} /></div>
-                <div><label style={labelStyle}>Category</label><select value={form.category} onChange={e => setForm({ ...form, category: e.target.value })} style={{ ...inputStyle, cursor: 'pointer' }}>{categories.map(c => <option key={c} value={c} style={optionStyle}>{c}</option>)}</select></div>
-                <div><label style={labelStyle}>Amount (₹)</label><input type="number" value={form.amount} onChange={e => setForm({ ...form, amount: e.target.value })} required placeholder="2500" style={inputStyle} /></div>
-                <div><label style={labelStyle}>Date</label><input type="date" value={form.date} onChange={e => setForm({ ...form, date: e.target.value })} style={inputStyle} /></div>
-                <div><label style={labelStyle}>Paid By</label><input value={form.paidBy} onChange={e => setForm({ ...form, paidBy: e.target.value })} placeholder="Accountant" style={inputStyle} /></div>
-                <div><label style={labelStyle}>Description</label><input value={form.description} onChange={e => setForm({ ...form, description: e.target.value })} placeholder="Brief description" style={inputStyle} /></div>
-              </div>
-              <div style={{ display: 'flex', gap: '12px', marginTop: '10px' }}>
-                <button type="submit" style={{
-                  padding: '12px 24px', background: 'linear-gradient(135deg, #ef4444, #dc2626)', border: 'none',
-                  borderRadius: '10px', color: '#fff', fontWeight: 700, cursor: 'pointer',
-                  display: 'flex', alignItems: 'center', gap: '6px', fontSize: '0.85rem'
-                }}><CheckCircle size={16} /> Save Expense</button>
-                <button type="button" onClick={() => setShowForm(false)} style={{
-                  padding: '12px 24px', background: 'rgba(255,255,255,0.05)', border: '1px solid rgba(255,255,255,0.1)',
-                  borderRadius: '10px', color: '#fff', fontWeight: 600, cursor: 'pointer', fontSize: '0.85rem', transition: 'background 0.2s',
-                  display: 'flex', alignItems: 'center', gap: '6px'
-                }} onMouseEnter={e => e.currentTarget.style.background = 'rgba(255,255,255,0.08)'}
-                   onMouseLeave={e => e.currentTarget.style.background = 'rgba(255,255,255,0.05)'}><X size={16} /> Close</button>
-              </div>
-            </form>
+      {/* Expense Entries Card-like Structure */}
+      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(360px, 1fr))', gap: '20px' }}>
+        {filteredExpenses.length === 0 ? (
+          <div className="glass-panel" style={{ padding: '40px', textAlign: 'center', color: 'var(--text-muted)', gridColumn: '1 / -1' }}>
+            No expense records matched the criteria.
           </div>
-        </div>
-      )}
+        ) : (
+          filteredExpenses.map((exp, i) => (
+            <div key={i} className="glass-panel" style={{ 
+              padding: '24px', borderRadius: '16px', display: 'flex', flexDirection: 'column', gap: '16px',
+              border: '1px solid rgba(255,255,255,0.04)', transition: 'transform 0.2s', position: 'relative'
+            }} onMouseEnter={e => e.currentTarget.style.transform = 'translateY(-2px)'}
+               onMouseLeave={e => e.currentTarget.style.transform = 'translateY(0)'}>
+              
+              {/* Header block */}
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
+                <div>
+                  <h4 style={{ fontSize: '1rem', fontWeight: 800, color: 'var(--text-main)', margin: 0 }}>{exp.title}</h4>
+                  <span style={{ fontSize: '0.7rem', color: 'var(--text-muted)' }}>ID: {exp.expenseId}</span>
+                </div>
+                <span style={{
+                  padding: '4px 10px', borderRadius: '20px', fontSize: '0.68rem', fontWeight: 700,
+                  background: exp.status === 'Approved' ? 'rgba(16,185,129,0.08)' : exp.status === 'Rejected' ? 'rgba(239,68,68,0.08)' : 'rgba(245,158,11,0.08)',
+                  color: exp.status === 'Approved' ? '#10b981' : exp.status === 'Rejected' ? '#ef4444' : '#f59e0b'
+                }}>{exp.status || 'Pending'}</span>
+              </div>
 
-      {/* Expenses Table */}
-      <div className="glass-panel" style={{ borderRadius: '16px', overflow: 'hidden' }}>
-        <div style={{ overflowX: 'auto' }}>
-          <table style={{ width: '100%', borderCollapse: 'collapse' }}>
-            <thead>
-              <tr style={{ background: 'rgba(255,255,255,0.02)' }}>
-                {['ID', 'Title', 'Category', 'Amount', 'Date', 'Paid By', 'Description'].map(h => (
-                  <th key={h} style={{ padding: '14px 16px', textAlign: 'left', fontSize: '0.7rem', fontWeight: 700, color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.04em', borderBottom: '1px solid rgba(255,255,255,0.04)' }}>{h}</th>
-                ))}
-              </tr>
-            </thead>
-            <tbody>
-              {loading ? (
-                <tr><td colSpan={7} style={{ textAlign: 'center', padding: '40px', color: 'var(--text-muted)' }}>Loading...</td></tr>
-              ) : expenses.length === 0 ? (
-                <tr><td colSpan={7} style={{ textAlign: 'center', padding: '40px', color: 'var(--text-muted)', fontSize: '0.85rem' }}>No expenses recorded yet.</td></tr>
-              ) : (
-                expenses.map((exp, i) => (
-                  <tr key={i} style={{ borderBottom: '1px solid rgba(255,255,255,0.03)' }}
-                    onMouseEnter={e => e.currentTarget.style.background = 'rgba(255,255,255,0.02)'}
-                    onMouseLeave={e => e.currentTarget.style.background = 'transparent'}>
-                    <td style={{ padding: '12px 16px', fontSize: '0.78rem', fontWeight: 600, color: '#ef4444' }}>{exp.expenseId}</td>
-                    <td style={{ padding: '12px 16px', fontSize: '0.8rem', fontWeight: 600, color: 'var(--text-main)' }}>{exp.title}</td>
-                    <td style={{ padding: '12px 16px' }}>
-                      <span style={{ padding: '3px 10px', borderRadius: '20px', fontSize: '0.7rem', fontWeight: 700, background: 'rgba(239,68,68,0.08)', color: '#ef4444' }}>{exp.category}</span>
-                    </td>
-                    <td style={{ padding: '12px 16px', fontSize: '0.8rem', fontWeight: 700, color: '#ef4444' }}>₹{exp.amount?.toLocaleString()}</td>
-                    <td style={{ padding: '12px 16px', fontSize: '0.8rem', color: 'var(--text-muted)' }}>{exp.date}</td>
-                    <td style={{ padding: '12px 16px', fontSize: '0.8rem', color: 'var(--text-muted)' }}>{exp.paidBy}</td>
-                    <td style={{ padding: '12px 16px', fontSize: '0.78rem', color: 'var(--text-muted)', maxWidth: '200px', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{exp.description}</td>
-                  </tr>
-                ))
-              )}
-            </tbody>
-          </table>
-        </div>
+              {/* Amount and category tags */}
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                <span style={{ fontSize: '1.4rem', fontWeight: 800, color: '#ef4444' }}>₹{exp.amount?.toLocaleString()}</span>
+                <div style={{ display: 'flex', gap: '6px' }}>
+                  <span style={{ fontSize: '0.68rem', fontWeight: 600, background: 'rgba(255,255,255,0.03)', border: '1px solid rgba(255,255,255,0.06)', padding: '2px 8px', borderRadius: '10px', color: 'var(--text-muted)' }}>{exp.category}</span>
+                  {exp.subcategory && <span style={{ fontSize: '0.68rem', fontWeight: 600, background: 'rgba(255,255,255,0.03)', border: '1px solid rgba(255,255,255,0.06)', padding: '2px 8px', borderRadius: '10px', color: 'var(--text-muted)' }}>{exp.subcategory}</span>}
+                </div>
+              </div>
+
+              {/* Statement / Remarks */}
+              <p style={{ fontSize: '0.8rem', color: 'var(--text-muted)', margin: 0, lineHeight: 1.4 }}>
+                {exp.description || exp.remarks || 'No description recorded for this entry.'}
+              </p>
+
+              {/* Vendor & Payout details */}
+              {exp.vendor?.name ? (
+                <div style={{ background: 'rgba(255,255,255,0.015)', border: '1px solid rgba(255,255,255,0.03)', borderRadius: '10px', padding: '12px', fontSize: '0.75rem', display: 'flex', flexDirection: 'column', gap: '4px' }}>
+                  <div style={{ fontWeight: 700, color: 'var(--text-muted)', fontSize: '0.68rem', textTransform: 'uppercase' }}>Vendor details</div>
+                  <div>Name: <strong style={{ color: 'var(--text-main)' }}>{exp.vendor.name}</strong></div>
+                  {exp.vendor.contact && <div>Contact: <span style={{ color: 'var(--text-muted)' }}>{exp.vendor.contact}</span></div>}
+                  {exp.vendor.email && <div>Email: <span style={{ color: 'var(--text-muted)' }}>{exp.vendor.email}</span></div>}
+                  {exp.vendor.address && <div>Address: <span style={{ color: 'var(--text-muted)' }}>{exp.vendor.address}</span></div>}
+                </div>
+              ) : null}
+
+              {/* Payment execution details */}
+              {exp.paymentDetails?.method ? (
+                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '10px', background: 'rgba(255,255,255,0.01)', borderRadius: '10px', padding: '10px', fontSize: '0.72rem', color: 'var(--text-muted)' }}>
+                  <div>Method: <strong style={{ color: 'var(--text-main)' }}>{exp.paymentDetails.method}</strong></div>
+                  <div>Date: <strong>{exp.paymentDate || exp.date}</strong></div>
+                  {exp.paymentDetails.transactionId && <div style={{ gridColumn: 'span 2' }}>Txn ID: <code style={{ color: '#3b82f6' }}>{exp.paymentDetails.transactionId}</code></div>}
+                  {exp.paymentDetails.invoiceNumber && <div style={{ gridColumn: 'span 2' }}>Invoice No: <span style={{ color: 'var(--text-main)' }}>{exp.paymentDetails.invoiceNumber}</span></div>}
+                </div>
+              ) : null}
+
+              {/* Remarks/Notes */}
+              {exp.notes ? (
+                <div style={{ fontSize: '0.72rem', color: 'rgba(255,255,255,0.4)', fontStyle: 'italic' }}>
+                  * Notes: {exp.notes}
+                </div>
+              ) : null}
+
+              {/* Audit Footer */}
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', fontSize: '0.7rem', color: 'var(--text-muted)', borderTop: '1px solid rgba(255,255,255,0.03)', paddingTop: '10px' }}>
+                <span>Paid by: {exp.paidBy || 'Finance Dept'}</span>
+                <span>Submitted: {exp.submittedBy || 'System'}</span>
+              </div>
+
+            </div>
+          ))
+        )}
       </div>
+
+
+
     </div>
   );
 }
@@ -2044,144 +2195,230 @@ export function ExpensesView({ showToast }) {
    ============================================================ */
 export function IncomeView({ showToast }) {
   const [income, setIncome] = useState([]);
+  const [fees, setFees] = useState([]);
+  const [expenses, setExpenses] = useState([]);
+  const [overview, setOverview] = useState(null);
   const [loading, setLoading] = useState(true);
-  const [showForm, setShowForm] = useState(false);
-  const [form, setForm] = useState({ source: 'Donations', amount: '', description: '', date: new Date().toISOString().split('T')[0], receivedBy: '' });
+
 
   const sources = ['Donations', 'Grants', 'Event Revenue', 'Canteen', 'Rental', 'Sponsorship', 'Other'];
 
-  const fetchIncome = () => {
-    fetch('/api/finance/income')
-      .then(r => r.json())
-      .then(d => { setIncome(d); setLoading(false); })
-      .catch(() => setLoading(false));
+  const fetchData = () => {
+    setLoading(true);
+    Promise.all([
+      fetch('/api/finance/overview').then(r => r.ok ? r.json() : null),
+      fetch('/api/finance/fees').then(r => r.ok ? r.json() : []),
+      fetch('/api/finance/income').then(r => r.ok ? r.json() : []),
+      fetch('/api/finance/expenses').then(r => r.ok ? r.json() : []),
+    ]).then(([overviewData, feesData, incomeData, expensesData]) => {
+      setOverview(overviewData);
+      setFees(feesData);
+      setIncome(incomeData);
+      setExpenses(expensesData);
+      setLoading(false);
+    }).catch(err => {
+      console.error(err);
+      setLoading(false);
+    });
   };
 
-  useEffect(() => { fetchIncome(); }, []);
+  useEffect(() => {
+    fetchData();
+  }, []);
 
-  const handleSubmit = async (e) => {
-    e.preventDefault();
-    try {
-      const res = await fetch('/api/finance/income', {
-        method: 'POST', headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(form)
-      });
-      if (res.ok) {
-        showToast(`Income of ₹${Number(form.amount).toLocaleString()} recorded!`);
-        setShowForm(false);
-        setForm({ source: 'Donations', amount: '', description: '', date: new Date().toISOString().split('T')[0], receivedBy: '' });
-        fetchIncome();
-      } else { showToast('Failed to add income', 'error'); }
-    } catch { showToast('Network error', 'error'); }
-  };
 
-  const totalIncome = income.reduce((s, i) => s + (i.amount || 0), 0);
+
+  // Aggregations
+  const totalTuitionFees = fees.filter(f => f.paymentStatus === 'Paid').reduce((sum, f) => sum + (f.paidAmount || 0), 0);
+  const totalOtherIncome = income.reduce((sum, i) => sum + (i.amount || 0), 0);
+  const calculatedTotalIncome = totalTuitionFees + totalOtherIncome;
+  const calculatedTotalExpenses = expenses.reduce((sum, e) => sum + (e.amount || 0), 0);
+  const netBalance = calculatedTotalIncome - calculatedTotalExpenses;
+
+  // Breakdown of other income sources
+  const sourceTotals = {};
+  sources.forEach(s => sourceTotals[s] = 0);
+  income.forEach(i => {
+    const s = i.source || 'Other';
+    sourceTotals[s] = (sourceTotals[s] || 0) + (i.amount || 0);
+  });
+  const tuitionFeesSharePercent = calculatedTotalIncome > 0 ? Math.round((totalTuitionFees / calculatedTotalIncome) * 100) : 0;
 
   const inputStyle = {
-    width: '100%', padding: '10px 14px', background: 'rgba(255,255,255,0.04)',
-    border: '1px solid rgba(255,255,255,0.08)', borderRadius: '10px', color: '#fff',
+    width: '100%', padding: '10px 14px', background: 'var(--bg-form)',
+    border: '1.5px solid var(--border-glass)', borderRadius: '10px', color: 'var(--text-main)',
     fontSize: '0.85rem', outline: 'none', boxSizing: 'border-box'
   };
-  const labelStyle = { fontSize: '0.72rem', fontWeight: 700, color: 'rgba(255,255,255,0.5)', textTransform: 'uppercase', letterSpacing: '0.04em', marginBottom: '6px', display: 'block' };
-  const optionStyle = { background: '#131324', color: '#fff' };
+  const labelStyle = { fontSize: '0.72rem', fontWeight: 700, color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.04em', marginBottom: '6px', display: 'block' };
+  const optionStyle = { background: 'var(--bg-form)', color: 'var(--text-main)' };
+
+  if (loading) {
+    return (
+      <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', minHeight: '300px' }}>
+        <Loader2 className="animate-spin" size={32} style={{ color: '#10b981' }} />
+      </div>
+    );
+  }
 
   return (
-    <div style={{ display: 'flex', flexDirection: 'column', gap: '24px' }}>
-      <div className="glass-panel" style={{ padding: '20px 24px', borderRadius: '14px', display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '12px' }}>
-        <div>
-          <p style={{ fontSize: '0.72rem', color: 'var(--text-muted)', fontWeight: 700, textTransform: 'uppercase' }}>Total Income</p>
-          <h3 style={{ fontSize: '1.5rem', fontWeight: 800, color: '#10b981', marginTop: '4px' }}>₹{totalIncome.toLocaleString()}</h3>
+    <div style={{ display: 'flex', flexDirection: 'column', gap: '28px' }}>
+      
+      {/* KPI Cards Grid */}
+      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))', gap: '20px' }}>
+        <div className="glass-panel" style={{ padding: '20px 24px', borderRadius: '14px', borderLeft: '4px solid #10b981' }}>
+          <p style={{ fontSize: '0.7rem', color: 'var(--text-muted)', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.05em' }}>Total Revenue (Income)</p>
+          <h3 style={{ fontSize: '1.6rem', fontWeight: 800, color: '#10b981', marginTop: '6px' }}>₹{calculatedTotalIncome.toLocaleString()}</h3>
+          <span style={{ fontSize: '0.72rem', color: 'var(--text-muted)' }}>Student Fees + Auxiliary Income</span>
         </div>
-        <span style={{ fontSize: '0.8rem', color: 'var(--text-muted)' }}>{income.length} records</span>
+        <div className="glass-panel" style={{ padding: '20px 24px', borderRadius: '14px', borderLeft: '4px solid #ef4444' }}>
+          <p style={{ fontSize: '0.7rem', color: 'var(--text-muted)', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.05em' }}>Total Expenses (Outflow)</p>
+          <h3 style={{ fontSize: '1.6rem', fontWeight: 800, color: '#ef4444', marginTop: '6px' }}>₹{calculatedTotalExpenses.toLocaleString()}</h3>
+          <span style={{ fontSize: '0.72rem', color: 'var(--text-muted)' }}>Payroll + Operating expenses</span>
+        </div>
+        <div className="glass-panel" style={{ padding: '20px 24px', borderRadius: '14px', borderLeft: `4px solid ${netBalance >= 0 ? '#10b981' : '#ef4444'}` }}>
+          <p style={{ fontSize: '0.7rem', color: 'var(--text-muted)', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.05em' }}>Net Balance</p>
+          <h3 style={{ fontSize: '1.6rem', fontWeight: 800, color: netBalance >= 0 ? '#10b981' : '#ef4444', marginTop: '6px' }}>
+            {netBalance >= 0 ? '+' : ''}₹{netBalance.toLocaleString()}
+          </h3>
+          <span style={{ fontSize: '0.72rem', color: 'var(--text-muted)' }}>{netBalance >= 0 ? 'Surplus Reserve' : 'Deficit Shortfall'}</span>
+        </div>
+        <div className="glass-panel" style={{ padding: '20px 24px', borderRadius: '14px', borderLeft: '4px solid #3b82f6' }}>
+          <p style={{ fontSize: '0.7rem', color: 'var(--text-muted)', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.05em' }}>Tuition fees portion</p>
+          <h3 style={{ fontSize: '1.6rem', fontWeight: 800, color: '#3b82f6', marginTop: '6px' }}>₹{totalTuitionFees.toLocaleString()}</h3>
+          <span style={{ fontSize: '0.72rem', color: 'var(--text-muted)' }}>{tuitionFeesSharePercent}% of total revenue</span>
+        </div>
       </div>
 
-      <div style={{ display: 'flex', gap: '12px', flexWrap: 'wrap' }}>
-        <button onClick={() => setShowForm(true)} style={{
-          padding: '10px 20px', background: 'linear-gradient(135deg, #f59e0b, #d97706)', border: 'none',
-          borderRadius: '10px', color: '#fff', fontWeight: 700, cursor: 'pointer', display: 'flex',
-          alignItems: 'center', gap: '6px', fontSize: '0.85rem'
-        }}>
-          <Plus size={16} /> Add Income
-        </button>
-      </div>
+      {/* Graph Section */}
+      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(360px, 1fr))', gap: '24px' }}>
+        
+        {/* Monthly Revenue vs Expense trend */}
+        <div className="glass-panel" style={{ padding: '24px', borderRadius: '16px' }}>
+          <h3 style={{ fontSize: '0.92rem', fontWeight: 700, color: 'var(--text-main)', marginBottom: '20px', display: 'flex', alignItems: 'center', gap: '8px' }}>
+            <BarChart3 size={18} style={{ color: '#10b981' }} /> Monthly Cash Flow Trend (Last 6 Months)
+          </h3>
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '14px' }}>
+            {(calculatedTotalIncome === 0 && calculatedTotalExpenses === 0) || !overview?.monthlyData || overview.monthlyData.length === 0 ? (
+              <div style={{ textAlign: 'center', padding: '40px 10px', color: 'var(--text-muted)', fontSize: '0.82rem', display: 'flex', flexDirection: 'column', gap: '4px', alignItems: 'center', justifyContent: 'center' }}>
+                <span style={{ fontWeight: 600, color: 'var(--text-main)' }}>No data available</span>
+                <span>Data will appear once records are added</span>
+              </div>
+            ) : (
+              overview.monthlyData.map((m, idx) => {
+                const maxIncome = Math.max(...(overview?.monthlyData?.map(o => o.fees) || [1]));
+                const maxExpense = Math.max(...(overview?.monthlyData?.map(o => o.expenses) || [1]));
+                const overallMax = Math.max(maxIncome, maxExpense, 1);
+                
+                const incomePercent = Math.round((m.fees / overallMax) * 100);
+                const expensePercent = Math.round((m.expenses / overallMax) * 100);
 
-      {showForm && (
-        <div style={{
-          position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.6)', backdropFilter: 'blur(6px)',
-          display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 99999, padding: '20px'
-        }} onClick={() => setShowForm(false)}>
-          <div onClick={e => e.stopPropagation()} className="animate-scale-up" style={{
-            width: '100%', maxWidth: '650px', background: '#131324', borderRadius: '20px',
-            border: '1px solid rgba(255,255,255,0.08)', padding: '32px', boxShadow: '0 25px 50px rgba(0,0,0,0.5)',
-            maxHeight: '90vh', overflowY: 'auto'
-          }}>
-            <form onSubmit={handleSubmit} style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>
-              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                <h3 style={{ fontSize: '1rem', fontWeight: 800, color: 'var(--text-main)', display: 'flex', alignItems: 'center', gap: '8px', margin: 0 }}>
-                  <TrendingUp size={18} style={{ color: '#f59e0b' }} /> Record New Income
-                </h3>
-              </div>
-              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: '16px' }}>
-                <div><label style={labelStyle}>Source</label><select value={form.source} onChange={e => setForm({ ...form, source: e.target.value })} style={{ ...inputStyle, cursor: 'pointer' }}>{sources.map(s => <option key={s} value={s} style={optionStyle}>{s}</option>)}</select></div>
-                <div><label style={labelStyle}>Amount (₹)</label><input type="number" value={form.amount} onChange={e => setForm({ ...form, amount: e.target.value })} required placeholder="150000" style={inputStyle} /></div>
-                <div><label style={labelStyle}>Date</label><input type="date" value={form.date} onChange={e => setForm({ ...form, date: e.target.value })} style={inputStyle} /></div>
-                <div><label style={labelStyle}>Received By</label><input value={form.receivedBy} onChange={e => setForm({ ...form, receivedBy: e.target.value })} placeholder="Accountant" style={inputStyle} /></div>
-                <div style={{ gridColumn: 'span 2' }}><label style={labelStyle}>Description</label><input value={form.description} onChange={e => setForm({ ...form, description: e.target.value })} placeholder="Alumni corpus donation" style={inputStyle} /></div>
-              </div>
-              <div style={{ display: 'flex', gap: '12px', marginTop: '10px' }}>
-                <button type="submit" style={{
-                  padding: '12px 24px', background: 'linear-gradient(135deg, #f59e0b, #d97706)', border: 'none',
-                  borderRadius: '10px', color: '#fff', fontWeight: 700, cursor: 'pointer',
-                  display: 'flex', alignItems: 'center', gap: '6px', fontSize: '0.85rem'
-                }}><CheckCircle size={16} /> Save Income</button>
-                <button type="button" onClick={() => setShowForm(false)} style={{
-                  padding: '12px 24px', background: 'rgba(255,255,255,0.05)', border: '1px solid rgba(255,255,255,0.1)',
-                  borderRadius: '10px', color: '#fff', fontWeight: 600, cursor: 'pointer', fontSize: '0.85rem', transition: 'background 0.2s',
-                  display: 'flex', alignItems: 'center', gap: '6px'
-                }} onMouseEnter={e => e.currentTarget.style.background = 'rgba(255,255,255,0.08)'}
-                   onMouseLeave={e => e.currentTarget.style.background = 'rgba(255,255,255,0.05)'}><X size={16} /> Close</button>
-              </div>
-            </form>
+                return (
+                  <div key={idx} style={{ display: 'grid', gridTemplateColumns: '80px 1fr', alignItems: 'center', gap: '12px' }}>
+                    <span style={{ fontSize: '0.78rem', fontWeight: 600, color: 'var(--text-muted)' }}>{m.month}</span>
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                        <div style={{ width: '100%', height: '8px', background: 'rgba(255,255,255,0.02)', borderRadius: '4px', overflow: 'hidden' }}>
+                          <div style={{ width: `${incomePercent}%`, height: '100%', background: 'linear-gradient(90deg, #10b981, #059669)', borderRadius: '4px' }} />
+                        </div>
+                        <span style={{ fontSize: '0.72rem', fontWeight: 700, color: '#10b981', minWidth: '60px' }}>₹{m.fees.toLocaleString()}</span>
+                      </div>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                        <div style={{ width: '100%', height: '8px', background: 'rgba(255,255,255,0.02)', borderRadius: '4px', overflow: 'hidden' }}>
+                          <div style={{ width: `${expensePercent}%`, height: '100%', background: 'linear-gradient(90deg, #ef4444, #dc2626)', borderRadius: '4px' }} />
+                        </div>
+                        <span style={{ fontSize: '0.72rem', fontWeight: 700, color: '#ef4444', minWidth: '60px' }}>₹{m.expenses.toLocaleString()}</span>
+                      </div>
+                    </div>
+                  </div>
+                );
+              })
+            )}
           </div>
         </div>
-      )}
 
-      {/* Income Table */}
-      <div className="glass-panel" style={{ borderRadius: '16px', overflow: 'hidden' }}>
-        <div style={{ overflowX: 'auto' }}>
-          <table style={{ width: '100%', borderCollapse: 'collapse' }}>
-            <thead>
-              <tr style={{ background: 'rgba(255,255,255,0.02)' }}>
-                {['ID', 'Source', 'Amount', 'Date', 'Received By', 'Description'].map(h => (
-                  <th key={h} style={{ padding: '14px 16px', textAlign: 'left', fontSize: '0.7rem', fontWeight: 700, color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.04em', borderBottom: '1px solid rgba(255,255,255,0.04)' }}>{h}</th>
-                ))}
-              </tr>
-            </thead>
-            <tbody>
-              {loading ? (
-                <tr><td colSpan={6} style={{ textAlign: 'center', padding: '40px', color: 'var(--text-muted)' }}>Loading...</td></tr>
-              ) : income.length === 0 ? (
-                <tr><td colSpan={6} style={{ textAlign: 'center', padding: '40px', color: 'var(--text-muted)', fontSize: '0.85rem' }}>No income records yet.</td></tr>
-              ) : (
-                income.map((inc, i) => (
-                  <tr key={i} style={{ borderBottom: '1px solid rgba(255,255,255,0.03)' }}
-                    onMouseEnter={e => e.currentTarget.style.background = 'rgba(255,255,255,0.02)'}
-                    onMouseLeave={e => e.currentTarget.style.background = 'transparent'}>
-                    <td style={{ padding: '12px 16px', fontSize: '0.78rem', fontWeight: 600, color: '#f59e0b' }}>{inc.incomeId}</td>
-                    <td style={{ padding: '12px 16px' }}>
-                      <span style={{ padding: '3px 10px', borderRadius: '20px', fontSize: '0.7rem', fontWeight: 700, background: 'rgba(245,158,11,0.08)', color: '#f59e0b' }}>{inc.source}</span>
-                    </td>
-                    <td style={{ padding: '12px 16px', fontSize: '0.8rem', fontWeight: 700, color: '#10b981' }}>₹{inc.amount?.toLocaleString()}</td>
-                    <td style={{ padding: '12px 16px', fontSize: '0.8rem', color: 'var(--text-muted)' }}>{inc.date}</td>
-                    <td style={{ padding: '12px 16px', fontSize: '0.8rem', color: 'var(--text-muted)' }}>{inc.receivedBy}</td>
-                    <td style={{ padding: '12px 16px', fontSize: '0.78rem', color: 'var(--text-muted)', maxWidth: '250px', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{inc.description}</td>
-                  </tr>
-                ))
-              )}
-            </tbody>
-          </table>
+        {/* Income Sources Distribution */}
+        <div className="glass-panel" style={{ padding: '24px', borderRadius: '16px' }}>
+          <h3 style={{ fontSize: '0.92rem', fontWeight: 700, color: 'var(--text-main)', marginBottom: '20px', display: 'flex', alignItems: 'center', gap: '8px' }}>
+            <PieChart size={18} style={{ color: '#3b82f6' }} /> Revenue Source Breakdown
+          </h3>
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '14px' }}>
+            {calculatedTotalIncome === 0 ? (
+              <div style={{ textAlign: 'center', padding: '40px 10px', color: 'var(--text-muted)', fontSize: '0.82rem', display: 'flex', flexDirection: 'column', gap: '4px', alignItems: 'center', justifyContent: 'center' }}>
+                <span style={{ fontWeight: 600, color: 'var(--text-main)' }}>No data available</span>
+                <span>Data will appear once records are added</span>
+              </div>
+            ) : (
+              <>
+                {/* Tuition Fees */}
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.78rem' }}>
+                    <span style={{ fontWeight: 600, color: 'var(--text-main)' }}>Student Tuition Fees</span>
+                    <span style={{ fontWeight: 700, color: 'var(--text-muted)' }}>₹{totalTuitionFees.toLocaleString()} ({tuitionFeesSharePercent}%)</span>
+                  </div>
+                  <div style={{ width: '100%', height: '8px', background: 'rgba(255,255,255,0.03)', borderRadius: '4px', overflow: 'hidden' }}>
+                    <div style={{ width: `${tuitionFeesSharePercent}%`, height: '100%', background: '#3b82f6', borderRadius: '4px' }} />
+                  </div>
+                </div>
+                
+                {/* Other sources */}
+                {Object.entries(sourceTotals).map(([source, val]) => {
+                  const percent = calculatedTotalIncome > 0 ? Math.round((val / calculatedTotalIncome) * 100) : 0;
+                  const sourceColors = {
+                    Donations: '#10b981', Grants: '#8b5cf6', 'Event Revenue': '#f59e0b',
+                    Canteen: '#ec4899', Rental: '#06b6d4', Sponsorship: '#f97316', Other: '#6b7280'
+                  };
+                  const color = sourceColors[source] || '#10b981';
+                  return (
+                    <div key={source} style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
+                      <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.78rem' }}>
+                        <span style={{ fontWeight: 600, color: 'var(--text-main)' }}>{source}</span>
+                        <span style={{ fontWeight: 700, color: 'var(--text-muted)' }}>₹{val.toLocaleString()} ({percent}%)</span>
+                      </div>
+                      <div style={{ width: '100%', height: '8px', background: 'rgba(255,255,255,0.03)', borderRadius: '4px', overflow: 'hidden' }}>
+                        <div style={{ width: `${percent}%`, height: '100%', background: color, borderRadius: '4px' }} />
+                      </div>
+                    </div>
+                  );
+                })}
+              </>
+            )}
+          </div>
         </div>
+
       </div>
+
+      {/* Action buttons */}
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+        <h3 style={{ fontSize: '1rem', fontWeight: 800, color: 'var(--text-main)', margin: 0 }}>Auxiliary Revenue Entries</h3>
+      </div>
+
+      {/* Income Cards Grid instead of plain table */}
+      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))', gap: '16px' }}>
+        {income.length === 0 ? (
+          <div className="glass-panel" style={{ padding: '40px', textAlign: 'center', color: 'var(--text-muted)', gridColumn: '1 / -1' }}>
+            No revenue entries recorded yet.
+          </div>
+        ) : (
+          income.map((inc, i) => (
+            <div key={i} className="glass-panel" style={{ padding: '20px', borderRadius: '12px', border: '1px solid rgba(255,255,255,0.04)', display: 'flex', flexDirection: 'column', gap: '12px', position: 'relative' }}>
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
+                <span style={{ fontSize: '0.68rem', fontWeight: 700, color: '#f59e0b', background: 'rgba(245,158,11,0.08)', padding: '2px 8px', borderRadius: '10px' }}>{inc.source}</span>
+                <span style={{ fontSize: '0.78rem', color: 'var(--text-muted)' }}>{inc.date}</span>
+              </div>
+              <div>
+                <h4 style={{ fontSize: '1.25rem', fontWeight: 800, color: '#10b981', margin: 0 }}>₹{inc.amount?.toLocaleString()}</h4>
+                <p style={{ fontSize: '0.8rem', color: 'var(--text-main)', marginTop: '6px', minHeight: '36px' }}>{inc.description || 'No description provided'}</p>
+              </div>
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', paddingTop: '10px', borderTop: '1px solid rgba(255,255,255,0.03)', fontSize: '0.72rem', color: 'var(--text-muted)' }}>
+                <span>Received: {inc.receivedBy || 'Finance Dept'}</span>
+                <span>ID: {inc.incomeId}</span>
+              </div>
+            </div>
+          ))
+        )}
+      </div>
+
+
     </div>
   );
 }
@@ -2286,11 +2523,16 @@ export function ReportsView({ showToast }) {
       </div>
 
       {/* Category Breakdown */}
-      {expenses.length > 0 && (
-        <div className="glass-panel" style={{ padding: '28px', borderRadius: '16px' }}>
-          <h3 style={{ fontSize: '1rem', fontWeight: 800, color: 'var(--text-main)', marginBottom: '20px', display: 'flex', alignItems: 'center', gap: '8px' }}>
-            <ClipboardList size={18} style={{ color: '#ef4444' }} /> Expense Category Breakdown
-          </h3>
+      <div className="glass-panel" style={{ padding: '28px', borderRadius: '16px' }}>
+        <h3 style={{ fontSize: '1rem', fontWeight: 800, color: 'var(--text-main)', marginBottom: '20px', display: 'flex', alignItems: 'center', gap: '8px' }}>
+          <ClipboardList size={18} style={{ color: '#ef4444' }} /> Expense Category Breakdown
+        </h3>
+        {(!data || data.totalExpenses === 0 || expenses.length === 0) ? (
+          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', height: '140px', flexDirection: 'column', gap: '4px' }}>
+            <span style={{ fontWeight: 600, color: 'var(--text-main)', fontSize: '0.88rem' }}>No data available</span>
+            <span style={{ color: 'var(--text-muted)', fontSize: '0.8rem' }}>Data will appear once records are added</span>
+          </div>
+        ) : (
           <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
             {(() => {
               const cats = {};
@@ -2308,8 +2550,8 @@ export function ReportsView({ showToast }) {
               ));
             })()}
           </div>
-        </div>
-      )}
+        )}
+      </div>
     </div>
   );
 }
@@ -2391,12 +2633,12 @@ export function TeacherSalaryStructureView({ showToast }) {
     - Number(form.deductions || 0) - Number(form.pfDeduction || 0) - Number(form.taxDeduction || 0);
 
   const inputStyle = {
-    width: '100%', padding: '10px 14px', background: 'rgba(255,255,255,0.04)',
-    border: '1px solid rgba(255,255,255,0.08)', borderRadius: '10px', color: '#fff',
+    width: '100%', padding: '10px 14px', background: 'var(--bg-form)',
+    border: '1.5px solid var(--border-glass)', borderRadius: '10px', color: 'var(--text-main)',
     fontSize: '0.85rem', outline: 'none', boxSizing: 'border-box'
   };
-  const labelStyle = { fontSize: '0.72rem', fontWeight: 700, color: 'rgba(255,255,255,0.5)', textTransform: 'uppercase', letterSpacing: '0.04em', marginBottom: '6px', display: 'block' };
-  const optionStyle = { background: '#131324', color: '#fff' };
+  const labelStyle = { fontSize: '0.72rem', fontWeight: 700, color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.04em', marginBottom: '6px', display: 'block' };
+  const optionStyle = { background: 'var(--bg-form)', color: 'var(--text-main)' };
 
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: '24px' }}>
@@ -2411,13 +2653,10 @@ export function TeacherSalaryStructureView({ showToast }) {
       </div>
 
       {showForm && (
-        <div style={{
-          position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.6)', backdropFilter: 'blur(6px)',
-          display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 99999, padding: '20px'
-        }} onClick={() => setShowForm(false)}>
+        <div className="modal-overlay" onClick={() => setShowForm(false)}>
           <div onClick={e => e.stopPropagation()} className="animate-scale-up" style={{
-            width: '100%', maxWidth: '650px', background: '#131324', borderRadius: '20px',
-            border: '1px solid rgba(255,255,255,0.08)', padding: '32px', boxShadow: '0 25px 50px rgba(0,0,0,0.5)',
+            width: '100%', maxWidth: '650px', background: 'var(--bg-elevated)', borderRadius: '20px',
+            border: '1px solid var(--border-glass)', padding: '32px', boxShadow: 'var(--shadow-lg)',
             maxHeight: '90vh', overflowY: 'auto'
           }}>
             <form onSubmit={handleSubmit} style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>
@@ -2466,11 +2705,11 @@ export function TeacherSalaryStructureView({ showToast }) {
                   display: 'flex', alignItems: 'center', gap: '6px', fontSize: '0.85rem'
                 }}><CheckCircle size={16} /> Save Structure</button>
                 <button type="button" onClick={() => setShowForm(false)} style={{
-                  padding: '12px 24px', background: 'rgba(255,255,255,0.05)', border: '1px solid rgba(255,255,255,0.1)',
-                  borderRadius: '10px', color: '#fff', fontWeight: 600, cursor: 'pointer', fontSize: '0.85rem', transition: 'background 0.2s',
+                  padding: '12px 24px', background: 'var(--bg-card-subtle)', border: '1px solid var(--border-subtle)',
+                  borderRadius: '10px', color: 'var(--text-main)', fontWeight: 600, cursor: 'pointer', fontSize: '0.85rem', transition: 'background 0.2s',
                   display: 'flex', alignItems: 'center', gap: '6px'
-                }} onMouseEnter={e => e.currentTarget.style.background = 'rgba(255,255,255,0.08)'}
-                   onMouseLeave={e => e.currentTarget.style.background = 'rgba(255,255,255,0.05)'}><X size={16} /> Close</button>
+                }} onMouseEnter={e => e.currentTarget.style.background = 'var(--border-subtle)'}
+                   onMouseLeave={e => e.currentTarget.style.background = 'var(--bg-card-subtle)'}><X size={16} /> Close</button>
               </div>
             </form>
           </div>

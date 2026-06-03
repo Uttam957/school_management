@@ -8,7 +8,8 @@
     "build": "vite build",
     "lint": "eslint .",
     "preview": "vite preview",
-    "delete-obsolete": "node delete_files.js"
+    "delete-obsolete": "node delete_files.js",
+    "find-x": "node \"C:\\Users\\uttam rajpurrohit\\.gemini\\antigravity-ide\\brain\\ba78d59a-f21a-4688-945e-3672bd614e61\\scratch\\find_x.js\""
   },
   "dependencies": {
     "lucide-react": "^1.17.0",

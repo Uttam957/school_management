@@ -8,8 +8,13 @@ import {
   MessageSquare, 
   User, 
   LogOut, 
-  Settings,
-  ChevronDown
+  ChevronDown,
+  LayoutDashboard,
+  Shield,
+  Calculator,
+  Wallet,
+  UserCog,
+  UserCheck
 } from 'lucide-react';
 
 export default function Header({ 
@@ -20,10 +25,17 @@ export default function Header({
   setMobileOpen,
   theme,
   setTheme,
-  schoolDetails
+  schoolDetails,
+  setActiveView,
+  isAdmin,
+  isAccountant,
+  isRecep,
+  isTeacher,
+  isExpense
 }) {
   const [showNotifications, setShowNotifications] = useState(false);
   const [showProfileMenu, setShowProfileMenu] = useState(false);
+  const [showDashboardMenu, setShowDashboardMenu] = useState(false);
 
   const viewTitles = {
     overview: { title: 'Dashboard Overview', desc: `Welcome back, Principal ${schoolDetails?.principal || 'Alex'}. Here is your academy's status.` },
@@ -38,11 +50,7 @@ export default function Header({
 
   const currentMeta = viewTitles[activeView] || { title: 'Academy Portal', desc: 'Overview and administration console' };
 
-  const notifications = [
-    { id: 1, text: 'New student registered: Emily Stone (Grade 9-A)', time: '5 mins ago', read: false },
-    { id: 2, text: 'Fee receipt generated for Leo Sanders ($1,450)', time: '20 mins ago', read: false },
-    { id: 3, text: 'Teacher leave request: Mr. Robert Vance (Chemistry)', time: '1 hour ago', read: true }
-  ];
+  const notifications = [];
 
   const toggleTheme = () => {
     const nextTheme = theme === 'dark' ? 'light' : 'dark';
@@ -103,7 +111,7 @@ export default function Header({
             title="Notifications"
           >
             <Bell size={20} />
-            <span className="badge-dot"></span>
+            {notifications.some(n => !n.read) && <span className="badge-dot"></span>}
           </button>
 
           {showNotifications && (
@@ -123,12 +131,20 @@ export default function Header({
                 <span style={{ fontSize: '0.75rem', color: 'hsl(var(--color-primary))', cursor: 'pointer', fontWeight: 600 }}>Mark all read</span>
               </div>
               <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
-                {notifications.map(n => (
-                  <div key={n.id} style={{ display: 'flex', flexDirection: 'column', gap: '2px', padding: '6px', borderRadius: '8px', background: n.read ? 'transparent' : 'rgba(hsl(var(--color-primary)), 0.05)' }}>
-                    <span style={{ fontSize: '0.8rem', fontWeight: n.read ? 400 : 600 }}>{n.text}</span>
-                    <span style={{ fontSize: '0.7rem', color: 'var(--text-muted)' }}>{n.time}</span>
+                {notifications.length > 0 ? (
+                  notifications.map(n => (
+                    <div key={n.id} style={{ display: 'flex', flexDirection: 'column', gap: '2px', padding: '6px', borderRadius: '8px', background: n.read ? 'transparent' : 'rgba(hsl(var(--color-primary)), 0.05)' }}>
+                      <span style={{ fontSize: '0.8rem', fontWeight: n.read ? 400 : 600 }}>{n.text}</span>
+                      <span style={{ fontSize: '0.7rem', color: 'var(--text-muted)' }}>{n.time}</span>
+                    </div>
+                  ))
+                ) : (
+                  <div style={{ textAlign: 'center', padding: '16px 8px', color: 'var(--text-muted)', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '8px' }}>
+                    <Bell size={24} style={{ opacity: 0.5 }} />
+                    <span style={{ fontSize: '0.8rem', fontWeight: 600 }}>No new notifications</span>
+                    <span style={{ fontSize: '0.7rem' }}>You're all caught up!</span>
                   </div>
-                ))}
+                )}
               </div>
             </div>
           )}
@@ -140,6 +156,7 @@ export default function Header({
             onClick={() => {
               setShowProfileMenu(!showProfileMenu);
               setShowNotifications(false);
+              setShowDashboardMenu(false);
             }}
             className="action-btn" 
             style={{ width: 'auto', padding: '0 12px', gap: '8px' }}
@@ -161,15 +178,78 @@ export default function Header({
               flexDirection: 'column',
               gap: '4px'
             }}>
-              <button className="nav-item" style={{ padding: '10px', fontSize: '0.85rem' }}>
-                <Settings size={16} /> Settings
-              </button>
               <button className="nav-item" style={{ padding: '10px', fontSize: '0.85rem', color: 'rgb(var(--color-danger-rgb))' }}>
                 <LogOut size={16} /> Sign Out
               </button>
             </div>
           )}
         </div>
+
+        {!isAdmin && !isAccountant && !isRecep && !isTeacher && !isExpense && (
+          <div style={{ position: 'relative' }}>
+            <button
+              onClick={() => {
+                setShowDashboardMenu(!showDashboardMenu);
+                setShowNotifications(false);
+                setShowProfileMenu(false);
+              }}
+              className="action-btn"
+              title="Dashboard Access"
+            >
+              <LayoutDashboard size={20} />
+            </button>
+
+            {showDashboardMenu && (
+              <div className="glass-panel" style={{
+                position: 'absolute',
+                top: '52px',
+                right: 0,
+                width: '220px',
+                padding: '8px',
+                zIndex: 999,
+                display: 'flex',
+                flexDirection: 'column',
+                gap: '4px'
+              }}>
+                <button
+                  onClick={() => { setActiveView('admin-login'); setShowDashboardMenu(false); setMobileOpen(false); }}
+                  className="nav-item"
+                  style={{ padding: '10px 12px', fontSize: '0.85rem', gap: '10px' }}
+                >
+                  <Shield size={18} /> Admin Dashboard
+                </button>
+                <button
+                  onClick={() => { setActiveView('accountant-login'); setShowDashboardMenu(false); setMobileOpen(false); }}
+                  className="nav-item"
+                  style={{ padding: '10px 12px', fontSize: '0.85rem', gap: '10px' }}
+                >
+                  <Calculator size={18} /> Accountant Dashboard
+                </button>
+                <button
+                  onClick={() => { setActiveView('recep-login'); setShowDashboardMenu(false); setMobileOpen(false); }}
+                  className="nav-item"
+                  style={{ padding: '10px 12px', fontSize: '0.85rem', gap: '10px' }}
+                >
+                  <UserCog size={18} /> Receptionist Dashboard
+                </button>
+                <button
+                  onClick={() => { setActiveView('teacher-login'); setShowDashboardMenu(false); setMobileOpen(false); }}
+                  className="nav-item"
+                  style={{ padding: '10px 12px', fontSize: '0.85rem', gap: '10px' }}
+                >
+                  <UserCheck size={18} /> Teacher Dashboard
+                </button>
+                <button
+                  onClick={() => { setActiveView('expense-login'); setShowDashboardMenu(false); setMobileOpen(false); }}
+                  className="nav-item"
+                  style={{ padding: '10px 12px', fontSize: '0.85rem', gap: '10px' }}
+                >
+                  <Wallet size={18} /> Expense Dashboard
+                </button>
+              </div>
+            )}
+          </div>
+        )}
       </div>
     </header>
   );

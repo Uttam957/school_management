@@ -20,7 +20,14 @@ import {
   Calculator,
   Receipt,
   Wallet,
-  Banknote
+  Banknote,
+  ClipboardList,
+  ShieldAlert,
+  Plus,
+  Bell,
+  BarChart3,
+  TrendingUp,
+  TrendingDown,
 } from 'lucide-react';
 
 export default function Sidebar({ 
@@ -46,28 +53,35 @@ export default function Sidebar({
   isAccountant,
   onAccountantLogout,
   accountantView,
-  setAccountantView
+  setAccountantView,
+  isExpense,
+  onExpenseLogout,
+  expenseView,
+  setExpenseView,
+  onAccessAdmin
 }) {
-  const [studentOpen, setStudentOpen] = useState(true);
-  const [teacherOpen, setTeacherOpen] = useState(true);
-  const [staffOpen, setStaffOpen] = useState(true);
-  const [adminCoreOpen, setAdminCoreOpen] = useState(true);
-  const [adminAttendanceOpen, setAdminAttendanceOpen] = useState(true);
-  const [adminRecepOpen, setAdminRecepOpen] = useState(true);
-  const [adminStudentFinanceOpen, setAdminStudentFinanceOpen] = useState(true);
-  const [adminTeacherFinanceOpen, setAdminTeacherFinanceOpen] = useState(true);
-  const [adminStaffFinanceOpen, setAdminStaffFinanceOpen] = useState(true);
+  const [studentOpen, setStudentOpen] = useState(false);
+  const [teacherOpen, setTeacherOpen] = useState(false);
+  const [staffOpen, setStaffOpen] = useState(false);
+  const [adminCoreOpen, setAdminCoreOpen] = useState(false);
+  const [adminAttendanceOpen, setAdminAttendanceOpen] = useState(false);
+  const [adminRecepOpen, setAdminRecepOpen] = useState(false);
+  const [adminStudentFinanceOpen, setAdminStudentFinanceOpen] = useState(false);
+  const [adminTeacherFinanceOpen, setAdminTeacherFinanceOpen] = useState(false);
+  const [adminStaffFinanceOpen, setAdminStaffFinanceOpen] = useState(false);
+  const [adminExpensesOpen, setAdminExpensesOpen] = useState(false);
+  const [recepStudentOpen, setRecepStudentOpen] = useState(false);
+  const [recepTeacherOpen, setRecepTeacherOpen] = useState(false);
+  const [recepStaffOpen, setRecepStaffOpen] = useState(false);
   const menuItems = [
     { id: 'overview', label: 'Overview', icon: LayoutDashboard },
     { id: 'students', label: 'Students', icon: Users },
     { id: 'teacher-list', label: 'Teacher List', icon: UserCheck },
     { id: 'staff', label: 'Staff Directory', icon: UserCog },
-    { id: 'finance', label: 'Finance', icon: CreditCard },
     { id: 'school', label: 'School', icon: School },
   ];
 
   const adminMenuItems = [
-    { id: 'dashboard', label: 'Admin Panel', icon: LayoutDashboard },
     { id: 'overview', label: 'Main Dashboard', icon: List },
     { id: 'students', label: 'Student List', icon: Users },
     { id: 'teachers', label: 'Teacher List', icon: UserCheck },
@@ -76,8 +90,7 @@ export default function Sidebar({
   ];
 
   const recepMenuItems = [
-    { id: 'dashboard', label: 'Receptionist Panel', icon: LayoutDashboard },
-    { id: 'overview', label: 'Main Dashboard', icon: List },
+    { id: 'overview', label: 'Receptionist Panel', icon: List },
     { id: 'register-student', label: 'Register Student', icon: UserPlus },
     { id: 'students', label: 'All Students', icon: Users },
     { id: 'add-teacher', label: 'Add Teacher', icon: UserPlus2 },
@@ -89,6 +102,7 @@ export default function Sidebar({
   const teacherMenuItems = [
     { id: 'dashboard', label: 'Teacher Panel', icon: LayoutDashboard },
     { id: 'mark-attendance', label: 'Mark Attendance', icon: ClipboardCheck },
+    { id: 'attendance-tracker', label: 'Attendance Tracker', icon: TrendingUp },
     { id: 'attendance-history', label: 'Attendance History', icon: List },
     { id: 'student-reports', label: 'Student Reports', icon: Users },
     { id: 'monthly-calendar', label: 'Monthly Calendar', icon: School },
@@ -104,7 +118,7 @@ export default function Sidebar({
           <div className="brand-icon">
             <GraduationCap size={24} />
           </div>
-          <span className="brand-name">{isAdmin ? 'Admin Panel' : (isAccountant ? 'Finance Panel' : (isRecep ? 'Recep Panel' : (schoolDetails?.name || 'Dashboard')))}</span>
+          <span className="brand-name">{isAdmin ? 'Admin Dashboard' : (isAccountant ? 'Finance Dashboard' : (isExpense ? 'Expense Dashboard' : (isRecep ? 'Receptionist Dashboard' : (isTeacher ? 'Teacher Dashboard' : (schoolDetails?.name || 'Dashboard')))))}</span>
         </div>
         <button 
           onClick={() => {
@@ -135,17 +149,6 @@ export default function Sidebar({
       <nav className="sidebar-nav">
         {isAdmin ? (
           <>
-            {/* Admin Overview Link */}
-            <button
-              onClick={() => {
-                setAdminView('dashboard');
-                setMobileOpen(false);
-              }}
-              className={`nav-item ${adminView === 'dashboard' ? 'active' : ''}`}
-            >
-              <LayoutDashboard size={20} className="flex-shrink-0" />
-              <span className="nav-label">Admin Dashboard</span>
-            </button>
 
             <button
               onClick={() => {
@@ -155,7 +158,7 @@ export default function Sidebar({
               className={`nav-item ${adminView === 'overview' ? 'active' : ''}`}
             >
               <List size={20} className="flex-shrink-0" />
-              <span className="nav-label">Main Dashboard</span>
+              <span className="nav-label">Admin Panel</span>
             </button>
 
             {/* Core Roster Directories Folder */}
@@ -210,7 +213,7 @@ export default function Sidebar({
                 className="nav-item"
                 style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', width: '100%', cursor: 'pointer' }}
               >
-                <div style={{ display: 'flex', alignItems: 'center', gap: '16px' }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '16px', minWidth: 0, overflow: 'hidden' }}>
                   <UserPlus size={20} className="flex-shrink-0" />
                   <span className="nav-label" style={{ fontWeight: 600 }}>Registry Admissions</span>
                 </div>
@@ -254,7 +257,7 @@ export default function Sidebar({
                 className="nav-item"
                 style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', width: '100%', cursor: 'pointer' }}
               >
-                <div style={{ display: 'flex', alignItems: 'center', gap: '16px' }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '16px', minWidth: 0, overflow: 'hidden' }}>
                   <ClipboardCheck size={20} className="flex-shrink-0" />
                   <span className="nav-label" style={{ fontWeight: 600 }}>Attendance Manager</span>
                 </div>
@@ -269,6 +272,14 @@ export default function Sidebar({
                   >
                     <ClipboardCheck size={18} className="flex-shrink-0" />
                     <span className="nav-label">School Attendance</span>
+                  </button>
+                  <button
+                    onClick={() => { setAdminView('attendance-tracker'); setMobileOpen(false); }}
+                    className={`nav-item ${adminView === 'attendance-tracker' ? 'active' : ''}`}
+                    style={{ padding: '10px 12px', fontSize: '0.88rem', position: 'relative' }}
+                  >
+                    <TrendingUp size={18} className="flex-shrink-0" />
+                    <span className="nav-label">Attendance Tracker</span>
                   </button>
                 </div>
               )}
@@ -382,7 +393,82 @@ export default function Sidebar({
               )}
             </div>
 
-            {/* General Finance Items */}
+            {/* Expense Control Folder */}
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '2px' }}>
+              <button
+                type="button"
+                onClick={() => setAdminExpensesOpen(!adminExpensesOpen)}
+                className="nav-item"
+                style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', width: '100%', cursor: 'pointer' }}
+              >
+                <div style={{ display: 'flex', alignItems: 'center', gap: '16px' }}>
+                  <Wallet size={20} className="flex-shrink-0" />
+                  <span className="nav-label" style={{ fontWeight: 600 }}>Expense Control</span>
+                </div>
+                {adminExpensesOpen ? <ChevronDown size={16} className="flex-shrink-0" /> : <ChevronRight size={16} className="flex-shrink-0" />}
+              </button>
+              {adminExpensesOpen && (
+                <div style={{ display: 'flex', flexDirection: 'column', paddingLeft: '16px', borderLeft: '1px solid rgba(255,255,255,0.06)', marginLeft: '24px', marginTop: '2px', marginBottom: '6px', gap: '4px' }}>
+                  <button
+                    onClick={() => { setAdminView('expense-dashboard'); setMobileOpen(false); }}
+                    className={`nav-item ${adminView === 'expense-dashboard' ? 'active' : ''}`}
+                    style={{ padding: '10px 12px', fontSize: '0.88rem', position: 'relative' }}
+                  >
+                    <LayoutDashboard size={18} className="flex-shrink-0" />
+              <span className="nav-label">Expense Panel</span>
+                  </button>
+                  <button
+                    onClick={() => { setAdminView('expense-add-expense'); setMobileOpen(false); }}
+                    className={`nav-item ${adminView === 'expense-add-expense' ? 'active' : ''}`}
+                    style={{ padding: '10px 12px', fontSize: '0.88rem', position: 'relative' }}
+                  >
+                    <Plus size={18} className="flex-shrink-0" />
+                    <span className="nav-label">Record Expense</span>
+                  </button>
+                  <button
+                    onClick={() => { setAdminView('expense-all-expenses'); setMobileOpen(false); }}
+                    className={`nav-item ${adminView === 'expense-all-expenses' ? 'active' : ''}`}
+                    style={{ padding: '10px 12px', fontSize: '0.88rem', position: 'relative' }}
+                  >
+                    <ClipboardList size={18} className="flex-shrink-0" />
+                    <span className="nav-label">General Ledger</span>
+                  </button>
+                  <button
+                    onClick={() => { setAdminView('expense-categories'); setMobileOpen(false); }}
+                    className={`nav-item ${adminView === 'expense-categories' ? 'active' : ''}`}
+                    style={{ padding: '10px 12px', fontSize: '0.88rem', position: 'relative' }}
+                  >
+                    <List size={18} className="flex-shrink-0" />
+                    <span className="nav-label">Category Analytics</span>
+                  </button>
+                  <button
+                    onClick={() => { setAdminView('expense-reports'); setMobileOpen(false); }}
+                    className={`nav-item ${adminView === 'expense-reports' ? 'active' : ''}`}
+                    style={{ padding: '10px 12px', fontSize: '0.88rem', position: 'relative' }}
+                  >
+                    <BarChart3 size={18} className="flex-shrink-0" />
+                    <span className="nav-label">Budget Controls</span>
+                  </button>
+                  <button
+                    onClick={() => { setAdminView('expense-approvals'); setMobileOpen(false); }}
+                    className={`nav-item ${adminView === 'expense-approvals' ? 'active' : ''}`}
+                    style={{ padding: '10px 12px', fontSize: '0.88rem', position: 'relative' }}
+                  >
+                    <ShieldAlert size={18} className="flex-shrink-0" />
+                    <span className="nav-label">Approvals Queue</span>
+                  </button>
+                  <button
+                    onClick={() => { setAdminView('expense-tracker'); setMobileOpen(false); }}
+                    className={`nav-item ${adminView === 'expense-tracker' ? 'active' : ''}`}
+                    style={{ padding: '10px 12px', fontSize: '0.88rem', position: 'relative' }}
+                  >
+                    <TrendingDown size={18} className="flex-shrink-0" />
+                    <span className="nav-label">Expense Tracker</span>
+                  </button>
+                </div>
+              )}
+            </div>
+
             <button
               onClick={() => { setAdminView('expenses'); setMobileOpen(false); }}
               className={`nav-item ${adminView === 'expenses' ? 'active' : ''}`}
@@ -407,35 +493,20 @@ export default function Sidebar({
               <span className="nav-label">Financial Reports</span>
             </button>
 
-            {/* Logout Div */}
-            <div style={{ borderTop: '1px solid var(--border-glass)', marginTop: '8px', paddingTop: '8px' }}>
-              <button
-                onClick={() => {
-                  onAdminLogout();
-                  setMobileOpen(false);
-                }}
-                className="nav-item"
-                style={{ color: 'rgb(var(--color-danger-rgb))' }}
-              >
-                <LogOut size={20} className="flex-shrink-0" />
-                <span className="nav-label">Admin Logout</span>
-              </button>
-            </div>
           </>
         ) : isAccountant ? (
           <>
-            {/* Dashboard Link */}
             <button
               onClick={() => {
                 setAccountantView('dashboard');
                 setMobileOpen(false);
               }}
               className={`nav-item ${accountantView === 'dashboard' ? 'active' : ''}`}
+              style={{ marginBottom: '4px' }}
             >
               <LayoutDashboard size={20} className="flex-shrink-0" />
-              <span className="nav-label">Finance Dashboard</span>
+              <span className="nav-label">Finance Panel</span>
             </button>
-
             {/* Student Finance Folder */}
             <div style={{ display: 'flex', flexDirection: 'column', gap: '2px' }}>
               <button
@@ -583,6 +654,17 @@ export default function Sidebar({
                     <Calculator size={18} className="flex-shrink-0" />
                     <span className="nav-label">Staff Pay Structure</span>
                   </button>
+                  <button
+                    onClick={() => {
+                      setAccountantView('staff');
+                      setMobileOpen(false);
+                    }}
+                    className={`nav-item ${accountantView === 'staff' ? 'active' : ''}`}
+                    style={{ padding: '10px 12px', fontSize: '0.88rem', position: 'relative' }}
+                  >
+                    <UserCog size={18} className="flex-shrink-0" />
+                    <span className="nav-label">Staff Directory</span>
+                  </button>
                 </div>
               )}
             </div>
@@ -612,17 +694,6 @@ export default function Sidebar({
 
             <button
               onClick={() => {
-                setAccountantView('staff');
-                setMobileOpen(false);
-              }}
-              className={`nav-item ${accountantView === 'staff' ? 'active' : ''}`}
-            >
-              <UserCog size={20} className="flex-shrink-0" />
-              <span className="nav-label">Staff Directory</span>
-            </button>
-
-            <button
-              onClick={() => {
                 setAccountantView('reports');
                 setMobileOpen(false);
               }}
@@ -632,19 +703,87 @@ export default function Sidebar({
               <span className="nav-label">Financial Reports</span>
             </button>
 
-            <div style={{ borderTop: '1px solid var(--border-glass)', marginTop: '8px', paddingTop: '8px' }}>
-              <button
-                onClick={() => {
-                  onAccountantLogout();
-                  setMobileOpen(false);
-                }}
-                className="nav-item"
-                style={{ color: 'rgb(var(--color-danger-rgb))' }}
-              >
-                <LogOut size={20} className="flex-shrink-0" />
-                <span className="nav-label">Accountant Logout</span>
-              </button>
-            </div>
+          </>
+        ) : isExpense ? (
+          <>
+            <button
+              onClick={() => {
+                setExpenseView('dashboard');
+                setMobileOpen(false);
+              }}
+              className={`nav-item ${expenseView === 'dashboard' ? 'active' : ''}`}
+            >
+              <LayoutDashboard size={20} className="flex-shrink-0" />
+              <span className="nav-label">Expense Dashboard</span>
+            </button>
+
+            <button
+              onClick={() => {
+                setExpenseView('add-expense');
+                setMobileOpen(false);
+              }}
+              className={`nav-item ${expenseView === 'add-expense' ? 'active' : ''}`}
+            >
+              <Plus size={20} className="flex-shrink-0" />
+              <span className="nav-label">Record Expense</span>
+            </button>
+
+            <button
+              onClick={() => {
+                setExpenseView('all-expenses');
+                setMobileOpen(false);
+              }}
+              className={`nav-item ${expenseView === 'all-expenses' ? 'active' : ''}`}
+            >
+              <ClipboardList size={20} className="flex-shrink-0" />
+              <span className="nav-label">General Ledger</span>
+            </button>
+
+            <button
+              onClick={() => {
+                setExpenseView('categories');
+                setMobileOpen(false);
+              }}
+              className={`nav-item ${expenseView === 'categories' ? 'active' : ''}`}
+            >
+              <List size={20} className="flex-shrink-0" />
+              <span className="nav-label">Category Analytics</span>
+            </button>
+
+            <button
+              onClick={() => {
+                setExpenseView('reports');
+                setMobileOpen(false);
+              }}
+              className={`nav-item ${expenseView === 'reports' ? 'active' : ''}`}
+            >
+              <BarChart3 size={20} className="flex-shrink-0" />
+              <span className="nav-label">Budget Controls</span>
+            </button>
+
+            <button
+              onClick={() => {
+                setExpenseView('approvals');
+                setMobileOpen(false);
+              }}
+              className={`nav-item ${expenseView === 'approvals' ? 'active' : ''}`}
+            >
+              <ShieldAlert size={20} className="flex-shrink-0" />
+              <span className="nav-label">Approvals Queue</span>
+            </button>
+
+            <button
+              onClick={() => {
+                setExpenseView('tracker');
+                setMobileOpen(false);
+              }}
+              className={`nav-item ${expenseView === 'tracker' ? 'active' : ''}`}
+            >
+              <TrendingDown size={20} className="flex-shrink-0" />
+              <span className="nav-label">Expense Tracker</span>
+            </button>
+
+
           </>
         ) : isTeacher ? (
           <>
@@ -664,50 +803,127 @@ export default function Sidebar({
                 </button>
               );
             })}
-            <div style={{ borderTop: '1px solid var(--border-glass)', marginTop: '8px', paddingTop: '8px' }}>
-              <button
-                onClick={() => {
-                  onTeacherLogout();
-                  setMobileOpen(false);
-                }}
-                className="nav-item"
-                style={{ color: 'rgb(var(--color-danger-rgb))' }}
-              >
-                <LogOut size={20} className="flex-shrink-0" />
-                <span className="nav-label">Teacher Logout</span>
-              </button>
-            </div>
           </>
         ) : isRecep ? (
           <>
-            {recepMenuItems.map((item) => {
-              const Icon = item.icon;
-              return (
-                <button
-                  key={item.id}
-                  onClick={() => {
-                    setRecepView(item.id);
-                    setMobileOpen(false);
-                  }}
-                  className={`nav-item ${recepView === item.id ? 'active' : ''}`}
-                >
-                  <Icon size={20} className="flex-shrink-0" />
-                  <span className="nav-label">{item.label}</span>
-                </button>
-              );
-            })}
-            <div style={{ borderTop: '1px solid var(--border-glass)', marginTop: '8px', paddingTop: '8px' }}>
+            {/* Receptionist Panel Overview */}
+            <button
+              onClick={() => {
+                setRecepView('overview');
+                setMobileOpen(false);
+              }}
+              className={`nav-item ${recepView === 'overview' ? 'active' : ''}`}
+            >
+              <List size={20} className="flex-shrink-0" />
+              <span className="nav-label">Receptionist Panel</span>
+            </button>
+
+            {/* Students Section */}
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '2px' }}>
               <button
-                onClick={() => {
-                  onRecepLogout();
-                  setMobileOpen(false);
-                }}
+                type="button"
+                onClick={() => setRecepStudentOpen(!recepStudentOpen)}
                 className="nav-item"
-                style={{ color: 'rgb(var(--color-danger-rgb))' }}
+                style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', width: '100%', cursor: 'pointer' }}
               >
-                <LogOut size={20} className="flex-shrink-0" />
-                <span className="nav-label">Recep Logout</span>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '16px' }}>
+                  <Users size={20} className="flex-shrink-0" />
+                  <span className="nav-label" style={{ fontWeight: 600 }}>Students</span>
+                </div>
+                {recepStudentOpen ? <ChevronDown size={16} className="flex-shrink-0" /> : <ChevronRight size={16} className="flex-shrink-0" />}
               </button>
+              {recepStudentOpen && (
+                <div style={{ display: 'flex', flexDirection: 'column', paddingLeft: '16px', borderLeft: '1px solid rgba(255,255,255,0.06)', marginLeft: '24px', marginTop: '2px', marginBottom: '6px', gap: '4px' }}>
+                  <button
+                    onClick={() => { setRecepView('register-student'); setMobileOpen(false); }}
+                    className={`nav-item ${recepView === 'register-student' ? 'active' : ''}`}
+                    style={{ padding: '10px 12px', fontSize: '0.88rem', position: 'relative' }}
+                  >
+                    <UserPlus size={18} className="flex-shrink-0" />
+                    <span className="nav-label">Register Student</span>
+                  </button>
+                  <button
+                    onClick={() => { setRecepView('students'); setMobileOpen(false); }}
+                    className={`nav-item ${recepView === 'students' ? 'active' : ''}`}
+                    style={{ padding: '10px 12px', fontSize: '0.88rem', position: 'relative' }}
+                  >
+                    <Users size={18} className="flex-shrink-0" />
+                    <span className="nav-label">All Students</span>
+                  </button>
+                </div>
+              )}
+            </div>
+
+            {/* Teachers Section */}
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '2px' }}>
+              <button
+                type="button"
+                onClick={() => setRecepTeacherOpen(!recepTeacherOpen)}
+                className="nav-item"
+                style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', width: '100%', cursor: 'pointer' }}
+              >
+                <div style={{ display: 'flex', alignItems: 'center', gap: '16px' }}>
+                  <UserCheck size={20} className="flex-shrink-0" />
+                  <span className="nav-label" style={{ fontWeight: 600 }}>Teachers</span>
+                </div>
+                {recepTeacherOpen ? <ChevronDown size={16} className="flex-shrink-0" /> : <ChevronRight size={16} className="flex-shrink-0" />}
+              </button>
+              {recepTeacherOpen && (
+                <div style={{ display: 'flex', flexDirection: 'column', paddingLeft: '16px', borderLeft: '1px solid rgba(255,255,255,0.06)', marginLeft: '24px', marginTop: '2px', marginBottom: '6px', gap: '4px' }}>
+                  <button
+                    onClick={() => { setRecepView('add-teacher'); setMobileOpen(false); }}
+                    className={`nav-item ${recepView === 'add-teacher' ? 'active' : ''}`}
+                    style={{ padding: '10px 12px', fontSize: '0.88rem', position: 'relative' }}
+                  >
+                    <UserPlus2 size={18} className="flex-shrink-0" />
+                    <span className="nav-label">Add Teacher</span>
+                  </button>
+                  <button
+                    onClick={() => { setRecepView('teachers'); setMobileOpen(false); }}
+                    className={`nav-item ${recepView === 'teachers' ? 'active' : ''}`}
+                    style={{ padding: '10px 12px', fontSize: '0.88rem', position: 'relative' }}
+                  >
+                    <UserCheck size={18} className="flex-shrink-0" />
+                    <span className="nav-label">All Teachers</span>
+                  </button>
+                </div>
+              )}
+            </div>
+
+            {/* Staff Section */}
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '2px' }}>
+              <button
+                type="button"
+                onClick={() => setRecepStaffOpen(!recepStaffOpen)}
+                className="nav-item"
+                style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', width: '100%', cursor: 'pointer' }}
+              >
+                <div style={{ display: 'flex', alignItems: 'center', gap: '16px' }}>
+                  <UserCog size={20} className="flex-shrink-0" />
+                  <span className="nav-label" style={{ fontWeight: 600 }}>Staff</span>
+                </div>
+                {recepStaffOpen ? <ChevronDown size={16} className="flex-shrink-0" /> : <ChevronRight size={16} className="flex-shrink-0" />}
+              </button>
+              {recepStaffOpen && (
+                <div style={{ display: 'flex', flexDirection: 'column', paddingLeft: '16px', borderLeft: '1px solid rgba(255,255,255,0.06)', marginLeft: '24px', marginTop: '2px', marginBottom: '6px', gap: '4px' }}>
+                  <button
+                    onClick={() => { setRecepView('add-staff'); setMobileOpen(false); }}
+                    className={`nav-item ${recepView === 'add-staff' ? 'active' : ''}`}
+                    style={{ padding: '10px 12px', fontSize: '0.88rem', position: 'relative' }}
+                  >
+                    <UserPlus2 size={18} className="flex-shrink-0" />
+                    <span className="nav-label">Add Staff</span>
+                  </button>
+                  <button
+                    onClick={() => { setRecepView('staff'); setMobileOpen(false); }}
+                    className={`nav-item ${recepView === 'staff' ? 'active' : ''}`}
+                    style={{ padding: '10px 12px', fontSize: '0.88rem', position: 'relative' }}
+                  >
+                    <UserCog size={18} className="flex-shrink-0" />
+                    <span className="nav-label">All Staff</span>
+                  </button>
+                </div>
+              )}
             </div>
           </>
         ) : (
@@ -728,62 +944,17 @@ export default function Sidebar({
                 </button>
               );
             })}
-            <div style={{ borderTop: '1px solid var(--border-glass)', marginTop: '8px', paddingTop: '8px', display: 'flex', flexDirection: 'column', gap: '4px' }}>
-              <button
-                onClick={() => {
-                  setActiveView('accountant-login');
-                  setMobileOpen(false);
-                }}
-                className={`nav-item ${activeView === 'accountant-login' ? 'active' : ''}`}
-              >
-                <Calculator size={20} className="flex-shrink-0" />
-                <span className="nav-label">Accountant Login</span>
-              </button>
-
-              <button
-                onClick={() => {
-                  setActiveView('recep-login');
-                  setMobileOpen(false);
-                }}
-                className={`nav-item ${activeView === 'recep-login' ? 'active' : ''}`}
-              >
-                <UserCog size={20} className="flex-shrink-0" />
-                <span className="nav-label">Receptionist Login</span>
-              </button>
-              
-              <button
-                onClick={() => {
-                  setActiveView('teacher-login');
-                  setMobileOpen(false);
-                }}
-                className={`nav-item ${activeView === 'teacher-login' ? 'active' : ''}`}
-              >
-                <UserCheck size={20} className="flex-shrink-0" />
-                <span className="nav-label">Teacher Login</span>
-              </button>
-              
-              <button
-                onClick={() => {
-                  setActiveView('admin-login');
-                  setMobileOpen(false);
-                }}
-                className={`nav-item ${activeView === 'admin-login' ? 'active' : ''}`}
-              >
-                <Shield size={20} className="flex-shrink-0" />
-                <span className="nav-label">Admin Login</span>
-              </button>
-            </div>
           </>
         )}
       </nav>
 
       <div className="sidebar-profile">
         <div className="profile-avatar">
-          {isAdmin ? 'AD' : (isAccountant ? 'AC' : (isRecep ? 'RE' : (isTeacher ? 'TE' : (schoolDetails?.principal ? schoolDetails.principal.split(' ').pop().substring(0, 2).toUpperCase() : 'AD'))))}
+          {isAdmin ? 'AD' : (isAccountant ? 'AC' : (isExpense ? 'EX' : (isRecep ? 'RE' : (isTeacher ? 'TE' : (schoolDetails?.principal ? schoolDetails.principal.split(' ').pop().substring(0, 2).toUpperCase() : 'AD')))))}
         </div>
         <div className="profile-details">
-          <span className="profile-name">{isAdmin ? 'Admin' : (isAccountant ? 'Accountant' : (isRecep ? 'Receptionist' : (isTeacher ? 'Teacher' : (schoolDetails?.principal || 'Alex Devlin'))))}</span>
-          <span className="profile-role">{isAdmin ? 'Administrator' : (isAccountant ? 'Finance Manager' : (isRecep ? 'Subadmin' : (isTeacher ? 'Faculty' : 'Super Admin')))}</span>
+          <span className="profile-name">{isAdmin ? 'Admin Dashboard' : (isAccountant ? 'Finance Dashboard' : (isExpense ? 'Expense Dashboard' : (isRecep ? 'Receptionist Dashboard' : (isTeacher ? 'Teacher Dashboard' : (schoolDetails?.principal || 'Alex Devlin')))))}</span>
+          <span className="profile-role">{isAdmin ? 'Admin Dashboard' : (isAccountant ? 'Finance Dashboard' : (isExpense ? 'Expense Dashboard' : (isRecep ? 'Receptionist Dashboard' : (isTeacher ? 'Teacher Dashboard' : 'Super Admin'))))}</span>
         </div>
       </div>
     </aside>

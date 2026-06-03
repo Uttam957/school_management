@@ -19,13 +19,20 @@
   --color-info-rgb: 6, 182, 212;
 
   /* Light Theme Variables */
-  --bg-app: #f8fafc;
+  --bg-app: #e8ecf1;
   --bg-sidebar: #ffffff;
   --bg-glass: #ffffff;
-  --bg-glass-active: #ffffff;
-  --border-glass: #e2e8f0;
-  --text-main: #0f172a;
-  --text-muted: #64748b;
+  --bg-glass-active: #f5f7fa;
+  --bg-card: #ffffff;
+  --bg-card-muted: #f8fafc;
+  --bg-card-subtle: rgba(15, 23, 42, 0.04);
+  --bg-elevated: #ffffff;
+  --bg-form: #f0f4f8;
+  --border-glass: #cbd5e1;
+  --border-subtle: rgba(15, 23, 42, 0.08);
+  --modal-overlay-bg: rgba(15, 23, 42, 0.42);
+  --text-main: #000000;
+  --text-muted: #334155;
   --text-inverse: #ffffff;
   --shadow-sm: 0 1px 3px rgba(0, 0, 0, 0.05), 0 1px 2px rgba(0, 0, 0, 0.03);
   --shadow-md: 0 4px 6px -1px rgba(0, 0, 0, 0.05), 0 2px 4px -1px rgba(0, 0, 0, 0.03);
@@ -40,7 +47,14 @@
   --bg-sidebar: rgba(10, 10, 22, 0.75);
   --bg-glass: rgba(15, 17, 34, 0.6);
   --bg-glass-active: rgba(25, 29, 56, 0.85);
+  --bg-card: rgba(15, 17, 34, 0.82);
+  --bg-card-muted: rgba(25, 29, 56, 0.72);
+  --bg-card-subtle: rgba(255, 255, 255, 0.035);
+  --bg-elevated: #131324;
+  --bg-form: rgba(10, 12, 25, 0.9);
   --border-glass: rgba(255, 255, 255, 0.08);
+  --border-subtle: rgba(255, 255, 255, 0.08);
+  --modal-overlay-bg: rgba(0, 0, 0, 0.62);
   --text-main: #f1f5f9;
   --text-muted: #94a3b8;
   --text-inverse: #ffffff;
@@ -99,9 +113,115 @@ body {
   transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
 }
 
+.surface-card {
+  background: var(--bg-card);
+  border: 1px solid var(--border-glass);
+  color: var(--text-main);
+}
+
+.surface-muted {
+  background: var(--bg-card-muted);
+  border: 1px solid var(--border-subtle);
+  color: var(--text-main);
+}
+
+.surface-subtle {
+  background: var(--bg-card-subtle);
+  border: 1px solid var(--border-subtle);
+  color: var(--text-main);
+}
+
 .glass-panel:hover {
   box-shadow: var(--shadow-lg);
   border-color: rgba(hsl(var(--color-primary)), 0.2);
+}
+
+/* Finance subadmin light-theme readability */
+.finance-subadmin {
+  color: var(--text-main);
+}
+
+.finance-subadmin.animate-slide-up {
+  animation: none !important;
+  transform: none !important;
+}
+
+.finance-subadmin .glass-panel,
+.finance-subadmin .glass-card,
+.finance-subadmin .admin-dash-card {
+  background: var(--bg-card) !important;
+  border-color: var(--border-glass) !important;
+  color: var(--text-main) !important;
+}
+
+.finance-subadmin .animate-scale-up {
+  background: var(--bg-card) !important;
+  border: 1px solid var(--border-glass) !important;
+  color: var(--text-main) !important;
+  box-shadow: var(--shadow-lg) !important;
+  position: relative;
+  z-index: 1000002;
+}
+
+.finance-subadmin [style*="position: fixed"] {
+  z-index: 1000001 !important;
+}
+
+.finance-subadmin input,
+.finance-subadmin select,
+.finance-subadmin textarea {
+  background: var(--bg-form) !important;
+  border-color: var(--border-glass) !important;
+  color: var(--text-main) !important;
+}
+
+.finance-subadmin input::placeholder,
+.finance-subadmin textarea::placeholder {
+  color: #64748b !important;
+}
+
+.finance-subadmin option {
+  background: var(--bg-card) !important;
+  color: var(--text-main) !important;
+}
+
+:root:not([data-theme='dark']) .finance-subadmin .glass-panel,
+:root:not([data-theme='dark']) .finance-subadmin .glass-card,
+:root:not([data-theme='dark']) .finance-subadmin .admin-dash-card,
+:root:not([data-theme='dark']) .finance-subadmin .animate-scale-up {
+  background: #ffffff !important;
+  color: #0f172a !important;
+  border-color: #cbd5e1 !important;
+}
+
+:root:not([data-theme='dark']) .finance-subadmin input,
+:root:not([data-theme='dark']) .finance-subadmin select,
+:root:not([data-theme='dark']) .finance-subadmin textarea {
+  background: #ffffff !important;
+  color: #0f172a !important;
+  border-color: #cbd5e1 !important;
+}
+
+:root:not([data-theme='dark']) .finance-subadmin .animate-scale-up [style*="color: '#fff'"]:not(button),
+:root:not([data-theme='dark']) .finance-subadmin .animate-scale-up [style*='color: "#fff"']:not(button),
+:root:not([data-theme='dark']) .finance-subadmin .animate-scale-up [style*="color: rgb(255, 255, 255)"]:not(button) {
+  color: #0f172a !important;
+}
+
+:root:not([data-theme='dark']) .finance-subadmin button[style*="rgba(255,255,255"],
+:root:not([data-theme='dark']) .finance-subadmin button[style*="rgba(255, 255, 255"] {
+  background: #f8fafc !important;
+  border-color: #cbd5e1 !important;
+  color: #0f172a !important;
+}
+
+:root:not([data-theme='dark']) .finance-subadmin [style*="background: '#131324'"],
+:root:not([data-theme='dark']) .finance-subadmin [style*='background: "#131324"'],
+:root:not([data-theme='dark']) .finance-subadmin [style*="background: rgb(19, 19, 36)"],
+:root:not([data-theme='dark']) .finance-subadmin [style*="background-color: rgb(19, 19, 36)"] {
+  background: #ffffff !important;
+  color: #0f172a !important;
+  border-color: #cbd5e1 !important;
 }
 
 .glass-card {
@@ -303,8 +423,8 @@ p {
 .form-control {
   width: 100%;
   padding: 12px 16px;
-  background: rgba(var(--text-inverse), 0.05);
-  border: 1px solid var(--border-glass);
+  background: var(--bg-form);
+  border: 1.5px solid #cbd5e1;
   border-radius: 12px;
   color: var(--text-main);
   font-family: var(--font-primary);
@@ -312,11 +432,101 @@ p {
   transition: all 0.3s ease;
 }
 
+.form-control::placeholder {
+  color: #94a3b8;
+  opacity: 1;
+}
+
 .form-control:focus {
   outline: none;
   border-color: hsl(var(--color-primary));
   box-shadow: 0 0 0 4px rgba(hsl(var(--color-primary)), 0.15);
-  background: var(--bg-glass-active);
+  background: var(--bg-elevated);
+}
+
+[data-theme='dark'] .form-control {
+  background: var(--bg-form);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  color: var(--text-main);
+}
+
+[data-theme='dark'] .form-control::placeholder {
+  color: rgba(148, 163, 184, 0.7);
+  opacity: 1;
+}
+
+[data-theme='dark'] .form-control:focus {
+  outline: none;
+  border-color: hsl(var(--color-primary));
+  box-shadow: 0 0 0 4px rgba(hsl(var(--color-primary)), 0.15);
+  background: rgba(25, 29, 56, 0.95);
+}
+
+select option {
+  background-color: #ffffff !important;
+  color: #0f172a !important;
+}
+
+[data-theme='dark'] select option {
+  background-color: #151728 !important;
+  color: #f1f5f9 !important;
+}
+
+/* Textarea Styles */
+textarea.form-control,
+.form-control[type="text"],
+.form-control[type="email"],
+.form-control[type="password"],
+.form-control[type="number"],
+.form-control[type="date"],
+.form-control[type="time"],
+.form-control[type="tel"],
+.form-control[type="url"] {
+  background: var(--bg-form);
+  border: 1.5px solid #cbd5e1;
+  color: var(--text-main);
+}
+
+textarea.form-control::placeholder,
+.form-control[type="text"]::placeholder,
+.form-control[type="email"]::placeholder,
+.form-control[type="password"]::placeholder,
+.form-control[type="number"]::placeholder,
+.form-control[type="date"]::placeholder,
+.form-control[type="time"]::placeholder,
+.form-control[type="tel"]::placeholder,
+.form-control[type="url"]::placeholder {
+  color: #94a3b8;
+  opacity: 1;
+}
+
+[data-theme='dark'] textarea.form-control,
+[data-theme='dark'] .form-control[type="text"],
+[data-theme='dark'] .form-control[type="email"],
+[data-theme='dark'] .form-control[type="password"],
+[data-theme='dark'] .form-control[type="number"],
+[data-theme='dark'] .form-control[type="date"],
+[data-theme='dark'] .form-control[type="time"],
+[data-theme='dark'] .form-control[type="tel"],
+[data-theme='dark'] .form-control[type="url"] {
+  background: rgba(15, 17, 34, 0.8);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  color: var(--text-main);
+}
+
+/* Form disabled state */
+.form-control:disabled,
+textarea.form-control:disabled {
+  background: #f0f4f8;
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+[data-theme='dark'] .form-control:disabled,
+[data-theme='dark'] textarea.form-control:disabled {
+  background: rgba(15, 17, 34, 0.5);
+  opacity: 0.6;
+  cursor: not-allowed;
 }
 
 /* Admin Login Page */
@@ -479,6 +689,7 @@ p {
   cursor: pointer;
   text-align: center;
   transition: all 0.3s ease;
+  border: 2px solid var(--border-glass);
 }
 
 .admin-dash-card:hover {

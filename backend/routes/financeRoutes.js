@@ -18,6 +18,8 @@ import {
   processStaffPayment,
   getExpenses,
   addExpense,
+  updateExpense,
+  deleteExpense,
   getIncome,
   addIncome
 } from '../controllers/financeController.js';
@@ -57,6 +59,8 @@ router.post('/staff-payments', processStaffPayment);
 // Expenses
 router.get('/expenses', getExpenses);
 router.post('/expenses', addExpense);
+router.put('/expenses/:id', updateExpense);
+router.delete('/expenses/:id', deleteExpense);
 
 // Income
 router.get('/income', getIncome);

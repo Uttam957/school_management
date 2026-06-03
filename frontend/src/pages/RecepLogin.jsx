@@ -30,7 +30,7 @@ export default function RecepLogin({ onLogin, onCancel }) {
           <div className="admin-login-icon" style={{ background: 'linear-gradient(135deg, hsl(var(--color-success)) 0%, hsl(var(--color-info)) 100%)' }}>
             <UserPlus size={32} />
           </div>
-          <h1>Receptionist Panel</h1>
+          <h1>Receptionist Dashboard</h1>
           <p>Sign in to manage registrations</p>
         </div>
 

@@ -348,8 +348,8 @@ export default function SchoolProfile({ schoolDetails, fetchSchoolDetails }) {
             overflowY: 'auto',
             padding: '32px',
             borderRadius: '16px',
-            background: '#ffffff', 
-            border: '1px solid #cbd5e1', 
+            background: 'var(--bg-glass)', 
+            border: '1px solid var(--border-glass)', 
             boxShadow: '0 25px 50px -12px rgba(0, 0, 0, 0.25)', 
             display: 'flex',
             flexDirection: 'column',
@@ -421,7 +421,6 @@ export default function SchoolProfile({ schoolDetails, fetchSchoolDetails }) {
                       value={formData.name} 
                       onChange={handleInputChange} 
                       className="form-control"
-                      style={{ padding: '12px 16px', borderRadius: '10px', background: '#ffffff', border: '1px solid #cbd5e1', color: '#0f172a' }}
                     />
                     {formErrors.name && (
                       <span style={{ color: '#ef4444', fontSize: '0.75rem', display: 'flex', alignItems: 'center', gap: '4px', marginTop: '4px' }}>
@@ -440,7 +439,6 @@ export default function SchoolProfile({ schoolDetails, fetchSchoolDetails }) {
                       value={formData.subdomain} 
                       onChange={handleInputChange} 
                       className="form-control"
-                      style={{ padding: '12px 16px', borderRadius: '10px', background: '#ffffff', border: '1px solid #cbd5e1', color: '#0f172a' }}
                     />
                     {formErrors.subdomain && (
                       <span style={{ color: '#ef4444', fontSize: '0.75rem', display: 'flex', alignItems: 'center', gap: '4px', marginTop: '4px' }}>
@@ -460,7 +458,6 @@ export default function SchoolProfile({ schoolDetails, fetchSchoolDetails }) {
                     value={formData.address} 
                     onChange={handleInputChange} 
                     className="form-control"
-                    style={{ padding: '12px 16px', borderRadius: '10px', background: '#ffffff', border: '1px solid #cbd5e1', color: '#0f172a' }}
                   />
                 </div>
 
@@ -475,7 +472,6 @@ export default function SchoolProfile({ schoolDetails, fetchSchoolDetails }) {
                       value={formData.city} 
                       onChange={handleInputChange} 
                       className="form-control"
-                      style={{ padding: '12px 16px', borderRadius: '10px', background: '#ffffff', border: '1px solid #cbd5e1', color: '#0f172a' }}
                     />
                   </div>
 
@@ -489,7 +485,6 @@ export default function SchoolProfile({ schoolDetails, fetchSchoolDetails }) {
                       value={formData.state} 
                       onChange={handleInputChange} 
                       className="form-control"
-                      style={{ padding: '12px 16px', borderRadius: '10px', background: '#ffffff', border: '1px solid #cbd5e1', color: '#0f172a' }}
                     />
                   </div>
                 </div>
@@ -505,7 +500,6 @@ export default function SchoolProfile({ schoolDetails, fetchSchoolDetails }) {
                       value={formData.phone} 
                       onChange={handleInputChange} 
                       className="form-control"
-                      style={{ padding: '12px 16px', borderRadius: '10px', background: '#ffffff', border: '1px solid #cbd5e1', color: '#0f172a' }}
                     />
                   </div>
 
@@ -519,7 +513,6 @@ export default function SchoolProfile({ schoolDetails, fetchSchoolDetails }) {
                       value={formData.email} 
                       onChange={handleInputChange} 
                       className="form-control"
-                      style={{ padding: '12px 16px', borderRadius: '10px', background: '#ffffff', border: '1px solid #cbd5e1', color: '#0f172a' }}
                     />
                   </div>
                 </div>
@@ -535,7 +528,6 @@ export default function SchoolProfile({ schoolDetails, fetchSchoolDetails }) {
                       value={formData.ratePerStudent} 
                       onChange={handleInputChange} 
                       className="form-control"
-                      style={{ padding: '12px 16px', borderRadius: '10px', background: '#ffffff', border: '1px solid #cbd5e1', color: '#0f172a' }}
                     />
                     {formErrors.ratePerStudent && (
                       <span style={{ color: '#ef4444', fontSize: '0.75rem', display: 'flex', alignItems: 'center', gap: '4px', marginTop: '4px' }}>
@@ -554,7 +546,6 @@ export default function SchoolProfile({ schoolDetails, fetchSchoolDetails }) {
                       value={formData.razorpayAccountId} 
                       onChange={handleInputChange} 
                       className="form-control"
-                      style={{ padding: '12px 16px', borderRadius: '10px', background: '#ffffff', border: '1px solid #cbd5e1', color: '#0f172a' }}
                     />
                   </div>
                 </div>
@@ -585,7 +576,6 @@ export default function SchoolProfile({ schoolDetails, fetchSchoolDetails }) {
                       value={formData.adminName} 
                       onChange={handleInputChange} 
                       className="form-control"
-                      style={{ padding: '12px 16px', borderRadius: '10px', background: '#ffffff', border: '1px solid #cbd5e1', color: '#0f172a' }}
                     />
                   </div>
 
@@ -599,7 +589,6 @@ export default function SchoolProfile({ schoolDetails, fetchSchoolDetails }) {
                       value={formData.adminEmail} 
                       onChange={handleInputChange} 
                       className="form-control"
-                      style={{ padding: '12px 16px', borderRadius: '10px', background: '#ffffff', border: '1px solid #cbd5e1', color: '#0f172a' }}
                     />
                     {formErrors.adminEmail && (
                       <span style={{ color: '#ef4444', fontSize: '0.75rem', display: 'flex', alignItems: 'center', gap: '4px', marginTop: '4px' }}>
@@ -619,7 +608,6 @@ export default function SchoolProfile({ schoolDetails, fetchSchoolDetails }) {
                     value={formData.adminPassword} 
                     onChange={handleInputChange} 
                     className="form-control"
-                    style={{ padding: '12px 16px', borderRadius: '10px', background: '#ffffff', border: '1px solid #cbd5e1', color: '#0f172a' }}
                   />
                 </div>
               </div>

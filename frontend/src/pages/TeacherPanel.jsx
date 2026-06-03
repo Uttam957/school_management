@@ -13,7 +13,6 @@ import {
   AlertCircle, 
   CheckCircle, 
   Loader2, 
-  LayoutDashboard,
   UserCheck,
   ChevronLeft,
   ChevronRight,
@@ -21,11 +20,11 @@ import {
   MapPin,
   Mail,
   Phone,
-  Info
+  Info,
+  LayoutDashboard
 } from 'lucide-react';
 import StudentDirectory from './StudentDirectory';
 import TeacherList from './TeacherList';
-import StaffDirectory from './StaffDirectory';
 
 export default function TeacherPanel({ setActiveView, onLogout, teacherView, setTeacherView }) {
   // Global filter states
@@ -64,7 +63,7 @@ export default function TeacherPanel({ setActiveView, onLogout, teacherView, set
   };
 
   useEffect(() => {
-    if (teacherView === 'dashboard') {
+    if (teacherView === 'mark-attendance') {
       fetchCohortData();
     }
   }, [teacherView]);
@@ -72,21 +71,36 @@ export default function TeacherPanel({ setActiveView, onLogout, teacherView, set
   // Subheader Text
   const getSubheaderText = () => {
     switch (teacherView) {
+      case 'dashboard': return 'Teacher Dashboard - manage attendance and student records';
       case 'mark-attendance': return 'Mark and review today\'s student attendance';
+      case 'attendance-tracker': return 'Track cohort status and attendance telemetry summaries';
       case 'attendance-history': return 'Search, review, and modify historical rosters';
       case 'student-reports': return 'Generate attendance metrics and export spreadsheets';
       case 'class-reports': return 'Evaluate overall cohort averages and stats';
       case 'monthly-calendar': return 'Monthly calendar tracker grid per student';
       case 'students': return 'Access complete student academic records directory';
       case 'teacher-list': return 'View faculty roster and teacher profiles';
-      case 'staff': return 'View non-academic staff directory';
-      default: return 'Faculty dashboard & registration telemetries';
+      default: return 'Mark and review today\'s student attendance';
     }
   };
 
   // Rendering switch
   const renderTeacherContent = () => {
     switch (teacherView) {
+      case 'dashboard':
+        return (
+          <MarkAttendanceView 
+            date={selectedDate}
+            setDate={setSelectedDate}
+            studentClass={selectedClass}
+            setClass={setSelectedClass}
+            section={selectedSection}
+            setSection={setSelectedSection}
+            search={studentSearch}
+            setSearch={setStudentSearch}
+            showToast={showToast}
+          />
+        );
       case 'mark-attendance':
         return (
           <MarkAttendanceView 
@@ -98,6 +112,14 @@ export default function TeacherPanel({ setActiveView, onLogout, teacherView, set
             setSection={setSelectedSection}
             search={studentSearch}
             setSearch={setStudentSearch}
+            showToast={showToast}
+          />
+        );
+      case 'attendance-tracker':
+        return (
+          <AttendanceTrackerView 
+            date={selectedDate}
+            setDate={setSelectedDate}
             showToast={showToast}
           />
         );
@@ -123,176 +145,19 @@ export default function TeacherPanel({ setActiveView, onLogout, teacherView, set
         return <StudentDirectory readOnly={true} />;
       case 'teacher-list':
         return <TeacherList setActiveView={setActiveView} readOnly={true} />;
-      case 'staff':
-        return <StaffDirectory readOnly={true} />;
       default:
         return (
-          <div style={{ display: 'flex', flexDirection: 'column', gap: '40px' }}>
-            
-            {/* Top Sleek Grid Navigation */}
-            <div className="admin-dashboard-grid" style={{ gridTemplateColumns: 'repeat(auto-fit, minmax(210px, 1fr))', gap: '20px' }}>
-              <div className="glass-panel admin-dash-card" onClick={() => setTeacherView('mark-attendance')} style={{ padding: '20px' }}>
-                <div className="admin-dash-icon" style={{ color: 'hsl(var(--color-primary))', background: 'rgba(hsl(var(--color-primary)), 0.1)', width: '56px', height: '56px', borderRadius: '12px' }}>
-                  <ClipboardCheck size={28} />
-                </div>
-                <h3 style={{ fontSize: '1.05rem', fontWeight: 700, marginTop: '12px' }}>Mark Attendance</h3>
-                <p style={{ fontSize: '0.8rem', color: 'var(--text-muted)' }}>Roster and log daily student attendance</p>
-              </div>
-
-              <div className="glass-panel admin-dash-card" onClick={() => setTeacherView('attendance-history')} style={{ padding: '20px' }}>
-                <div className="admin-dash-icon" style={{ color: 'hsl(var(--color-warning))', background: 'rgba(hsl(var(--color-warning)), 0.1)', width: '56px', height: '56px', borderRadius: '12px' }}>
-                  <List size={28} />
-                </div>
-                <h3 style={{ fontSize: '1.05rem', fontWeight: 700, marginTop: '12px' }}>Attendance History</h3>
-                <p style={{ fontSize: '0.8rem', color: 'var(--text-muted)' }}>Review and edit past rosters</p>
-              </div>
-
-              <div className="glass-panel admin-dash-card" onClick={() => setTeacherView('student-reports')} style={{ padding: '20px' }}>
-                <div className="admin-dash-icon" style={{ color: 'hsl(var(--color-success))', background: 'rgba(hsl(var(--color-success)), 0.1)', width: '56px', height: '56px', borderRadius: '12px' }}>
-                  <Users size={28} />
-                </div>
-                <h3 style={{ fontSize: '1.05rem', fontWeight: 700, marginTop: '12px' }}>Student Reports</h3>
-                <p style={{ fontSize: '0.8rem', color: 'var(--text-muted)' }}>Metrics logs & Excel/PDF exports</p>
-              </div>
-
-              <div className="glass-panel admin-dash-card" onClick={() => setTeacherView('monthly-calendar')} style={{ padding: '20px' }}>
-                <div className="admin-dash-icon" style={{ color: 'hsl(var(--color-info))', background: 'rgba(hsl(var(--color-info)), 0.1)', width: '56px', height: '56px', borderRadius: '12px' }}>
-                  <School size={28} />
-                </div>
-                <h3 style={{ fontSize: '1.05rem', fontWeight: 700, marginTop: '12px' }}>Monthly Calendar</h3>
-                <p style={{ fontSize: '0.8rem', color: 'var(--text-muted)' }}>Monthly visual attendance calendar grid</p>
-              </div>
-
-              <div className="glass-panel admin-dash-card" onClick={() => setTeacherView('students')} style={{ padding: '20px' }}>
-                <div className="admin-dash-icon" style={{ color: 'hsl(var(--color-secondary))', background: 'rgba(hsl(var(--color-secondary)), 0.1)', width: '56px', height: '56px', borderRadius: '12px' }}>
-                  <Users size={28} />
-                </div>
-                <h3 style={{ fontSize: '1.05rem', fontWeight: 700, marginTop: '12px' }}>Student Directory</h3>
-                <p style={{ fontSize: '0.8rem', color: 'var(--text-muted)' }}>Search, filter, and view student profiles</p>
-              </div>
-
-              <div className="glass-panel admin-dash-card" onClick={() => setTeacherView('teacher-list')} style={{ padding: '20px' }}>
-                <div className="admin-dash-icon" style={{ color: 'hsl(30, 85%, 65%)', background: 'rgba(251, 146, 60, 0.1)', width: '56px', height: '56px', borderRadius: '12px' }}>
-                  <UserCheck size={28} />
-                </div>
-                <h3 style={{ fontSize: '1.05rem', fontWeight: 700, marginTop: '12px' }}>Teacher Directory</h3>
-                <p style={{ fontSize: '0.8rem', color: 'var(--text-muted)' }}>View faculty roster and profiles</p>
-              </div>
-
-              <div className="glass-panel admin-dash-card" onClick={() => setTeacherView('staff')} style={{ padding: '20px' }}>
-                <div className="admin-dash-icon" style={{ color: 'hsl(260, 85%, 65%)', background: 'rgba(168, 85, 247, 0.1)', width: '56px', height: '56px', borderRadius: '12px' }}>
-                  <UserCog size={28} />
-                </div>
-                <h3 style={{ fontSize: '1.05rem', fontWeight: 700, marginTop: '12px' }}>Staff Directory</h3>
-                <p style={{ fontSize: '0.8rem', color: 'var(--text-muted)' }}>View non-academic staff members</p>
-              </div>
-            </div>
-
-            {/* Live Today Attendance Cohorts Section */}
-            <div style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>
-              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '12px' }}>
-                <div>
-                  <h3 style={{ fontSize: '1.2rem', fontWeight: 800, color: 'var(--text-main)', display: 'flex', alignItems: 'center', gap: '8px' }}>
-                    <TrendingUp size={20} style={{ color: 'hsl(var(--color-success))' }} /> Today's Live Attendance Dashboard
-                  </h3>
-                  <p style={{ fontSize: '0.8rem', color: 'var(--text-muted)', marginTop: '2px' }}>Class-wise and section-wise current roster tallies for June 01, 2026</p>
-                </div>
-                <div style={{
-                  background: 'rgba(255,255,255,0.03)',
-                  padding: '6px 16px',
-                  borderRadius: '30px',
-                  border: '1px solid var(--border-glass)',
-                  fontSize: '0.8rem',
-                  fontWeight: 600,
-                  color: 'hsl(var(--color-success))'
-                }}>
-                  Present Date: June 01, 2026
-                </div>
-              </div>
-
-              {loadingCohort ? (
-                <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', minHeight: '240px', flexDirection: 'column', gap: '12px' }}>
-                  <Loader2 className="animate-spin" size={32} style={{ color: 'hsl(var(--color-primary))' }} />
-                  <p style={{ fontSize: '0.85rem', color: 'var(--text-muted)' }}>Loading live today's rosters...</p>
-                </div>
-              ) : cohortData.length === 0 ? (
-                <div className="glass-panel" style={{ padding: '40px 20px', textAlign: 'center', color: 'var(--text-muted)' }}>
-                  No students or attendance records found in the database.
-                </div>
-              ) : (
-                <div className="admin-dashboard-grid" style={{ gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))', gap: '20px' }}>
-                  {cohortData.map((r, i) => {
-                    const percentage = r.attendancePercentage;
-                    const ringColor = percentage >= 90 ? '#10b981' : percentage >= 75 ? '#f59e0b' : '#ef4444';
-                    
-                    return (
-                      <div className="glass-panel" key={i} style={{ padding: '24px', borderRadius: '16px', display: 'flex', flexDirection: 'column', gap: '16px', background: 'rgba(255,255,255,0.01)', border: '1px solid rgba(255,255,255,0.05)', transition: 'all 0.2s ease' }}>
-                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                          <div>
-                            <span style={{ fontSize: '0.75rem', fontWeight: 800, textTransform: 'uppercase', color: 'hsl(var(--color-secondary))', letterSpacing: '0.05em' }}>
-                              Grade {r.studentClass} - Section {r.section}
-                            </span>
-                            <h4 style={{ fontSize: '1.05rem', fontWeight: 700, color: 'var(--text-main)', marginTop: '4px' }}>Roster Attendance</h4>
-                          </div>
-                          <div style={{
-                            width: '46px',
-                            height: '46px',
-                            borderRadius: '50%',
-                            background: 'rgba(255,255,255,0.03)',
-                            border: `2px solid ${ringColor}`,
-                            display: 'flex',
-                            alignItems: 'center',
-                            justifyContent: 'center',
-                            fontWeight: 800,
-                            fontSize: '0.85rem',
-                            color: ringColor
-                          }}>
-                            {percentage}%
-                          </div>
-                        </div>
-
-                        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, 1fr)', gap: '10px' }}>
-                          <div style={{ background: 'rgba(255,255,255,0.01)', padding: '8px 12px', borderRadius: '8px', border: '1px solid rgba(255,255,255,0.02)' }}>
-                            <div style={{ fontSize: '0.65rem', color: 'var(--text-muted)', textTransform: 'uppercase', fontWeight: 700 }}>Total students</div>
-                            <div style={{ fontSize: '1.05rem', fontWeight: 700, color: 'var(--text-main)', marginTop: '2px' }}>{r.totalStudents}</div>
-                          </div>
-                          <div style={{ background: 'rgba(16, 185, 129, 0.03)', padding: '8px 12px', borderRadius: '8px', border: '1px solid rgba(16, 185, 129, 0.06)' }}>
-                            <div style={{ fontSize: '0.65rem', color: '#10b981', textTransform: 'uppercase', fontWeight: 700 }}>Present</div>
-                            <div style={{ fontSize: '1.05rem', fontWeight: 700, color: '#10b981', marginTop: '2px' }}>{r.presentStudents}</div>
-                          </div>
-                          <div style={{ background: 'rgba(239, 68, 68, 0.03)', padding: '8px 12px', borderRadius: '8px', border: '1px solid rgba(239, 68, 68, 0.06)' }}>
-                            <div style={{ fontSize: '0.65rem', color: '#ef4444', textTransform: 'uppercase', fontWeight: 700 }}>Absent</div>
-                            <div style={{ fontSize: '1.05rem', fontWeight: 700, color: '#ef4444', marginTop: '2px' }}>{r.absentStudents}</div>
-                          </div>
-                          <div style={{ background: 'rgba(249, 115, 22, 0.03)', padding: '8px 12px', borderRadius: '8px', border: '1px solid rgba(249, 115, 22, 0.06)' }}>
-                            <div style={{ fontSize: '0.65rem', color: '#f97316', textTransform: 'uppercase', fontWeight: 700 }}>Late/Leave</div>
-                            <div style={{ fontSize: '1.05rem', fontWeight: 700, color: '#f97316', marginTop: '2px' }}>{r.lateStudents + r.leaveStudents}</div>
-                          </div>
-                        </div>
-
-                        {/* Progress Bar showing how many students are marked */}
-                        <div style={{ display: 'flex', flexDirection: 'column', gap: '6px', marginTop: '4px' }}>
-                          <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.7rem', color: 'var(--text-muted)', fontWeight: 600 }}>
-                            <span>Marking Progress</span>
-                            <span>{r.markedStudents} of {r.totalStudents} marked</span>
-                          </div>
-                          <div style={{ height: '6px', background: 'rgba(255,255,255,0.05)', borderRadius: '3px', overflow: 'hidden' }}>
-                            <div style={{
-                              height: '100%',
-                              width: `${(r.markedStudents / r.totalStudents) * 100}%`,
-                              background: 'linear-gradient(90deg, hsl(var(--color-primary)) 0%, hsl(var(--color-secondary)) 100%)',
-                              borderRadius: '3px',
-                              transition: 'width 0.4s ease'
-                            }} />
-                          </div>
-                        </div>
-                      </div>
-                    );
-                  })}
-                </div>
-              )}
-            </div>
-          </div>
+          <MarkAttendanceView 
+            date={selectedDate}
+            setDate={setSelectedDate}
+            studentClass={selectedClass}
+            setClass={setSelectedClass}
+            section={selectedSection}
+            setSection={setSelectedSection}
+            search={studentSearch}
+            setSearch={setStudentSearch}
+            showToast={showToast}
+          />
         );
     }
   };
@@ -342,16 +207,6 @@ export default function TeacherPanel({ setActiveView, onLogout, teacherView, set
           </div>
         </div>
         <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
-          {teacherView !== 'dashboard' && (
-            <button
-              onClick={() => setTeacherView('dashboard')}
-              className="btn-secondary"
-              style={{ padding: '8px 16px', fontSize: '0.85rem', display: 'flex', alignItems: 'center', gap: '6px' }}
-            >
-              <LayoutDashboard size={16} />
-              Teacher Home
-            </button>
-          )}
           <button
             onClick={onLogout}
             className="btn-secondary"
@@ -359,6 +214,14 @@ export default function TeacherPanel({ setActiveView, onLogout, teacherView, set
           >
             <LogOut size={16} />
             Sign Out
+          </button>
+          <button
+            onClick={onLogout}
+            className="btn-primary"
+            style={{ padding: '8px 16px', fontSize: '0.85rem', display: 'flex', alignItems: 'center', gap: '6px' }}
+          >
+            <LayoutDashboard size={16} />
+            Main Dashboard
           </button>
         </div>
       </div>
@@ -577,47 +440,6 @@ export function MarkAttendanceView({ date, setDate, studentClass, setClass, sect
         </div>
       </div>
 
-      {/* 2. SUMMARY TELEMETRY CARDS */}
-      <div className="admin-dashboard-grid" style={{ gridTemplateColumns: 'repeat(auto-fit, minmax(140px, 1fr))', gap: '16px' }}>
-        
-        {/* Total Students */}
-        <div className="glass-panel" style={{ padding: '16px 20px', display: 'flex', flexDirection: 'column', gap: '4px', textAlign: 'left', borderLeft: '4px solid #64748b' }}>
-          <span style={{ fontSize: '0.7rem', color: 'var(--text-muted)', textTransform: 'uppercase', fontWeight: 700 }}>Total Roster</span>
-          <strong style={{ fontSize: '1.6rem', color: 'var(--text-main)', fontWeight: 800 }}>{totalStudents}</strong>
-        </div>
-
-        {/* Present */}
-        <div className="glass-panel" style={{ padding: '16px 20px', display: 'flex', flexDirection: 'column', gap: '4px', textAlign: 'left', borderLeft: '4px solid #10b981', background: 'rgba(16, 185, 129, 0.02)' }}>
-          <span style={{ fontSize: '0.7rem', color: '#10b981', textTransform: 'uppercase', fontWeight: 700 }}>Present</span>
-          <strong style={{ fontSize: '1.6rem', color: '#10b981', fontWeight: 800 }}>{presentCount}</strong>
-        </div>
-
-        {/* Absent */}
-        <div className="glass-panel" style={{ padding: '16px 20px', display: 'flex', flexDirection: 'column', gap: '4px', textAlign: 'left', borderLeft: '4px solid #ef4444', background: 'rgba(239, 68, 68, 0.02)' }}>
-          <span style={{ fontSize: '0.7rem', color: '#ef4444', textTransform: 'uppercase', fontWeight: 700 }}>Absent</span>
-          <strong style={{ fontSize: '1.6rem', color: '#ef4444', fontWeight: 800 }}>{absentCount}</strong>
-        </div>
-
-        {/* Leave */}
-        <div className="glass-panel" style={{ padding: '16px 20px', display: 'flex', flexDirection: 'column', gap: '4px', textAlign: 'left', borderLeft: '4px solid #f59e0b', background: 'rgba(245, 158, 11, 0.02)' }}>
-          <span style={{ fontSize: '0.7rem', color: '#f59e0b', textTransform: 'uppercase', fontWeight: 700 }}>Leave</span>
-          <strong style={{ fontSize: '1.6rem', color: '#f59e0b', fontWeight: 800 }}>{leaveCount}</strong>
-        </div>
-
-        {/* Late */}
-        <div className="glass-panel" style={{ padding: '16px 20px', display: 'flex', flexDirection: 'column', gap: '4px', textAlign: 'left', borderLeft: '4px solid #f97316', background: 'rgba(249, 115, 22, 0.02)' }}>
-          <span style={{ fontSize: '0.7rem', color: '#f97316', textTransform: 'uppercase', fontWeight: 700 }}>Late</span>
-          <strong style={{ fontSize: '1.6rem', color: '#f97316', fontWeight: 800 }}>{lateCount}</strong>
-        </div>
-
-        {/* Attendance Rate */}
-        <div className="glass-panel" style={{ padding: '16px 20px', display: 'flex', flexDirection: 'column', gap: '4px', textAlign: 'left', borderLeft: '4px solid #6366f1', background: 'rgba(99, 102, 241, 0.02)' }}>
-          <span style={{ fontSize: '0.7rem', color: '#6366f1', textTransform: 'uppercase', fontWeight: 700 }}>Attendance %</span>
-          <strong style={{ fontSize: '1.6rem', color: '#6366f1', fontWeight: 800 }}>{attendanceRate}%</strong>
-        </div>
-
-      </div>
-
       {/* 3. ROSTER LIST TABLE */}
       <div className="glass-panel" style={{ overflow: 'hidden', padding: 0 }}>
         {loading ? (
@@ -632,9 +454,9 @@ export function MarkAttendanceView({ date, setDate, studentClass, setClass, sect
             <p style={{ fontSize: '0.85rem', marginTop: '4px' }}>No records matched Grade {studentClass}-{section} for the selected parameters.</p>
           </div>
         ) : (
-          <div style={{ overflowX: 'auto' }}>
+          <div style={{ overflowX: 'auto', maxHeight: 'calc(100vh - 280px)', overflowY: 'auto' }}>
             <table className="student-table" style={{ width: '100%', borderCollapse: 'collapse', textAlign: 'left' }}>
-              <thead>
+              <thead style={{ position: 'sticky', top: 0, zIndex: 10, background: 'var(--bg-glass-active)', backdropFilter: 'blur(10px)', borderBottom: '1px solid var(--border-glass)' }}>
                 <tr style={{ background: 'var(--table-header-bg)', borderBottom: '1px solid var(--border-glass)' }}>
                   <th style={{ padding: '16px 20px', fontSize: '0.75rem', fontWeight: 700, color: 'var(--text-muted)', textTransform: 'uppercase' }}>Roll No</th>
                   <th style={{ padding: '16px 20px', fontSize: '0.75rem', fontWeight: 700, color: 'var(--text-muted)', textTransform: 'uppercase' }}>Admission No</th>
@@ -794,18 +616,15 @@ export function MarkAttendanceView({ date, setDate, studentClass, setClass, sect
         )}
       </div>
 
-      {/* 4. ACTIONS FLOATING BOTTOM BAR */}
+      {/* 4. ACTIONS BOTTOM BAR */}
       {roster.length > 0 && !loading && (
         <div className="glass-panel" style={{ 
           padding: '16px 24px', 
           display: 'flex', 
           justifyContent: 'flex-end', 
           alignItems: 'center', 
-          position: 'sticky', 
-          bottom: '20px', 
-          zIndex: 10,
           border: '1px solid rgba(255,255,255,0.08)',
-          boxShadow: '0 12px 30px rgba(0,0,0,0.15)'
+          marginTop: '16px'
         }}>
           <button 
             onClick={saveAttendance}
@@ -1030,9 +849,9 @@ export function AttendanceHistoryView({ showToast }) {
             <p style={{ fontSize: '0.85rem', marginTop: '4px' }}>No records saved for this criteria yet.</p>
           </div>
         ) : (
-          <div style={{ overflowX: 'auto' }}>
+          <div style={{ overflowX: 'auto', maxHeight: 'calc(100vh - 280px)', overflowY: 'auto' }}>
             <table className="student-table" style={{ width: '100%', borderCollapse: 'collapse', textAlign: 'left' }}>
-              <thead>
+              <thead style={{ position: 'sticky', top: 0, zIndex: 10, background: 'var(--bg-glass-active)', backdropFilter: 'blur(10px)', borderBottom: '1px solid var(--border-glass)' }}>
                 <tr style={{ background: 'var(--table-header-bg)', borderBottom: '1px solid var(--border-glass)' }}>
                   <th style={{ padding: '16px 20px', fontSize: '0.75rem', fontWeight: 700, color: 'var(--text-muted)', textTransform: 'uppercase' }}>Roll No</th>
                   <th style={{ padding: '16px 20px', fontSize: '0.75rem', fontWeight: 700, color: 'var(--text-muted)', textTransform: 'uppercase' }}>Admission No</th>
@@ -1116,7 +935,7 @@ export function AttendanceHistoryView({ showToast }) {
       </div>
 
       {roster.length > 0 && !loading && (
-        <div className="glass-panel" style={{ padding: '16px 24px', display: 'flex', justifyContent: 'flex-end', alignItems: 'center' }}>
+        <div className="glass-panel" style={{ padding: '16px 24px', display: 'flex', justifyContent: 'flex-end', alignItems: 'center', marginTop: '16px' }}>
           <button 
             onClick={saveAttendanceUpdates}
             disabled={saving}
@@ -1657,6 +1476,300 @@ export function MonthlyCalendarView({ showToast }) {
         )}
 
       </div>
+
+    </div>
+  );
+}
+
+// ============================================================================
+// TAB F: ATTENDANCE TRACKER READ-ONLY VIEW
+// ============================================================================
+export function AttendanceTrackerView({ date, setDate, showToast }) {
+  const [cohorts, setCohorts] = useState([]);
+  const [loading, setLoading] = useState(false);
+  const [selectedCohort, setSelectedCohort] = useState(null); // { studentClass, section }
+  const [roster, setRoster] = useState([]);
+  const [loadingRoster, setLoadingRoster] = useState(false);
+
+  // Fetch all class cohort reports
+  const fetchCohorts = async () => {
+    try {
+      setLoading(true);
+      const res = await fetch(`/api/attendance/reports/class?date=${date}`);
+      if (res.ok) {
+        const data = await res.json();
+        setCohorts(data);
+        setSelectedCohort(null);
+        setRoster([]);
+      }
+    } catch (err) {
+      console.error('Error fetching cohorts:', err);
+      showToast('Error loading cohort tracking cards.', 'error');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    fetchCohorts();
+  }, [date]);
+
+  // Fetch detailed roster when a cohort is selected
+  const fetchRoster = async (studentClass, section) => {
+    try {
+      setLoadingRoster(true);
+      const queryParams = new URLSearchParams({
+        date,
+        studentClass,
+        section
+      }).toString();
+      const res = await fetch(`/api/attendance?${queryParams}`);
+      if (res.ok) {
+        const data = await res.json();
+        setRoster(data);
+      }
+    } catch (err) {
+      console.error('Error loading tracker roster:', err);
+      showToast('Error loading detailed roster.', 'error');
+    } finally {
+      setLoadingRoster(false);
+    }
+  };
+
+  const handleCohortClick = (c) => {
+    setSelectedCohort(c);
+    fetchRoster(c.studentClass, c.section);
+  };
+
+  // Calculations for school-wide stats
+  const totalStudents = cohorts.reduce((sum, c) => sum + (c.totalStudents || 0), 0);
+  const presentCount = cohorts.reduce((sum, c) => sum + (c.presentStudents || 0), 0);
+  const absentCount = cohorts.reduce((sum, c) => sum + (c.absentStudents || 0), 0);
+  const leaveCount = cohorts.reduce((sum, c) => sum + (c.leaveStudents || 0), 0);
+  const lateCount = cohorts.reduce((sum, c) => sum + (c.lateStudents || 0), 0);
+  const markedCount = cohorts.reduce((sum, c) => sum + (c.markedStudents || 0), 0);
+  const attendanceRate = markedCount > 0 ? Math.round(((presentCount + lateCount) / markedCount) * 100) : 100;
+
+  return (
+    <div style={{ display: 'flex', flexDirection: 'column', gap: '28px' }}>
+      
+      {/* 1. FILTER HEADER */}
+      <div className="glass-panel" style={{ padding: '20px 24px' }}>
+        <div style={{ display: 'flex', gap: '16px', flexWrap: 'wrap', alignItems: 'center', justifyContent: 'space-between' }}>
+          <div>
+            <h3 style={{ fontSize: '1.05rem', fontWeight: 800, color: 'var(--text-main)' }}>School Attendance Telemetry</h3>
+            <p style={{ fontSize: '0.8rem', color: 'var(--text-muted)', marginTop: '2px' }}>Real-time summary statistics and cohort card tracker</p>
+          </div>
+          <div className="form-group" style={{ margin: 0, minWidth: '180px' }}>
+            <label style={{ fontSize: '0.72rem', fontWeight: 700, color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.04em', marginBottom: '6px', display: 'block' }}>Select Date</label>
+            <input 
+              type="date" 
+              value={date} 
+              onChange={(e) => setDate(e.target.value)}
+              className="form-control"
+              style={{ height: '38px', borderRadius: '8px', padding: '8px 12px' }}
+            />
+          </div>
+        </div>
+      </div>
+
+      {/* 2. SCHOOL-WIDE TELEMETRY SUMMARY CARDS */}
+      <div className="admin-dashboard-grid" style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(140px, 1fr))', gap: '16px' }}>
+        <div className="glass-panel" style={{ padding: '16px 20px', display: 'flex', flexDirection: 'column', gap: '4px', textAlign: 'left', borderLeft: '4px solid #6366f1', background: 'rgba(99, 102, 241, 0.02)' }}>
+          <span style={{ fontSize: '0.7rem', color: '#6366f1', textTransform: 'uppercase', fontWeight: 700 }}>Total School Roster</span>
+          <strong style={{ fontSize: '1.6rem', color: 'var(--text-main)', fontWeight: 800 }}>{totalStudents}</strong>
+        </div>
+        <div className="glass-panel" style={{ padding: '16px 20px', display: 'flex', flexDirection: 'column', gap: '4px', textAlign: 'left', borderLeft: '4px solid #10b981', background: 'rgba(16, 185, 129, 0.02)' }}>
+          <span style={{ fontSize: '0.7rem', color: '#10b981', textTransform: 'uppercase', fontWeight: 700 }}>School Present</span>
+          <strong style={{ fontSize: '1.6rem', color: '#10b981', fontWeight: 800 }}>{presentCount}</strong>
+        </div>
+        <div className="glass-panel" style={{ padding: '16px 20px', display: 'flex', flexDirection: 'column', gap: '4px', textAlign: 'left', borderLeft: '4px solid #ef4444', background: 'rgba(239, 68, 68, 0.02)' }}>
+          <span style={{ fontSize: '0.7rem', color: '#ef4444', textTransform: 'uppercase', fontWeight: 700 }}>School Absent</span>
+          <strong style={{ fontSize: '1.6rem', color: '#ef4444', fontWeight: 800 }}>{absentCount}</strong>
+        </div>
+        <div className="glass-panel" style={{ padding: '16px 20px', display: 'flex', flexDirection: 'column', gap: '4px', textAlign: 'left', borderLeft: '4px solid #f59e0b', background: 'rgba(245, 158, 11, 0.02)' }}>
+          <span style={{ fontSize: '0.7rem', color: '#f59e0b', textTransform: 'uppercase', fontWeight: 700 }}>School Leave/Late</span>
+          <strong style={{ fontSize: '1.6rem', color: '#f59e0b', fontWeight: 800 }}>{leaveCount + lateCount}</strong>
+        </div>
+        <div className="glass-panel" style={{ padding: '16px 20px', display: 'flex', flexDirection: 'column', gap: '4px', textAlign: 'left', borderLeft: '4px solid #10b981', background: 'rgba(16, 185, 129, 0.02)' }}>
+          <span style={{ fontSize: '0.7rem', color: '#10b981', textTransform: 'uppercase', fontWeight: 700 }}>Overall Attendance Rate</span>
+          <strong style={{ fontSize: '1.6rem', color: '#10b981', fontWeight: 800 }}>{attendanceRate}%</strong>
+        </div>
+      </div>
+
+      {/* 3. COHORT CARDS GRID */}
+      <div>
+        <h3 style={{ fontSize: '1.1rem', fontWeight: 800, marginBottom: '16px' }}>
+          Class-Wise Attendance Cohorts
+        </h3>
+        {loading ? (
+          <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', minHeight: '200px' }}>
+            <Loader2 className="animate-spin" size={32} style={{ color: 'hsl(var(--color-primary))' }} />
+          </div>
+        ) : cohorts.length === 0 ? (
+          <div className="glass-panel" style={{ padding: '40px', textAlign: 'center', color: 'var(--text-muted)' }}>
+            No cohort data found for this date.
+          </div>
+        ) : (
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))', gap: '20px' }}>
+            {cohorts.map((r, i) => {
+              const percentage = r.attendancePercentage;
+              const ringColor = percentage >= 90 ? '#10b981' : percentage >= 75 ? '#f59e0b' : '#ef4444';
+              const isSelected = selectedCohort && selectedCohort.studentClass === r.studentClass && selectedCohort.section === r.section;
+              
+              return (
+                <div 
+                  className="glass-panel" 
+                  key={i} 
+                  onClick={() => handleCohortClick(r)}
+                  style={{ 
+                    padding: '24px', 
+                    borderRadius: '16px', 
+                    display: 'flex', 
+                    flexDirection: 'column', 
+                    gap: '16px', 
+                    background: isSelected ? 'rgba(99, 102, 241, 0.08)' : 'rgba(255,255,255,0.01)', 
+                    border: isSelected ? '2px solid #6366f1' : '1px solid rgba(255,255,255,0.05)', 
+                    cursor: 'pointer',
+                    transition: 'all 0.2s ease',
+                    boxShadow: isSelected ? '0 8px 24px rgba(99, 102, 241, 0.2)' : 'none'
+                  }}
+                >
+                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                    <div>
+                      <span style={{ fontSize: '0.75rem', fontWeight: 800, textTransform: 'uppercase', color: 'hsl(var(--color-secondary))', letterSpacing: '0.05em' }}>
+                        Grade {r.studentClass} - Section {r.section}
+                      </span>
+                      <h4 style={{ fontSize: '1.05rem', fontWeight: 700, color: 'var(--text-main)', marginTop: '4px' }}>Roster Summary</h4>
+                    </div>
+                    <div style={{
+                      width: '46px',
+                      height: '46px',
+                      borderRadius: '50%',
+                      background: 'rgba(255,255,255,0.03)',
+                      border: `2px solid ${ringColor}`,
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'center',
+                      fontWeight: 800,
+                      fontSize: '0.85rem',
+                      color: ringColor
+                    }}>
+                      {percentage}%
+                    </div>
+                  </div>
+
+                  <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, 1fr)', gap: '10px' }}>
+                    <div style={{ background: 'rgba(255,255,255,0.01)', padding: '8px 12px', borderRadius: '8px', border: '1px solid rgba(255,255,255,0.02)' }}>
+                      <div style={{ fontSize: '0.65rem', color: 'var(--text-muted)', textTransform: 'uppercase', fontWeight: 700 }}>Total</div>
+                      <div style={{ fontSize: '1.05rem', fontWeight: 700, color: 'var(--text-main)', marginTop: '2px' }}>{r.totalStudents}</div>
+                    </div>
+                    <div style={{ background: 'rgba(16, 185, 129, 0.03)', padding: '8px 12px', borderRadius: '8px', border: '1px solid rgba(16, 185, 129, 0.06)' }}>
+                      <div style={{ fontSize: '0.65rem', color: '#10b981', textTransform: 'uppercase', fontWeight: 700 }}>Present</div>
+                      <div style={{ fontSize: '1.05rem', fontWeight: 700, color: '#10b981', marginTop: '2px' }}>{r.presentStudents}</div>
+                    </div>
+                    <div style={{ background: 'rgba(239, 68, 68, 0.03)', padding: '8px 12px', borderRadius: '8px', border: '1px solid rgba(239, 68, 68, 0.06)' }}>
+                      <div style={{ fontSize: '0.65rem', color: '#ef4444', textTransform: 'uppercase', fontWeight: 700 }}>Absent</div>
+                      <div style={{ fontSize: '1.05rem', fontWeight: 700, color: '#ef4444', marginTop: '2px' }}>{r.absentStudents}</div>
+                    </div>
+                    <div style={{ background: 'rgba(249, 115, 22, 0.03)', padding: '8px 12px', borderRadius: '8px', border: '1px solid rgba(249, 115, 22, 0.06)' }}>
+                      <div style={{ fontSize: '0.65rem', color: '#f97316', textTransform: 'uppercase', fontWeight: 700 }}>Late/Leave</div>
+                      <div style={{ fontSize: '1.05rem', fontWeight: 700, color: '#f97316', marginTop: '2px' }}>{r.lateStudents + r.leaveStudents}</div>
+                    </div>
+                  </div>
+
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: '6px', marginTop: '4px' }}>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.7rem', color: 'var(--text-muted)', fontWeight: 600 }}>
+                      <span>Marking Progress</span>
+                      <span>{r.markedStudents} of {r.totalStudents} marked</span>
+                    </div>
+                    <div style={{ height: '6px', background: 'rgba(255,255,255,0.05)', borderRadius: '3px', overflow: 'hidden' }}>
+                      <div style={{
+                        height: '100%',
+                        width: `${(r.markedStudents / r.totalStudents) * 100}%`,
+                        background: 'linear-gradient(90deg, hsl(var(--color-primary)) 0%, hsl(var(--color-secondary)) 100%)',
+                        borderRadius: '3px',
+                        transition: 'width 0.4s ease'
+                      }} />
+                    </div>
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+        )}
+      </div>
+
+      {/* 4. DRILL DOWN CLASS DETAIL TABLE */}
+      {selectedCohort && (
+        <div className="glass-panel" style={{ padding: '24px', display: 'flex', flexDirection: 'column', gap: '16px', animation: 'fadeIn 0.25s ease-out' }}>
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+            <div>
+              <h3 style={{ fontSize: '1.1rem', fontWeight: 800 }}>
+                Roster Detail: Grade {selectedCohort.studentClass} - Section {selectedCohort.section}
+              </h3>
+              <p style={{ fontSize: '0.8rem', color: 'var(--text-muted)', marginTop: '2px' }}>Detailed student-wise logs for {date}</p>
+            </div>
+            <button 
+              className="btn-secondary"
+              onClick={() => { setSelectedCohort(null); setRoster([]); }}
+              style={{ padding: '6px 12px', fontSize: '0.8rem' }}
+            >
+              Clear Detail
+            </button>
+          </div>
+
+          {loadingRoster ? (
+            <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', minHeight: '180px' }}>
+              <Loader2 className="animate-spin" size={28} />
+            </div>
+          ) : roster.length === 0 ? (
+            <div style={{ color: 'var(--text-muted)', textAlign: 'center', padding: '20px' }}>No logs recorded for this class.</div>
+          ) : (
+            <div style={{ overflowX: 'auto', maxHeight: 'calc(100vh - 280px)', overflowY: 'auto' }}>
+              <table className="student-table" style={{ width: '100%', borderCollapse: 'collapse', textAlign: 'left' }}>
+                <thead style={{ position: 'sticky', top: 0, zIndex: 10, background: 'var(--bg-glass-active)', backdropFilter: 'blur(10px)', borderBottom: '1px solid var(--border-glass)' }}>
+                  <tr style={{ background: 'var(--table-header-bg)', borderBottom: '1px solid var(--border-glass)' }}>
+                    <th style={{ padding: '16px 20px', fontSize: '0.75rem', fontWeight: 700, color: 'var(--text-muted)', textTransform: 'uppercase' }}>Roll No</th>
+                    <th style={{ padding: '16px 20px', fontSize: '0.75rem', fontWeight: 700, color: 'var(--text-muted)', textTransform: 'uppercase' }}>Admission No</th>
+                    <th style={{ padding: '16px 20px', fontSize: '0.75rem', fontWeight: 700, color: 'var(--text-muted)', textTransform: 'uppercase' }}>Student Name</th>
+                    <th style={{ padding: '16px 20px', fontSize: '0.75rem', fontWeight: 700, color: 'var(--text-muted)', textTransform: 'uppercase', textAlign: 'center' }}>Status</th>
+                    <th style={{ padding: '16px 20px', fontSize: '0.75rem', fontWeight: 700, color: 'var(--text-muted)', textTransform: 'uppercase' }}>Remarks</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {roster.map((stu) => {
+                    let statusBg = 'rgba(255,255,255,0.03)';
+                    let statusColor = 'var(--text-muted)';
+                    if (stu.attendanceStatus === 'Present') { statusBg = 'rgba(16,185,129,0.08)'; statusColor = '#10b981'; }
+                    else if (stu.attendanceStatus === 'Absent') { statusBg = 'rgba(239,68,68,0.08)'; statusColor = '#ef4444'; }
+                    else if (stu.attendanceStatus === 'Leave') { statusBg = 'rgba(245,158,11,0.08)'; statusColor = '#f59e0b'; }
+                    else if (stu.attendanceStatus === 'Late') { statusBg = 'rgba(249,115,22,0.08)'; statusColor = '#f97316'; }
+                    
+                    return (
+                      <tr key={stu.id} style={{ borderBottom: '1px solid var(--border-glass)' }} className="table-row-hover">
+                        <td style={{ padding: '14px 20px', fontSize: '0.85rem', fontWeight: 700 }}>{stu.rollNumber}</td>
+                        <td style={{ padding: '14px 20px', fontSize: '0.85rem', color: 'var(--text-muted)' }}>{stu.admissionNumber}</td>
+                        <td style={{ padding: '14px 20px', fontSize: '0.85rem', fontWeight: 700 }}>{stu.fullName}</td>
+                        <td style={{ padding: '14px 20px', textAlign: 'center' }}>
+                          <span style={{ 
+                            padding: '6px 12px', borderRadius: '20px', fontSize: '0.75rem', fontWeight: 700, 
+                            background: statusBg, color: statusColor, display: 'inline-block', minWidth: '80px',
+                            border: `1px solid ${statusColor}22`
+                          }}>
+                            {stu.attendanceStatus || 'Not Marked'}
+                          </span>
+                        </td>
+                        <td style={{ padding: '14px 20px', fontSize: '0.8rem', color: 'var(--text-muted)' }}>{stu.remarks || '-'}</td>
+                      </tr>
+                    );
+                  })}
+                </tbody>
+              </table>
+            </div>
+          )}
+        </div>
+      )}
 
     </div>
   );

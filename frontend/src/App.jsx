@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import Sidebar from './components/Sidebar';
 import Header from './components/Header';
 import DashboardOverview from './pages/DashboardOverview';
@@ -18,6 +18,8 @@ import TeacherLogin from './pages/TeacherLogin';
 import TeacherPanel from './pages/TeacherPanel';
 import AccountantLogin from './pages/AccountantLogin';
 import AccountantPanel from './pages/AccountantPanel';
+import ExpenseLogin from './pages/ExpenseLogin';
+import ExpensePanel from './pages/ExpensePanel';
 
 
 import './App.css';
@@ -26,7 +28,7 @@ export default function App() {
   const [activeView, setActiveView] = useState('overview');
   const [isCollapsed, setIsCollapsed] = useState(false);
   const [mobileOpen, setMobileOpen] = useState(false);
-  const [theme, setTheme] = useState('dark');
+  const [theme, setTheme] = useState('light');
   const [schoolDetails, setSchoolDetails] = useState({ name: 'Aether Academy', principal: 'Alex Devlin' });
   const [isAdmin, setIsAdmin] = useState(false);
   const [showAdminLogin, setShowAdminLogin] = useState(false);
@@ -40,7 +42,18 @@ export default function App() {
   const [isAccountant, setIsAccountant] = useState(false);
   const [showAccountantLogin, setShowAccountantLogin] = useState(false);
   const [accountantView, setAccountantView] = useState('dashboard');
+  const [isExpense, setIsExpense] = useState(false);
+  const [showExpenseLogin, setShowExpenseLogin] = useState(false);
+  const [expenseView, setExpenseView] = useState('dashboard');
+  const initialised = useRef(false);
 
+  const saveSession = (role) => {
+    sessionStorage.setItem('portal_role', role);
+  };
+
+  const clearSession = () => {
+    sessionStorage.removeItem('portal_role');
+  };
 
   const fetchSchoolDetails = async () => {
     try {
@@ -85,10 +98,24 @@ export default function App() {
       setShowTeacherLogin(true);
     } else if (path === '/accountant/login') {
       setShowAccountantLogin(true);
+    } else if (path === '/expense/login') {
+      setShowExpenseLogin(true);
     } else if (path === '/register-student') setActiveView('register-student');
     else if (path === '/add-teacher') setActiveView('add-teacher');
     else if (path === '/add-staff') setActiveView('add-staff');
     else if (path === '/teacher-list') setActiveView('teacher-list');
+
+    const savedRole = sessionStorage.getItem('portal_role');
+    if (savedRole) {
+      switch (savedRole) {
+        case 'admin': setIsAdmin(true); setAdminView('overview'); break;
+        case 'recep': setIsRecep(true); setRecepView('overview'); break;
+        case 'teacher': setIsTeacher(true); setTeacherView('dashboard'); break;
+        case 'accountant': setIsAccountant(true); setAccountantView('dashboard'); break;
+        case 'expense': setIsExpense(true); setExpenseView('dashboard'); break;
+      }
+    }
+    initialised.current = true;
   }, []);
 
   useEffect(() => {
@@ -100,12 +127,16 @@ export default function App() {
       window.history.pushState(null, '', '/teacher/login');
     } else if (showAccountantLogin) {
       window.history.pushState(null, '', '/accountant/login');
+    } else if (showExpenseLogin) {
+      window.history.pushState(null, '', '/expense/login');
     } else if (isAdmin) {
       window.history.pushState(null, '', '/admin');
     } else if (isRecep) {
       window.history.pushState(null, '', '/receptionist');
     } else if (isAccountant) {
       window.history.pushState(null, '', '/accountant');
+    } else if (isExpense) {
+      window.history.pushState(null, '', '/expense');
     } else if (isTeacher) {
       window.history.pushState(null, '', '/teacher');
     } else if (activeView === 'register-student') {
@@ -117,7 +148,7 @@ export default function App() {
     } else {
       window.history.pushState(null, '', `/${activeView}`);
     }
-  }, [activeView, showAdminLogin, isAdmin, showRecepLogin, isRecep, showAccountantLogin, isAccountant]);
+  }, [activeView, showAdminLogin, isAdmin, showRecepLogin, isRecep, showAccountantLogin, isAccountant, showExpenseLogin, isExpense]);
 
   const handleAdminLogin = () => {
     setIsAdmin(true);
@@ -126,13 +157,15 @@ export default function App() {
     setShowRecepLogin(false);
     setIsTeacher(false);
     setShowTeacherLogin(false);
-    setAdminView('dashboard');
+    setAdminView('overview');
+    saveSession('admin');
   };
 
   const handleAdminLogout = () => {
     setIsAdmin(false);
-    setAdminView('dashboard');
+    setAdminView('overview');
     setActiveView('overview');
+    clearSession();
   };
 
   const handleRecepLogin = () => {
@@ -142,13 +175,15 @@ export default function App() {
     setShowAdminLogin(false);
     setIsTeacher(false);
     setShowTeacherLogin(false);
-    setRecepView('dashboard');
+    setRecepView('overview');
+    saveSession('recep');
   };
 
   const handleRecepLogout = () => {
     setIsRecep(false);
-    setRecepView('dashboard');
+    setRecepView('overview');
     setActiveView('overview');
+    clearSession();
   };
 
   const handleTeacherLogin = () => {
@@ -159,12 +194,14 @@ export default function App() {
     setIsRecep(false);
     setShowRecepLogin(false);
     setTeacherView('dashboard');
+    saveSession('teacher');
   };
 
   const handleTeacherLogout = () => {
     setIsTeacher(false);
     setTeacherView('dashboard');
     setActiveView('overview');
+    clearSession();
   };
 
   const handleAccountantLogin = () => {
@@ -176,16 +213,46 @@ export default function App() {
     setShowRecepLogin(false);
     setIsTeacher(false);
     setShowTeacherLogin(false);
+    setIsExpense(false);
+    setShowExpenseLogin(false);
     setAccountantView('dashboard');
+    saveSession('accountant');
   };
 
   const handleAccountantLogout = () => {
     setIsAccountant(false);
     setAccountantView('dashboard');
     setActiveView('overview');
+    clearSession();
   };
 
+  const handleExpenseLogin = () => {
+    setIsExpense(true);
+    setShowExpenseLogin(false);
+    setIsAdmin(false);
+    setShowAdminLogin(false);
+    setIsRecep(false);
+    setShowRecepLogin(false);
+    setIsTeacher(false);
+    setShowTeacherLogin(false);
+    setIsAccountant(false);
+    setShowAccountantLogin(false);
+    setExpenseView('dashboard');
+    saveSession('expense');
+  };
 
+  const handleExpenseLogout = () => {
+    setIsExpense(false);
+    setExpenseView('dashboard');
+    setActiveView('overview');
+    clearSession();
+  };
+
+  const handleExpenseToAdmin = () => {
+    setIsAdmin(true);
+    setIsExpense(false);
+    setAdminView('dashboard');
+  };
 
   const renderCurrentView = () => {
     if (showAdminLogin) {
@@ -212,6 +279,10 @@ export default function App() {
       return <AccountantLogin onLogin={handleAccountantLogin} onCancel={() => { setShowAccountantLogin(false); setActiveView('overview'); }} />;
     }
 
+    if (showExpenseLogin) {
+      return <ExpenseLogin onLogin={handleExpenseLogin} onCancel={() => { setShowExpenseLogin(false); setActiveView('overview'); }} />;
+    }
+
     if (isTeacher) {
       return <TeacherPanel setActiveView={setActiveView} onLogout={handleTeacherLogout} teacherView={teacherView} setTeacherView={setTeacherView} />;
     }
@@ -220,31 +291,67 @@ export default function App() {
       return <AccountantPanel setActiveView={setActiveView} onLogout={handleAccountantLogout} accountantView={accountantView} setAccountantView={setAccountantView} />;
     }
 
+    if (isExpense) {
+      return <ExpensePanel setActiveView={setActiveView} onLogout={handleExpenseLogout} expenseView={expenseView} setExpenseView={setExpenseView} onAccessAdmin={handleExpenseToAdmin} />;
+    }
+
     switch (activeView) {
       case 'overview':
-        return <DashboardOverview setActiveView={setActiveView} />;
+        return (
+          <DashboardOverview 
+            setActiveView={setActiveView} 
+            onQuickAction={(action) => {
+              if (action === 'add-student') setActiveView('register-student');
+              else if (action === 'add-teacher') setActiveView('add-teacher');
+              else if (action === 'add-staff') setActiveView('add-staff');
+              else if (action === 'collect-fee') {
+                setShowAccountantLogin(true);
+              } else if (action === 'add-expense') {
+                setShowExpenseLogin(true);
+              } else if (action === 'mark-attendance') {
+                setShowTeacherLogin(true);
+              }
+            }} 
+          />
+        );
       case 'students':
-        return <StudentDirectory />;
+        return <StudentDirectory readOnly={true} onAddClick={() => setActiveView('register-student')} />;
       case 'register-student':
         return <RegisterStudent setActiveView={setActiveView} />;
       case 'add-teacher':
         return <AddTeacher setActiveView={setActiveView} />;
       case 'teacher-list':
-        return <TeacherList setActiveView={setActiveView} />;
+        return <TeacherList setActiveView={setActiveView} readOnly={true} onAddClick={() => setActiveView('add-teacher')} />;
       case 'add-staff':
         return <AddStaff setActiveView={setActiveView} />;
       case 'staff':
-        return <StaffDirectory />;
+        return <StaffDirectory readOnly={true} onAddClick={() => setActiveView('add-staff')} />;
       case 'finance':
         return <FinancePortal />;
       case 'school':
         return <SchoolProfile schoolDetails={schoolDetails} fetchSchoolDetails={fetchSchoolDetails} />;
       default:
-        return <DashboardOverview setActiveView={setActiveView} />;
+        return (
+          <DashboardOverview 
+            setActiveView={setActiveView} 
+            onQuickAction={(action) => {
+              if (action === 'add-student') setActiveView('register-student');
+              else if (action === 'add-teacher') setActiveView('add-teacher');
+              else if (action === 'add-staff') setActiveView('add-staff');
+              else if (action === 'collect-fee') {
+                setShowAccountantLogin(true);
+              } else if (action === 'add-expense') {
+                setShowExpenseLogin(true);
+              } else if (action === 'mark-attendance') {
+                setShowTeacherLogin(true);
+              }
+            }} 
+          />
+        );
     }
   };
 
-  const showSidebar = !showAdminLogin && !showRecepLogin && !showTeacherLogin && !showAccountantLogin;
+  const showSidebar = !showAdminLogin && !showRecepLogin && !showTeacherLogin && !showAccountantLogin && !showExpenseLogin;
 
   return (
     <div className="app-container">
@@ -257,21 +364,31 @@ export default function App() {
               setShowRecepLogin(false);
               setShowTeacherLogin(false);
               setShowAccountantLogin(false);
+              setShowExpenseLogin(false);
             } else if (view === 'recep-login') {
               setShowRecepLogin(true);
               setShowAdminLogin(false);
               setShowTeacherLogin(false);
               setShowAccountantLogin(false);
+              setShowExpenseLogin(false);
             } else if (view === 'teacher-login') {
               setShowTeacherLogin(true);
               setShowAdminLogin(false);
               setShowRecepLogin(false);
               setShowAccountantLogin(false);
+              setShowExpenseLogin(false);
             } else if (view === 'accountant-login') {
               setShowAccountantLogin(true);
               setShowAdminLogin(false);
               setShowRecepLogin(false);
               setShowTeacherLogin(false);
+              setShowExpenseLogin(false);
+            } else if (view === 'expense-login') {
+              setShowExpenseLogin(true);
+              setShowAdminLogin(false);
+              setShowRecepLogin(false);
+              setShowTeacherLogin(false);
+              setShowAccountantLogin(false);
             } else {
               setActiveView(view);
             }
@@ -297,6 +414,11 @@ export default function App() {
           onAccountantLogout={handleAccountantLogout}
           accountantView={accountantView}
           setAccountantView={setAccountantView}
+          isExpense={isExpense}
+          onExpenseLogout={handleExpenseLogout}
+          expenseView={expenseView}
+          setExpenseView={setExpenseView}
+          onAccessAdmin={handleExpenseToAdmin}
         />
       )}
 
@@ -316,8 +438,8 @@ export default function App() {
         />
       )}
 
-      <div className="app-content" style={(showAdminLogin || showRecepLogin || showTeacherLogin || showAccountantLogin) ? { padding: 0 } : {}}>
-        {!showAdminLogin && !showRecepLogin && !showTeacherLogin && !showAccountantLogin && (
+      <div className="app-content" style={(showAdminLogin || showRecepLogin || showTeacherLogin || showAccountantLogin || showExpenseLogin) ? { padding: 0 } : {}}>
+        {!showAdminLogin && !showRecepLogin && !showTeacherLogin && !showAccountantLogin && !showExpenseLogin && (
           <Header
             activeView={activeView}
             isCollapsed={isCollapsed}
@@ -327,10 +449,50 @@ export default function App() {
             theme={theme}
             setTheme={setTheme}
             schoolDetails={schoolDetails}
+            isAdmin={isAdmin}
+            isAccountant={isAccountant}
+            isRecep={isRecep}
+            isTeacher={isTeacher}
+            isExpense={isExpense}
+            setActiveView={(view) => {
+              if (view === 'admin-login') {
+                setShowAdminLogin(true);
+                setShowRecepLogin(false);
+                setShowTeacherLogin(false);
+                setShowAccountantLogin(false);
+                setShowExpenseLogin(false);
+              } else if (view === 'recep-login') {
+                setShowRecepLogin(true);
+                setShowAdminLogin(false);
+                setShowTeacherLogin(false);
+                setShowAccountantLogin(false);
+                setShowExpenseLogin(false);
+              } else if (view === 'teacher-login') {
+                setShowTeacherLogin(true);
+                setShowAdminLogin(false);
+                setShowRecepLogin(false);
+                setShowAccountantLogin(false);
+                setShowExpenseLogin(false);
+              } else if (view === 'accountant-login') {
+                setShowAccountantLogin(true);
+                setShowAdminLogin(false);
+                setShowRecepLogin(false);
+                setShowTeacherLogin(false);
+                setShowExpenseLogin(false);
+              } else if (view === 'expense-login') {
+                setShowExpenseLogin(true);
+                setShowAdminLogin(false);
+                setShowRecepLogin(false);
+                setShowTeacherLogin(false);
+                setShowAccountantLogin(false);
+              } else {
+                setActiveView(view);
+              }
+            }}
           />
         )}
 
-        <main style={(showAdminLogin || showRecepLogin || showTeacherLogin || showAccountantLogin) ? { flex: 1, display: 'flex' } : { flex: 1, marginTop: '10px' }}>
+        <main style={(showAdminLogin || showRecepLogin || showTeacherLogin || showAccountantLogin || showExpenseLogin) ? { flex: 1, display: 'flex' } : { flex: 1, marginTop: '10px' }}>
           {renderCurrentView()}
         </main>
       </div>

@@ -1,9 +1,9 @@
 import React, { useState } from 'react';
-import { Shield, Mail, Lock, Eye, EyeOff, AlertCircle } from 'lucide-react';
+import { Wallet, Mail, Lock, Eye, EyeOff, AlertCircle } from 'lucide-react';
 
-export default function AdminLogin({ onLogin, onCancel }) {
-  const [email, setEmail] = useState('');
-  const [password, setPassword] = useState('');
+export default function ExpenseLogin({ onLogin, onCancel }) {
+   const [email, setEmail] = useState('uttam306115@gmail.com');
+  const [password, setPassword] = useState('uttam@2004');
   const [showPassword, setShowPassword] = useState(false);
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
@@ -14,10 +14,19 @@ export default function AdminLogin({ onLogin, onCancel }) {
     setLoading(true);
 
     setTimeout(() => {
-      if (email === 'uttam306115@gmail.com' && password === 'uttam@2004') {
+      // Accept user fallbacks + official expense manager account
+      const isValidEmail = 
+        email === 'expense@school.com' || 
+        email === 'uttam306115@gmail.com' || 
+        email === 'uttam2004@gmail.com';
+      const isValidPassword = 
+        password === 'uttam@2004' || 
+        password === 'expense@123';
+
+      if (isValidEmail && isValidPassword) {
         onLogin();
       } else {
-        setError('Invalid email or password. Please try again.');
+        setError('Invalid email or password. Use uttam306115@gmail.com / uttam@2004');
       }
       setLoading(false);
     }, 800);
@@ -27,11 +36,11 @@ export default function AdminLogin({ onLogin, onCancel }) {
     <div className="admin-login-wrapper">
       <div className="admin-login-card glass-panel">
         <div className="admin-login-header">
-          <div className="admin-login-icon">
-            <Shield size={32} />
+          <div className="admin-login-icon" style={{ background: 'linear-gradient(135deg, hsl(var(--color-danger)) 0%, hsl(var(--color-warning)) 100%)' }}>
+            <Wallet size={32} />
           </div>
-          <h1>Admin Dashboard</h1>
-          <p>Sign in to access the administration dashboard</p>
+          <h1>Expense Management Panel</h1>
+          <p>Sign in to record & approve academy expenses</p>
         </div>
 
         <form onSubmit={handleSubmit} className="admin-login-form">
@@ -49,7 +58,7 @@ export default function AdminLogin({ onLogin, onCancel }) {
               <input
                 type="email"
                 className="form-control"
-                placeholder="admin@example.com"
+                placeholder="uttam306115@gmail.com"
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
                 required
@@ -64,7 +73,7 @@ export default function AdminLogin({ onLogin, onCancel }) {
               <input
                 type={showPassword ? 'text' : 'password'}
                 className="form-control"
-                placeholder="Enter your password"
+                placeholder="uttam@2004"
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
                 required
@@ -83,12 +92,13 @@ export default function AdminLogin({ onLogin, onCancel }) {
             type="submit"
             className="btn-primary admin-login-btn"
             disabled={loading}
+            style={{ background: 'linear-gradient(135deg, hsl(var(--color-danger)) 0%, hsl(var(--color-warning)) 100%)' }}
           >
             {loading ? (
               <span className="admin-login-spinner"></span>
             ) : (
               <>
-                <Shield size={18} />
+                <Wallet size={18} />
                 Sign In
               </>
             )}
@@ -100,12 +110,12 @@ export default function AdminLogin({ onLogin, onCancel }) {
             className="btn-secondary"
             style={{ width: '100%', justifyContent: 'center', marginTop: '12px', padding: '14px 24px', fontSize: '0.95rem' }}
           >
-            Back to Main Dashboard
+            Return to Main Dashboard
           </button>
         </form>
 
         <div className="admin-login-footer">
-          <span>Authorized personnel only</span>
+          <span>Expense Dashboard access only</span>
         </div>
       </div>
     </div>

@@ -3,10 +3,11 @@ import {
   Search, 
   Mail, 
   Trash2,
-  UserCog
+  UserCog,
+  Plus
 } from 'lucide-react';
 
-export default function StaffDirectory({ readOnly = true }) {
+export default function StaffDirectory({ readOnly = true, onAddClick }) {
   const [staffList, setStaffList] = useState([]);
   const [loading, setLoading] = useState(true);
   const [searchQuery, setSearchQuery] = useState('');
@@ -49,6 +50,71 @@ export default function StaffDirectory({ readOnly = true }) {
     const matchesRole = roleFilter === 'All' || s.role === roleFilter;
     return matchesSearch && matchesRole;
   });
+
+  const isSearchOrFilterActive = searchQuery !== '' || roleFilter !== 'All';
+
+  if (!loading && staffList.length === 0 && !isSearchOrFilterActive) {
+    return (
+      <div className="animate-slide-up" style={{ 
+        display: 'flex', 
+        flexDirection: 'column', 
+        alignItems: 'center', 
+        justifyContent: 'center', 
+        padding: '80px 24px', 
+        textAlign: 'center',
+        gap: '24px',
+        width: '100%'
+      }}>
+        <div className="glass-panel" style={{
+          padding: '48px 32px',
+          maxWidth: '500px',
+          width: '100%',
+          display: 'flex',
+          flexDirection: 'column',
+          alignItems: 'center',
+          gap: '20px',
+          borderRadius: '24px',
+          boxShadow: 'var(--shadow-lg)'
+        }}>
+          <div style={{
+            padding: '20px',
+            borderRadius: '50%',
+            background: 'rgba(hsl(var(--color-primary)), 0.1)',
+            color: 'hsl(var(--color-primary))',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center'
+          }}>
+            <UserCog size={48} />
+          </div>
+          <div>
+            <h3 style={{ fontSize: '1.5rem', fontWeight: 800, margin: '0 0 8px 0', color: 'var(--text-main)' }}>No staff members found</h3>
+            <p style={{ fontSize: '0.95rem', color: 'var(--text-muted)', margin: 0, lineHeight: 1.5 }}>
+              Add your first staff member to get started with the School Management System.
+            </p>
+          </div>
+          {!readOnly && onAddClick && (
+            <button 
+              onClick={onAddClick}
+              className="btn-primary"
+              style={{ 
+                padding: '12px 24px', 
+                borderRadius: '12px', 
+                fontWeight: 600, 
+                display: 'flex', 
+                alignItems: 'center', 
+                gap: '8px',
+                fontSize: '0.9rem',
+                cursor: 'pointer'
+              }}
+            >
+              <Plus size={16} /> Add Staff Member
+            </button>
+          )}
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="animate-slide-up" style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>

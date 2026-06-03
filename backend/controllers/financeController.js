@@ -30,309 +30,7 @@ const DEFAULT_TEACHER_DESIGNATIONS = new Set([
 
 // Auto-seeding helper for mock finance records
 const autoSeedFinance = (db) => {
-  try {
-    let modified = false;
-
-    // 1. Fee Structures
-    if (!db.feeStructures || db.feeStructures.length === 0) {
-      console.log('--- Seeding default fee structures ---');
-      const classes = ['I','II','III','IV','V','VI','VII','VIII','IX','X','XI','XII'];
-      db.feeStructures = classes.map((c, idx) => {
-        const factor = idx + 1;
-        const admissionFee = 3000 + factor * 500;
-        const tuitionFee = 5000 + factor * 1200;
-        const examFee = 1000 + factor * 100;
-        const transportFee = 2000;
-        const libraryFee = 500 + factor * 50;
-        const otherCharges = 500;
-        const totalFee = admissionFee + tuitionFee + examFee + transportFee + libraryFee + otherCharges;
-        return {
-          id: `FSTR-${c}`,
-          studentClass: c,
-          admissionFee,
-          tuitionFee,
-          examFee,
-          transportFee,
-          hostelFee: 0,
-          libraryFee,
-          otherCharges,
-          totalFee,
-          updatedAt: new Date().toISOString()
-        };
-      });
-      modified = true;
-    }
-
-    // 2. Salary Structures (seeding disabled to start with clean state as requested)
-    if (!db.salaryStructures) {
-      db.salaryStructures = [];
-      modified = true;
-    }
-
-    // 3. Student Fees (Collection invoices)
-    if ((!db.fees || db.fees.length === 0) && db.students && db.students.length > 0) {
-      console.log('--- Seeding default student fees (collections) ---');
-      const sampleStudents = db.students.slice(0, 60);
-      const feeTypes = ['Tuition Fee', 'Admission Fee', 'Exam Fee', 'Transport Fee'];
-      const paymentMethods = ['Cash', 'UPI', 'Bank Transfer', 'Cheque', 'Online'];
-      
-      const getPastDate = (monthsAgo, sIdx) => {
-        const d = new Date();
-        d.setMonth(d.getMonth() - monthsAgo);
-        d.setDate(1 + (sIdx % 28));
-        return d.toISOString().split('T')[0];
-      };
-
-      sampleStudents.forEach((stu, sIdx) => {
-        const fstr = db.feeStructures.find(f => f.studentClass === stu.studentClass) || db.feeStructures[0];
-        const recordsCount = sIdx % 3 === 0 ? 2 : 1;
-        for (let r = 0; r < recordsCount; r++) {
-          const feeType = r === 0 ? 'Tuition Fee' : feeTypes[(sIdx + r) % feeTypes.length];
-          
-          let amount = 12000;
-          if (feeType === 'Tuition Fee') amount = fstr.tuitionFee;
-          else if (feeType === 'Admission Fee') amount = fstr.admissionFee;
-          else if (feeType === 'Exam Fee') amount = fstr.examFee;
-          else if (feeType === 'Transport Fee') amount = fstr.transportFee;
-
-          const discount = sIdx % 7 === 0 ? 1000 : 0;
-          const fine = sIdx % 11 === 0 ? 500 : 0;
-          const totalAmount = amount - discount + fine;
-          
-          let paymentStatus = 'Paid';
-          if (sIdx % 5 === 0) paymentStatus = 'Pending';
-          else if (sIdx % 8 === 0) paymentStatus = 'Partial';
-
-          const paidAmount = paymentStatus === 'Paid' ? totalAmount : (paymentStatus === 'Partial' ? Math.floor(totalAmount / 2) : 0);
-          const dueAmount = totalAmount - paidAmount;
-          
-          const receiptNumber = `RCP-${new Date().getFullYear()}-${10000 + sIdx * 5 + r}`;
-          const paymentMethod = paymentMethods[(sIdx + r) % paymentMethods.length];
-          const transactionId = `TXN-${Math.floor(100000000 + Math.random() * 900000000)}`;
-          
-          const monthsAgo = sIdx % 6;
-          const paymentDate = getPastDate(monthsAgo, sIdx);
-
-          db.fees.push({
-            feeId: `FEE-${Date.now()}-${sIdx}-${r}`,
-            studentId: stu.id,
-            studentName: stu.fullName || stu.name,
-            admissionNumber: stu.admissionNumber,
-            studentClass: stu.studentClass,
-            section: stu.section,
-            feeType,
-            amount,
-            discount,
-            fine,
-            totalAmount,
-            paidAmount,
-            dueAmount,
-            paymentStatus,
-            paymentMethod,
-            transactionId,
-            receiptNumber,
-            paymentDate,
-            remarks: paymentStatus === 'Paid' ? 'Paid in full' : (paymentStatus === 'Partial' ? 'First installment' : 'Awaiting payment'),
-            createdAt: new Date(paymentDate).toISOString()
-          });
-        }
-      });
-      modified = true;
-    }
-
-    // 4. Teacher Payroll
-    if ((!db.payroll || db.payroll.length === 0) && db.teachers && db.teachers.length > 0) {
-      console.log('--- Seeding default payroll ---');
-      const sampleTeachers = db.teachers.slice(0, 10);
-      
-      const getPastDate = (monthsAgo) => {
-        const d = new Date();
-        d.setMonth(d.getMonth() - monthsAgo);
-        d.setDate(28);
-        return d.toISOString().split('T')[0];
-      };
-
-      sampleTeachers.forEach((t, tIdx) => {
-        const designation = tIdx === 0 ? 'Principal' : (tIdx < 3 ? 'Senior Teacher' : 'Teacher');
-        const sstr = db.salaryStructures.find(s => s.designation === designation) || db.salaryStructures[2];
-        
-        for (let m = 1; m <= 3; m++) {
-          const paymentDate = getPastDate(m);
-          const netSalary = sstr.basicSalary + sstr.allowances - sstr.deductions - sstr.pfDeduction - sstr.taxDeduction;
-
-          db.payroll.push({
-            payrollId: `PAY-${Date.now()}-${tIdx}-${m}`,
-            teacherId: t.id,
-            teacherName: t.fullName || t.name,
-            employeeId: t.employeeId || `EMP-${1000 + tIdx}`,
-            designation,
-            department: t.department || 'Academics',
-            basicSalary: sstr.basicSalary,
-            allowances: sstr.allowances,
-            bonus: 0,
-            deductions: sstr.deductions,
-            pfDeduction: sstr.pfDeduction,
-            taxDeduction: sstr.taxDeduction,
-            netSalary,
-            paymentStatus: 'Paid',
-            paymentDate,
-            paymentMethod: 'Bank Transfer',
-            createdAt: new Date(paymentDate).toISOString()
-          });
-
-          db.expenses.push({
-            expenseId: `EXP-PAY-${Date.now()}-${tIdx}-${m}`,
-            title: `Salary - ${t.fullName || t.name}`,
-            category: 'Salary',
-            amount: netSalary,
-            description: `Monthly salary payout for ${t.fullName || t.name} (${designation})`,
-            date: paymentDate,
-            paidBy: 'Accountant',
-            attachment: '',
-            createdAt: new Date(paymentDate).toISOString()
-          });
-        }
-      });
-      modified = true;
-    }
-
-    // 5. Operating Expenses
-    if (!db.expenses || db.expenses.length === 0 || db.expenses.filter(e => e.category !== 'Salary').length === 0) {
-      console.log('--- Seeding default operating expenses ---');
-      const expenseTemplates = [
-        { title: 'Electricity Bill', category: 'Utilities', amount: 8500, description: 'Main school building power bill' },
-        { title: 'Water Bill', category: 'Utilities', amount: 2400, description: 'Campus water supply charges' },
-        { title: 'Fiber Internet lease', category: 'Utilities', amount: 3500, description: 'Monthly school internet line' },
-        { title: 'Science Lab Chemicals', category: 'Lab Equipment', amount: 15000, description: 'Purchase of chemistry lab reagents' },
-        { title: 'Office Stationery', category: 'Stationery', amount: 4800, description: 'Paper, markers, files' },
-        { title: 'Sports Kits', category: 'Sports Gear', amount: 12000, description: 'New kits for sports teams' },
-        { title: 'Library Book Purchase', category: 'Library', amount: 18000, description: 'New academic textbooks' },
-        { title: 'Computer Lab Maintenance', category: 'Maintenance', amount: 22000, description: 'RAM upgrades and hardware service' },
-        { title: 'Annual Day Stage Setup', category: 'Events', amount: 45000, description: 'Decor, lighting, and sound rental' },
-        { title: 'School Building Painting', category: 'Maintenance', amount: 75000, description: 'Repainting classroom corridors' }
-      ];
-
-      const getPastDate = (monthsAgo, idx) => {
-        const d = new Date();
-        d.setMonth(d.getMonth() - monthsAgo);
-        d.setDate(1 + (idx % 28));
-        return d.toISOString().split('T')[0];
-      };
-
-      expenseTemplates.forEach((exp, idx) => {
-        const monthsAgo = idx % 6;
-        const date = getPastDate(monthsAgo, idx);
-
-        db.expenses.push({
-          expenseId: `EXP-OPS-${Date.now()}-${idx}`,
-          title: exp.title,
-          category: exp.category,
-          amount: exp.amount,
-          description: exp.description,
-          date,
-          paidBy: 'Accountant',
-          attachment: '',
-          createdAt: new Date(date).toISOString()
-        });
-      });
-      modified = true;
-    }
-
-    // 6. (removed auto-seed - user creates manually via form)
-
-    // 7. Staff Payments
-    if ((!db.staffPayments || db.staffPayments.length === 0) && db.staff && db.staff.length > 0 && db.staffSalaryStructures && db.staffSalaryStructures.length > 0) {
-      console.log('--- Seeding default staff payments ---');
-      const sampleStaff = db.staff.slice(0, 15);
-      const getPastDate = (monthsAgo) => {
-        const d = new Date();
-        d.setMonth(d.getMonth() - monthsAgo);
-        d.setDate(28);
-        return d.toISOString().split('T')[0];
-      };
-
-      sampleStaff.forEach((s, sIdx) => {
-        const sstr = db.staffSalaryStructures.find(ss => ss.designation === s.role) || db.staffSalaryStructures[0];
-        for (let m = 1; m <= 3; m++) {
-          const paymentDate = getPastDate(m);
-          const netSalary = sstr.basicSalary + sstr.allowances + (sstr.bonus || 0) - sstr.deductions - sstr.pfDeduction - sstr.taxDeduction;
-
-          db.staffPayments.push({
-            paymentId: `SPAY-${Date.now()}-${sIdx}-${m}`,
-            staffId: s.id,
-            staffName: s.name,
-            staffRole: s.role,
-            department: s.department,
-            basicSalary: sstr.basicSalary,
-            allowances: sstr.allowances,
-            bonus: sstr.bonus || 0,
-            deductions: sstr.deductions,
-            pfDeduction: sstr.pfDeduction,
-            taxDeduction: sstr.taxDeduction,
-            netSalary,
-            paymentStatus: 'Paid',
-            paymentDate,
-            paymentMethod: 'Bank Transfer',
-            createdAt: new Date(paymentDate).toISOString()
-          });
-
-          db.expenses.push({
-            expenseId: `EXP-SPAY-${Date.now()}-${sIdx}-${m}`,
-            title: `Salary - ${s.name}`,
-            category: 'Salary',
-            amount: netSalary,
-            description: `Monthly salary payout for ${s.name} (${s.role})`,
-            date: paymentDate,
-            paidBy: 'Accountant',
-            attachment: '',
-            createdAt: new Date(paymentDate).toISOString()
-          });
-        }
-      });
-      modified = true;
-    }
-
-    // 8. Other Income
-    if (!db.income || db.income.length === 0) {
-      console.log('--- Seeding default other income ---');
-      const incomeTemplates = [
-        { source: 'Canteen Rent', amount: 15000, description: 'Monthly rent from canteen operator' },
-        { source: 'Alumni Association Donation', amount: 50000, description: 'Donation for library improvement' },
-        { source: 'Uniform Counter Sales', amount: 35000, description: 'Revenue from student uniform store' },
-        { source: 'Textbooks Commission', amount: 22000, description: 'Sale commission from textbook distributor' },
-        { source: 'Government Sports Grant', amount: 80000, description: 'Grant for sports grounds development' }
-      ];
-
-      const getPastDate = (monthsAgo, idx) => {
-        const d = new Date();
-        d.setMonth(d.getMonth() - monthsAgo);
-        d.setDate(1 + (idx % 28));
-        return d.toISOString().split('T')[0];
-      };
-
-      incomeTemplates.forEach((inc, idx) => {
-        const monthsAgo = idx % 6;
-        const date = getPastDate(monthsAgo, idx);
-
-        db.income.push({
-          incomeId: `INC-OPS-${Date.now()}-${idx}`,
-          source: inc.source,
-          amount: inc.amount,
-          description: inc.description,
-          date,
-          receivedBy: 'Accountant',
-          createdAt: new Date(date).toISOString()
-        });
-      });
-      modified = true;
-    }
-
-    if (modified) {
-      console.log('--- FINANCE TABLES SEEDED SUCCESSFULLY ---');
-    }
-  } catch (err) {
-    console.error('Error auto-seeding finance details:', err);
-  }
+  // disabled mock seeding
 };
 
 const removeDefaultStaffSalaryStructures = (db) => {
@@ -372,12 +70,7 @@ const readDb = () => {
     const removedDefaultStaffStructures = removeDefaultStaffSalaryStructures(db);
     const removedDefaultTeacherStructures = removeDefaultTeacherSalaryStructures(db);
 
-    // Trigger auto-seeding if fees are empty or staff payments missing
-    if (db.fees.length === 0 || !db.staffPayments || db.staffPayments.length === 0) {
-      autoSeedFinance(db);
-      // Write immediately to persist seeded data
-      fs.writeFileSync(DB_FILE, JSON.stringify(db, null, 2), 'utf8');
-    } else if (removedDefaultStaffStructures || removedDefaultTeacherStructures) {
+    if (removedDefaultStaffStructures || removedDefaultTeacherStructures) {
       fs.writeFileSync(DB_FILE, JSON.stringify(db, null, 2), 'utf8');
     }
 
@@ -976,7 +669,24 @@ export const getExpenses = (req, res) => {
 
 export const addExpense = (req, res) => {
   try {
-    const { title, category, amount, description, date, paidBy } = req.body;
+    const { 
+      title, 
+      category, 
+      subcategory,
+      amount, 
+      description, 
+      date, 
+      paymentDate,
+      paidBy, 
+      vendor,
+      paymentDetails,
+      status,
+      submittedBy,
+      approvedBy,
+      remarks,
+      notes,
+      attachment 
+    } = req.body;
 
     if (!title || !amount || !category) {
       return res.status(400).json({ error: 'Title, category, and amount are required.' });
@@ -988,22 +698,135 @@ export const addExpense = (req, res) => {
       expenseId: `EXP-${Date.now()}`,
       title,
       category,
+      subcategory: subcategory || '',
       amount: Number(amount) || 0,
       description: description || '',
       date: date || new Date().toISOString().split('T')[0],
+      paymentDate: paymentDate || '',
       paidBy: paidBy || 'Accountant',
-      attachment: '',
+      vendor: vendor || { name: '', contact: '', email: '', address: '' },
+      paymentDetails: paymentDetails || { method: 'Cash', transactionId: '', invoiceNumber: '' },
+      status: status || 'Pending',
+      submittedBy: submittedBy || 'Expense Management',
+      approvedBy: approvedBy || '',
+      remarks: remarks || '',
+      notes: notes || '',
+      attachment: attachment || '',
       createdAt: new Date().toISOString()
     };
 
     db.expenses.push(newExpense);
 
-    addActivity(db, 'finance', 'Expense Recorded', `₹${Number(amount).toLocaleString()} for ${title} (${category})`, 'rgb(var(--color-warning-rgb))', 'rgba(var(--color-warning-rgb), 0.1)');
+    addActivity(
+      db, 
+      'finance', 
+      'Expense Recorded', 
+      `₹${Number(amount).toLocaleString()} for ${title} (${category}) - Status: ${newExpense.status}`, 
+      newExpense.status === 'Approved' ? 'rgb(var(--color-success-rgb))' : 'rgb(var(--color-warning-rgb))', 
+      newExpense.status === 'Approved' ? 'rgba(var(--color-success-rgb), 0.1)' : 'rgba(var(--color-warning-rgb), 0.1)'
+    );
+
+    // Budget Limit Alert Check (Mock alert if amount exceeds 50000)
+    if (Number(amount) >= 50000) {
+      addActivity(
+        db,
+        'alert',
+        'High Expense Alert',
+        `High value expense submitted: ${title} (₹${Number(amount).toLocaleString()})`,
+        'rgb(var(--color-danger-rgb))',
+        'rgba(var(--color-danger-rgb), 0.1)'
+      );
+    }
+
     writeDb(db);
 
     res.status(201).json(newExpense);
   } catch (err) {
+    console.error('Error adding expense:', err);
     res.status(500).json({ error: 'Server error adding expense.' });
+  }
+};
+
+export const updateExpense = (req, res) => {
+  try {
+    const { id } = req.params;
+    const db = readDb();
+    
+    const idx = db.expenses.findIndex(e => e.expenseId === id);
+    if (idx === -1) {
+      return res.status(404).json({ error: 'Expense not found.' });
+    }
+
+    const currentExpense = db.expenses[idx];
+    const updatedExpense = {
+      ...currentExpense,
+      ...req.body,
+      // Ensure ID doesn't change
+      expenseId: currentExpense.expenseId,
+      amount: req.body.amount !== undefined ? Number(req.body.amount) : currentExpense.amount
+    };
+
+    db.expenses[idx] = updatedExpense;
+
+    // Track status change for activities
+    if (currentExpense.status !== updatedExpense.status) {
+      const color = updatedExpense.status === 'Approved' ? 'rgb(var(--color-success-rgb))' : 
+                    updatedExpense.status === 'Rejected' ? 'rgb(var(--color-danger-rgb))' : 'rgb(var(--color-warning-rgb))';
+      const bg = updatedExpense.status === 'Approved' ? 'rgba(var(--color-success-rgb), 0.1)' : 
+                 updatedExpense.status === 'Rejected' ? 'rgba(var(--color-danger-rgb), 0.1)' : 'rgba(var(--color-warning-rgb), 0.1)';
+      
+      addActivity(
+        db,
+        'finance',
+        `Expense ${updatedExpense.status}`,
+        `Expense "${updatedExpense.title}" (₹${Number(updatedExpense.amount || 0).toLocaleString()}) was ${updatedExpense.status.toLowerCase()} by ${updatedExpense.approvedBy || 'Manager'}`,
+        color,
+        bg
+      );
+    } else {
+      addActivity(
+        db,
+        'finance',
+        'Expense Updated',
+        `Expense details updated for "${updatedExpense.title}" (₹${Number(updatedExpense.amount || 0).toLocaleString()})`,
+        'hsl(var(--color-info))',
+        'rgba(hsl(var(--color-info)), 0.1)'
+      );
+    }
+
+    writeDb(db);
+    res.json(updatedExpense);
+  } catch (err) {
+    console.error('Error updating expense:', err);
+    res.status(500).json({ error: 'Server error updating expense.', details: err.message });
+  }
+};
+
+export const deleteExpense = (req, res) => {
+  try {
+    const { id } = req.params;
+    const db = readDb();
+
+    const idx = db.expenses.findIndex(e => e.expenseId === id);
+    if (idx === -1) {
+      return res.status(404).json({ error: 'Expense not found.' });
+    }
+
+    const removed = db.expenses.splice(idx, 1)[0];
+    addActivity(
+      db,
+      'alert',
+      'Expense Removed',
+      `Deleted expense record: ${removed.title} (₹${removed.amount.toLocaleString()})`,
+      'rgb(var(--color-danger-rgb))',
+      'rgba(var(--color-danger-rgb), 0.1)'
+    );
+
+    writeDb(db);
+    res.json({ success: true, message: `Removed expense: ${removed.title}` });
+  } catch (err) {
+    console.error('Error deleting expense:', err);
+    res.status(500).json({ error: 'Server error deleting expense.' });
   }
 };
 

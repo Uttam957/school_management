@@ -21,7 +21,7 @@ import {
   Info
 } from 'lucide-react';
 
-export default function StudentDirectory({ readOnly = true }) {
+export default function StudentDirectory({ readOnly = true, onAddClick }) {
   const [students, setStudents] = useState([]);
   const [loading, setLoading] = useState(true);
   const [totalCount, setTotalCount] = useState(0);
@@ -98,6 +98,71 @@ export default function StudentDirectory({ readOnly = true }) {
   const toggleSortOrder = () => {
     setSortOrder(prev => prev === 'asc' ? 'desc' : 'asc');
   };
+
+  const isSearchOrFilterActive = searchQuery !== '' || classFilter !== 'All' || sectionFilter !== 'All' || yearFilter !== 'All';
+
+  if (!loading && totalCount === 0 && !isSearchOrFilterActive) {
+    return (
+      <div className="animate-slide-up" style={{ 
+        display: 'flex', 
+        flexDirection: 'column', 
+        alignItems: 'center', 
+        justifyContent: 'center', 
+        padding: '80px 24px', 
+        textAlign: 'center',
+        gap: '24px',
+        width: '100%'
+      }}>
+        <div className="glass-panel" style={{
+          padding: '48px 32px',
+          maxWidth: '500px',
+          width: '100%',
+          display: 'flex',
+          flexDirection: 'column',
+          alignItems: 'center',
+          gap: '20px',
+          borderRadius: '24px',
+          boxShadow: 'var(--shadow-lg)'
+        }}>
+          <div style={{
+            padding: '20px',
+            borderRadius: '50%',
+            background: 'rgba(hsl(var(--color-primary)), 0.1)',
+            color: 'hsl(var(--color-primary))',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center'
+          }}>
+            <User size={48} />
+          </div>
+          <div>
+            <h3 style={{ fontSize: '1.5rem', fontWeight: 800, margin: '0 0 8px 0', color: 'var(--text-main)' }}>No students found</h3>
+            <p style={{ fontSize: '0.95rem', color: 'var(--text-muted)', margin: 0, lineHeight: 1.5 }}>
+              Add your first student to get started with the School Management System.
+            </p>
+          </div>
+          {!readOnly && onAddClick && (
+            <button 
+              onClick={onAddClick}
+              className="btn-primary"
+              style={{ 
+                padding: '12px 24px', 
+                borderRadius: '12px', 
+                fontWeight: 600, 
+                display: 'flex', 
+                alignItems: 'center', 
+                gap: '8px',
+                fontSize: '0.9rem',
+                cursor: 'pointer'
+              }}
+            >
+              <Plus size={16} /> Register Student
+            </button>
+          )}
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="animate-slide-up" style={{ display: 'flex', flexDirection: 'column', gap: '20px', width: '100%' }}>
@@ -338,38 +403,19 @@ export default function StudentDirectory({ readOnly = true }) {
       {selectedStudent && (
         <div 
           onClick={() => setSelectedStudent(null)}
-          style={{
-            position: 'fixed',
-            top: 0,
-            left: 0,
-            right: 0,
-            bottom: 0,
-            background: 'rgba(0,0,0,0.4)',
-            backdropFilter: 'blur(4px)',
-            zIndex: 999
-          }}
+          className="drawer-overlay"
         >
           <div 
             onClick={(e) => e.stopPropagation()}
-            className="glass-panel"
+            className="drawer-panel"
             style={{
-              position: 'fixed',
-              top: 0,
-              right: 0,
-              bottom: 0,
-              width: '100%',
-              maxWidth: '460px',
-              height: '100vh',
               borderRadius: '24px 0 0 24px',
-              borderLeft: '1px solid var(--border-glass)',
-              background: 'var(--bg-sidebar)',
+              background: 'var(--bg-elevated)',
               padding: '30px',
               display: 'flex',
               flexDirection: 'column',
               gap: '24px',
-              zIndex: 1000,
-              overflowY: 'auto',
-              boxShadow: 'var(--shadow-lg)'
+              overflowY: 'auto'
             }}
           >
             

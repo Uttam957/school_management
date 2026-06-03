@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { 
   Users, 
   UserCheck, 
@@ -21,6 +21,7 @@ import StaffDirectory from './StaffDirectory';
 import DashboardOverview from './DashboardOverview';
 import { 
   MarkAttendanceView, 
+  AttendanceTrackerView,
   AttendanceHistoryView, 
   StudentReportsView, 
   ClassReportsView, 
@@ -40,6 +41,7 @@ import {
 import RegisterStudent from './RegisterStudent';
 import AddTeacher from './AddTeacher';
 import AddStaff from './AddStaff';
+import ExpensePanel from './ExpensePanel';
 
 export default function AdminPanel({ setActiveView, onLogout, adminView, setAdminView }) {
   // Roster/Filter States for Admin Attendance Panel
@@ -50,6 +52,13 @@ export default function AdminPanel({ setActiveView, onLogout, adminView, setAdmi
   const [attendanceTab, setAttendanceTab] = useState('mark-attendance');
   const [notification, setNotification] = useState(null);
 
+  // Sync adminView with attendanceTab
+  useEffect(() => {
+    if (adminView === 'attendance') {
+      setAttendanceTab('mark-attendance');
+    }
+  }, [adminView]);
+
   // Toast Notification helper
   const showToast = (message, type = 'success') => {
     setNotification({ message, type });
@@ -57,15 +66,39 @@ export default function AdminPanel({ setActiveView, onLogout, adminView, setAdmi
   };
 
   const renderAdminContent = () => {
+    if (adminView && adminView.startsWith('expense-')) {
+      const subView = adminView.replace('expense-', '');
+      return (
+        <ExpensePanel
+          setActiveView={setActiveView}
+          onLogout={() => setAdminView('overview')}
+          expenseView={subView}
+          setExpenseView={(v) => setAdminView('expense-' + v)}
+          hideHeader={true}
+        />
+      );
+    }
+
     switch (adminView) {
       case 'students':
-        return <StudentDirectory readOnly={false} />;
+        return <StudentDirectory readOnly={false} onAddClick={() => setAdminView('register-student')} />;
       case 'teachers':
-        return <TeacherList setActiveView={setActiveView} readOnly={false} />;
+        return <TeacherList setActiveView={setActiveView} readOnly={false} onAddClick={() => setAdminView('add-teacher')} />;
       case 'staff':
-        return <StaffDirectory readOnly={false} />;
+        return <StaffDirectory readOnly={false} onAddClick={() => setAdminView('add-staff')} />;
       case 'overview':
-        return <DashboardOverview />;
+        return (
+          <DashboardOverview 
+            onQuickAction={(action) => {
+              if (action === 'add-student') setAdminView('register-student');
+              else if (action === 'add-teacher') setAdminView('add-teacher');
+              else if (action === 'add-staff') setAdminView('add-staff');
+              else if (action === 'mark-attendance') setAdminView('attendance');
+              else if (action === 'collect-fee') setAdminView('collect-fees');
+              else if (action === 'add-expense') setAdminView('expenses');
+            }} 
+          />
+        );
       case 'collect-fees':
         return <CollectFeesView showToast={showToast} />;
       case 'fee-structure':
@@ -90,6 +123,18 @@ export default function AdminPanel({ setActiveView, onLogout, adminView, setAdmi
         return <AddTeacher setActiveView={(view) => { if (view === 'teachers') setAdminView('teachers'); else setActiveView(view); }} />;
       case 'add-staff':
         return <AddStaff setActiveView={(view) => { if (view === 'staff') setAdminView('staff'); else setActiveView(view); }} />;
+      case 'attendance-tracker':
+        return (
+          <AttendanceTrackerView 
+            date={selectedDate}
+            setDate={setSelectedDate}
+            showToast={showToast}
+          />
+        );
+      case 'class-reports':
+        return (
+          <ClassReportsView showToast={showToast} />
+        );
       case 'attendance':
         return (
           <div style={{ display: 'flex', flexDirection: 'column', gap: '24px' }}>
@@ -97,7 +142,10 @@ export default function AdminPanel({ setActiveView, onLogout, adminView, setAdmi
             {/* Sub-Tab Bar for Admin Attendance */}
             <div className="glass-panel" style={{ padding: '8px', display: 'flex', gap: '8px', overflowX: 'auto', borderRadius: '12px' }}>
               <button 
-                onClick={() => setAttendanceTab('mark-attendance')}
+                onClick={() => {
+                  setAttendanceTab('mark-attendance');
+                  setAdminView('attendance');
+                }}
                 className={`tab-btn-custom ${attendanceTab === 'mark-attendance' ? 'active' : ''}`}
                 style={{
                   display: 'flex', alignItems: 'center', gap: '8px', padding: '10px 16px', borderRadius: '8px', fontSize: '0.85rem', fontWeight: 600, border: 'none', cursor: 'pointer',
@@ -110,7 +158,10 @@ export default function AdminPanel({ setActiveView, onLogout, adminView, setAdmi
               </button>
               
               <button 
-                onClick={() => setAttendanceTab('attendance-history')}
+                onClick={() => {
+                  setAttendanceTab('attendance-history');
+                  setAdminView('attendance');
+                }}
                 className={`tab-btn-custom ${attendanceTab === 'attendance-history' ? 'active' : ''}`}
                 style={{
                   display: 'flex', alignItems: 'center', gap: '8px', padding: '10px 16px', borderRadius: '8px', fontSize: '0.85rem', fontWeight: 600, border: 'none', cursor: 'pointer',
@@ -123,7 +174,10 @@ export default function AdminPanel({ setActiveView, onLogout, adminView, setAdmi
               </button>
               
               <button 
-                onClick={() => setAttendanceTab('student-reports')}
+                onClick={() => {
+                  setAttendanceTab('student-reports');
+                  setAdminView('attendance');
+                }}
                 className={`tab-btn-custom ${attendanceTab === 'student-reports' ? 'active' : ''}`}
                 style={{
                   display: 'flex', alignItems: 'center', gap: '8px', padding: '10px 16px', borderRadius: '8px', fontSize: '0.85rem', fontWeight: 600, border: 'none', cursor: 'pointer',
@@ -136,20 +190,10 @@ export default function AdminPanel({ setActiveView, onLogout, adminView, setAdmi
               </button>
               
               <button 
-                onClick={() => setAttendanceTab('class-reports')}
-                className={`tab-btn-custom ${attendanceTab === 'class-reports' ? 'active' : ''}`}
-                style={{
-                  display: 'flex', alignItems: 'center', gap: '8px', padding: '10px 16px', borderRadius: '8px', fontSize: '0.85rem', fontWeight: 600, border: 'none', cursor: 'pointer',
-                  background: attendanceTab === 'class-reports' ? 'rgba(hsl(var(--color-danger)), 0.1)' : 'transparent',
-                  color: attendanceTab === 'class-reports' ? 'hsl(var(--color-danger))' : 'var(--text-muted)',
-                  transition: 'all 0.2s ease'
+                onClick={() => {
+                  setAttendanceTab('monthly-calendar');
+                  setAdminView('attendance');
                 }}
-              >
-                <TrendingUp size={16} /> Class Reports
-              </button>
-              
-              <button 
-                onClick={() => setAttendanceTab('monthly-calendar')}
                 className={`tab-btn-custom ${attendanceTab === 'monthly-calendar' ? 'active' : ''}`}
                 style={{
                   display: 'flex', alignItems: 'center', gap: '8px', padding: '10px 16px', borderRadius: '8px', fontSize: '0.85rem', fontWeight: 600, border: 'none', cursor: 'pointer',
@@ -208,10 +252,6 @@ export default function AdminPanel({ setActiveView, onLogout, adminView, setAdmi
               <StudentReportsView showToast={showToast} />
             )}
 
-            {attendanceTab === 'class-reports' && (
-              <ClassReportsView showToast={showToast} />
-            )}
-
             {attendanceTab === 'monthly-calendar' && (
               <MonthlyCalendarView showToast={showToast} />
             )}
@@ -219,84 +259,16 @@ export default function AdminPanel({ setActiveView, onLogout, adminView, setAdmi
         );
       default:
         return (
-          <div className="admin-dashboard-grid">
-            <div
-              className="glass-panel admin-dash-card"
-              onClick={() => setAdminView('students')}
-            >
-              <div className="admin-dash-icon" style={{ color: 'hsl(var(--color-primary))', background: 'rgba(hsl(var(--color-primary)), 0.1)' }}>
-                <Users size={36} />
-              </div>
-              <h3>Student List</h3>
-              <p>View and manage all registered students</p>
-            </div>
-
-            <div
-              className="glass-panel admin-dash-card"
-              onClick={() => setAdminView('teachers')}
-            >
-              <div className="admin-dash-icon" style={{ color: 'hsl(var(--color-secondary))', background: 'rgba(hsl(var(--color-secondary)), 0.1)' }}>
-                <UserCheck size={36} />
-              </div>
-              <h3>Teacher List</h3>
-              <p>View and manage all faculty members</p>
-            </div>
-
-            <div
-              className="glass-panel admin-dash-card"
-              onClick={() => setAdminView('staff')}
-            >
-              <div className="admin-dash-icon" style={{ color: 'hsl(var(--color-info))', background: 'rgba(hsl(var(--color-info)), 0.1)' }}>
-                <UserCog size={36} />
-              </div>
-              <h3>Staff List</h3>
-              <p>View and manage all staff members</p>
-            </div>
-
-            <div
-              className="glass-panel admin-dash-card"
-              onClick={() => setAdminView('attendance')}
-            >
-              <div className="admin-dash-icon" style={{ color: 'hsl(280, 85%, 65%)', background: 'rgba(168, 85, 247, 0.1)' }}>
-                <ClipboardCheck size={36} />
-              </div>
-              <h3>Attendance Manager</h3>
-              <p>Manage, track, analyze, and log student attendance schoolwide</p>
-            </div>
-
-            <div
-              className="glass-panel admin-dash-card"
-              onClick={() => setAdminView('overview')}
-            >
-              <div className="admin-dash-icon" style={{ color: 'hsl(var(--color-success))', background: 'rgba(hsl(var(--color-success)), 0.1)' }}>
-                <LayoutDashboard size={36} />
-              </div>
-              <h3>Main Dashboard</h3>
-              <p>View visual analytics and metrics overview</p>
-            </div>
-
-            <div
-              className="glass-panel admin-dash-card"
-              onClick={() => setAdminView('register-student')}
-            >
-              <div className="admin-dash-icon" style={{ color: 'hsl(140, 85%, 65%)', background: 'rgba(16, 185, 129, 0.1)' }}>
-                <UserPlus size={36} />
-              </div>
-              <h3>Admissions Registry</h3>
-              <p>Admit new students, teachers, or staff members schoolwide</p>
-            </div>
-
-            <div
-              className="glass-panel admin-dash-card"
-              onClick={() => setAdminView('reports')}
-            >
-              <div className="admin-dash-icon" style={{ color: 'hsl(30, 85%, 65%)', background: 'rgba(245, 158, 11, 0.1)' }}>
-                <Receipt size={36} />
-              </div>
-              <h3>Finance & Accounts</h3>
-              <p>Collect fees, manage school payrolls, track expenses and revenues</p>
-            </div>
-          </div>
+          <DashboardOverview 
+            onQuickAction={(action) => {
+              if (action === 'add-student') setAdminView('register-student');
+              else if (action === 'add-teacher') setAdminView('add-teacher');
+              else if (action === 'add-staff') setAdminView('add-staff');
+              else if (action === 'mark-attendance') setAdminView('attendance');
+              else if (action === 'collect-fee') setAdminView('collect-fees');
+              else if (action === 'add-expense') setAdminView('expenses');
+            }} 
+          />
         );
     }
   };
@@ -315,13 +287,14 @@ export default function AdminPanel({ setActiveView, onLogout, adminView, setAdmi
             <Shield size={24} />
           </div>
           <div>
-            <h2 style={{ fontSize: '1.25rem', fontWeight: 700 }}>Admin Panel</h2>
+            <h2 style={{ fontSize: '1.25rem', fontWeight: 700 }}>Admin Dashboard</h2>
             <p style={{ fontSize: '0.85rem', color: 'var(--text-muted)' }}>
-              {adminView === 'dashboard' ? 'Select a section to manage' : 
-               adminView === 'overview' ? 'Viewing Main Dashboard Overview' :
+              {adminView === 'overview' ? 'Viewing Main Dashboard Overview' :
                adminView === 'students' ? 'Viewing Registered Students Directory' :
                adminView === 'teachers' ? 'Viewing Faculty Registry' :
                adminView === 'staff' ? 'Viewing Non-Academic Staff Directory' :
+               adminView === 'attendance-tracker' ? 'Tracking Schoolwide Attendance Cohorts' :
+               adminView === 'class-reports' ? 'Evaluating Class-wise Attendance Reports' :
                adminView === 'attendance' ? 'Managing Schoolwide Attendance' :
                adminView === 'collect-fees' ? 'Collecting Student Fees' :
                adminView === 'fee-structure' ? 'Configuring Student Fee Structures' :
@@ -339,22 +312,21 @@ export default function AdminPanel({ setActiveView, onLogout, adminView, setAdmi
           </div>
         </div>
         <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
-          {adminView !== 'dashboard' && (
-            <button
-              onClick={() => setAdminView('dashboard')}
-              className="btn-secondary"
-              style={{ padding: '8px 16px', fontSize: '0.85rem' }}
-            >
-              Back to Dashboard
-            </button>
-          )}
           <button
             onClick={onLogout}
             className="btn-secondary"
             style={{ padding: '8px 16px', fontSize: '0.85rem', color: 'rgb(var(--color-danger-rgb))', display: 'flex', alignItems: 'center', gap: '6px' }}
           >
             <LogOut size={16} />
-            Back to Main Dashboard
+            Sign Out
+          </button>
+          <button
+            onClick={onLogout}
+            className="btn-primary"
+            style={{ padding: '8px 16px', fontSize: '0.85rem', display: 'flex', alignItems: 'center', gap: '6px' }}
+          >
+            <LayoutDashboard size={16} />
+            Main Dashboard
           </button>
         </div>
       </div>
