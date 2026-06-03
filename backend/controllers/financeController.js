@@ -5,6 +5,8 @@ import { fileURLToPath } from 'url';
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 const DB_FILE = path.join(__dirname, '..', 'db.json');
+import { readDb as centralReadDb, writeDb as centralWriteDb, addActivity } from '../utils/db.js';
+
 const DEFAULT_STAFF_SALARY_STRUCTURE_IDS = new Set([
   'SSSTR-ADMIN',
   'SSSTR-REG',
@@ -54,55 +56,30 @@ const removeDefaultTeacherSalaryStructures = (db) => {
 
 // Helper to read database
 const readDb = () => {
-  try {
-    const data = fs.readFileSync(DB_FILE, 'utf8');
-    const db = JSON.parse(data);
-    // Ensure finance collections exist
-    if (!db.feeStructures) db.feeStructures = [];
-    if (!db.fees) db.fees = [];
-    if (!db.salaryStructures) db.salaryStructures = [];
-    if (!db.payroll) db.payroll = [];
-    if (!db.staffSalaryStructures) db.staffSalaryStructures = [];
-    if (!db.staffPayments) db.staffPayments = [];
-    if (!db.expenses) db.expenses = [];
-    if (!db.income) db.income = [];
+  const db = centralReadDb();
+  // Ensure finance collections exist
+  if (!db.feeStructures) db.feeStructures = [];
+  if (!db.fees) db.fees = [];
+  if (!db.salaryStructures) db.salaryStructures = [];
+  if (!db.payroll) db.payroll = [];
+  if (!db.staffSalaryStructures) db.staffSalaryStructures = [];
+  if (!db.staffPayments) db.staffPayments = [];
+  if (!db.expenses) db.expenses = [];
+  if (!db.income) db.income = [];
 
-    const removedDefaultStaffStructures = removeDefaultStaffSalaryStructures(db);
-    const removedDefaultTeacherStructures = removeDefaultTeacherSalaryStructures(db);
+  const removedDefaultStaffStructures = removeDefaultStaffSalaryStructures(db);
+  const removedDefaultTeacherStructures = removeDefaultTeacherSalaryStructures(db);
 
-    if (removedDefaultStaffStructures || removedDefaultTeacherStructures) {
-      fs.writeFileSync(DB_FILE, JSON.stringify(db, null, 2), 'utf8');
-    }
-
-    return db;
-  } catch (error) {
-    console.error('Error reading db.json in finance controller:', error);
-    return { students: [], teachers: [], feeStructures: [], fees: [], salaryStructures: [], payroll: [], expenses: [], income: [], activities: [] };
+  if (removedDefaultStaffStructures || removedDefaultTeacherStructures) {
+    centralWriteDb(db);
   }
+
+  return db;
 };
 
 // Helper to write database
 const writeDb = (data) => {
-  try {
-    fs.writeFileSync(DB_FILE, JSON.stringify(data, null, 2), 'utf8');
-  } catch (error) {
-    console.error('Error writing to db.json in finance controller:', error);
-  }
-};
-
-// Helper to log activities
-const addActivity = (db, type, title, desc, color = 'hsl(var(--color-primary))', bg = 'rgba(hsl(var(--color-primary)), 0.1)') => {
-  const newActivity = {
-    id: `ACT-${Date.now()}`,
-    type,
-    title,
-    desc,
-    time: 'Just now',
-    timestamp: new Date().toISOString(),
-    color,
-    bg
-  };
-  db.activities = [newActivity, ...(db.activities || [])].slice(0, 50);
+  centralWriteDb(data);
 };
 
 // =============================================

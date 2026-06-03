@@ -80,13 +80,78 @@ export default function AcademicPanel({ subView }) {
 
   // Helper arrays for lookups
   const daysOfWeek = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
-  const timeslots = [
+  
+  const [timeslots, setTimeslots] = useState([
     '09:00 AM - 10:00 AM',
     '10:00 AM - 11:00 AM',
     '11:00 AM - 12:00 PM',
     '01:00 PM - 02:00 PM',
     '02:00 PM - 03:00 PM'
-  ];
+  ]);
+  const [showTimeslotsModal, setShowTimeslotsModal] = useState(false);
+  const [startTimeInput, setStartTimeInput] = useState('');
+  const [endTimeInput, setEndTimeInput] = useState('');
+
+  const convertTo12HourFormat = (time24) => {
+    if (!time24) return '';
+    const [hrsStr, minsStr] = time24.split(':');
+    let hrs = parseInt(hrsStr);
+    const mins = parseInt(minsStr);
+    const ampm = hrs >= 12 ? 'PM' : 'AM';
+    hrs = hrs % 12;
+    hrs = hrs ? hrs : 12; // the hour '0' should be '12'
+    const padHrs = String(hrs).padStart(2, '0');
+    const padMins = String(mins).padStart(2, '0');
+    return `${padHrs}:${padMins} ${ampm}`;
+  };
+
+  const handleAddTimeslot = async (e) => {
+    e.preventDefault();
+    if (!startTimeInput || !endTimeInput) {
+      alert('Please select both start and end times.');
+      return;
+    }
+    const finalSlot = `${convertTo12HourFormat(startTimeInput)} - ${convertTo12HourFormat(endTimeInput)}`;
+    try {
+      const res = await fetch('/api/academics/timeslots', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ timeslot: finalSlot })
+      });
+      const data = await res.json();
+      if (res.ok) {
+        showToast('Time slot registered successfully!', 'success');
+        setStartTimeInput('');
+        setEndTimeInput('');
+        fetchAllData();
+      } else {
+        showToast(data.error || 'Failed to add time slot.', 'error');
+      }
+    } catch (err) {
+      showToast('Network error during operation.', 'error');
+    }
+  };
+
+  const handleDeleteTimeslot = async (slotToDelete) => {
+    if (!confirm(`Are you sure you want to delete the time slot: ${slotToDelete}?`)) return;
+    try {
+      const res = await fetch('/api/academics/timeslots', {
+        method: 'DELETE',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ timeslot: slotToDelete })
+      });
+      if (res.ok) {
+        showToast('Time slot removed successfully.', 'success');
+        fetchAllData();
+      } else {
+        const data = await res.json();
+        showToast(data.error || 'Failed to remove time slot.', 'error');
+      }
+    } catch (err) {
+      showToast('Network error.', 'error');
+    }
+  };
+
   const classesList = ['I-A', 'VIII-E', 'XII-A'];
   const subjectsList = ['Mathematics', 'Physics', 'Chemistry', 'English Literature', 'History'];
   const monthsList = [
@@ -105,6 +170,7 @@ export default function AcademicPanel({ subView }) {
         { url: '/api/academics/notices', setter: setNotices },
         { url: '/api/academics/holidays', setter: setHolidays },
         { url: '/api/academics/results', setter: setResults },
+        { url: '/api/academics/timeslots', setter: setTimeslots },
         { url: '/api/students?limit=10000', setter: (data) => setStudents(data.students || []) },
         { url: '/api/teachers?limit=10000', setter: (data) => setTeachers(data.teachers || []) }
       ];
@@ -463,12 +529,44 @@ export default function AcademicPanel({ subView }) {
             <h3 style={{ fontSize: '1.1rem', fontWeight: 700 }}>Class Period Timetables</h3>
             <p style={{ fontSize: '0.85rem', color: 'var(--text-muted)' }}>Create and manage student cohort weekly class scheduling structures.</p>
           </div>
-          <div style={{ display: 'flex', gap: '12px' }}>
-            <select className="select-custom" value={activeClass} onChange={(e) => setActiveClass(e.target.value)}>
-              {classesList.map((cls, idx) => <option key={idx} value={cls}>Grade {cls}</option>)}
-            </select>
+          <div style={{ display: 'flex', gap: '12px', alignItems: 'center' }}>
+            <div style={{ display: 'flex', gap: '8px', alignItems: 'center', background: 'var(--bg-glass-active)', padding: '6px 12px', borderRadius: '10px', border: '1px solid var(--border-glass)' }}>
+              <span style={{ fontSize: '0.8rem', color: 'var(--text-muted)', fontWeight: 700, textTransform: 'uppercase' }}>Grade</span>
+              <select 
+                className="select-custom" 
+                value={activeClass.split('-')[0] || 'I'} 
+                onChange={(e) => {
+                  const currentSection = activeClass.split('-')[1] || 'A';
+                  setActiveClass(`${e.target.value}-${currentSection}`);
+                }}
+                style={{ border: 'none', padding: '2px 8px', background: 'transparent' }}
+              >
+                {['I', 'II', 'III', 'IV', 'V', 'VI', 'VII', 'VIII', 'IX', 'X', 'XI', 'XII'].map(g => (
+                  <option key={g} value={g}>{g}</option>
+                ))}
+              </select>
+              <span style={{ fontSize: '0.8rem', color: 'var(--text-muted)', fontWeight: 700, textTransform: 'uppercase', marginLeft: '6px', borderLeft: '1px solid var(--border-glass)', paddingLeft: '8px' }}>Section</span>
+              <select 
+                className="select-custom" 
+                value={activeClass.split('-')[1] || 'A'} 
+                onChange={(e) => {
+                  const currentGrade = activeClass.split('-')[0] || 'I';
+                  setActiveClass(`${currentGrade}-${e.target.value}`);
+                }}
+                style={{ border: 'none', padding: '2px 8px', background: 'transparent' }}
+              >
+                {['A', 'B', 'C', 'D', 'E', 'F'].map(s => (
+                  <option key={s} value={s}>{s}</option>
+                ))}
+              </select>
+            </div>
+            
+            <button className="btn-secondary" onClick={() => setShowTimeslotsModal(true)} style={{ borderRadius: '8px', display: 'flex', alignItems: 'center', gap: '6px', padding: '10px 14px' }}>
+              <Clock size={15} /> Manage Slots
+            </button>
+
             <button className="btn-primary" onClick={() => {
-              setTimetableForm({ day: 'Monday', time: '09:00 AM - 10:00 AM', subject: '', teacher: '', room: '', session: '2026-2027' });
+              setTimetableForm({ day: 'Monday', time: timeslots[0] || '09:00 AM - 10:00 AM', subject: '', teacher: '', room: '', session: '2026-2027' });
               setShowAddModal(true);
             }}>
               <Plus size={16} /> Add Class Period
@@ -1704,7 +1802,7 @@ export default function AcademicPanel({ subView }) {
       {/* Dynamic Modal Renderer */}
       {showAddModal && createPortal(
         <div className="modal-overlay">
-          <div className="modal-content glass-panel" style={{ maxWidth: '550px' }}>
+          <div className="modal-content glass-panel" style={{ maxWidth: '550px', maxHeight: '85vh', overflowY: 'auto', borderRadius: '16px', padding: '24px' }}>
             <div className="modal-header">
               <h2 style={{ fontSize: '1.25rem', textTransform: 'capitalize' }}>
                 Add {subView.replace('academic-', '').replace('-', ' ')}
@@ -1712,6 +1810,84 @@ export default function AcademicPanel({ subView }) {
               <button className="modal-close" onClick={() => setShowAddModal(false)}>×</button>
             </div>
             {renderModalForm()}
+          </div>
+        </div>,
+        document.body
+      )}
+
+      {showTimeslotsModal && createPortal(
+        <div style={{
+          position: 'fixed', top: 0, left: 0, right: 0, bottom: 0,
+          background: 'rgba(15, 23, 42, 0.6)', backdropFilter: 'blur(4px)',
+          display: 'flex', justifyContent: 'center', alignItems: 'center',
+          zIndex: 999999, padding: '20px'
+        }}>
+          <div className="animate-scale-up" style={{
+            width: '100%', maxWidth: '440px', padding: '28px', borderRadius: '16px',
+            background: 'var(--bg-card)', border: '1px solid var(--border-glass)',
+            boxShadow: '0 25px 50px -12px rgba(0,0,0,0.25)', display: 'flex', flexDirection: 'column', gap: '20px'
+          }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', borderBottom: '1px solid var(--border-glass)', paddingBottom: '12px' }}>
+              <h3 style={{ fontSize: '1.1rem', fontWeight: 800, color: 'var(--text-main)', margin: 0, display: 'flex', alignItems: 'center', gap: '8px' }}>
+                <Clock size={18} /> Manage Time Slots
+              </h3>
+              <button 
+                type="button" 
+                onClick={() => setShowTimeslotsModal(false)}
+                style={{ background: 'none', border: 'none', color: 'var(--text-muted)', cursor: 'pointer', fontSize: '1.5rem', lineHeight: 1 }}
+              >
+                ×
+              </button>
+            </div>
+
+            {/* List of Time Slots */}
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '8px', maxHeight: '200px', overflowY: 'auto', paddingRight: '4px' }}>
+              {timeslots.length > 0 ? (
+                timeslots.map((slot, idx) => (
+                  <div key={idx} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '8px 12px', background: 'var(--bg-glass-active)', border: '1px solid var(--border-glass)', borderRadius: '8px' }}>
+                    <span style={{ fontSize: '0.85rem', fontWeight: 600, color: 'var(--text-main)' }}>{slot}</span>
+                    <button 
+                      onClick={() => handleDeleteTimeslot(slot)}
+                      style={{ background: 'none', border: 'none', color: '#ef4444', cursor: 'pointer', display: 'flex', alignItems: 'center', padding: '4px' }}
+                    >
+                      <Trash2 size={14} />
+                    </button>
+                  </div>
+                ))
+              ) : (
+                <span style={{ fontSize: '0.8rem', color: 'var(--text-muted)', fontStyle: 'italic', textAlign: 'center', padding: '10px 0' }}>No time slots found</span>
+              )}
+            </div>
+
+            {/* Add New Time Slot form */}
+            <form onSubmit={handleAddTimeslot} style={{ display: 'flex', flexDirection: 'column', gap: '14px', borderTop: '1px solid var(--border-glass)', paddingTop: '16px' }}>
+              <span style={{ fontSize: '0.75rem', fontWeight: 800, color: 'hsl(var(--color-primary))', textTransform: 'uppercase' }}>Add New Period Slot</span>
+              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px' }}>
+                <div className="form-group">
+                  <label style={{ fontSize: '0.75rem' }}>Start Time *</label>
+                  <input 
+                    type="time" 
+                    className="form-control" 
+                    value={startTimeInput} 
+                    onChange={e => setStartTimeInput(e.target.value)} 
+                    required 
+                  />
+                </div>
+                <div className="form-group">
+                  <label style={{ fontSize: '0.75rem' }}>End Time *</label>
+                  <input 
+                    type="time" 
+                    className="form-control" 
+                    value={endTimeInput} 
+                    onChange={e => setEndTimeInput(e.target.value)} 
+                    required 
+                  />
+                </div>
+              </div>
+              <button type="submit" className="btn-primary" style={{ borderRadius: '8px', padding: '10px', fontSize: '0.85rem' }}>
+                Register Time Slot
+              </button>
+            </form>
           </div>
         </div>,
         document.body

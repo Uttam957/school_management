@@ -1,0 +1,31 @@
+{
+  "school": {
+    "name": "green valley public school",
+    "subdomain": "greenvalley",
+    "address": "Khimel Rani Station Rd",
+    "city": "Bali",
+    "state": "jaipur,rajasthan",
+    "phone": "1234531456",
+    "email": "contact@gmail.com",
+    "ratePerStudent": "250.00",
+    "adminName": "Zachary Langley",
+    "adminEmail": "qino@mailinator.com",
+    "adminPassword": "uttam@2004",
+    "principal": "john"
+  },
+  "students": [],
+  "teachers": [],
+  "staff": [],
+  "timetables": [],
+  "invoices": [],
+  "fees": [],
+  "expenses": [],
+  "payroll": [],
+  "staffPayments": [],
+  "activities": [],
+  "exams": [],
+  "examTimetables": [],
+  "notices": [],
+  "holidays": [],
+  "results": []
+}

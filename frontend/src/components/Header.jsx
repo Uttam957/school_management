@@ -31,7 +31,8 @@ export default function Header({
   isAccountant,
   isRecep,
   isTeacher,
-  isExpense
+  isExpense,
+  onLogout
 }) {
   const [showNotifications, setShowNotifications] = useState(false);
   const [showProfileMenu, setShowProfileMenu] = useState(false);
@@ -178,7 +179,7 @@ export default function Header({
               flexDirection: 'column',
               gap: '4px'
             }}>
-              <button className="nav-item" style={{ padding: '10px', fontSize: '0.85rem', color: 'rgb(var(--color-danger-rgb))' }}>
+              <button onClick={onLogout} className="nav-item" style={{ padding: '10px', fontSize: '0.85rem', color: 'rgb(var(--color-danger-rgb))' }}>
                 <LogOut size={16} /> Sign Out
               </button>
             </div>

@@ -1,66 +1,4 @@
-import fs from 'fs';
-import path from 'path';
-import { fileURLToPath } from 'url';
-
-const __filename = fileURLToPath(import.meta.url);
-const __dirname = path.dirname(__filename);
-const DB_FILE = path.join(__dirname, '..', 'db.json');
-
-// Helper to read database
-const readDb = () => {
-  try {
-    const data = fs.readFileSync(DB_FILE, 'utf8');
-    const db = JSON.parse(data);
-    
-    // Ensure all required academic collections exist
-    if (!db.timetables) db.timetables = [];
-    if (!db.exams) db.exams = [];
-    if (!db.examTimetables) db.examTimetables = [];
-    if (!db.events) db.events = [];
-    if (!db.notices) db.notices = [];
-    if (!db.holidays) db.holidays = [];
-    if (!db.results) db.results = [];
-    if (!db.activities) db.activities = [];
-    
-    return db;
-  } catch (error) {
-    console.error('Error reading db.json in academics controller:', error);
-    return {
-      timetables: [],
-      exams: [],
-      examTimetables: [],
-      events: [],
-      notices: [],
-      holidays: [],
-      results: [],
-      activities: []
-    };
-  }
-};
-
-// Helper to write database
-const writeDb = (data) => {
-  try {
-    fs.writeFileSync(DB_FILE, JSON.stringify(data, null, 2), 'utf8');
-  } catch (error) {
-    console.error('Error writing db.json in academics controller:', error);
-  }
-};
-
-// Helper to log activities
-const addActivity = (db, type, title, desc, color = 'hsl(var(--color-primary))', bg = 'rgba(hsl(var(--color-primary)), 0.1)') => {
-  const newActivity = {
-    id: `ACT-${Date.now()}`,
-    type,
-    title,
-    desc,
-    time: 'Just now',
-    timestamp: new Date().toISOString(),
-    color,
-    bg
-  };
-  db.activities = [newActivity, ...(db.activities || [])].slice(0, 50);
-};
+import { readDb, writeDb, addActivity } from '../utils/db.js';
 
 // Conflict helper: Checks if two time slots overlap
 // e.g. "09:00 AM - 10:00 AM" and "09:30 AM - 10:30 AM"
@@ -647,4 +585,66 @@ export const deleteResult = (req, res) => {
 
   writeDb(db);
   res.json({ message: 'Result record deleted successfully.' });
+};
+
+// =============================================
+// 8. TIMESLOTS CONTROLLER
+// =============================================
+export const getTimeslots = (req, res) => {
+  const db = readDb();
+  res.json(db.timeslots || [
+    '09:00 AM - 10:00 AM',
+    '10:00 AM - 11:00 AM',
+    '11:00 AM - 12:00 PM',
+    '01:00 PM - 02:00 PM',
+    '02:00 PM - 03:00 PM'
+  ]);
+};
+
+export const createTimeslot = (req, res) => {
+  const { timeslot } = req.body;
+  if (!timeslot) {
+    return res.status(400).json({ error: 'Timeslot value is required.' });
+  }
+
+  const db = readDb();
+  if (!db.timeslots) {
+    db.timeslots = [
+      '09:00 AM - 10:00 AM',
+      '10:00 AM - 11:00 AM',
+      '11:00 AM - 12:00 PM',
+      '01:00 PM - 02:00 PM',
+      '02:00 PM - 03:00 PM'
+    ];
+  }
+
+  if (db.timeslots.includes(timeslot)) {
+    return res.status(400).json({ error: 'Timeslot already exists.' });
+  }
+
+  db.timeslots.push(timeslot);
+  writeDb(db);
+  res.status(201).json(timeslot);
+};
+
+export const deleteTimeslot = (req, res) => {
+  const { timeslot } = req.body;
+  if (!timeslot) {
+    return res.status(400).json({ error: 'Timeslot value is required.' });
+  }
+
+  const db = readDb();
+  if (!db.timeslots) {
+    db.timeslots = [
+      '09:00 AM - 10:00 AM',
+      '10:00 AM - 11:00 AM',
+      '11:00 AM - 12:00 PM',
+      '01:00 PM - 02:00 PM',
+      '02:00 PM - 03:00 PM'
+    ];
+  }
+
+  db.timeslots = db.timeslots.filter(t => t !== timeslot);
+  writeDb(db);
+  res.json({ message: 'Timeslot successfully deleted.' });
 };

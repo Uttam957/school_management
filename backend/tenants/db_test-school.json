@@ -1,0 +1,57 @@
+{
+  "schools": [],
+  "subscriptionPlans": [
+    {
+      "id": "PLAN-001",
+      "name": "Starter",
+      "price": "$99/mo",
+      "features": [
+        "Up to 100 Students",
+        "Basic Analytics",
+        "Standard Support"
+      ]
+    },
+    {
+      "id": "PLAN-002",
+      "name": "Growth",
+      "price": "$249/mo",
+      "features": [
+        "Up to 500 Students",
+        "Full Reports",
+        "Priority Support"
+      ]
+    },
+    {
+      "id": "PLAN-003",
+      "name": "Premium",
+      "price": "$499/mo",
+      "features": [
+        "Unlimited Students",
+        "Advanced Finance",
+        "24/7 Dedicated Support"
+      ]
+    }
+  ],
+  "activities": [],
+  "students": [],
+  "teachers": [],
+  "staff": [],
+  "timetables": [],
+  "invoices": [],
+  "fees": [],
+  "expenses": [],
+  "payroll": [],
+  "staffPayments": [],
+  "exams": [],
+  "examTimetables": [],
+  "notices": [],
+  "holidays": [],
+  "results": [],
+  "timeslots": [
+    "09:00 AM - 10:00 AM",
+    "10:00 AM - 11:00 AM",
+    "11:00 AM - 12:00 PM",
+    "01:00 PM - 02:00 PM",
+    "02:00 PM - 03:00 PM"
+  ]
+}

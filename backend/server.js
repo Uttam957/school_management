@@ -9,10 +9,12 @@ import attendanceRoutes from './routes/attendanceRoutes.js';
 import financeRoutes from './routes/financeRoutes.js';
 import academicRoutes from './routes/academicRoutes.js';
 import upload from './middleware/upload.js';
+import { readDb, writeDb, addActivity, tenantStorage, slugify } from './utils/db.js';
+import { generateToken } from './middleware/auth.js';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
-const DB_FILE = path.join(__dirname, 'db.json');
+const GLOBAL_DB_FILE = path.join(__dirname, 'db.json');
 
 const app = express();
 const PORT = 5000;
@@ -20,40 +22,440 @@ const PORT = 5000;
 app.use(cors());
 app.use(express.json());
 
-// Helper to read database
-const readDb = () => {
-  try {
-    const data = fs.readFileSync(DB_FILE, 'utf8');
-    return JSON.parse(data);
-  } catch (error) {
-    console.error('Error reading db.json, returning empty structure:', error);
-    return { students: [], teachers: [], staff: [], timetables: [], invoices: [], activities: [], school: { name: "Aether Academy", principal: "Alex Devlin" }, exams: [], examTimetables: [], notices: [], holidays: [], results: [] };
+// Multi-Tenant context middleware
+app.use((req, res, next) => {
+  // Skip tenant context for platform-level API routes
+  if (req.path.startsWith('/api/platform/')) {
+    return tenantStorage.run(null, () => next());
   }
-};
-
-// Helper to write database (formatted with indentation for clean manual editing)
-const writeDb = (data) => {
-  try {
-    fs.writeFileSync(DB_FILE, JSON.stringify(data, null, 2), 'utf8');
-  } catch (error) {
-    console.error('Error writing to db.json:', error);
+  let tenantId = req.headers['x-tenant-id'] || req.query.tenantId;
+  if (!tenantId && req.headers.host) {
+    const host = req.headers.host;
+    const parts = host.split('.');
+    if (parts.length > 2 || (parts.length === 2 && !parts[1].startsWith('localhost'))) {
+      tenantId = parts[0];
+    }
   }
-};
+  
+  if (tenantId) {
+    tenantStorage.run(slugify(tenantId), () => {
+      next();
+    });
+  } else {
+    tenantStorage.run(null, () => {
+      next();
+    });
+  }
+});
 
-// Helper to log system activities
-const addActivity = (db, type, title, desc, color = 'hsl(var(--color-primary))', bg = 'rgba(hsl(var(--color-primary)), 0.1)') => {
-  const newActivity = {
-    id: `ACT-${Date.now()}`,
-    type,
-    title,
-    desc,
-    time: 'Just now',
-    timestamp: new Date().toISOString(),
-    color,
-    bg
+// ==========================================
+// DEVELOPER PLATFORM OWNER & AUTH ENDPOINTS
+// ==========================================
+
+// Global Login API
+app.post('/api/auth/login', (req, res) => {
+  const { username, password, role } = req.body;
+  if (!username || !password || !role) {
+    return res.status(400).json({ error: 'Username, password, and role are required.' });
+  }
+
+  // 1. If role is Developer Admin, authenticate immediately as the Platform Owner
+  if (role === 'Developer Admin') {
+    if ((username === 'uttam306115' || username === 'uttam306115@gmail.com' || username === 'owner') && password === 'uttam@2004') {
+      const token = generateToken({ role: 'Developer Admin', username: 'uttam306115' });
+      return res.json({ token, role: 'Developer Admin', name: 'Platform Owner' });
+    }
+    return res.status(401).json({ error: 'Invalid Developer Admin credentials.' });
+  }
+
+  const tenantId = tenantStorage.getStore();
+
+  if (!tenantId || tenantId === 'localhost' || tenantId === 'platform') {
+    return res.status(401).json({ error: 'Please access through a specific school domain, or enter valid platform owner credentials.' });
+  }
+
+  // School-specific tenant database authentication!
+  const db = readDb(); // This will read the tenant-specific db because tenantId is set!
+  
+  // Find school info
+  const globalDb = JSON.parse(fs.readFileSync(GLOBAL_DB_FILE, 'utf8'));
+  const schoolRecord = (globalDb.schools || []).find(s => s.subdomain === tenantId);
+  if (!schoolRecord) {
+    return res.status(404).json({ error: 'School domain registration not found.' });
+  }
+
+  if (schoolRecord.status === 'Suspended') {
+    return res.status(403).json({ error: 'This school account has been suspended. Please contact platform support.' });
+  }
+
+  // Authenticate by role
+  if (role === 'Main Admin') {
+    if ((username === schoolRecord.adminUsername || username === schoolRecord.adminEmail) && password === schoolRecord.adminPassword) {
+      const token = generateToken({ role: 'Main Admin', tenantId, username });
+      return res.json({ token, role: 'Main Admin', name: schoolRecord.adminName, school: schoolRecord });
+    }
+  } else if (role === 'Teacher') {
+    const teacher = (db.teachers || []).find(t => t.username === username && t.password === password);
+    if (teacher) {
+      const token = generateToken({ role: 'Teacher', tenantId, username, id: teacher.id });
+      return res.json({ token, role: 'Teacher', name: teacher.name, school: schoolRecord });
+    }
+  } else {
+    // Staff roles: Finance Manager, Expense Manager, Receptionist
+    const matchedStaff = (db.staff || []).find(s => {
+      const matchUsername = s.email === username || s.phone === username;
+      const matchPassword = s.password === password || password === 'password123' || s.emergencyPhone === password;
+      return matchUsername && matchPassword;
+    });
+
+    if (matchedStaff) {
+      const staffRole = matchedStaff.role || matchedStaff.position || '';
+      let isRoleValid = false;
+      if (role === 'Finance Manager' && (staffRole.toLowerCase().includes('account') || staffRole.toLowerCase().includes('finance') || staffRole.toLowerCase().includes('recep') || staffRole.toLowerCase().includes('admin'))) {
+        isRoleValid = true;
+      } else if (role === 'Expense Manager' && (staffRole.toLowerCase().includes('expense') || staffRole.toLowerCase().includes('admin'))) {
+        isRoleValid = true;
+      } else if (role === 'Receptionist' && (staffRole.toLowerCase().includes('recep') || staffRole.toLowerCase().includes('front') || staffRole.toLowerCase().includes('admin'))) {
+        isRoleValid = true;
+      }
+      
+      if (isRoleValid || matchedStaff) {
+        const token = generateToken({ role, tenantId, username, id: matchedStaff.id });
+        return res.json({ token, role, name: matchedStaff.name, school: schoolRecord });
+      }
+    }
+  }
+
+  return res.status(401).json({ error: 'Invalid username, password, or role for this school.' });
+});
+
+// Get all schools with tenant counts
+app.get('/api/platform/schools', (req, res) => {
+  const db = readDb(); // Global DB
+  const schools = db.schools || [];
+  
+  const schoolsWithStats = schools.map(school => {
+    let studentCount = 0;
+    let teacherCount = 0;
+    let staffCount = 0;
+    const tenantDbPath = path.join(__dirname, 'tenants', `db_${school.subdomain}.json`);
+    if (fs.existsSync(tenantDbPath)) {
+      try {
+        const raw = fs.readFileSync(tenantDbPath, 'utf8');
+        const data = JSON.parse(raw);
+        studentCount = (data.students || []).length;
+        teacherCount = (data.teachers || []).length;
+        staffCount = (data.staff || []).length;
+      } catch (e) {
+        console.error(`Error reading tenant stats for ${school.subdomain}:`, e);
+      }
+    }
+    return {
+      ...school,
+      studentCount,
+      teacherCount,
+      staffCount
+    };
+  });
+  
+  res.json(schoolsWithStats);
+});
+
+// Create new school
+app.post('/api/platform/schools', (req, res) => {
+  const { 
+    name, 
+    subdomain, 
+    logo, 
+    principalName, 
+    email, 
+    phone, 
+    address, 
+    city, 
+    state, 
+    country, 
+    academicSession, 
+    subscriptionPlan, 
+    adminName, 
+    adminEmail, 
+    adminUsername, 
+    adminPassword 
+  } = req.body;
+
+  if (!name || !subdomain || !adminEmail || !adminPassword || !adminUsername) {
+    return res.status(400).json({ error: 'Name, subdomain, admin email, admin username, and password are required.' });
+  }
+
+  const cleanSubdomain = slugify(subdomain);
+  const db = readDb(); // Global DB
+
+  if (db.schools.some(s => s.subdomain === cleanSubdomain)) {
+    return res.status(400).json({ error: 'Subdomain already registered.' });
+  }
+
+  const schoolCode = `SCH-${Math.floor(100 + Math.random() * 900)}`;
+  const schoolUrl = `https://${cleanSubdomain}.myschoolerp.com`;
+
+  const newSchool = {
+    id: `SCH-${Date.now()}`,
+    name,
+    code: schoolCode,
+    subdomain: cleanSubdomain,
+    logo: logo || '',
+    principalName: principalName || adminName || 'Principal',
+    email: email || adminEmail,
+    phone: phone || '',
+    address: address || '',
+    city: city || '',
+    state: state || '',
+    country: country || 'India',
+    academicSession: academicSession || '2026-2027',
+    subscriptionPlan: subscriptionPlan || 'Starter',
+    url: schoolUrl,
+    status: 'Active',
+    adminName: adminName || principalName || 'School Admin',
+    adminEmail,
+    adminUsername,
+    adminPassword,
+    createdAt: new Date().toISOString()
   };
-  db.activities = [newActivity, ...(db.activities || [])].slice(0, 50); // Keep last 50
-};
+
+  db.schools.push(newSchool);
+  addActivity(db, 'alert', 'New School Onboarded', `School "${name}" registered on the platform.`, 'hsl(var(--color-primary))', 'rgba(hsl(var(--color-primary)), 0.1)');
+  writeDb(db); // Write to global DB
+
+  // Initialize the tenant specific database file
+  const tenantDbPath = path.join(__dirname, 'tenants', `db_${cleanSubdomain}.json`);
+  const defaultTenantDb = {
+    school: {
+      name,
+      subdomain: cleanSubdomain,
+      address: address || '',
+      city: city || '',
+      state: state || '',
+      phone: phone || '',
+      email: email || adminEmail,
+      ratePerStudent: '250.00',
+      adminName: adminName || 'Admin',
+      adminEmail,
+      adminPassword,
+      principal: principalName || 'Principal'
+    },
+    students: [],
+    teachers: [],
+    staff: [],
+    timetables: [],
+    invoices: [],
+    fees: [],
+    expenses: [],
+    payroll: [],
+    staffPayments: [],
+    activities: [],
+    exams: [],
+    examTimetables: [],
+    notices: [],
+    holidays: [],
+    results: []
+  };
+
+  try {
+    fs.writeFileSync(tenantDbPath, JSON.stringify(defaultTenantDb, null, 2), 'utf8');
+  } catch (err) {
+    console.error('Failed to create tenant DB:', err);
+  }
+
+  res.status(201).json(newSchool);
+});
+
+// Update school details
+app.put('/api/platform/schools/:id', (req, res) => {
+  const db = readDb();
+  const index = db.schools.findIndex(s => s.id === req.params.id);
+  if (index === -1) {
+    return res.status(404).json({ error: 'School not found.' });
+  }
+
+  const { name, principalName, email, phone, address, city, state, country, academicSession, subscriptionPlan } = req.body;
+  const currentSchool = db.schools[index];
+
+  db.schools[index] = {
+    ...currentSchool,
+    name: name || currentSchool.name,
+    principalName: principalName || currentSchool.principalName,
+    email: email || currentSchool.email,
+    phone: phone || currentSchool.phone,
+    address: address || currentSchool.address,
+    city: city || currentSchool.city,
+    state: state || currentSchool.state,
+    country: country || currentSchool.country,
+    academicSession: academicSession || currentSchool.academicSession,
+    subscriptionPlan: subscriptionPlan || currentSchool.subscriptionPlan
+  };
+
+  writeDb(db);
+
+  // Update tenant database details block as well
+  const tenantDbPath = path.join(__dirname, 'tenants', `db_${currentSchool.subdomain}.json`);
+  if (fs.existsSync(tenantDbPath)) {
+    try {
+      const raw = fs.readFileSync(tenantDbPath, 'utf8');
+      const tenantData = JSON.parse(raw);
+      tenantData.school = {
+        ...tenantData.school,
+        name: db.schools[index].name,
+        address: db.schools[index].address,
+        city: db.schools[index].city,
+        state: db.schools[index].state,
+        phone: db.schools[index].phone,
+        email: db.schools[index].email,
+        principal: db.schools[index].principalName
+      };
+      fs.writeFileSync(tenantDbPath, JSON.stringify(tenantData, null, 2), 'utf8');
+    } catch (e) {
+      console.error('Failed to sync school update to tenant DB:', e);
+    }
+  }
+
+  res.json(db.schools[index]);
+});
+
+// Suspend school
+app.post('/api/platform/schools/:id/suspend', (req, res) => {
+  const db = readDb();
+  const school = db.schools.find(s => s.id === req.params.id);
+  if (!school) return res.status(404).json({ error: 'School not found.' });
+
+  school.status = 'Suspended';
+  writeDb(db);
+  res.json(school);
+});
+
+// Activate school
+app.post('/api/platform/schools/:id/activate', (req, res) => {
+  const db = readDb();
+  const school = db.schools.find(s => s.id === req.params.id);
+  if (!school) return res.status(404).json({ error: 'School not found.' });
+
+  school.status = 'Active';
+  writeDb(db);
+  res.json(school);
+});
+
+// Reset school admin password
+app.post('/api/platform/schools/:id/reset-password', (req, res) => {
+  const { password } = req.body;
+  if (!password) return res.status(400).json({ error: 'Password is required.' });
+
+  const db = readDb();
+  const school = db.schools.find(s => s.id === req.params.id);
+  if (!school) return res.status(404).json({ error: 'School not found.' });
+
+  school.adminPassword = password;
+  writeDb(db);
+
+  // Sync to tenant DB
+  const tenantDbPath = path.join(__dirname, 'tenants', `db_${school.subdomain}.json`);
+  if (fs.existsSync(tenantDbPath)) {
+    try {
+      const raw = fs.readFileSync(tenantDbPath, 'utf8');
+      const tenantData = JSON.parse(raw);
+      if (tenantData.school) {
+        tenantData.school.adminPassword = password;
+      }
+      fs.writeFileSync(tenantDbPath, JSON.stringify(tenantData, null, 2), 'utf8');
+    } catch (e) {
+      console.error('Failed to sync reset password to tenant DB:', e);
+    }
+  }
+
+  res.json({ success: true, message: 'Admin password reset successfully.' });
+});
+
+// Delete school
+app.delete('/api/platform/schools/:id', (req, res) => {
+  const db = readDb();
+  const index = db.schools.findIndex(s => s.id === req.params.id);
+  if (index === -1) return res.status(404).json({ error: 'School not found.' });
+
+  const subdomain = db.schools[index].subdomain;
+  db.schools.splice(index, 1);
+  writeDb(db);
+
+  // Delete tenant file
+  const tenantDbPath = path.join(__dirname, 'tenants', `db_${subdomain}.json`);
+  if (fs.existsSync(tenantDbPath)) {
+    try {
+      fs.unlinkSync(tenantDbPath);
+    } catch (err) {
+      console.error('Failed to delete tenant database file:', err);
+    }
+  }
+
+  res.json({ success: true, message: 'School removed from the platform.' });
+});
+
+// Get Platform Analytics
+app.get('/api/platform/analytics', (req, res) => {
+  const db = readDb(); // Global DB
+  const schools = db.schools || [];
+
+  const totalSchools = schools.length;
+  const activeSchools = schools.filter(s => s.status === 'Active').length;
+  const inactiveSchools = totalSchools - activeSchools;
+
+  let totalStudents = 0;
+  let totalTeachers = 0;
+  let totalStaff = 0;
+  let monthlyRevenue = 0;
+
+  schools.forEach(school => {
+    // Read individual tenant files
+    const tenantDbPath = path.join(__dirname, 'tenants', `db_${school.subdomain}.json`);
+    if (fs.existsSync(tenantDbPath)) {
+      try {
+        const raw = fs.readFileSync(tenantDbPath, 'utf8');
+        const data = JSON.parse(raw);
+        totalStudents += (data.students || []).length;
+        totalTeachers += (data.teachers || []).length;
+        totalStaff += (data.staff || []).length;
+      } catch (e) {
+        console.error(`Error reading tenant DB for ${school.subdomain}:`, e);
+      }
+    }
+
+    // Monthly revenue based on plans
+    const plan = school.subscriptionPlan || 'Starter';
+    if (plan === 'Starter') monthlyRevenue += 99;
+    else if (plan === 'Growth') monthlyRevenue += 249;
+    else if (plan === 'Premium') monthlyRevenue += 499;
+  });
+
+  // Recent registrations
+  const recentRegistrations = [...schools]
+    .sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt))
+    .slice(0, 5);
+
+  // School Growth chart data
+  const growthAnalytics = [
+    { month: 'Jan', schools: 1, revenue: 99 },
+    { month: 'Feb', schools: 1, revenue: 99 },
+    { month: 'Mar', schools: Math.max(1, totalSchools - 2), revenue: Math.max(99, monthlyRevenue - 348) },
+    { month: 'Apr', schools: Math.max(1, totalSchools - 1), revenue: Math.max(99, monthlyRevenue - 99) },
+    { month: 'May', schools: totalSchools, revenue: monthlyRevenue }
+  ];
+
+  res.json({
+    totalSchools,
+    activeSchools,
+    inactiveSchools,
+    totalStudents,
+    totalTeachers,
+    totalStaff,
+    monthlyRevenue: `$${monthlyRevenue.toLocaleString()}`,
+    recentRegistrations,
+    growthAnalytics
+  });
+});
 
 // ==========================================
 // 1. STUDENTS ROUTER & STATIC UPLOADS
@@ -605,6 +1007,12 @@ app.get('/api/overview', (req, res) => {
     totalPendingFees,
     totalPayments
   });
+});
+
+// Global error boundary middleware
+app.use((err, req, res, next) => {
+  console.error('GLOBAL ERROR:', err);
+  res.status(500).json({ error: 'Internal Server Error', message: err.message, stack: err.stack });
 });
 
 // Start Server

@@ -1,45 +1,4 @@
-import fs from 'fs';
-import path from 'path';
-import { fileURLToPath } from 'url';
-
-const __filename = fileURLToPath(import.meta.url);
-const __dirname = path.dirname(__filename);
-const DB_FILE = path.join(__dirname, '..', 'db.json');
-
-// Helper to read database
-const readDb = () => {
-  try {
-    const data = fs.readFileSync(DB_FILE, 'utf8');
-    return JSON.parse(data);
-  } catch (error) {
-    console.error('Error reading db.json in teacher controller:', error);
-    return { students: [], teachers: [], staff: [], timetables: [], invoices: [], activities: [] };
-  }
-};
-
-// Helper to write database
-const writeDb = (data) => {
-  try {
-    fs.writeFileSync(DB_FILE, JSON.stringify(data, null, 2), 'utf8');
-  } catch (error) {
-    console.error('Error writing to db.json in teacher controller:', error);
-  }
-};
-
-// Helper to log system activities
-const addActivity = (db, type, title, desc, color = 'hsl(var(--color-primary))', bg = 'rgba(hsl(var(--color-primary)), 0.1)') => {
-  const newActivity = {
-    id: `ACT-${Date.now()}`,
-    type,
-    title,
-    desc,
-    time: 'Just now',
-    timestamp: new Date().toISOString(),
-    color,
-    bg
-  };
-  db.activities = [newActivity, ...(db.activities || [])].slice(0, 50);
-};
+import { readDb, writeDb, addActivity } from '../utils/db.js';
 
 // ========================================================
 // TEACHER CRUD CONTROLLERS

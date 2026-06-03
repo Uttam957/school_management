@@ -61,7 +61,9 @@ export default function Sidebar({
   onExpenseLogout,
   expenseView,
   setExpenseView,
-  onAccessAdmin
+  onAccessAdmin,
+  isDeveloperAdmin,
+  onDeveloperAdminLogout
 }) {
   const [studentOpen, setStudentOpen] = useState(false);
   const [teacherOpen, setTeacherOpen] = useState(false);
@@ -151,7 +153,31 @@ export default function Sidebar({
       </div>
 
       <nav className="sidebar-nav">
-        {isAdmin ? (
+        {isDeveloperAdmin ? (
+          <>
+            <button
+              onClick={() => {
+                setActiveView('school');
+                setMobileOpen(false);
+              }}
+              className={`nav-item ${activeView === 'school' ? 'active' : ''}`}
+            >
+              <School size={20} className="flex-shrink-0" />
+              <span className="nav-label">Schools Registry</span>
+            </button>
+            <button
+              onClick={() => {
+                onDeveloperAdminLogout();
+                setMobileOpen(false);
+              }}
+              className="nav-item"
+              style={{ color: 'rgb(var(--color-danger-rgb))', marginTop: '12px' }}
+            >
+              <LogOut size={20} className="flex-shrink-0" />
+              <span className="nav-label">Logout Platform</span>
+            </button>
+          </>
+        ) : isAdmin ? (
           <>
 
             <button
@@ -1054,11 +1080,11 @@ export default function Sidebar({
 
       <div className="sidebar-profile">
         <div className="profile-avatar">
-          {isAdmin ? 'AD' : (isAccountant ? 'AC' : (isExpense ? 'EX' : (isRecep ? 'RE' : (isTeacher ? 'TE' : (schoolDetails?.principal ? schoolDetails.principal.split(' ').pop().substring(0, 2).toUpperCase() : 'AD')))))}
+          {isDeveloperAdmin ? 'OW' : isAdmin ? 'AD' : (isAccountant ? 'AC' : (isExpense ? 'EX' : (isRecep ? 'RE' : (isTeacher ? 'TE' : (schoolDetails?.principal ? schoolDetails.principal.split(' ').pop().substring(0, 2).toUpperCase() : 'AD')))))}
         </div>
         <div className="profile-details">
-          <span className="profile-name">{isAdmin ? 'Admin Dashboard' : (isAccountant ? 'Finance Dashboard' : (isExpense ? 'Expense Dashboard' : (isRecep ? 'Receptionist Dashboard' : (isTeacher ? 'Teacher Dashboard' : (schoolDetails?.principal || 'Alex Devlin')))))}</span>
-          <span className="profile-role">{isAdmin ? 'Admin Dashboard' : (isAccountant ? 'Finance Dashboard' : (isExpense ? 'Expense Dashboard' : (isRecep ? 'Receptionist Dashboard' : (isTeacher ? 'Teacher Dashboard' : 'Super Admin'))))}</span>
+          <span className="profile-name">{isDeveloperAdmin ? 'Platform Owner' : isAdmin ? 'Admin Dashboard' : (isAccountant ? 'Finance Dashboard' : (isExpense ? 'Expense Dashboard' : (isRecep ? 'Receptionist Dashboard' : (isTeacher ? 'Teacher Dashboard' : (schoolDetails?.principal || 'Alex Devlin')))))}</span>
+          <span className="profile-role">{isDeveloperAdmin ? 'Developer Admin' : isAdmin ? 'Admin Dashboard' : (isAccountant ? 'Finance Dashboard' : (isExpense ? 'Expense Dashboard' : (isRecep ? 'Receptionist Dashboard' : (isTeacher ? 'Teacher Dashboard' : 'Super Admin'))))}</span>
         </div>
       </div>
     </aside>

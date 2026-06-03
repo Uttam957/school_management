@@ -23,7 +23,10 @@ import {
   deleteHoliday,
   getResults,
   createResult,
-  deleteResult
+  deleteResult,
+  getTimeslots,
+  createTimeslot,
+  deleteTimeslot
 } from '../controllers/academicController.js';
 
 const router = express.Router();
@@ -32,6 +35,11 @@ const router = express.Router();
 router.get('/timetables', getTimetables);
 router.post('/timetables', createTimetable);
 router.delete('/timetables/:id', deleteTimetable);
+
+// Timeslots
+router.get('/timeslots', getTimeslots);
+router.post('/timeslots', createTimeslot);
+router.delete('/timeslots', deleteTimeslot);
 
 // Exams
 router.get('/exams', getExams);
