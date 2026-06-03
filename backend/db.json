@@ -298,6 +298,16 @@
   "invoices": [],
   "activities": [
     {
+      "id": "ACT-1780468493430",
+      "type": "alert",
+      "title": "School Profile Modified",
+      "desc": "Global branding variables updated manually",
+      "time": "Just now",
+      "timestamp": "2026-06-03T06:34:53.431Z",
+      "color": "hsl(var(--color-primary))",
+      "bg": "rgba(hsl(var(--color-primary)), 0.1)"
+    },
+    {
       "id": "ACT-1780402381111",
       "type": "registration",
       "title": "Attendance Roster Saved",
@@ -547,6 +557,11 @@
     }
   ],
   "income": [],
+  "exams": [],
+  "examTimetables": [],
+  "notices": [],
+  "holidays": [],
+  "results": [],
   "events": [
     {
       "id": "EVT-001",
@@ -582,18 +597,18 @@
     }
   ],
   "school": {
-    "name": "Aether Academy",
-    "subdomain": "",
-    "address": "",
-    "city": "",
-    "state": "",
-    "phone": "",
-    "email": "",
-    "ratePerStudent": "250.00",
-    "razorpayAccountId": "",
-    "adminName": "Rajesh Kumar",
-    "adminEmail": "admin@academy.edu",
-    "adminPassword": "admin123",
-    "principal": "Rajesh Kumar"
+    "name": "Jana Mcgowan",
+    "subdomain": "Quasi pariatur Nihi",
+    "address": "Esse eum hic consec",
+    "city": "Inventore ea vero eu",
+    "state": "Voluptatem Rerum su",
+    "phone": "+1 (648) 929-1212",
+    "email": "hezixeg@mailinator.com",
+    "ratePerStudent": "Impedit illo illum",
+    "razorpayAccountId": "Et commodi duis esse",
+    "adminName": "Cynthia Marsh",
+    "adminEmail": "uttamrajpurohit306115@gmail.com",
+    "adminPassword": "uttam@2004",
+    "principal": "Cynthia Marsh"
   }
 }

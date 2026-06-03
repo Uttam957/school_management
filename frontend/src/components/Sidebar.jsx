@@ -28,6 +28,9 @@ import {
   BarChart3,
   TrendingUp,
   TrendingDown,
+  BookOpen,
+  Clock,
+  Calendar
 } from 'lucide-react';
 
 export default function Sidebar({ 
@@ -65,6 +68,7 @@ export default function Sidebar({
   const [staffOpen, setStaffOpen] = useState(false);
   const [adminCoreOpen, setAdminCoreOpen] = useState(false);
   const [adminAttendanceOpen, setAdminAttendanceOpen] = useState(false);
+  const [adminAcademicOpen, setAdminAcademicOpen] = useState(false);
   const [adminRecepOpen, setAdminRecepOpen] = useState(false);
   const [adminStudentFinanceOpen, setAdminStudentFinanceOpen] = useState(false);
   const [adminTeacherFinanceOpen, setAdminTeacherFinanceOpen] = useState(false);
@@ -280,6 +284,106 @@ export default function Sidebar({
                   >
                     <TrendingUp size={18} className="flex-shrink-0" />
                     <span className="nav-label">Attendance Tracker</span>
+                  </button>
+                </div>
+              )}
+            </div>
+
+            {/* Academic Management Folder */}
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '2px' }}>
+              <button
+                type="button"
+                onClick={() => setAdminAcademicOpen(!adminAcademicOpen)}
+                className="nav-item"
+                style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', width: '100%', cursor: 'pointer' }}
+              >
+                <div style={{ display: 'flex', alignItems: 'center', gap: '16px', minWidth: 0, overflow: 'hidden' }}>
+                  <BookOpen size={20} className="flex-shrink-0" />
+                  <span className="nav-label" style={{ fontWeight: 600 }}>Academic Manager</span>
+                </div>
+                {adminAcademicOpen ? <ChevronDown size={16} className="flex-shrink-0" /> : <ChevronRight size={16} className="flex-shrink-0" />}
+              </button>
+              {adminAcademicOpen && (
+                <div style={{ display: 'flex', flexDirection: 'column', paddingLeft: '16px', borderLeft: '1px solid rgba(255,255,255,0.06)', marginLeft: '24px', marginTop: '2px', marginBottom: '6px', gap: '4px' }}>
+                  <button
+                    onClick={() => { setAdminView('academic-class-timetable'); setMobileOpen(false); }}
+                    className={`nav-item ${adminView === 'academic-class-timetable' ? 'active' : ''}`}
+                    style={{ padding: '10px 12px', fontSize: '0.88rem', position: 'relative' }}
+                  >
+                    <Clock size={18} className="flex-shrink-0" />
+                    <span className="nav-label">Class Timetable</span>
+                  </button>
+                  <button
+                    onClick={() => { setAdminView('academic-teacher-timetable'); setMobileOpen(false); }}
+                    className={`nav-item ${adminView === 'academic-teacher-timetable' ? 'active' : ''}`}
+                    style={{ padding: '10px 12px', fontSize: '0.88rem', position: 'relative' }}
+                  >
+                    <UserCheck size={18} className="flex-shrink-0" />
+                    <span className="nav-label">Teacher Timetable</span>
+                  </button>
+                  <button
+                    onClick={() => { setAdminView('academic-exams'); setMobileOpen(false); }}
+                    className={`nav-item ${adminView === 'academic-exams' ? 'active' : ''}`}
+                    style={{ padding: '10px 12px', fontSize: '0.88rem', position: 'relative' }}
+                  >
+                    <ClipboardList size={18} className="flex-shrink-0" />
+                    <span className="nav-label">Exam Management</span>
+                  </button>
+                  <button
+                    onClick={() => { setAdminView('academic-exam-timetable'); setMobileOpen(false); }}
+                    className={`nav-item ${adminView === 'academic-exam-timetable' ? 'active' : ''}`}
+                    style={{ padding: '10px 12px', fontSize: '0.88rem', position: 'relative' }}
+                  >
+                    <Calendar size={18} className="flex-shrink-0" />
+                    <span className="nav-label">Exam Timetable</span>
+                  </button>
+                  <button
+                    onClick={() => { setAdminView('academic-events'); setMobileOpen(false); }}
+                    className={`nav-item ${adminView === 'academic-events' ? 'active' : ''}`}
+                    style={{ padding: '10px 12px', fontSize: '0.88rem', position: 'relative' }}
+                  >
+                    <School size={18} className="flex-shrink-0" />
+                    <span className="nav-label">Events Management</span>
+                  </button>
+                  <button
+                    onClick={() => { setAdminView('academic-notices'); setMobileOpen(false); }}
+                    className={`nav-item ${adminView === 'academic-notices' ? 'active' : ''}`}
+                    style={{ padding: '10px 12px', fontSize: '0.88rem', position: 'relative' }}
+                  >
+                    <Bell size={18} className="flex-shrink-0" />
+                    <span className="nav-label">Notices & Boards</span>
+                  </button>
+                  <button
+                    onClick={() => { setAdminView('academic-holidays'); setMobileOpen(false); }}
+                    className={`nav-item ${adminView === 'academic-holidays' ? 'active' : ''}`}
+                    style={{ padding: '10px 12px', fontSize: '0.88rem', position: 'relative' }}
+                  >
+                    <Calendar size={18} className="flex-shrink-0" />
+                    <span className="nav-label">Holidays</span>
+                  </button>
+                  <button
+                    onClick={() => { setAdminView('academic-calendar'); setMobileOpen(false); }}
+                    className={`nav-item ${adminView === 'academic-calendar' ? 'active' : ''}`}
+                    style={{ padding: '10px 12px', fontSize: '0.88rem', position: 'relative' }}
+                  >
+                    <Calendar size={18} className="flex-shrink-0" />
+                    <span className="nav-label">Academic Calendar</span>
+                  </button>
+                  <button
+                    onClick={() => { setAdminView('academic-results'); setMobileOpen(false); }}
+                    className={`nav-item ${adminView === 'academic-results' ? 'active' : ''}`}
+                    style={{ padding: '10px 12px', fontSize: '0.88rem', position: 'relative' }}
+                  >
+                    <GraduationCap size={18} className="flex-shrink-0" />
+                    <span className="nav-label">Results Manager</span>
+                  </button>
+                  <button
+                    onClick={() => { setAdminView('academic-reports'); setMobileOpen(false); }}
+                    className={`nav-item ${adminView === 'academic-reports' ? 'active' : ''}`}
+                    style={{ padding: '10px 12px', fontSize: '0.88rem', position: 'relative' }}
+                  >
+                    <BarChart3 size={18} className="flex-shrink-0" />
+                    <span className="nav-label">Academic Reports</span>
                   </button>
                 </div>
               )}

@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import { createPortal } from 'react-dom';
 import { 
   Clock, 
   BookOpen, 
@@ -271,7 +272,7 @@ export default function Academics() {
       </div>
 
       {/* Add Period Slot Modal */}
-      {showAddModal && (
+      {showAddModal && createPortal(
         <div className="modal-overlay">
           <div className="modal-content glass-panel">
             <div className="modal-header">
@@ -383,7 +384,8 @@ export default function Academics() {
               </div>
             </form>
           </div>
-        </div>
+        </div>,
+        document.body
       )}
 
     </div>

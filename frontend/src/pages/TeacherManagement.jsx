@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import { createPortal } from 'react-dom';
 import { 
   Search, 
   Mail, 
@@ -255,7 +256,7 @@ export default function TeacherManagement() {
       </div>
 
       {/* Contract Faculty Modal */}
-      {showAddModal && (
+      {showAddModal && createPortal(
         <div className="modal-overlay">
           <div className="modal-content glass-panel">
             <div className="modal-header">
@@ -417,7 +418,8 @@ export default function TeacherManagement() {
               </div>
             </form>
           </div>
-        </div>
+        </div>,
+        document.body
       )}
 
       {/* Consultation Scheduling Drawer overlay */}

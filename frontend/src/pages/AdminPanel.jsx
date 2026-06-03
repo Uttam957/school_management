@@ -19,6 +19,7 @@ import StudentDirectory from './StudentDirectory';
 import TeacherList from './TeacherList';
 import StaffDirectory from './StaffDirectory';
 import DashboardOverview from './DashboardOverview';
+import AcademicPanel from './AcademicPanel';
 import { 
   MarkAttendanceView, 
   AttendanceTrackerView,
@@ -80,6 +81,17 @@ export default function AdminPanel({ setActiveView, onLogout, adminView, setAdmi
     }
 
     switch (adminView) {
+      case 'academic-class-timetable':
+      case 'academic-teacher-timetable':
+      case 'academic-exams':
+      case 'academic-exam-timetable':
+      case 'academic-events':
+      case 'academic-notices':
+      case 'academic-holidays':
+      case 'academic-calendar':
+      case 'academic-results':
+      case 'academic-reports':
+        return <AcademicPanel subView={adminView} />;
       case 'students':
         return <StudentDirectory readOnly={false} onAddClick={() => setAdminView('register-student')} />;
       case 'teachers':

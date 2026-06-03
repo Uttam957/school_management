@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import { createPortal } from 'react-dom';
 import { 
   DollarSign, 
   CreditCard, 
@@ -229,7 +230,7 @@ export default function FinancePortal() {
       </div>
 
       {/* Record Invoice Modal */}
-      {showAddModal && (
+      {showAddModal && createPortal(
         <div className="modal-overlay">
           <div className="modal-content glass-panel">
             <div className="modal-header">
@@ -331,7 +332,8 @@ export default function FinancePortal() {
               </div>
             </form>
           </div>
-        </div>
+        </div>,
+        document.body
       )}
 
       {/* Receipt Drawer Overlays */}

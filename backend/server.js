@@ -7,6 +7,7 @@ import studentRoutes from './routes/studentRoutes.js';
 import teacherRoutes from './routes/teacherRoutes.js';
 import attendanceRoutes from './routes/attendanceRoutes.js';
 import financeRoutes from './routes/financeRoutes.js';
+import academicRoutes from './routes/academicRoutes.js';
 import upload from './middleware/upload.js';
 
 const __filename = fileURLToPath(import.meta.url);
@@ -26,7 +27,7 @@ const readDb = () => {
     return JSON.parse(data);
   } catch (error) {
     console.error('Error reading db.json, returning empty structure:', error);
-    return { students: [], teachers: [], staff: [], timetables: [], invoices: [], activities: [], school: { name: "Aether Academy", principal: "Alex Devlin" } };
+    return { students: [], teachers: [], staff: [], timetables: [], invoices: [], activities: [], school: { name: "Aether Academy", principal: "Alex Devlin" }, exams: [], examTimetables: [], notices: [], holidays: [], results: [] };
   }
 };
 
@@ -74,6 +75,11 @@ app.use('/api/attendance', attendanceRoutes);
 // 2B. FINANCE ROUTER
 // ==========================================
 app.use('/api/finance', financeRoutes);
+
+// ==========================================
+// 2C. ACADEMICS ROUTER
+// ==========================================
+app.use('/api/academics', academicRoutes);
 
 // ==========================================
 // 2B. STAFF ENDPOINTS
