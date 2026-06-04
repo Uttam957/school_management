@@ -9,7 +9,7 @@ import attendanceRoutes from './routes/attendanceRoutes.js';
 import financeRoutes from './routes/financeRoutes.js';
 import academicRoutes from './routes/academicRoutes.js';
 import upload from './middleware/upload.js';
-import { readDb, writeDb, addActivity, tenantStorage, slugify } from './utils/db.js';
+import { readDb, writeDb, addActivity, tenantStorage, slugify, restoreTenantContext } from './utils/db.js';
 import { generateToken } from './middleware/auth.js';
 
 const __filename = fileURLToPath(import.meta.url);
@@ -54,9 +54,10 @@ app.use((req, res, next) => {
 
 // Global Login API
 app.post('/api/auth/login', (req, res) => {
-  const { username, password, role } = req.body;
-  if (!username || !password || !role) {
-    return res.status(400).json({ error: 'Username, password, and role are required.' });
+  const { username, password } = req.body;
+  const role = req.body.role || 'Auto';
+  if (!username || !password) {
+    return res.status(400).json({ error: 'Username and password are required.' });
   }
 
   // 1. If role is Developer Admin, authenticate immediately as the Platform Owner
@@ -88,45 +89,54 @@ app.post('/api/auth/login', (req, res) => {
     return res.status(403).json({ error: 'This school account has been suspended. Please contact platform support.' });
   }
 
-  // Authenticate by role
-  if (role === 'Main Admin') {
-    if ((username === schoolRecord.adminUsername || username === schoolRecord.adminEmail) && password === schoolRecord.adminPassword) {
-      const token = generateToken({ role: 'Main Admin', tenantId, username });
-      return res.json({ token, role: 'Main Admin', name: schoolRecord.adminName, school: schoolRecord });
-    }
-  } else if (role === 'Teacher') {
-    const teacher = (db.teachers || []).find(t => t.username === username && t.password === password);
-    if (teacher) {
-      const token = generateToken({ role: 'Teacher', tenantId, username, id: teacher.id });
-      return res.json({ token, role: 'Teacher', name: teacher.name, school: schoolRecord });
-    }
-  } else {
-    // Staff roles: Finance Manager, Expense Manager, Receptionist
-    const matchedStaff = (db.staff || []).find(s => {
-      const matchUsername = s.email === username || s.phone === username;
-      const matchPassword = s.password === password || password === 'password123' || s.emergencyPhone === password;
-      return matchUsername && matchPassword;
-    });
-
-    if (matchedStaff) {
-      const staffRole = matchedStaff.role || matchedStaff.position || '';
-      let isRoleValid = false;
-      if (role === 'Finance Manager' && (staffRole.toLowerCase().includes('account') || staffRole.toLowerCase().includes('finance') || staffRole.toLowerCase().includes('recep') || staffRole.toLowerCase().includes('admin'))) {
-        isRoleValid = true;
-      } else if (role === 'Expense Manager' && (staffRole.toLowerCase().includes('expense') || staffRole.toLowerCase().includes('admin'))) {
-        isRoleValid = true;
-      } else if (role === 'Receptionist' && (staffRole.toLowerCase().includes('recep') || staffRole.toLowerCase().includes('front') || staffRole.toLowerCase().includes('admin'))) {
-        isRoleValid = true;
+  // Authenticate by role (auto-detect when role is 'Auto')
+  const tryRoles = role === 'Auto' ? ['Main Admin', 'Admin Dashboard', 'Teacher', 'Finance Manager', 'Expense Manager', 'Receptionist'] : [role];
+  
+  for (const currentRole of tryRoles) {
+    if (currentRole === 'Main Admin') {
+      if ((username === schoolRecord.adminUsername || username === schoolRecord.adminEmail) && password === schoolRecord.adminPassword) {
+        const token = generateToken({ role: 'Main Admin', tenantId, username });
+        return res.json({ token, role: 'Main Admin', name: schoolRecord.adminName, school: schoolRecord });
       }
-      
-      if (isRoleValid || matchedStaff) {
-        const token = generateToken({ role, tenantId, username, id: matchedStaff.id });
-        return res.json({ token, role, name: matchedStaff.name, school: schoolRecord });
+    } else if (currentRole === 'Admin Dashboard') {
+      if (username === schoolRecord.complexAdminUsername && password === schoolRecord.complexAdminPassword) {
+        const token = generateToken({ role: 'Admin Dashboard', tenantId, username });
+        return res.json({ token, role: 'Admin Dashboard', name: schoolRecord.adminName || 'Admin Dashboard', school: schoolRecord });
+      }
+    } else if (currentRole === 'Teacher') {
+      const teacher = (db.teachers || []).find(t => t.username === username && t.password === password);
+      if (teacher) {
+        const token = generateToken({ role: 'Teacher', tenantId, username, id: teacher.id });
+        return res.json({ token, role: 'Teacher', name: teacher.name, school: schoolRecord });
+      }
+    } else {
+      // Staff roles: Finance Manager, Expense Manager, Receptionist
+      const matchedStaff = (db.staff || []).find(s => {
+        const matchUsername = s.email === username || s.phone === username;
+        const matchPassword = s.password === password || password === 'password123' || s.emergencyPhone === password;
+        return matchUsername && matchPassword;
+      });
+
+      if (matchedStaff) {
+        const staffRoleStr = matchedStaff.role || matchedStaff.position || '';
+        let isRoleValid = false;
+        if (currentRole === 'Finance Manager' && (staffRoleStr.toLowerCase().includes('account') || staffRoleStr.toLowerCase().includes('finance') || staffRoleStr.toLowerCase().includes('recep') || staffRoleStr.toLowerCase().includes('admin'))) {
+          isRoleValid = true;
+        } else if (currentRole === 'Expense Manager' && (staffRoleStr.toLowerCase().includes('expense') || staffRoleStr.toLowerCase().includes('admin'))) {
+          isRoleValid = true;
+        } else if (currentRole === 'Receptionist' && (staffRoleStr.toLowerCase().includes('recep') || staffRoleStr.toLowerCase().includes('front') || staffRoleStr.toLowerCase().includes('admin'))) {
+          isRoleValid = true;
+        }
+        
+        if (isRoleValid || matchedStaff) {
+          const token = generateToken({ role: currentRole, tenantId, username, id: matchedStaff.id });
+          return res.json({ token, role: currentRole, name: matchedStaff.name, school: schoolRecord });
+        }
       }
     }
   }
 
-  return res.status(401).json({ error: 'Invalid username, password, or role for this school.' });
+  return res.status(401).json({ error: 'Invalid username or password.' });
 });
 
 // Get all schools with tenant counts
@@ -179,11 +189,13 @@ app.post('/api/platform/schools', (req, res) => {
     adminName, 
     adminEmail, 
     adminUsername, 
-    adminPassword 
+    adminPassword,
+    complexAdminUsername,
+    complexAdminPassword
   } = req.body;
 
-  if (!name || !subdomain || !adminEmail || !adminPassword || !adminUsername) {
-    return res.status(400).json({ error: 'Name, subdomain, admin email, admin username, and password are required.' });
+  if (!name || !subdomain || !adminEmail || !adminPassword || !adminUsername || !complexAdminUsername || !complexAdminPassword) {
+    return res.status(400).json({ error: 'Name, subdomain, admin email, admin username, password, admin dashboard username, and admin dashboard password are required.' });
   }
 
   const cleanSubdomain = slugify(subdomain);
@@ -217,6 +229,8 @@ app.post('/api/platform/schools', (req, res) => {
     adminEmail,
     adminUsername,
     adminPassword,
+    complexAdminUsername,
+    complexAdminPassword,
     createdAt: new Date().toISOString()
   };
 
@@ -497,7 +511,7 @@ const staffUploadFields = upload.fields([
   { name: 'certificateFile', maxCount: 1 }
 ]);
 
-app.post('/api/staff', staffUploadFields, (req, res) => {
+app.post('/api/staff', staffUploadFields, restoreTenantContext, (req, res) => {
   const { 
     fullName, 
     name, 

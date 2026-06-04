@@ -4,7 +4,7 @@ const req = {
   body: {
     examName: 'Midterm Test',
     examType: 'Unit Test',
-    grade: 'XII',
+    grade: 'X',
     section: 'A',
     startDate: '2026-06-10',
     endDate: '2026-06-15',

@@ -613,8 +613,6 @@ export default function RegisterStudent({ setActiveView }) {
                 <option value="VIII">Class VIII</option>
                 <option value="IX">Class IX</option>
                 <option value="X">Class X</option>
-                <option value="XI">Class XI</option>
-                <option value="XII">Class XII</option>
               </select>
               {formErrors.studentClass && <span style={{ color: 'rgb(var(--color-danger-rgb))', fontSize: '0.75rem', marginTop: '4px', display: 'block' }}>{formErrors.studentClass}</span>}
             </div>

@@ -14,18 +14,510 @@
     "principal": "john"
   },
   "students": [],
-  "teachers": [],
-  "staff": [],
+  "teachers": [
+    {
+      "id": "EMP-2026-4678",
+      "employeeId": "EMP-2026-4678",
+      "teacherId": "13",
+      "name": "ummed rajpurohit",
+      "fullName": "ummed rajpurohit",
+      "gender": "Male",
+      "dob": "2004-03-12",
+      "bloodGroup": "A+",
+      "maritalStatus": "Single",
+      "mobile": "0787846835",
+      "alternateMobile": "2134567896",
+      "email": "ur61849@gmail.com",
+      "address": "khimel,pali,rajasthan",
+      "city": "pali",
+      "state": "Rajasthan",
+      "pincode": "306115",
+      "department": "Science",
+      "subjectSpecialization": "maths",
+      "qualification": "12th",
+      "experience": "123",
+      "joiningDate": "2004-12-12",
+      "salary": "323456",
+      "employmentType": "Full Time",
+      "status": "Active",
+      "username": "teacher_1",
+      "password": "uttam@2004",
+      "photo": "",
+      "aadhaarFile": "",
+      "resumeFile": "",
+      "qualificationFile": "",
+      "experienceFile": "",
+      "createdAt": "2026-06-03T09:34:57.774Z",
+      "updatedAt": "2026-06-03T09:34:57.774Z",
+      "subject": "maths",
+      "phone": "0787846835",
+      "classes": 0,
+      "hours": 0,
+      "badge": "Faculty",
+      "avatarBg": "linear-gradient(135deg, hsl(33.074414541788464, 75%, 60%) 0%, hsl(26.99715996981184, 85%, 50%) 100%)"
+    },
+    {
+      "id": "EMP-2026-3767",
+      "employeeId": "EMP-2026-3767",
+      "teacherId": "13",
+      "name": "ummed rajpurohit",
+      "fullName": "ummed rajpurohit",
+      "gender": "Male",
+      "dob": "0220-12-12",
+      "bloodGroup": "A+",
+      "maritalStatus": "Single",
+      "mobile": "0787846835",
+      "alternateMobile": "2134567897",
+      "email": "ur61849@gmail.com",
+      "address": "khimel,pali,rajasthan",
+      "city": "pali",
+      "state": "Rajasthan",
+      "pincode": "306115",
+      "department": "Teacher",
+      "subjectSpecialization": "math",
+      "qualification": "b.tech",
+      "experience": "3",
+      "joiningDate": "2004-12-12",
+      "salary": "23000",
+      "employmentType": "Full Time",
+      "status": "Active",
+      "username": "teacher_2",
+      "password": "uttam@2004",
+      "photo": "",
+      "aadhaarFile": "",
+      "resumeFile": "",
+      "qualificationFile": "",
+      "experienceFile": "",
+      "createdAt": "2026-06-03T10:02:16.061Z",
+      "updatedAt": "2026-06-03T10:02:16.062Z",
+      "subject": "math",
+      "phone": "0787846835",
+      "classes": 0,
+      "hours": 0,
+      "badge": "Faculty",
+      "avatarBg": "linear-gradient(135deg, hsl(343.13259282691047, 75%, 60%) 0%, hsl(235.94290274136884, 85%, 50%) 100%)"
+    },
+    {
+      "id": "EMP-2026-6633",
+      "employeeId": "EMP-2026-6633",
+      "teacherId": "Rerum eu aliquid rer",
+      "name": "Moana Montoya",
+      "fullName": "Moana Montoya",
+      "gender": "Male",
+      "dob": "1980-03-27",
+      "bloodGroup": "O+",
+      "maritalStatus": "Married",
+      "mobile": "1234567898",
+      "alternateMobile": "3456789076",
+      "email": "dasezyj@mailinator.com",
+      "address": "Nemo eaque placeat ",
+      "city": "Nulla dolore incidid",
+      "state": "Minus laboriosam au",
+      "pincode": "324567",
+      "department": "Music",
+      "subjectSpecialization": "Reprehenderit ullam",
+      "qualification": "Autem autem dolores ",
+      "experience": "87",
+      "joiningDate": "1985-12-08",
+      "salary": "86",
+      "employmentType": "Full Time",
+      "status": "Active",
+      "username": "logice",
+      "password": "Pa$$w0rd!",
+      "photo": "",
+      "aadhaarFile": "",
+      "resumeFile": "",
+      "qualificationFile": "",
+      "experienceFile": "",
+      "createdAt": "2026-06-04T10:45:42.039Z",
+      "updatedAt": "2026-06-04T10:45:42.039Z",
+      "subject": "Reprehenderit ullam",
+      "phone": "1234567898",
+      "classes": 0,
+      "hours": 0,
+      "badge": "Faculty",
+      "avatarBg": "linear-gradient(135deg, hsl(133.74837275528122, 75%, 60%) 0%, hsl(7.959250558086222, 85%, 50%) 100%)"
+    }
+  ],
+  "staff": [
+    {
+      "id": "STF-888",
+      "name": "Kellie Davidson",
+      "fullName": "Kellie Davidson",
+      "role": "Accusamus accusamus ",
+      "department": "Security Operations",
+      "email": "vucyti@mailinator.com",
+      "phone": "1328993683",
+      "gender": "Female",
+      "qualification": "Lorem consequatur re",
+      "experience": "3",
+      "dateOfJoining": "1986-06-03",
+      "salaryGrade": "Grade D",
+      "reportingTo": "Et voluptate quisqua",
+      "address": "Excepturi proident ",
+      "city": "In unde ut sint enim",
+      "state": "Qui nostrum obcaecat",
+      "pincode": "234567",
+      "emergencyContact": "Molestiae quia vitae",
+      "emergencyPhone": "1657821608",
+      "photo": "",
+      "aadharFile": "",
+      "certificateFile": "",
+      "status": "Active",
+      "avatarBg": "linear-gradient(135deg, hsl(71.71530997262113, 75%, 60%) 0%, hsl(212.66030531287385, 85%, 50%) 100%)"
+    }
+  ],
   "timetables": [],
   "invoices": [],
   "fees": [],
   "expenses": [],
   "payroll": [],
   "staffPayments": [],
-  "activities": [],
-  "exams": [],
-  "examTimetables": [],
+  "activities": [
+    {
+      "id": "ACT-1780572738352",
+      "type": "alert",
+      "title": "New Examination Created",
+      "desc": "Reiciendis ratione q created as Draft",
+      "time": "Just now",
+      "timestamp": "2026-06-04T11:32:18.352Z",
+      "color": "hsl(var(--color-primary))",
+      "bg": "rgba(hsl(var(--color-primary)), 0.1)"
+    },
+    {
+      "id": "ACT-1780572385142",
+      "type": "alert",
+      "title": "New Examination Created",
+      "desc": "unit test 1 created as Draft",
+      "time": "Just now",
+      "timestamp": "2026-06-04T11:26:25.142Z",
+      "color": "hsl(var(--color-primary))",
+      "bg": "rgba(hsl(var(--color-primary)), 0.1)"
+    },
+    {
+      "id": "ACT-1780572090571",
+      "type": "alert",
+      "title": "New Examination Created",
+      "desc": "Magni iusto temporib created as Draft",
+      "time": "Just now",
+      "timestamp": "2026-06-04T11:21:30.571Z",
+      "color": "hsl(var(--color-primary))",
+      "bg": "rgba(hsl(var(--color-primary)), 0.1)"
+    },
+    {
+      "id": "ACT-1780569990484",
+      "type": "registration",
+      "title": "New Staff Recruited",
+      "desc": "Kellie Davidson joined as Accusamus accusamus ",
+      "time": "Just now",
+      "timestamp": "2026-06-04T10:46:30.484Z",
+      "color": "hsl(var(--color-info))",
+      "bg": "rgba(hsl(var(--color-info)), 0.1)"
+    },
+    {
+      "id": "ACT-1780569942039",
+      "type": "registration",
+      "title": "New Faculty Registered",
+      "desc": "Moana Montoya joined Music Department as Full Time",
+      "time": "Just now",
+      "timestamp": "2026-06-04T10:45:42.039Z",
+      "color": "hsl(var(--color-secondary))",
+      "bg": "rgba(hsl(var(--color-secondary)), 0.1)"
+    }
+  ],
+  "exams": [
+    {
+      "id": "EXM-1780572385142",
+      "examName": "unit test 1",
+      "examType": "Unit Test",
+      "academicSession": "2026-2027",
+      "description": "wsfghjk",
+      "gradeSections": [
+        {
+          "grade": "I",
+          "section": "A",
+          "startDate": "2026-12-12",
+          "endDate": "2026-12-18"
+        }
+      ],
+      "status": "Completed",
+      "createdAt": "2026-06-04T11:26:25.142Z",
+      "endDate": "2026-12-18"
+    },
+    {
+      "id": "EXM-1780572738352",
+      "examName": "Reiciendis ratione q",
+      "examType": "Half Yearly",
+      "academicSession": "2026-2027",
+      "description": "Placeat laborum Ne",
+      "gradeSections": [
+        {
+          "grade": "II",
+          "section": "A",
+          "startDate": "1976-04-18",
+          "endDate": "2023-04-07"
+        }
+      ],
+      "endDate": "2023-04-07",
+      "status": "Completed",
+      "createdAt": "2026-06-04T11:32:18.352Z"
+    }
+  ],
+  "examTimetables": [
+    {
+      "id": "EXMT-1780572738365-naf6",
+      "examId": "EXM-1780572738352",
+      "grade": "II",
+      "section": "A",
+      "cohort": "II-A",
+      "subject": "df",
+      "examDate": "1976-04-19"
+    },
+    {
+      "id": "EXMT-1780572738365-2hh4",
+      "examId": "EXM-1780572738352",
+      "grade": "II",
+      "section": "A",
+      "cohort": "II-A",
+      "subject": "frgthytr",
+      "examDate": "1976-04-20"
+    },
+    {
+      "id": "EXMT-1780572738365-7wd0",
+      "examId": "EXM-1780572738352",
+      "grade": "II",
+      "section": "A",
+      "cohort": "II-A",
+      "subject": "dasfghj",
+      "examDate": "1976-04-21"
+    },
+    {
+      "id": "EXMT-1780572738365-if43",
+      "examId": "EXM-1780572738352",
+      "grade": "II",
+      "section": "A",
+      "cohort": "II-A",
+      "subject": "fdgh",
+      "examDate": "1976-04-22"
+    },
+    {
+      "id": "EXMT-1780572738365-i1un",
+      "examId": "EXM-1780572738352",
+      "grade": "II",
+      "section": "A",
+      "cohort": "II-A",
+      "subject": "dfgh",
+      "examDate": "1976-04-23"
+    },
+    {
+      "id": "EXMT-1780574592460-0-oxzm",
+      "examId": "EXM-1780572385142",
+      "subject": "sdf",
+      "examDate": "2026-12-12",
+      "startTime": "",
+      "endTime": "",
+      "duration": "3 Hours",
+      "roomAllocation": "",
+      "invigilator": "",
+      "cohort": "I-A",
+      "grade": "I",
+      "section": "A"
+    },
+    {
+      "id": "EXMT-1780574592461-1-z2m7",
+      "examId": "EXM-1780572385142",
+      "subject": "dfg",
+      "examDate": "2026-12-14",
+      "startTime": "",
+      "endTime": "",
+      "duration": "3 Hours",
+      "roomAllocation": "",
+      "invigilator": "",
+      "cohort": "I-A",
+      "grade": "I",
+      "section": "A"
+    },
+    {
+      "id": "EXMT-1780574592461-2-cqrv",
+      "examId": "EXM-1780572385142",
+      "subject": "c",
+      "examDate": "2026-12-15",
+      "startTime": "",
+      "endTime": "",
+      "duration": "3 Hours",
+      "roomAllocation": "",
+      "invigilator": "",
+      "cohort": "I-A",
+      "grade": "I",
+      "section": "A"
+    },
+    {
+      "id": "EXMT-1780574592461-3-kgx1",
+      "examId": "EXM-1780572385142",
+      "subject": "sdfd",
+      "examDate": "2026-12-16",
+      "startTime": "",
+      "endTime": "",
+      "duration": "3 Hours",
+      "roomAllocation": "",
+      "invigilator": "",
+      "cohort": "I-A",
+      "grade": "I",
+      "section": "A"
+    },
+    {
+      "id": "EXMT-1780574592461-4-9d69",
+      "examId": "EXM-1780572385142",
+      "subject": "asd",
+      "examDate": "2026-12-17",
+      "startTime": "",
+      "endTime": "",
+      "duration": "3 Hours",
+      "roomAllocation": "",
+      "invigilator": "",
+      "cohort": "I-A",
+      "grade": "I",
+      "section": "A"
+    },
+    {
+      "id": "EXMT-1780574592461-5-50v9",
+      "examId": "EXM-1780572385142",
+      "subject": "xa",
+      "examDate": "2026-12-18",
+      "startTime": "",
+      "endTime": "",
+      "duration": "3 Hours",
+      "roomAllocation": "",
+      "invigilator": "",
+      "cohort": "I-A",
+      "grade": "I",
+      "section": "A"
+    }
+  ],
   "notices": [],
   "holidays": [],
-  "results": []
+  "results": [],
+  "schools": [],
+  "subscriptionPlans": [
+    {
+      "id": "PLAN-001",
+      "name": "Starter",
+      "price": "$99/mo",
+      "features": [
+        "Up to 100 Students",
+        "Basic Analytics",
+        "Standard Support"
+      ]
+    },
+    {
+      "id": "PLAN-002",
+      "name": "Growth",
+      "price": "$249/mo",
+      "features": [
+        "Up to 500 Students",
+        "Full Reports",
+        "Priority Support"
+      ]
+    },
+    {
+      "id": "PLAN-003",
+      "name": "Premium",
+      "price": "$499/mo",
+      "features": [
+        "Unlimited Students",
+        "Advanced Finance",
+        "24/7 Dedicated Support"
+      ]
+    }
+  ],
+  "teacherTimetables": [
+    {
+      "id": "TT-TEACHER-1780570052054-0",
+      "cohort": "I-D",
+      "day": "Monday",
+      "time": "09:00 AM - 09:50 AM",
+      "subject": "Reprehenderit ullam",
+      "teacher": "Moana Montoya",
+      "room": "",
+      "session": "2026-2027"
+    },
+    {
+      "id": "TT-TEACHER-1780570052054-1",
+      "cohort": "I-B",
+      "day": "Monday",
+      "time": "09:50 AM - 10:40 AM",
+      "subject": "Reprehenderit ullam",
+      "teacher": "Moana Montoya",
+      "room": "",
+      "session": "2026-2027"
+    }
+  ],
+  "subjects": [
+    {
+      "id": "SUB-1780566793822-0-7bqe",
+      "grade": "I",
+      "subjectName": "sdf"
+    },
+    {
+      "id": "SUB-1780566793822-1-p8l8",
+      "grade": "I",
+      "subjectName": "dfg"
+    },
+    {
+      "id": "SUB-1780566793822-2-15w6",
+      "grade": "I",
+      "subjectName": "c"
+    },
+    {
+      "id": "SUB-1780566793822-3-cx1x",
+      "grade": "I",
+      "subjectName": "sdfd"
+    },
+    {
+      "id": "SUB-1780566793822-4-6jby",
+      "grade": "I",
+      "subjectName": "asd"
+    },
+    {
+      "id": "SUB-1780566793822-5-g83h",
+      "grade": "I",
+      "subjectName": "xa"
+    },
+    {
+      "id": "SUB-1780567053902",
+      "grade": "II",
+      "subjectName": "df"
+    },
+    {
+      "id": "SUB-1780567056924",
+      "grade": "II",
+      "subjectName": "frgthytr"
+    },
+    {
+      "id": "SUB-1780567060549",
+      "grade": "II",
+      "subjectName": "dasfghj"
+    },
+    {
+      "id": "SUB-1780567063614",
+      "grade": "II",
+      "subjectName": "fdgh"
+    },
+    {
+      "id": "SUB-1780567066291",
+      "grade": "II",
+      "subjectName": "dfgh"
+    }
+  ],
+  "timeslots": [
+    "09:00 AM - 09:50 AM",
+    "09:50 AM - 10:40 AM",
+    "10:40 AM - 11:30 AM",
+    "11:30 AM - 12:20 PM",
+    "12:20 PM - 01:00 AM [Lunch Break]",
+    "01:00 AM - 01:40 AM",
+    "01:40 AM - 02:20 AM",
+    "02:20 AM - 02:30 AM [Short Break]",
+    "02:30 AM - 03:20 AM"
+  ]
 }

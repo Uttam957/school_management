@@ -32,6 +32,7 @@ export default function Header({
   isRecep,
   isTeacher,
   isExpense,
+  isDeveloperAdmin,
   onLogout
 }) {
   const [showNotifications, setShowNotifications] = useState(false);
@@ -186,7 +187,7 @@ export default function Header({
           )}
         </div>
 
-        {!isAdmin && !isAccountant && !isRecep && !isTeacher && !isExpense && (
+        {!isAdmin && !isAccountant && !isRecep && !isTeacher && !isExpense && !isDeveloperAdmin && (
           <div style={{ position: 'relative' }}>
             <button
               onClick={() => {

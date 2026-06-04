@@ -16,6 +16,11 @@ import TeacherPanel from './pages/TeacherPanel';
 import AccountantPanel from './pages/AccountantPanel';
 import ExpensePanel from './pages/ExpensePanel';
 import SchoolLogin from './pages/SchoolLogin';
+import AdminLogin from './pages/AdminLogin';
+import AccountantLogin from './pages/AccountantLogin';
+import RecepLogin from './pages/RecepLogin';
+import TeacherLogin from './pages/TeacherLogin';
+import ExpenseLogin from './pages/ExpenseLogin';
 
 import './App.css';
 
@@ -28,9 +33,7 @@ window.fetch = function (url, options = {}) {
     // Skip tenant header for platform-level API calls
     if (targetUrl.startsWith('/api/platform/')) {
       delete options.headers['x-tenant-id'];
-    }
-    // Only inject tenant header if NOT already explicitly set by the caller
-    if (!options.headers['x-tenant-id']) {
+    } else if (!options.headers['x-tenant-id']) {
       const host = window.location.hostname;
       const parts = host.split('.');
       let tenant = null;
@@ -52,20 +55,62 @@ window.fetch = function (url, options = {}) {
   return originalFetch(url, options);
 };
 
+const getInitialAuthState = (targetRole) => {
+  const path = window.location.pathname;
+  if (path.startsWith('/receptionist') && targetRole === 'Receptionist') return true;
+  if (path.startsWith('/teacher') && targetRole === 'Teacher') return true;
+  if (path.startsWith('/expense') && targetRole === 'Expense') return true;
+  if ((path.startsWith('/accountant') || path.startsWith('/finance')) && targetRole === 'Accountant') return true;
+  if (path.startsWith('/admin') && targetRole === 'Admin') return true;
+  if (path.startsWith('/school') && targetRole === 'Developer') return true;
+  
+  const savedRole = sessionStorage.getItem('role') || sessionStorage.getItem('portal_role');
+  if (!savedRole) return false;
+  
+  if (savedRole === 'Developer Admin' && targetRole === 'Developer') return true;
+  if (savedRole === 'Admin Dashboard' && targetRole === 'Admin') return true;
+  if ((savedRole === 'Main Admin' || savedRole === 'admin') && targetRole === 'SchoolAdmin') return true;
+  if ((savedRole === 'Receptionist' || savedRole === 'recep') && targetRole === 'Receptionist') return true;
+  if ((savedRole === 'Teacher' || savedRole === 'teacher') && targetRole === 'Teacher') return true;
+  if ((savedRole === 'Finance Manager' || savedRole === 'accountant') && targetRole === 'Accountant') return true;
+  if ((savedRole === 'Expense Manager' || savedRole === 'expense') && targetRole === 'Expense') return true;
+  
+  return false;
+};
+
 export default function App() {
-  const [activeView, setActiveView] = useState('overview');
+  const [activeView, setActiveViewState] = useState('overview');
+  const [activeSubadminLogin, setActiveSubadminLogin] = useState(null);
+
+  const setActiveView = (view) => {
+    if (view === 'admin-login') {
+      setActiveSubadminLogin('admin');
+    } else if (view === 'accountant-login') {
+      setActiveSubadminLogin('accountant');
+    } else if (view === 'recep-login') {
+      setActiveSubadminLogin('recep');
+    } else if (view === 'teacher-login') {
+      setActiveSubadminLogin('teacher');
+    } else if (view === 'expense-login') {
+      setActiveSubadminLogin('expense');
+    } else {
+      setActiveViewState(view);
+    }
+  };
+
   const [isCollapsed, setIsCollapsed] = useState(false);
   const [mobileOpen, setMobileOpen] = useState(false);
   const [theme, setTheme] = useState('light');
   const [schoolDetails, setSchoolDetails] = useState({ name: 'Aether Academy', principal: 'Alex Devlin' });
   
   // Authentication states
-  const [isDeveloperAdmin, setIsDeveloperAdmin] = useState(false);
-  const [isAdmin, setIsAdmin] = useState(false);
-  const [isRecep, setIsRecep] = useState(false);
-  const [isTeacher, setIsTeacher] = useState(false);
-  const [isAccountant, setIsAccountant] = useState(false);
-  const [isExpense, setIsExpense] = useState(false);
+  const [isDeveloperAdmin, setIsDeveloperAdmin] = useState(() => getInitialAuthState('Developer'));
+  const [isAdmin, setIsAdmin] = useState(() => getInitialAuthState('Admin'));
+  const [isSchoolAdmin, setIsSchoolAdmin] = useState(() => getInitialAuthState('SchoolAdmin'));
+  const [isRecep, setIsRecep] = useState(() => getInitialAuthState('Receptionist'));
+  const [isTeacher, setIsTeacher] = useState(() => getInitialAuthState('Teacher'));
+  const [isAccountant, setIsAccountant] = useState(() => getInitialAuthState('Accountant'));
+  const [isExpense, setIsExpense] = useState(() => getInitialAuthState('Expense'));
 
   // Active view states for sub-dashboards
   const [adminView, setAdminView] = useState('dashboard');
@@ -123,47 +168,143 @@ export default function App() {
     document.documentElement.setAttribute('data-theme', theme);
   }, [theme]);
 
+  const checkRoutePath = () => {
+    const path = window.location.pathname;
+    if (path.startsWith('/receptionist')) {
+      setIsRecep(true);
+      setRecepView('overview');
+      return true;
+    } else if (path.startsWith('/teacher')) {
+      setIsTeacher(true);
+      setTeacherView('dashboard');
+      return true;
+    } else if (path.startsWith('/expense')) {
+      setIsExpense(true);
+      setExpenseView('dashboard');
+      return true;
+    } else if (path.startsWith('/accountant') || path.startsWith('/finance')) {
+      setIsAccountant(true);
+      setAccountantView('dashboard');
+      return true;
+    }
+    return false;
+  };
+
   // Restore session & path on mount
   useEffect(() => {
     fetchSchoolDetails();
 
-    const savedRole = sessionStorage.getItem('role') || sessionStorage.getItem('portal_role');
-    if (savedRole) {
-      switch (savedRole) {
-        case 'Developer Admin':
-          setIsDeveloperAdmin(true);
-          setActiveView('school');
-          break;
-        case 'Main Admin':
-        case 'admin':
-          setIsAdmin(true);
-          setAdminView('overview');
-          break;
-        case 'Receptionist':
-        case 'recep':
-          setIsRecep(true);
-          setRecepView('overview');
-          break;
-        case 'Teacher':
-        case 'teacher':
-          setIsTeacher(true);
-          setTeacherView('dashboard');
-          break;
-        case 'Finance Manager':
-        case 'accountant':
-          setIsAccountant(true);
-          setAccountantView('dashboard');
-          break;
-        case 'Expense Manager':
-        case 'expense':
-          setIsExpense(true);
-          setExpenseView('dashboard');
-          break;
-        default:
-          break;
+    const pathMatched = checkRoutePath();
+    if (!pathMatched) {
+      const savedRole = sessionStorage.getItem('role') || sessionStorage.getItem('portal_role');
+      if (savedRole) {
+        switch (savedRole) {
+          case 'Developer Admin':
+            setIsDeveloperAdmin(true);
+            setActiveView('school');
+            break;
+          case 'Main Admin':
+          case 'admin':
+            setIsAdmin(false);
+            setIsSchoolAdmin(true);
+            setActiveView('overview');
+            break;
+          case 'Admin Dashboard':
+            setIsAdmin(true);
+            setIsSchoolAdmin(false);
+            setAdminView('dashboard');
+            break;
+          case 'Receptionist':
+          case 'recep':
+            setIsRecep(true);
+            setRecepView('overview');
+            break;
+          case 'Teacher':
+          case 'teacher':
+            setIsTeacher(true);
+            setTeacherView('dashboard');
+            break;
+          case 'Finance Manager':
+          case 'accountant':
+            setIsAccountant(true);
+            setAccountantView('dashboard');
+            break;
+          case 'Expense Manager':
+          case 'expense':
+            setIsExpense(true);
+            setExpenseView('dashboard');
+            break;
+          default:
+            break;
+        }
       }
     }
     initialised.current = true;
+  }, []);
+
+  // Listen for browser forward/back buttons (popstate)
+  useEffect(() => {
+    const handlePopState = () => {
+      setIsDeveloperAdmin(false);
+      setIsAdmin(false);
+      setIsSchoolAdmin(false);
+      setIsRecep(false);
+      setIsTeacher(false);
+      setIsAccountant(false);
+      setIsExpense(false);
+
+      const pathMatched = checkRoutePath();
+      if (!pathMatched) {
+        const savedRole = sessionStorage.getItem('role') || sessionStorage.getItem('portal_role');
+        if (savedRole) {
+          switch (savedRole) {
+            case 'Developer Admin':
+              setIsDeveloperAdmin(true);
+              setActiveView('school');
+              break;
+            case 'Main Admin':
+            case 'admin':
+              setIsAdmin(false);
+              setIsSchoolAdmin(true);
+              setActiveView('overview');
+              break;
+            case 'Admin Dashboard':
+              setIsAdmin(true);
+              setIsSchoolAdmin(false);
+              setAdminView('dashboard');
+              break;
+            case 'Receptionist':
+            case 'recep':
+              setIsRecep(true);
+              setRecepView('overview');
+              break;
+            case 'Teacher':
+            case 'teacher':
+              setIsTeacher(true);
+              setTeacherView('dashboard');
+              break;
+            case 'Finance Manager':
+            case 'accountant':
+              setIsAccountant(true);
+              setAccountantView('dashboard');
+              break;
+            case 'Expense Manager':
+            case 'expense':
+              setIsExpense(true);
+              setExpenseView('dashboard');
+              break;
+            default:
+              setActiveView('overview');
+              break;
+          }
+        } else {
+          setActiveView('overview');
+        }
+      }
+    };
+
+    window.addEventListener('popstate', handlePopState);
+    return () => window.removeEventListener('popstate', handlePopState);
   }, []);
 
   // Update window address dynamically for routing appearance
@@ -190,6 +331,56 @@ export default function App() {
     }
   }, [activeView, isDeveloperAdmin, isAdmin, isRecep, isAccountant, isExpense, isTeacher]);
 
+  // URL Auto-login Hook
+  useEffect(() => {
+    const autoLogin = async () => {
+      const urlParams = new URLSearchParams(window.location.search);
+      const usernameParam = urlParams.get('username');
+      const passwordParam = urlParams.get('password');
+      const tenantParam = urlParams.get('tenant');
+      const fromDevAdminParam = urlParams.get('from_dev_admin');
+
+      if (fromDevAdminParam === 'true') {
+        sessionStorage.setItem('from_dev_admin', 'true');
+      }
+
+      if (usernameParam && passwordParam && tenantParam) {
+        try {
+          const res = await fetch('/api/auth/login', {
+            method: 'POST',
+            headers: { 
+              'Content-Type': 'application/json',
+              'x-tenant-id': tenantParam
+            },
+            body: JSON.stringify({ username: usernameParam, password: passwordParam, role: 'Auto' })
+          });
+
+          if (res.ok) {
+            const data = await res.json();
+            sessionStorage.setItem('token', data.token);
+            sessionStorage.setItem('role', data.role);
+            sessionStorage.setItem('username', data.username);
+            sessionStorage.setItem('name', data.name);
+            if (data.school) {
+              sessionStorage.setItem('school_name', data.school.name);
+              sessionStorage.setItem('school_subdomain', data.school.subdomain);
+              localStorage.setItem('tenant_subdomain', data.school.subdomain);
+            }
+
+            // Remove username/password query params but keep the tenant
+            const cleanUrl = window.location.pathname + `?tenant=${tenantParam}`;
+            window.history.replaceState(null, '', cleanUrl);
+
+            handleLoginSuccess(data.role, data.name);
+          }
+        } catch (err) {
+          console.error('URL auto-login exception:', err);
+        }
+      }
+    };
+    autoLogin();
+  }, []);
+
   const handleLoginSuccess = (role, name) => {
     sessionStorage.setItem('portal_role', role);
     switch (role) {
@@ -198,8 +389,14 @@ export default function App() {
         setActiveView('school');
         break;
       case 'Main Admin':
+        setIsAdmin(false);
+        setIsSchoolAdmin(true);
+        setActiveView('overview');
+        break;
+      case 'Admin Dashboard':
         setIsAdmin(true);
-        setAdminView('overview');
+        setIsSchoolAdmin(false);
+        setAdminView('dashboard');
         break;
       case 'Teacher':
         setIsTeacher(true);
@@ -228,11 +425,17 @@ export default function App() {
     localStorage.removeItem('tenant_subdomain');
     setIsDeveloperAdmin(false);
     setIsAdmin(false);
+    setIsSchoolAdmin(false);
     setIsRecep(false);
     setIsTeacher(false);
     setIsAccountant(false);
     setIsExpense(false);
     setActiveView('overview');
+    
+    // Clear path on logout
+    const tenant = getActiveTenant();
+    const query = tenant ? `?tenant=${tenant}` : '';
+    window.history.pushState(null, '', `/${query}`);
   };
 
   const handleExpenseToAdmin = () => {
@@ -241,29 +444,45 @@ export default function App() {
     setAdminView('dashboard');
   };
 
+  const handleBackToMain = () => {
+    setIsAdmin(false);
+    setIsRecep(false);
+    setIsTeacher(false);
+    setIsAccountant(false);
+    setIsExpense(false);
+    setIsSchoolAdmin(true);
+    setActiveViewState('overview');
+    sessionStorage.setItem('role', 'Main Admin');
+    sessionStorage.setItem('portal_role', 'Main Admin');
+
+    const tenant = getActiveTenant();
+    const query = tenant ? `?tenant=${tenant}` : '';
+    window.history.pushState(null, '', `/overview${query}`);
+  };
+
   const renderCurrentView = () => {
     if (isDeveloperAdmin) {
-      return <SchoolProfile schoolDetails={schoolDetails} fetchSchoolDetails={fetchSchoolDetails} />;
+      return <SchoolProfile schoolDetails={schoolDetails} fetchSchoolDetails={fetchSchoolDetails} isDeveloperAdmin={isDeveloperAdmin} />;
     }
 
     if (isAdmin) {
-      return <AdminPanel setActiveView={setActiveView} onLogout={handleLogout} adminView={adminView} setAdminView={setAdminView} />;
+      return <AdminPanel setActiveView={setActiveView} onLogout={handleLogout} adminView={adminView} setAdminView={setAdminView} onBackToMain={handleBackToMain} />;
     }
 
     if (isRecep) {
-      return <RecepPanel setActiveView={setActiveView} onLogout={handleLogout} recepView={recepView} setRecepView={setRecepView} />;
+      return <RecepPanel setActiveView={setActiveView} onLogout={handleLogout} recepView={recepView} setRecepView={setRecepView} onBackToMain={handleBackToMain} />;
     }
 
     if (isTeacher) {
-      return <TeacherPanel setActiveView={setActiveView} onLogout={handleLogout} teacherView={teacherView} setTeacherView={setTeacherView} />;
+      return <TeacherPanel setActiveView={setActiveView} onLogout={handleLogout} teacherView={teacherView} setTeacherView={setTeacherView} onBackToMain={handleBackToMain} />;
     }
 
     if (isAccountant) {
-      return <AccountantPanel setActiveView={setActiveView} onLogout={handleLogout} accountantView={accountantView} setAccountantView={setAdminView} />;
+      return <AccountantPanel setActiveView={setActiveView} onLogout={handleLogout} accountantView={accountantView} setAccountantView={setAdminView} onBackToMain={handleBackToMain} />;
     }
 
     if (isExpense) {
-      return <ExpensePanel setActiveView={setActiveView} onLogout={handleLogout} expenseView={expenseView} setExpenseView={setExpenseView} onAccessAdmin={handleExpenseToAdmin} />;
+      return <ExpensePanel setActiveView={setActiveView} onLogout={handleLogout} expenseView={expenseView} setExpenseView={setExpenseView} onAccessAdmin={handleExpenseToAdmin} onBackToMain={handleBackToMain} />;
     }
 
     switch (activeView) {
@@ -293,20 +512,180 @@ export default function App() {
       case 'finance':
         return <FinancePortal />;
       case 'school':
-        return <SchoolProfile schoolDetails={schoolDetails} fetchSchoolDetails={fetchSchoolDetails} />;
+        return <SchoolProfile schoolDetails={schoolDetails} fetchSchoolDetails={fetchSchoolDetails} isDeveloperAdmin={isDeveloperAdmin} />;
+      case 'admin-login':
+        return (
+          <AdminLogin 
+            onLogin={() => {
+              sessionStorage.setItem('role', 'Admin Dashboard');
+              sessionStorage.setItem('portal_role', 'Admin Dashboard');
+              setIsAdmin(true);
+              setIsSchoolAdmin(false);
+              setAdminView('dashboard');
+            }} 
+            onCancel={() => setActiveView('overview')} 
+          />
+        );
+      case 'accountant-login':
+        return (
+          <AccountantLogin 
+            onLogin={() => {
+              sessionStorage.setItem('role', 'Finance Manager');
+              sessionStorage.setItem('portal_role', 'Finance Manager');
+              setIsAccountant(true);
+              setAccountantView('dashboard');
+            }} 
+            onCancel={() => setActiveView('overview')} 
+          />
+        );
+      case 'recep-login':
+        return (
+          <RecepLogin 
+            onLogin={() => {
+              sessionStorage.setItem('role', 'Receptionist');
+              sessionStorage.setItem('portal_role', 'Receptionist');
+              setIsRecep(true);
+              setRecepView('overview');
+            }} 
+            onCancel={() => setActiveView('overview')} 
+          />
+        );
+      case 'teacher-login':
+        return (
+          <TeacherLogin 
+            onLogin={() => {
+              sessionStorage.setItem('role', 'Teacher');
+              sessionStorage.setItem('portal_role', 'Teacher');
+              setIsTeacher(true);
+              setTeacherView('dashboard');
+            }} 
+            onCancel={() => setActiveView('overview')} 
+          />
+        );
+      case 'expense-login':
+        return (
+          <ExpenseLogin 
+            onLogin={() => {
+              sessionStorage.setItem('role', 'Expense Manager');
+              sessionStorage.setItem('portal_role', 'Expense Manager');
+              setIsExpense(true);
+              setExpenseView('dashboard');
+            }} 
+            onCancel={() => setActiveView('overview')} 
+          />
+        );
       default:
         return <DashboardOverview setActiveView={setActiveView} onQuickAction={() => {}} />;
     }
   };
 
-  const isLoggedIn = isDeveloperAdmin || isAdmin || isRecep || isTeacher || isAccountant || isExpense;
+  const isLoggedIn = isDeveloperAdmin || isAdmin || isRecep || isTeacher || isAccountant || isExpense || isSchoolAdmin;
 
   if (!isLoggedIn) {
+    const host = window.location.hostname;
+    const parts = host.split('.');
+    let loginTenant = null;
+    if (parts.length > 2 || (parts.length === 2 && !parts[1].startsWith('localhost'))) {
+      loginTenant = parts[0];
+    } else {
+      const urlParams = new URLSearchParams(window.location.search);
+      loginTenant = urlParams.get('tenant') || null;
+    }
+
+    if (!loginTenant) {
+      localStorage.removeItem('tenant_subdomain');
+    }
+
     return (
       <SchoolLogin 
-        tenantSubdomain={getActiveTenant()} 
+        tenantSubdomain={loginTenant} 
         onLoginSuccess={handleLoginSuccess} 
       />
+    );
+  }
+
+  if (activeSubadminLogin) {
+    const loginBgs = {
+      admin: 'linear-gradient(135deg, hsl(250, 100%, 97%) 0%, hsl(320, 100%, 97%) 100%)',
+      accountant: 'linear-gradient(135deg, hsl(150, 100%, 96%) 0%, hsl(160, 100%, 97%) 100%)',
+      recep: 'linear-gradient(135deg, hsl(150, 100%, 97%) 0%, hsl(195, 100%, 97%) 100%)',
+      teacher: 'linear-gradient(135deg, hsl(320, 100%, 97%) 0%, hsl(250, 100%, 97%) 100%)',
+      expense: 'linear-gradient(135deg, hsl(0, 100%, 97%) 0%, hsl(35, 100%, 97%) 100%)'
+    };
+
+    return (
+      <div data-theme="light" style={{
+        width: '100vw',
+        minHeight: '100vh',
+        background: loginBgs[activeSubadminLogin] || '#ffffff',
+        display: 'grid',
+        placeItems: 'center',
+        padding: '40px 20px',
+        boxSizing: 'border-box',
+        overflowY: 'auto'
+      }}>
+        {activeSubadminLogin === 'admin' && (
+          <AdminLogin 
+            onLogin={() => {
+              sessionStorage.setItem('role', 'Admin Dashboard');
+              sessionStorage.setItem('portal_role', 'Admin Dashboard');
+              setIsAdmin(true);
+              setIsSchoolAdmin(false);
+              setAdminView('dashboard');
+              setActiveSubadminLogin(null);
+            }} 
+            onCancel={() => setActiveSubadminLogin(null)} 
+          />
+        )}
+        {activeSubadminLogin === 'accountant' && (
+          <AccountantLogin 
+            onLogin={() => {
+              sessionStorage.setItem('role', 'Finance Manager');
+              sessionStorage.setItem('portal_role', 'Finance Manager');
+              setIsAccountant(true);
+              setAccountantView('dashboard');
+              setActiveSubadminLogin(null);
+            }} 
+            onCancel={() => setActiveSubadminLogin(null)} 
+          />
+        )}
+        {activeSubadminLogin === 'recep' && (
+          <RecepLogin 
+            onLogin={() => {
+              sessionStorage.setItem('role', 'Receptionist');
+              sessionStorage.setItem('portal_role', 'Receptionist');
+              setIsRecep(true);
+              setRecepView('overview');
+              setActiveSubadminLogin(null);
+            }} 
+            onCancel={() => setActiveSubadminLogin(null)} 
+          />
+        )}
+        {activeSubadminLogin === 'teacher' && (
+          <TeacherLogin 
+            onLogin={() => {
+              sessionStorage.setItem('role', 'Teacher');
+              sessionStorage.setItem('portal_role', 'Teacher');
+              setIsTeacher(true);
+              setTeacherView('dashboard');
+              setActiveSubadminLogin(null);
+            }} 
+            onCancel={() => setActiveSubadminLogin(null)} 
+          />
+        )}
+        {activeSubadminLogin === 'expense' && (
+          <ExpenseLogin 
+            onLogin={() => {
+              sessionStorage.setItem('role', 'Expense Manager');
+              sessionStorage.setItem('portal_role', 'Expense Manager');
+              setIsExpense(true);
+              setExpenseView('dashboard');
+              setActiveSubadminLogin(null);
+            }} 
+            onCancel={() => setActiveSubadminLogin(null)} 
+          />
+        )}
+      </div>
     );
   }
 
@@ -343,6 +722,7 @@ export default function App() {
         onAccessAdmin={handleExpenseToAdmin}
         isDeveloperAdmin={isDeveloperAdmin}
         onDeveloperAdminLogout={handleLogout}
+        onBackToMain={handleBackToMain}
       />
 
       {mobileOpen && (
@@ -376,6 +756,7 @@ export default function App() {
           isRecep={isRecep}
           isTeacher={isTeacher}
           isExpense={isExpense}
+          isDeveloperAdmin={isDeveloperAdmin}
           setActiveView={setActiveView}
           onLogout={handleLogout}
         />

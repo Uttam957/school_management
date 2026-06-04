@@ -28,6 +28,28 @@ export const slugify = (text) => {
     .replace(/\-\-+/g, '-');        // Replace multiple - with single -
 };
 
+// Middleware to restore tenant context lost during async processing (e.g. multer upload)
+export const restoreTenantContext = (req, res, next) => {
+  let tenantId = req.headers['x-tenant-id'] || req.query.tenantId;
+  if (!tenantId && req.headers.host) {
+    const host = req.headers.host;
+    const parts = host.split('.');
+    if (parts.length > 2 || (parts.length === 2 && !parts[1].startsWith('localhost'))) {
+      tenantId = parts[0];
+    }
+  }
+  
+  if (tenantId) {
+    tenantStorage.run(slugify(tenantId), () => {
+      next();
+    });
+  } else {
+    tenantStorage.run(null, () => {
+      next();
+    });
+  }
+};
+
 // Dynamic database path selector
 export const getDbPath = () => {
   const tenantId = tenantStorage.getStore();
@@ -58,6 +80,7 @@ export const readDb = () => {
     if (!db.teachers) db.teachers = [];
     if (!db.staff) db.staff = [];
     if (!db.timetables) db.timetables = [];
+    if (!db.teacherTimetables) db.teacherTimetables = [];
     if (!db.invoices) db.invoices = [];
     if (!db.fees) db.fees = [];
     if (!db.expenses) db.expenses = [];
@@ -68,6 +91,8 @@ export const readDb = () => {
     if (!db.notices) db.notices = [];
     if (!db.holidays) db.holidays = [];
     if (!db.results) db.results = [];
+    if (!db.subjects) db.subjects = [];
+
     if (!db.timeslots) {
       db.timeslots = [
         '09:00 AM - 10:00 AM',
@@ -91,6 +116,7 @@ export const readDb = () => {
       teachers: [],
       staff: [],
       timetables: [],
+      teacherTimetables: [],
       invoices: [],
       fees: [],
       expenses: [],
@@ -101,6 +127,7 @@ export const readDb = () => {
       notices: [],
       holidays: [],
       results: [],
+
       timeslots: [
         '09:00 AM - 10:00 AM',
         '10:00 AM - 11:00 AM',
@@ -165,6 +192,7 @@ const runMigration = () => {
         teachers: db.teachers || [],
         staff: db.staff || [],
         timetables: db.timetables || [],
+        teacherTimetables: db.teacherTimetables || [],
         invoices: db.invoices || [],
         fees: db.fees || [],
         expenses: db.expenses || [],

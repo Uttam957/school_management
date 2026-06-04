@@ -7,7 +7,7 @@ import {
   LogOut
 } from 'lucide-react';
 
-export default function ExpensePanel({ setActiveView, onLogout, expenseView, setExpenseView, onAccessAdmin, hideHeader }) {
+export default function ExpensePanel({ setActiveView, onLogout, expenseView, setExpenseView, onAccessAdmin, hideHeader, onBackToMain }) {
   const [expenses, setExpenses] = useState([]);
   const [loading, setLoading] = useState(true);
   const [notification, setNotification] = useState(null);
@@ -122,7 +122,7 @@ export default function ExpensePanel({ setActiveView, onLogout, expenseView, set
               Sign Out
             </button>
             <button
-              onClick={onLogout}
+              onClick={onBackToMain}
               className="btn-primary"
               style={{ padding: '8px 16px', fontSize: '0.85rem', display: 'flex', alignItems: 'center', gap: '6px' }}
             >

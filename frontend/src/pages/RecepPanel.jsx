@@ -17,7 +17,7 @@ import StaffDirectory from './StaffDirectory';
 import DashboardOverview from './DashboardOverview';
 import RecepOverview from './RecepOverview';
 
-export default function RecepPanel({ setActiveView, onLogout, recepView, setRecepView }) {
+export default function RecepPanel({ setActiveView, onLogout, recepView, setRecepView, onBackToMain }) {
   const renderRecepContent = () => {
     switch (recepView) {
       case 'register-student':
@@ -125,7 +125,7 @@ export default function RecepPanel({ setActiveView, onLogout, recepView, setRece
             Sign Out
           </button>
           <button
-            onClick={onLogout}
+            onClick={onBackToMain}
             className="btn-primary"
             style={{ padding: '8px 16px', fontSize: '0.85rem', display: 'flex', alignItems: 'center', gap: '6px' }}
           >

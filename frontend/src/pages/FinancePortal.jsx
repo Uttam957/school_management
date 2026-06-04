@@ -269,8 +269,6 @@ export default function FinancePortal() {
                       <option value="9-B">Grade 9-B</option>
                       <option value="10-A">Grade 10-A</option>
                       <option value="10-B">Grade 10-B</option>
-                      <option value="11-A">Grade 11-A</option>
-                      <option value="11-B">Grade 11-B</option>
                     </select>
                   </div>
 

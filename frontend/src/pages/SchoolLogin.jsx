@@ -2,9 +2,9 @@ import React, { useState, useEffect } from 'react';
 import { Shield, Mail, Lock, Eye, EyeOff, AlertCircle, School, ChevronRight, UserCheck } from 'lucide-react';
 
 export default function SchoolLogin({ tenantSubdomain, onLoginSuccess }) {
-  const [username, setUsername] = useState('');
-  const [password, setPassword] = useState('');
-  const [role, setRole] = useState(tenantSubdomain ? 'Main Admin' : 'Developer Admin'); // Default role based on context
+  const [username, setUsername] = useState(tenantSubdomain ? '' : 'uttam306115@gmail.com');
+  const [password, setPassword] = useState(tenantSubdomain ? '' : 'uttam@2004');
+  const role = tenantSubdomain ? 'Auto' : 'Developer Admin';
   const [showPassword, setShowPassword] = useState(false);
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
@@ -135,30 +135,6 @@ export default function SchoolLogin({ tenantSubdomain, onLoginSuccess }) {
           </div>
         </div>
 
-        {/* ROLE SELECTION dropdown/tab */}
-        <div className="form-group">
-          <label style={{ fontSize: '0.72rem', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.04em', color: 'var(--text-muted)', marginBottom: '8px', display: 'block' }}>
-            Choose Portal Role *
-          </label>
-          <select 
-            value={role} 
-            onChange={(e) => setRole(e.target.value)} 
-            className="select-custom" 
-            style={{ width: '100%', padding: '12px', borderRadius: '10px', fontSize: '0.88rem' }}
-          >
-            <option value="Developer Admin">Developer Admin (Platform Owner)</option>
-            {tenantSubdomain && (
-              <>
-                <option value="Main Admin">Main Admin (School Admin)</option>
-                <option value="Teacher">Teacher</option>
-                <option value="Finance Manager">Finance Manager</option>
-                <option value="Expense Manager">Expense Manager</option>
-                <option value="Receptionist">Receptionist</option>
-              </>
-            )}
-          </select>
-        </div>
-
         {/* Form */}
         <form onSubmit={handleSubmit} style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>
           
@@ -263,6 +239,8 @@ export default function SchoolLogin({ tenantSubdomain, onLoginSuccess }) {
           </button>
           
         </form>
+
+
 
         <div style={{ textAlign: 'center', fontSize: '0.72rem', color: 'var(--text-muted)', borderTop: '1px solid var(--border-glass)', paddingTop: '15px' }}>
           <span>Secure AES Encrypted Connection</span>

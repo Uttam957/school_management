@@ -39,7 +39,119 @@ import {
   KeyRound
 } from 'lucide-react';
 
-export default function SchoolProfile({ schoolDetails, fetchSchoolDetails }) {
+export default function SchoolProfile({ schoolDetails, fetchSchoolDetails, isDeveloperAdmin }) {
+  if (!isDeveloperAdmin) {
+    return (
+      <div className="animate-slide-up" style={{ display: 'flex', flexDirection: 'column', gap: '24px', paddingBottom: '40px' }}>
+        <div className="glass-panel" style={{ 
+          padding: '24px 32px',
+          background: 'var(--bg-card)',
+          borderRadius: '16px',
+          border: '1px solid var(--border-glass)',
+          boxShadow: 'var(--shadow-md)',
+          display: 'flex',
+          alignItems: 'center',
+          gap: '16px'
+        }}>
+          <div style={{
+            width: '48px',
+            height: '48px',
+            borderRadius: '12px',
+            background: 'linear-gradient(135deg, hsl(var(--color-primary)) 0%, hsl(var(--color-secondary)) 100%)',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            color: 'white',
+            boxShadow: '0 4px 10px rgba(99, 102, 241, 0.25)'
+          }}>
+            <SchoolIcon size={24} />
+          </div>
+          <div>
+            <h2 style={{ fontSize: '1.6rem', fontWeight: 800, margin: 0, color: 'var(--text-main)' }}>School Profile</h2>
+            <p style={{ fontSize: '0.82rem', color: 'var(--text-muted)', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.05em' }}>
+              Branding & Telemetry Identity
+            </p>
+          </div>
+        </div>
+
+        <div className="glass-panel" style={{
+          padding: '32px',
+          borderRadius: '16px',
+          background: 'var(--bg-card)',
+          border: '1px solid var(--border-glass)',
+          display: 'flex',
+          flexDirection: 'column',
+          gap: '24px'
+        }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '20px' }}>
+            <div style={{
+              width: '64px',
+              height: '64px',
+              borderRadius: '16px',
+              background: 'linear-gradient(135deg, hsl(var(--color-primary)) 0%, hsl(var(--color-secondary)) 100%)',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              color: 'white',
+              fontSize: '1.5rem',
+              fontWeight: 'bold'
+            }}>
+              {schoolDetails?.logo ? <img src={schoolDetails.logo} alt="Logo" style={{ width: '100%', height: '100%', objectFit: 'cover', borderRadius: '16px' }} /> : (schoolDetails?.name || 'SC').slice(0, 2).toUpperCase()}
+            </div>
+            <div>
+              <h3 style={{ fontSize: '1.4rem', fontWeight: 800, color: 'var(--text-main)', margin: 0 }}>{schoolDetails?.name}</h3>
+              <p style={{ fontSize: '0.85rem', color: 'var(--text-muted)', margin: '4px 0 0 0' }}>Domain: {schoolDetails?.subdomain || 'localhost'}.myschoolerp.com</p>
+            </div>
+          </div>
+
+          <div style={{
+            display: 'grid',
+            gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))',
+            gap: '20px',
+            borderTop: '1px solid var(--border-glass)',
+            paddingTop: '20px'
+          }}>
+            <div>
+              <span style={{ fontSize: '0.72rem', color: 'var(--text-muted)', fontWeight: 700, textTransform: 'uppercase', display: 'block', marginBottom: '4px' }}>Principal</span>
+              <span style={{ fontSize: '0.9rem', color: 'var(--text-main)', fontWeight: 600 }}>{schoolDetails?.principal || schoolDetails?.principalName || 'Not Assigned'}</span>
+            </div>
+            <div>
+              <span style={{ fontSize: '0.72rem', color: 'var(--text-muted)', fontWeight: 700, textTransform: 'uppercase', display: 'block', marginBottom: '4px' }}>Email Address</span>
+              <span style={{ fontSize: '0.9rem', color: 'var(--text-main)', fontWeight: 600 }}>{schoolDetails?.email || 'Not Assigned'}</span>
+            </div>
+            <div>
+              <span style={{ fontSize: '0.72rem', color: 'var(--text-muted)', fontWeight: 700, textTransform: 'uppercase', display: 'block', marginBottom: '4px' }}>Phone Number</span>
+              <span style={{ fontSize: '0.9rem', color: 'var(--text-main)', fontWeight: 600 }}>{schoolDetails?.phone || 'Not Assigned'}</span>
+            </div>
+            <div>
+              <span style={{ fontSize: '0.72rem', color: 'var(--text-muted)', fontWeight: 700, textTransform: 'uppercase', display: 'block', marginBottom: '4px' }}>Session / Period</span>
+              <span style={{ fontSize: '0.9rem', color: 'var(--text-main)', fontWeight: 600 }}>{schoolDetails?.academicSession || '2026-2027'}</span>
+            </div>
+            <div>
+              <span style={{ fontSize: '0.72rem', color: 'var(--text-muted)', fontWeight: 700, textTransform: 'uppercase', display: 'block', marginBottom: '4px' }}>Billing Plan</span>
+              <span style={{
+                fontSize: '0.78rem',
+                padding: '3px 10px',
+                borderRadius: '10px',
+                fontWeight: 700,
+                display: 'inline-block',
+                background: 'rgba(99, 102, 241, 0.08)',
+                color: 'hsl(var(--color-primary))',
+                border: '1px solid rgba(99, 102, 241, 0.15)'
+              }}>{schoolDetails?.subscriptionPlan || 'Starter Plan'}</span>
+            </div>
+            <div>
+              <span style={{ fontSize: '0.72rem', color: 'var(--text-muted)', fontWeight: 700, textTransform: 'uppercase', display: 'block', marginBottom: '4px' }}>Address</span>
+              <span style={{ fontSize: '0.9rem', color: 'var(--text-main)', fontWeight: 600 }}>
+                {schoolDetails?.address ? `${schoolDetails.address}, ${schoolDetails.city || ''}, ${schoolDetails.state || ''}` : 'Not Specified'}
+              </span>
+            </div>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
   const [activeTab, setActiveTab] = useState('dashboard');
   const [schools, setSchools] = useState([]);
   const [analytics, setAnalytics] = useState({
@@ -86,7 +198,9 @@ export default function SchoolProfile({ schoolDetails, fetchSchoolDetails }) {
     adminName: '',
     adminEmail: '',
     adminUsername: '',
-    adminPassword: ''
+    adminPassword: '',
+    complexAdminUsername: '',
+    complexAdminPassword: ''
   });
   const [formErrors, setFormErrors] = useState({});
 
@@ -148,7 +262,9 @@ export default function SchoolProfile({ schoolDetails, fetchSchoolDetails }) {
       adminName: '',
       adminEmail: '',
       adminUsername: '',
-      adminPassword: ''
+      adminPassword: '',
+      complexAdminUsername: '',
+      complexAdminPassword: ''
     });
     setFormErrors({});
     setShowAddModal(true);
@@ -173,7 +289,9 @@ export default function SchoolProfile({ schoolDetails, fetchSchoolDetails }) {
       adminName: school.adminName || '',
       adminEmail: school.adminEmail || '',
       adminUsername: school.adminUsername || '',
-      adminPassword: '' // keep password blank during edits
+      adminPassword: '', // keep password blank during edits
+      complexAdminUsername: school.complexAdminUsername || '',
+      complexAdminPassword: ''
     });
     setFormErrors({});
     setShowAddModal(true);
@@ -193,6 +311,8 @@ export default function SchoolProfile({ schoolDetails, fetchSchoolDetails }) {
       if (!formData.adminEmail.trim()) errors.adminEmail = 'Admin Email is required.';
       if (!formData.adminUsername.trim()) errors.adminUsername = 'Admin Username is required.';
       if (!formData.adminPassword.trim()) errors.adminPassword = 'Admin Password is required.';
+      if (!formData.complexAdminUsername.trim()) errors.complexAdminUsername = 'Admin Dashboard Username is required.';
+      if (!formData.complexAdminPassword.trim()) errors.complexAdminPassword = 'Admin Dashboard Password is required.';
     }
     
     setFormErrors(errors);
@@ -315,13 +435,15 @@ export default function SchoolProfile({ schoolDetails, fetchSchoolDetails }) {
   const handleLaunchPortal = (school) => {
     // Clear current session so the user lands on the school's login page
     sessionStorage.clear();
+    sessionStorage.setItem('from_dev_admin', 'true');
     localStorage.setItem('tenant_subdomain', school.subdomain);
-    window.location.href = `/?tenant=${school.subdomain}`;
+    window.location.href = `/?tenant=${school.subdomain}&username=${encodeURIComponent(school.adminUsername)}&password=${encodeURIComponent(school.adminPassword)}&from_dev_admin=true`;
   };
 
   // Inspect School Portal - opens in a new tab
   const handleInspectPortal = (school) => {
-    window.open(`/?tenant=${school.subdomain}`, '_blank');
+    sessionStorage.setItem('from_dev_admin', 'true');
+    window.open(`/?tenant=${school.subdomain}&username=${encodeURIComponent(school.adminUsername)}&password=${encodeURIComponent(school.adminPassword)}&from_dev_admin=true`, '_blank');
   };
 
   // Filtered list
@@ -653,153 +775,133 @@ export default function SchoolProfile({ schoolDetails, fetchSchoolDetails }) {
             </button>
           </div>
 
-          {/* SCHOOL LIST TABLE */}
-          <div style={{ overflowX: 'auto', border: '1px solid var(--border-glass)', borderRadius: '12px' }}>
-            <table className="table-custom" style={{ width: '100%', borderCollapse: 'collapse', minWidth: '1000px' }}>
-              <thead>
-                <tr>
-                  <th>School Details</th>
-                  <th>School Code</th>
-                  <th>Subdomain / URL</th>
-                  <th>Principal</th>
-                  <th>Enrollments</th>
-                  <th>Plan Tier</th>
-                  <th>Status</th>
-                  <th>Created Date</th>
-                  <th style={{ width: '160px', textAlign: 'center' }}>Master Actions</th>
-                </tr>
-              </thead>
-              <tbody>
-                {filteredSchools.length > 0 ? (
-                  filteredSchools.map(school => (
-                    <tr key={school.id}>
-                      {/* Logo and Name */}
-                      <td>
-                        <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
-                          <div style={{
-                            width: '40px', height: '40px', borderRadius: '8px', 
-                            background: 'linear-gradient(135deg, hsl(var(--color-primary)) 0%, hsl(var(--color-secondary)) 100%)',
-                            display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'white', fontWeight: 'bold'
-                          }}>
-                            {school.logo ? <img src={school.logo} alt="Logo" style={{ width: '100%', height: '100%', objectFit: 'cover', borderRadius: '8px' }} /> : school.name.slice(0, 2).toUpperCase()}
-                          </div>
-                          <div>
-                            <strong style={{ color: 'var(--text-main)', display: 'block' }}>{school.name}</strong>
-                            <span style={{ fontSize: '0.72rem', color: 'var(--text-muted)' }}>{school.city}, {school.state}</span>
-                          </div>
-                        </div>
-                      </td>
-                      
-                      {/* School Code */}
-                      <td><span style={{ fontSize: '0.8rem', fontWeight: 600, color: 'var(--text-main)' }}>{school.code}</span></td>
-                      
-                      {/* Subdomain URL */}
-                      <td>
-                        <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
-                          <span style={{ fontSize: '0.72rem', color: 'var(--text-muted)' }}>
-                            Production: <span style={{ opacity: 0.6 }}>{school.subdomain}.myschoolerp.com</span>
-                          </span>
-                          <a 
-                            href={`/?tenant=${school.subdomain}`}
-                            onClick={(e) => { e.preventDefault(); handleLaunchPortal(school); }}
-                            style={{ 
-                              fontSize: '0.78rem', color: 'hsl(var(--color-primary))', 
-                              display: 'flex', alignItems: 'center', gap: '6px', 
-                              textDecoration: 'none', fontWeight: 700, cursor: 'pointer',
-                              padding: '5px 12px', borderRadius: '8px',
-                              background: 'rgba(99, 102, 241, 0.06)',
-                              border: '1px solid rgba(99, 102, 241, 0.12)',
-                              width: 'fit-content',
-                              transition: 'all 0.2s ease'
-                            }}
-                            onMouseOver={(e) => { e.currentTarget.style.background = 'rgba(99, 102, 241, 0.12)'; e.currentTarget.style.borderColor = 'rgba(99, 102, 241, 0.25)'; }}
-                            onMouseOut={(e) => { e.currentTarget.style.background = 'rgba(99, 102, 241, 0.06)'; e.currentTarget.style.borderColor = 'rgba(99, 102, 241, 0.12)'; }}
-                          >
-                            <ExternalLink size={12} /> Open School Login
-                          </a>
-                        </div>
-                      </td>
+          {/* SCHOOL LIST CARDS */}
+          {filteredSchools.length > 0 ? (
+            <div style={{ 
+              display: 'grid', 
+              gridTemplateColumns: 'repeat(auto-fill, minmax(340px, 1fr))', 
+              gap: '16px'
+            }}>
+              {filteredSchools.map(school => (
+                <div key={school.id} className="glass-panel" style={{
+                  padding: '20px', borderRadius: '12px',
+                  border: '1px solid var(--border-glass)',
+                  display: 'flex', flexDirection: 'column', gap: '14px',
+                  transition: 'all 0.2s ease',
+                  cursor: 'default'
+                }}>
+                  {/* Header: Logo + Name + Status */}
+                  <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: '12px' }}>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '12px', flex: 1, minWidth: 0 }}>
+                      <div style={{
+                        width: '44px', height: '44px', borderRadius: '10px', flexShrink: 0,
+                        background: 'linear-gradient(135deg, hsl(var(--color-primary)) 0%, hsl(var(--color-secondary)) 100%)',
+                        display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'white', fontWeight: 'bold', fontSize: '1rem'
+                      }}>
+                        {school.logo ? <img src={school.logo} alt="Logo" style={{ width: '100%', height: '100%', objectFit: 'cover', borderRadius: '10px' }} /> : school.name.slice(0, 2).toUpperCase()}
+                      </div>
+                      <div style={{ minWidth: 0 }}>
+                        <strong style={{ color: 'var(--text-main)', display: 'block', fontSize: '0.95rem', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{school.name}</strong>
+                        <span style={{ fontSize: '0.72rem', color: 'var(--text-muted)' }}>{school.city}, {school.state}</span>
+                      </div>
+                    </div>
+                    <span style={{
+                      fontSize: '0.65rem', padding: '3px 10px', borderRadius: '20px', fontWeight: 700, whiteSpace: 'nowrap', flexShrink: 0,
+                      background: school.status === 'Active' ? 'rgba(16, 185, 129, 0.08)' : 'rgba(239, 68, 68, 0.08)',
+                      color: school.status === 'Active' ? '#10b981' : '#ef4444',
+                      border: school.status === 'Active' ? '1px solid rgba(16, 185, 129, 0.15)' : '1px solid rgba(239, 68, 68, 0.15)'
+                    }}>{school.status}</span>
+                  </div>
 
-                      {/* Principal */}
-                      <td><span style={{ fontSize: '0.8rem', color: 'var(--text-main)' }}>{school.principalName}</span></td>
-                      
-                      {/* Enrollments */}
-                      <td>
-                        <div style={{ display: 'flex', flexDirection: 'column', gap: '2px', fontSize: '0.74rem' }}>
-                          <span style={{ color: 'var(--text-main)' }}>Students: <strong>{school.studentCount || 0}</strong></span>
-                          <span style={{ color: 'var(--text-muted)' }}>Teachers: <strong>{school.teacherCount || 0}</strong> | Staff: <strong>{school.staffCount || 0}</strong></span>
-                        </div>
-                      </td>
+                  {/* Details Grid */}
+                  <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '10px', fontSize: '0.78rem' }}>
+                    <div>
+                      <span style={{ color: 'var(--text-muted)', display: 'block', fontSize: '0.68rem', marginBottom: '2px' }}>School Code</span>
+                      <span style={{ color: 'var(--text-main)', fontWeight: 600 }}>{school.code}</span>
+                    </div>
+                    <div>
+                      <span style={{ color: 'var(--text-muted)', display: 'block', fontSize: '0.68rem', marginBottom: '2px' }}>Principal</span>
+                      <span style={{ color: 'var(--text-main)' }}>{school.principalName}</span>
+                    </div>
+                    <div>
+                      <span style={{ color: 'var(--text-muted)', display: 'block', fontSize: '0.68rem', marginBottom: '2px' }}>Plan</span>
+                      <span style={{
+                        fontSize: '0.68rem', padding: '2px 8px', borderRadius: '10px', fontWeight: 700, display: 'inline-block',
+                        background: school.subscriptionPlan === 'Premium' ? 'rgba(245, 158, 11, 0.08)' : school.subscriptionPlan === 'Growth' ? 'rgba(99, 102, 241, 0.08)' : 'rgba(100, 116, 139, 0.08)',
+                        color: school.subscriptionPlan === 'Premium' ? '#f59e0b' : school.subscriptionPlan === 'Growth' ? 'hsl(var(--color-primary))' : 'var(--text-muted)',
+                        border: school.subscriptionPlan === 'Premium' ? '1px solid rgba(245, 158, 11, 0.15)' : school.subscriptionPlan === 'Growth' ? '1px solid rgba(99, 102, 241, 0.15)' : '1px solid rgba(100, 116, 139, 0.15)'
+                      }}>{school.subscriptionPlan}</span>
+                    </div>
+                    <div>
+                      <span style={{ color: 'var(--text-muted)', display: 'block', fontSize: '0.68rem', marginBottom: '2px' }}>Created</span>
+                      <span style={{ color: 'var(--text-main)' }}>{new Date(school.createdAt).toLocaleDateString('en-US', { dateStyle: 'medium' })}</span>
+                    </div>
+                  </div>
 
-                      {/* Plan */}
-                      <td>
-                        <span style={{
-                          fontSize: '0.7rem', padding: '3px 8px', borderRadius: '12px', fontWeight: 700,
-                          background: school.subscriptionPlan === 'Premium' ? 'rgba(245, 158, 11, 0.08)' : school.subscriptionPlan === 'Growth' ? 'rgba(99, 102, 241, 0.08)' : 'rgba(100, 116, 139, 0.08)',
-                          color: school.subscriptionPlan === 'Premium' ? '#f59e0b' : school.subscriptionPlan === 'Growth' ? 'hsl(var(--color-primary))' : 'var(--text-muted)',
-                          border: school.subscriptionPlan === 'Premium' ? '1px solid rgba(245, 158, 11, 0.15)' : school.subscriptionPlan === 'Growth' ? '1px solid rgba(99, 102, 241, 0.15)' : '1px solid rgba(100, 116, 139, 0.15)'
-                        }}>{school.subscriptionPlan}</span>
-                      </td>
+                  {/* Enrollments */}
+                  <div style={{ display: 'flex', gap: '12px', fontSize: '0.76rem', padding: '10px 12px', background: 'var(--bg-glass-active)', borderRadius: '8px' }}>
+                    <span style={{ color: 'var(--text-main)' }}>Students: <strong>{school.studentCount || 0}</strong></span>
+                    <span style={{ color: 'var(--text-muted)' }}>Teachers: <strong>{school.teacherCount || 0}</strong></span>
+                    <span style={{ color: 'var(--text-muted)' }}>Staff: <strong>{school.staffCount || 0}</strong></span>
+                  </div>
 
-                      {/* Status */}
-                      <td>
-                        <span style={{
-                          fontSize: '0.68rem', padding: '4px 8px', borderRadius: '20px', fontWeight: 700,
-                          background: school.status === 'Active' ? 'rgba(16, 185, 129, 0.08)' : 'rgba(239, 68, 68, 0.08)',
-                          color: school.status === 'Active' ? '#10b981' : '#ef4444',
-                          border: school.status === 'Active' ? '1px solid rgba(16, 185, 129, 0.15)' : '1px solid rgba(239, 68, 68, 0.15)'
-                        }}>{school.status}</span>
-                      </td>
-
-                      {/* Created date */}
-                      <td><span style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>{new Date(school.createdAt).toLocaleDateString('en-US', { dateStyle: 'medium' })}</span></td>
-
-                      {/* Actions */}
-                      <td>
-                        <div style={{ display: 'flex', gap: '6px', justifyContent: 'center' }}>
-                          <button onClick={() => handleInspectPortal(school)} className="btn-secondary" title="View / Inspect Portal" style={{ padding: '6px', border: 'none', background: 'none', cursor: 'pointer', color: 'hsl(var(--color-info))' }}>
-                            <Eye size={16} />
-                          </button>
-                          <button onClick={() => handleOpenEditModal(school)} className="btn-secondary" title="Edit School" style={{ padding: '6px', border: 'none', background: 'none', cursor: 'pointer', color: 'var(--text-muted)' }}>
-                            <Edit2 size={16} />
-                          </button>
-                          <button 
-                            onClick={() => {
-                              setPasswordResetSchool(school);
-                              setNewAdminPassword('');
-                              setShowPasswordModal(true);
-                            }} 
-                            className="btn-secondary" 
-                            title="Reset School Admin Password" 
-                            style={{ padding: '6px', border: 'none', background: 'none', cursor: 'pointer', color: '#f59e0b' }}
-                          >
-                            <KeyRound size={16} />
-                          </button>
-                          <button 
-                            onClick={() => handleToggleSuspend(school)} 
-                            className="btn-secondary" 
-                            title={school.status === 'Active' ? 'Suspend School' : 'Activate School'} 
-                            style={{ padding: '6px', border: 'none', background: 'none', cursor: 'pointer', color: school.status === 'Active' ? '#ef4444' : '#10b981' }}
-                          >
-                            {school.status === 'Active' ? <AlertTriangle size={16} /> : <CheckCircle size={16} />}
-                          </button>
-                          <button onClick={() => handleDeleteSchool(school)} className="btn-secondary" title="Delete Tenant" style={{ padding: '6px', border: 'none', background: 'none', cursor: 'pointer', color: 'rgb(var(--color-danger-rgb))' }}>
-                            <Trash2 size={16} />
-                          </button>
-                        </div>
-                      </td>
-                    </tr>
-                  ))
-                ) : (
-                  <tr>
-                    <td colSpan="9" style={{ textAlign: 'center', padding: '40px', color: 'var(--text-muted)' }}>
-                      No school records matching active filters.
-                    </td>
-                  </tr>
-                )}
-              </tbody>
-            </table>
-          </div>
+                  {/* Subdomain + Actions */}
+                  <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '8px' }}>
+                    <a 
+                      href={`/?tenant=${school.subdomain}`}
+                      onClick={(e) => { e.preventDefault(); handleLaunchPortal(school); }}
+                      style={{ 
+                        fontSize: '0.75rem', color: 'hsl(var(--color-primary))', 
+                        display: 'flex', alignItems: 'center', gap: '5px', 
+                        textDecoration: 'none', fontWeight: 600, cursor: 'pointer',
+                        padding: '5px 10px', borderRadius: '8px',
+                        background: 'rgba(99, 102, 241, 0.06)',
+                        border: '1px solid rgba(99, 102, 241, 0.12)',
+                        transition: 'all 0.2s ease'
+                      }}
+                    >
+                      <ExternalLink size={11} /> Open Login
+                    </a>
+                    <div style={{ display: 'flex', gap: '4px' }}>
+                      <button onClick={() => handleInspectPortal(school)} className="btn-secondary" title="View / Inspect Portal" style={{ padding: '5px', border: 'none', background: 'none', cursor: 'pointer', color: 'hsl(var(--color-info))' }}>
+                        <Eye size={15} />
+                      </button>
+                      <button onClick={() => handleOpenEditModal(school)} className="btn-secondary" title="Edit School" style={{ padding: '5px', border: 'none', background: 'none', cursor: 'pointer', color: 'var(--text-muted)' }}>
+                        <Edit2 size={15} />
+                      </button>
+                      <button 
+                        onClick={() => {
+                          setPasswordResetSchool(school);
+                          setNewAdminPassword('');
+                          setShowPasswordModal(true);
+                        }} 
+                        className="btn-secondary" 
+                        title="Reset School Admin Password" 
+                        style={{ padding: '5px', border: 'none', background: 'none', cursor: 'pointer', color: '#f59e0b' }}
+                      >
+                        <KeyRound size={15} />
+                      </button>
+                      <button 
+                        onClick={() => handleToggleSuspend(school)} 
+                        className="btn-secondary" 
+                        title={school.status === 'Active' ? 'Suspend School' : 'Activate School'} 
+                        style={{ padding: '5px', border: 'none', background: 'none', cursor: 'pointer', color: school.status === 'Active' ? '#ef4444' : '#10b981' }}
+                      >
+                        {school.status === 'Active' ? <AlertTriangle size={15} /> : <CheckCircle size={15} />}
+                      </button>
+                      <button onClick={() => handleDeleteSchool(school)} className="btn-secondary" title="Delete Tenant" style={{ padding: '5px', border: 'none', background: 'none', cursor: 'pointer', color: 'rgb(var(--color-danger-rgb))' }}>
+                        <Trash2 size={15} />
+                      </button>
+                    </div>
+                  </div>
+                </div>
+              ))}
+            </div>
+          ) : (
+            <div style={{ textAlign: 'center', padding: '40px', color: 'var(--text-muted)', border: '1px solid var(--border-glass)', borderRadius: '12px' }}>
+              No school records matching active filters.
+            </div>
+          )}
 
         </div>
       )}
@@ -1011,6 +1113,35 @@ export default function SchoolProfile({ schoolDetails, fetchSchoolDetails }) {
                         value={formData.adminPassword} onChange={handleInputChange} required
                       />
                       {formErrors.adminPassword && <span style={{ color: '#ef4444', fontSize: '0.72rem', marginTop: '4px', display: 'block' }}>{formErrors.adminPassword}</span>}
+                    </div>
+                  </div>
+                </div>
+              )}
+
+              {/* SECTION E: ADMIN DASHBOARD CREDENTIALS (isAdmin = true) */}
+              {modalMode === 'add' && (
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '14px', borderTop: '1px solid var(--border-glass)', paddingTop: '16px' }}>
+                  <span style={{ fontSize: '0.72rem', fontWeight: 800, color: 'hsl(var(--color-primary))', textTransform: 'uppercase', letterSpacing: '0.05em' }}>
+                    V. Admin Dashboard Credentials (Complex Admin Panel)
+                  </span>
+                  
+                  <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '16px' }}>
+                    <div className="form-group">
+                      <label>Admin Dashboard Username *</label>
+                      <input 
+                        type="text" name="complexAdminUsername" className="form-control" placeholder="complex_admin"
+                        value={formData.complexAdminUsername} onChange={handleInputChange} required
+                      />
+                      {formErrors.complexAdminUsername && <span style={{ color: '#ef4444', fontSize: '0.72rem', marginTop: '4px', display: 'block' }}>{formErrors.complexAdminUsername}</span>}
+                    </div>
+
+                    <div className="form-group">
+                      <label>Admin Dashboard Password *</label>
+                      <input 
+                        type="password" name="complexAdminPassword" className="form-control" placeholder="••••••••"
+                        value={formData.complexAdminPassword} onChange={handleInputChange} required
+                      />
+                      {formErrors.complexAdminPassword && <span style={{ color: '#ef4444', fontSize: '0.72rem', marginTop: '4px', display: 'block' }}>{formErrors.complexAdminPassword}</span>}
                     </div>
                   </div>
                 </div>

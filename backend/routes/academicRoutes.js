@@ -7,6 +7,9 @@ import {
   createExam,
   updateExam,
   deleteExam,
+  generateExamSchedule,
+  publishExam,
+  getGradesSections,
   getExamTimetables,
   createExamTimetable,
   deleteExamTimetable,
@@ -26,8 +29,17 @@ import {
   deleteResult,
   getTimeslots,
   createTimeslot,
-  deleteTimeslot
+  deleteTimeslot,
+  getSubjects,
+  createSubject,
+  deleteSubject,
+  createSubjectBulk,
+  createTimetableBulk,
+  createTimetableBulkTeacher,
+  getTeacherTimetables,
+  createExamTimetableBulk
 } from '../controllers/academicController.js';
+
 
 const router = express.Router();
 
@@ -35,6 +47,15 @@ const router = express.Router();
 router.get('/timetables', getTimetables);
 router.post('/timetables', createTimetable);
 router.delete('/timetables/:id', deleteTimetable);
+router.post('/timetables/bulk', createTimetableBulk);
+router.post('/timetables/bulk/teacher', createTimetableBulkTeacher);
+router.get('/teacher-timetables', getTeacherTimetables);
+
+// Subjects
+router.get('/subjects', getSubjects);
+router.post('/subjects', createSubject);
+router.post('/subjects/bulk', createSubjectBulk);
+router.delete('/subjects/:id', deleteSubject);
 
 // Timeslots
 router.get('/timeslots', getTimeslots);
@@ -46,11 +67,18 @@ router.get('/exams', getExams);
 router.post('/exams', createExam);
 router.put('/exams/:id', updateExam);
 router.delete('/exams/:id', deleteExam);
+router.post('/exams/generate-schedule', generateExamSchedule);
+router.put('/exams/:id/publish', publishExam);
+
+// Grades & Sections
+router.get('/grades-sections', getGradesSections);
 
 // Exam Timetables
 router.get('/exam-timetables', getExamTimetables);
 router.post('/exam-timetables', createExamTimetable);
+router.post('/exam-timetables/bulk', createExamTimetableBulk);
 router.delete('/exam-timetables/:id', deleteExamTimetable);
+
 
 // Events
 router.get('/events', getEvents);
@@ -75,3 +103,4 @@ router.post('/results', createResult);
 router.delete('/results/:id', deleteResult);
 
 export default router;
+// Trigger nodemon restart

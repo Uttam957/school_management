@@ -14,7 +14,7 @@ export default function RecepLogin({ onLogin, onCancel }) {
     setLoading(true);
 
     setTimeout(() => {
-      if (email === 'uttam2004@gmail.com' && password === 'uttam@2004') {
+      if (email === 'uttam306115@gmail.com' && password === 'uttam@2004') {
         onLogin();
       } else {
         setError('Invalid email or password. Please try again.');
@@ -49,7 +49,7 @@ export default function RecepLogin({ onLogin, onCancel }) {
               <input
                 type="email"
                 className="form-control"
-                placeholder="uttam2004@gmail.com"
+                placeholder="uttam306115@gmail.com"
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
                 required

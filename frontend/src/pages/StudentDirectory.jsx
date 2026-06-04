@@ -200,7 +200,7 @@ export default function StudentDirectory({ readOnly = true, onAddClick }) {
               <option value="All">All Classes</option>
               <option value="Nursery">Nursery</option>
               <option value="KG">KG</option>
-              {Array.from({ length: 12 }, (_, i) => `${i + 1}`).map(num => (
+              {Array.from({ length: 10 }, (_, i) => `${i + 1}`).map(num => (
                 <option key={num} value={num === '1' ? '1st' : (num === '2' ? '2nd' : (num === '3' ? '3rd' : `${num}th`))}>
                   Grade {num === '1' ? '1st' : (num === '2' ? '2nd' : (num === '3' ? '3rd' : `${num}th`))}
                 </option>

@@ -14,7 +14,7 @@ import RegisterStudent from './RegisterStudent';
 import AddTeacher from './AddTeacher';
 import AddStaff from './AddStaff';
 
-export default function AccountantPanel({ setActiveView, onLogout, accountantView, setAccountantView }) {
+export default function AccountantPanel({ setActiveView, onLogout, accountantView, setAccountantView, onBackToMain }) {
   const [notification, setNotification] = useState(null);
   const showToast = (message, type = 'success') => {
     setNotification({ message, type });
@@ -109,7 +109,7 @@ export default function AccountantPanel({ setActiveView, onLogout, accountantVie
             Sign Out
           </button>
           <button
-            onClick={onLogout}
+            onClick={onBackToMain}
             className="btn-primary"
             style={{ padding: '8px 16px', fontSize: '0.85rem', display: 'flex', alignItems: 'center', gap: '6px' }}
           >
@@ -315,7 +315,7 @@ export function CollectFeesView({ showToast }) {
     }
   }, [showForm]);
 
-  const classes = ['I','II','III','IV','V','VI','VII','VIII','IX','X','XI','XII'];
+  const classes = ['I','II','III','IV','V','VI','VII','VIII','IX','X'];
   const feeTypes = ['Tuition Fee', 'Admission Fee', 'Exam Fee', 'Transport Fee', 'Library Fee', 'Hostel Fee', 'Other Charges'];
 
   const fetchFees = () => {
@@ -758,7 +758,7 @@ export function FeeStructureView({ showToast }) {
     transportFee: '3000', hostelFee: '0', libraryFee: '1000', otherCharges: '500'
   });
 
-  const classes = ['I','II','III','IV','V','VI','VII','VIII','IX','X','XI','XII'];
+  const classes = ['I','II','III','IV','V','VI','VII','VIII','IX','X'];
 
   const fetchStructures = () => {
     fetch('/api/finance/fee-structures')
@@ -2677,7 +2677,6 @@ export function TeacherSalaryStructureView({ showToast }) {
                     <option value="" style={optionStyle}>Select Grade Range / Designation</option>
                     <option value="Grades 1-5" style={optionStyle}>Grades 1-5</option>
                     <option value="Grades 6-10" style={optionStyle}>Grades 6-10</option>
-                    <option value="Grades 11-12" style={optionStyle}>Grades 11-12</option>
                     <option value="Principal" style={optionStyle}>Principal</option>
                     <option value="Senior Teacher" style={optionStyle}>Senior Teacher</option>
                     <option value="Teacher" style={optionStyle}>Teacher</option>

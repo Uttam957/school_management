@@ -21,12 +21,20 @@ import {
   Activity, 
   ArrowLeft,
   ChevronLeft,
-  Settings
+  Settings,
+  Eye,
+  Edit3,
+  Send,
+  Zap,
+  ChevronDown,
+  GripVertical
 } from 'lucide-react';
+
 
 export default function AcademicPanel({ subView }) {
   // Master API states
   const [timetables, setTimetables] = useState([]);
+  const [teacherTimetables, setTeacherTimetables] = useState([]);
   const [exams, setExams] = useState([]);
   const [examTimetables, setExamTimetables] = useState([]);
   const [events, setEvents] = useState([]);
@@ -35,31 +43,77 @@ export default function AcademicPanel({ subView }) {
   const [results, setResults] = useState([]);
   const [students, setStudents] = useState([]);
   const [teachers, setTeachers] = useState([]);
+  const [subjects, setSubjects] = useState([]);
+  const [showSubjectsModal, setShowSubjectsModal] = useState(false);
+  const [newSubjectGrade, setNewSubjectGrade] = useState('I');
+  const [newSubjectName, setNewSubjectName] = useState('');
+  const [newSubjectsList, setNewSubjectsList] = useState(Array(10).fill(''));
+  const [quickSubjectInputs, setQuickSubjectInputs] = useState({});
+  const [subjectSearchQuery, setSubjectSearchQuery] = useState('');
+  const [showBulkModal, setShowBulkModal] = useState(false);
+  const [bulkGrid, setBulkGrid] = useState({});
+  const [showTeacherBulkModal, setShowTeacherBulkModal] = useState(false);
+  const [teacherBulkGrid, setTeacherBulkGrid] = useState({});
+  const [teacherBulkSearchQuery, setTeacherBulkSearchQuery] = useState('');
+  const [teacherBulkGradeSearch, setTeacherBulkGradeSearch] = useState('All');
+  const [teacherSearchQuery, setTeacherSearchQuery] = useState('');
   
   const [loading, setLoading] = useState(true);
   const [notification, setNotification] = useState(null);
+  const [searchQuery, setSearchQuery] = useState('');
+  const [searchGrade, setSearchGrade] = useState('All');
+  const [searchSection, setSearchSection] = useState('All');
 
   // Active view filters
-  const [activeClass, setActiveClass] = useState('XII-A');
+  const [activeClass, setActiveClass] = useState('I-A');
   const [activeTeacher, setActiveTeacher] = useState('');
   const [activeExam, setActiveExam] = useState('');
+  const [timetableSession, setTimetableSession] = useState('2026-2027');
   const [activeSubject, setActiveSubject] = useState('Mathematics');
   const [activeMonth, setActiveMonth] = useState(new Date().getMonth()); // 0-11
   
   // Modal toggles
   const [showAddModal, setShowAddModal] = useState(false);
   const [activeMarksheetStudent, setActiveMarksheetStudent] = useState(null);
+  const [showConfirmModal, setShowConfirmModal] = useState(false);
+  const [cohortToDelete, setCohortToDelete] = useState(null);
 
   // Form states
   const [timetableForm, setTimetableForm] = useState({
     day: 'Monday', time: '09:00 AM - 10:00 AM', subject: '', teacher: '', room: '', session: '2026-2027'
   });
   const [examForm, setExamForm] = useState({
-    examName: '', examType: 'Unit Test', grade: 'XII', section: 'A', startDate: '', endDate: '', totalMarks: 100, passingMarks: 40, status: 'Scheduled'
+    examName: '', examType: 'Unit Test', grade: 'IX', section: 'A', startDate: '', endDate: '', totalMarks: 100, passingMarks: 40, status: 'Scheduled'
   });
+  const [showExamWizard, setShowExamWizard] = useState(false);
+  const [examWizardStep, setExamWizardStep] = useState(1);
+  const [wizardForm, setWizardForm] = useState({
+    examName: '',
+    examType: 'Unit Test',
+    academicSession: '2026-2027',
+    description: '',
+    selectedGrades: [],
+    startDates: {},
+    endDates: {},
+    gapDays: 1
+  });
+  const [availableGradeSections, setAvailableGradeSections] = useState([]);
+  const [generatingSchedule, setGeneratingSchedule] = useState(false);
+  const [examSearch, setExamSearch] = useState('');
+  const [examSessionFilter, setExamSessionFilter] = useState('2026-2027');
+  const [examStatusFilter, setExamStatusFilter] = useState('All');
+  const [examTypeFilter, setExamTypeFilter] = useState('All');
+  const [examGradeFilter, setExamGradeFilter] = useState('All');
+  const [examSectionFilter, setExamSectionFilter] = useState('All');
+  const [viewScheduleExam, setViewScheduleExam] = useState(null);
   const [examTimetableForm, setExamTimetableForm] = useState({
     examId: '', subject: 'Mathematics', examDate: '', startTime: '09:00 AM', endTime: '12:00 PM', duration: '3 Hours', roomAllocation: '', invigilator: ''
   });
+  const [manualGrade, setManualGrade] = useState('');
+  const [manualSection, setManualSection] = useState('');
+  const [manualSlots, setManualSlots] = useState([]);
+  const [isManualSchedulerOpen, setIsManualSchedulerOpen] = useState(false);
+  const [draggedSlotIndex, setDraggedSlotIndex] = useState(null);
   const [eventForm, setEventForm] = useState({
     title: '', type: 'Event', date: '', time: '', venue: '', description: '', organizer: 'School Admin', participants: 'All Students', status: 'Scheduled'
   });
@@ -91,6 +145,7 @@ export default function AcademicPanel({ subView }) {
   const [showTimeslotsModal, setShowTimeslotsModal] = useState(false);
   const [startTimeInput, setStartTimeInput] = useState('');
   const [endTimeInput, setEndTimeInput] = useState('');
+  const [timeslotType, setTimeslotType] = useState('Regular');
 
   const convertTo12HourFormat = (time24) => {
     if (!time24) return '';
@@ -104,14 +159,14 @@ export default function AcademicPanel({ subView }) {
     const padMins = String(mins).padStart(2, '0');
     return `${padHrs}:${padMins} ${ampm}`;
   };
-
   const handleAddTimeslot = async (e) => {
     e.preventDefault();
     if (!startTimeInput || !endTimeInput) {
       alert('Please select both start and end times.');
       return;
     }
-    const finalSlot = `${convertTo12HourFormat(startTimeInput)} - ${convertTo12HourFormat(endTimeInput)}`;
+    const suffix = timeslotType !== 'Regular' ? ` [${timeslotType}]` : '';
+    const finalSlot = `${convertTo12HourFormat(startTimeInput)} - ${convertTo12HourFormat(endTimeInput)}${suffix}`;
     try {
       const res = await fetch('/api/academics/timeslots', {
         method: 'POST',
@@ -123,6 +178,7 @@ export default function AcademicPanel({ subView }) {
         showToast('Time slot registered successfully!', 'success');
         setStartTimeInput('');
         setEndTimeInput('');
+        setTimeslotType('Regular');
         fetchAllData();
       } else {
         showToast(data.error || 'Failed to add time slot.', 'error');
@@ -131,7 +187,6 @@ export default function AcademicPanel({ subView }) {
       showToast('Network error during operation.', 'error');
     }
   };
-
   const handleDeleteTimeslot = async (slotToDelete) => {
     if (!confirm(`Are you sure you want to delete the time slot: ${slotToDelete}?`)) return;
     try {
@@ -152,18 +207,23 @@ export default function AcademicPanel({ subView }) {
     }
   };
 
-  const classesList = ['I-A', 'VIII-E', 'XII-A'];
+  const classesList = availableGradeSections
+    .filter(pair => subjects.some(s => s.grade === pair.grade))
+    .map(pair => `${pair.grade}-${pair.section}`);
   const subjectsList = ['Mathematics', 'Physics', 'Chemistry', 'English Literature', 'History'];
   const monthsList = [
     'January', 'February', 'March', 'April', 'May', 'June',
     'July', 'August', 'September', 'October', 'November', 'December'
   ];
 
-  const fetchAllData = async () => {
-    setLoading(true);
+  const fetchAllData = async (showSpinner = false) => {
+    if (showSpinner) {
+      setLoading(true);
+    }
     try {
       const endpoints = [
         { url: '/api/academics/timetables', setter: setTimetables },
+        { url: '/api/academics/teacher-timetables', setter: setTeacherTimetables },
         { url: '/api/academics/exams', setter: setExams },
         { url: '/api/academics/exam-timetables', setter: setExamTimetables },
         { url: '/api/academics/events', setter: setEvents },
@@ -171,14 +231,17 @@ export default function AcademicPanel({ subView }) {
         { url: '/api/academics/holidays', setter: setHolidays },
         { url: '/api/academics/results', setter: setResults },
         { url: '/api/academics/timeslots', setter: setTimeslots },
+        { url: '/api/academics/subjects', setter: setSubjects },
         { url: '/api/students?limit=10000', setter: (data) => setStudents(data.students || []) },
-        { url: '/api/teachers?limit=10000', setter: (data) => setTeachers(data.teachers || []) }
+        { url: '/api/teachers?limit=10000', setter: (data) => setTeachers(data.teachers || []) },
+        { url: '/api/academics/grades-sections', setter: (data) => setAvailableGradeSections(data.gradeSectionPairs || []) }
       ];
 
       await Promise.all(
         endpoints.map(async (ep) => {
           try {
-            const res = await fetch(ep.url);
+            const separator = ep.url.includes('?') ? '&' : '?';
+            const res = await fetch(`${ep.url}${separator}_t=${Date.now()}`);
             if (res.ok) {
               const data = await res.json();
               ep.setter(data);
@@ -191,13 +254,338 @@ export default function AcademicPanel({ subView }) {
     } catch (err) {
       console.error('Error loading academic data:', err);
     } finally {
-      setLoading(false);
+      if (showSpinner) {
+        setLoading(false);
+      }
     }
   };
 
   useEffect(() => {
-    fetchAllData();
+    fetchAllData(true);
   }, []);
+
+  useEffect(() => {
+    if (showExamWizard) {
+      fetchAllData();
+    }
+  }, [showExamWizard]);
+
+  const handleAddSubject = async (e) => {
+    e.preventDefault();
+    if (!newSubjectName.trim()) return;
+    try {
+      const res = await fetch('/api/academics/subjects', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ grade: newSubjectGrade, subjectName: newSubjectName.trim() })
+      });
+      const data = await res.json();
+      if (res.ok) {
+        showToast('Subject created successfully!', 'success');
+        setNewSubjectName('');
+        fetchAllData();
+      } else {
+        showToast(data.error || 'Failed to create subject.', 'error');
+      }
+    } catch (err) {
+      showToast('Network error.', 'error');
+    }
+  };
+
+  const handleDeleteSubject = async (id) => {
+    if (!confirm('Are you sure you want to delete this subject?')) return;
+    try {
+      const res = await fetch(`/api/academics/subjects/${id}`, { method: 'DELETE' });
+      if (res.ok) {
+        showToast('Subject deleted.', 'success');
+        fetchAllData();
+      } else {
+        const data = await res.json();
+        showToast(data.error || 'Failed to delete.', 'error');
+      }
+    } catch (err) {
+      showToast('Network error.', 'error');
+    }
+  };
+
+  const handleDeleteAllGradeSubjects = async (grade) => {
+    if (!confirm(`Are you sure you want to delete all subjects for Grade ${grade}?`)) return;
+    
+    const gradeSubjects = subjects.filter(s => s.grade === grade);
+    if (gradeSubjects.length === 0) return;
+
+    try {
+      await Promise.all(
+        gradeSubjects.map(sub => fetch(`/api/academics/subjects/${sub.id}`, { method: 'DELETE' }))
+      );
+      showToast(`All subjects for Grade ${grade} deleted successfully.`, 'success');
+      fetchAllData();
+    } catch (err) {
+      showToast('Network error during bulk deletion.', 'error');
+    }
+  };
+
+  const handleBulkSubjectsSubmit = async (e) => {
+    e.preventDefault();
+    const subjectNames = newSubjectsList.filter(name => name.trim() !== '');
+    if (subjectNames.length === 0) {
+      showToast('Please enter at least one subject name.', 'error');
+      return;
+    }
+
+    try {
+      const res = await fetch('/api/academics/subjects/bulk', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ grade: newSubjectGrade, subjectNames })
+      });
+      const data = await res.json();
+      if (res.ok) {
+        let msg = 'Subjects saved successfully!';
+        if (data.duplicates && data.duplicates.length > 0) {
+          msg += ` (Skipped duplicate: ${data.duplicates.join(', ')})`;
+        }
+        showToast(msg, 'success');
+        setNewSubjectsList(Array(10).fill(''));
+        fetchAllData();
+      } else {
+        showToast(data.error || 'Failed to save subjects.', 'error');
+      }
+    } catch (err) {
+      showToast('Network error during operation.', 'error');
+    }
+  };
+
+  // Sync activeClass to match available classes in classesList
+  useEffect(() => {
+    if (classesList.length > 0 && !classesList.includes(activeClass)) {
+      setActiveClass(classesList[0]);
+    }
+  }, [classesList, activeClass]);
+
+  // Sync activeSubject to match the activeClass grade subjects
+  useEffect(() => {
+    const grade = activeClass.split('-')[0];
+    const gradeSubjects = subjects.filter(s => s.grade === grade);
+    if (gradeSubjects.length > 0) {
+      const match = gradeSubjects.find(s => s.subjectName === activeSubject);
+      if (!match) {
+        setActiveSubject(gradeSubjects[0].subjectName);
+      }
+    } else {
+      setActiveSubject('');
+    }
+  }, [activeClass, subjects]);
+
+  const handleOpenBulkModalForCohort = (cohort) => {
+    setActiveClass(cohort);
+    const currentGrid = {};
+    daysOfWeek.forEach(day => {
+      timeslots.forEach(slot => {
+        const match = timetables.find(t => t.cohort === cohort && t.day === day && t.time === slot);
+        currentGrid[`${day}_${slot}`] = {
+          subject: match ? match.subject : '',
+          teacher: match ? match.teacher : '',
+          room: match ? match.room : ''
+        };
+      });
+    });
+    setBulkGrid(currentGrid);
+    setShowBulkModal(true);
+  };
+
+  const handleOpenBulkModal = () => {
+    handleOpenBulkModalForCohort(activeClass);
+  };
+
+  const handleBulkCellChange = (day, slot, field, value) => {
+    setBulkGrid(prev => {
+      const key = `${day}_${slot}`;
+      const cell = { ...(prev[key] || { subject: '', teacher: '', room: '' }) };
+      cell[field] = value;
+      if (field === 'subject' && !value) {
+        cell.teacher = '';
+        cell.room = '';
+      }
+      return {
+        ...prev,
+        [key]: cell
+      };
+    });
+  };
+
+  const handleClearBulkGrid = () => {
+    if (!confirm('Are you sure you want to clear all slots in this bulk editor? This will not be saved until you submit the form.')) return;
+    const cleared = {};
+    daysOfWeek.forEach(day => {
+      timeslots.forEach(slot => {
+        cleared[`${day}_${slot}`] = { subject: '', teacher: '', room: '' };
+      });
+    });
+    setBulkGrid(cleared);
+  };
+
+  const handleBulkSubmit = async (e) => {
+    e.preventDefault();
+    const formattedTimetables = [];
+    Object.entries(bulkGrid).forEach(([key, cell]) => {
+      const [day, slot] = key.split('_');
+      if (cell.subject && cell.subject.trim() !== '') {
+        formattedTimetables.push({
+          day,
+          time: slot,
+          subject: cell.subject,
+          teacher: cell.teacher,
+          room: cell.room
+        });
+      }
+    });
+
+    try {
+      const res = await fetch('/api/academics/timetables/bulk', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          cohort: activeClass,
+          timetables: formattedTimetables
+        })
+      });
+      const data = await res.json();
+      if (res.ok) {
+        showToast('Weekly timetable matrix updated successfully!', 'success');
+        setShowBulkModal(false);
+        fetchAllData();
+      } else {
+        showToast(data.error || 'Failed to update timetable matrix.', 'error');
+      }
+    } catch (err) {
+      showToast('Network error during bulk operation.', 'error');
+    }
+  };
+
+  const handleOpenTeacherBulkModalForName = (tName) => {
+    if (!tName) return;
+    const currentGrid = {};
+    daysOfWeek.forEach(day => {
+      timeslots.forEach(slot => {
+        const match = teacherTimetables.find(t => 
+          t.teacher && 
+          t.teacher.toLowerCase() === tName.toLowerCase() && 
+          t.day === day && 
+          t.time === slot
+        );
+        currentGrid[`${day}_${slot}`] = {
+          cohort: match ? match.cohort : '',
+          subject: match ? match.subject : ''
+        };
+      });
+    });
+    setTeacherBulkGrid(currentGrid);
+    setShowTeacherBulkModal(true);
+  };
+
+  const handleOpenTeacherBulkModal = () => {
+    if (!activeTeacher) {
+      showToast('Please select a teacher first.', 'error');
+      return;
+    }
+    setTeacherBulkSearchQuery('');
+    setTeacherBulkGradeSearch('All');
+    handleOpenTeacherBulkModalForName(activeTeacher);
+  };
+
+  const handleDeleteWholeTeacherTimetable = async (tName) => {
+    if (!confirm(`Are you sure you want to clear the entire weekly timetable for teacher: ${tName}? This action cannot be undone.`)) return;
+    try {
+      const res = await fetch('/api/academics/timetables/bulk/teacher', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          teacher: tName,
+          timetables: []
+        })
+      });
+      if (res.ok) {
+        showToast(`Teacher ${tName} timetable cleared successfully.`, 'success');
+        fetchAllData();
+      } else {
+        const data = await res.json();
+        showToast(data.error || 'Failed to clear teacher timetable.', 'error');
+      }
+    } catch (e) {
+      showToast('Network error during operation.', 'error');
+    }
+  };
+
+  const handleTeacherBulkCellChange = (day, slot, field, value) => {
+    setTeacherBulkGrid(prev => {
+      const key = `${day}_${slot}`;
+      const cell = { ...(prev[key] || { cohort: '', subject: '' }) };
+      cell[field] = value;
+      if (field === 'cohort' && !value) {
+        cell.subject = '';
+      }
+      return {
+        ...prev,
+        [key]: cell
+      };
+    });
+  };
+
+  const handleClearTeacherBulkGrid = () => {
+    if (!confirm('Are you sure you want to clear all slots in this bulk editor? This will not be saved until you submit the form.')) return;
+    const cleared = {};
+    daysOfWeek.forEach(day => {
+      timeslots.forEach(slot => {
+        cleared[`${day}_${slot}`] = { cohort: '', subject: '' };
+      });
+    });
+    setTeacherBulkGrid(cleared);
+  };
+
+  const handleTeacherBulkSubmit = async (e) => {
+    e.preventDefault();
+    const currentTeacherObj = Array.isArray(teachers)
+      ? teachers.find(t => t.name.toLowerCase() === activeTeacher.toLowerCase())
+      : null;
+    const teacherSubject = currentTeacherObj
+      ? (currentTeacherObj.subject || currentTeacherObj.subjectSpecialization || '')
+      : '';
+
+    const formattedTimetables = [];
+    Object.entries(teacherBulkGrid).forEach(([key, cell]) => {
+      const [day, slot] = key.split('_');
+      if (cell.cohort && cell.cohort.trim() !== '') {
+        formattedTimetables.push({
+          day,
+          time: slot,
+          cohort: cell.cohort,
+          subject: teacherSubject || cell.subject || ''
+        });
+      }
+    });
+
+    try {
+      const res = await fetch('/api/academics/timetables/bulk/teacher', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          teacher: activeTeacher,
+          timetables: formattedTimetables
+        })
+      });
+      const data = await res.json();
+      if (res.ok) {
+        showToast("Teacher's weekly timetable matrix updated successfully!", 'success');
+        setShowTeacherBulkModal(false);
+        fetchAllData();
+      } else {
+        showToast(data.error || 'Failed to update teacher timetable matrix.', 'error');
+      }
+    } catch (err) {
+      showToast('Network error during bulk operation.', 'error');
+    }
+  };
 
   // Sync active teacher selection on load
   useEffect(() => {
@@ -259,6 +647,39 @@ export default function AcademicPanel({ subView }) {
     } catch (e) {
       showToast('Deletion failed.', 'error');
     }
+  };
+
+  const handleDeleteWholeTimetable = (cohort) => {
+    setCohortToDelete(cohort);
+    setShowConfirmModal(true);
+  };
+
+  const confirmDeleteWholeTimetable = async () => {
+    if (!cohortToDelete) return;
+    try {
+      const res = await fetch('/api/academics/timetables/bulk', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ cohort: cohortToDelete, timetables: [] })
+      });
+      if (res.ok) {
+        showToast(`Class ${cohortToDelete} timetable cleared successfully.`, 'success');
+        fetchAllData();
+      } else {
+        const data = await res.json();
+        showToast(data.error || 'Failed to clear timetable.', 'error');
+      }
+    } catch (e) {
+      showToast('Network error during operation.', 'error');
+    } finally {
+      setShowConfirmModal(false);
+      setCohortToDelete(null);
+    }
+  };
+
+  const cancelDeleteWholeTimetable = () => {
+    setShowConfirmModal(false);
+    setCohortToDelete(null);
   };
 
   // 2. Exam Configuration
@@ -497,6 +918,7 @@ export default function AcademicPanel({ subView }) {
             .header p { margin: 5px 0 0 0; color: #64748b; font-size: 14px; }
             .print-row { display: flex; justify-content: space-between; margin-bottom: 10px; font-size: 14px; }
             .print-badge { font-weight: bold; }
+            .no-print { display: none !important; }
           </style>
         </head>
         <body>
@@ -519,254 +941,911 @@ export default function AcademicPanel({ subView }) {
   // =============================================
   // SUB-VIEW RENDERERS
   // =============================================
+  const renderGradeSubjects = () => {
+    const gradesList = ['I', 'II', 'III', 'IV', 'V', 'VI', 'VII', 'VIII', 'IX', 'X'];
+    
+    // Find grades that have subjects configured
+    const activeGrades = gradesList.filter(g => subjects.some(s => s.grade === g));
+
+    return (
+      <div style={{ display: 'flex', flexDirection: 'column', gap: '32px' }}>
+        
+        {/* Main Configuration Card (Original dropdown panel restored) */}
+        <div style={{ display: 'flex', flexDirection: 'column', gap: '24px', width: '100%', height: 'fit-content' }}>
+          <div className="glass-panel" style={{ padding: '24px', display: 'flex', flexDirection: 'column', gap: '20px', height: 'fit-content' }}>
+            <div style={{ display: 'flex', gap: '12px', alignItems: 'center' }}>
+              <div style={{ padding: '8px', borderRadius: '8px', background: 'rgba(99, 102, 241, 0.08)', color: 'hsl(var(--color-primary))' }}>
+                <BookOpen size={20} />
+              </div>
+              <div>
+                <h4 style={{ fontSize: '0.95rem', fontWeight: 800, margin: 0 }}>Grade Subjects</h4>
+                <p style={{ fontSize: '0.75rem', color: 'var(--text-muted)', margin: 0 }}>Configure subjects per grade.</p>
+              </div>
+            </div>
+            
+            <div style={{ display: 'flex', gap: '16px', alignItems: 'flex-end', flexWrap: 'wrap', width: '100%' }}>
+              <div className="form-group" style={{ margin: 0, flex: 1, minWidth: '200px' }}>
+                <label style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>Grade Level</label>
+                <select 
+                  className="select-custom" 
+                  value={newSubjectGrade} 
+                  onChange={(e) => setNewSubjectGrade(e.target.value)}
+                  style={{ width: '100%', marginTop: '4px', background: 'var(--bg-glass-active)', border: '1px solid var(--border-glass)' }}
+                >
+                  {gradesList.map(g => (
+                    <option key={g} value={g}>Grade {g}</option>
+                  ))}
+                </select>
+              </div>
+              <button 
+                className="btn-secondary" 
+                onClick={() => {
+                  setNewSubjectsList(Array(10).fill(''));
+                  setShowSubjectsModal(true);
+                }} 
+                style={{ borderRadius: '8px', padding: '10px 24px', justifyContent: 'center', height: '38px', minWidth: '160px' }}
+              >
+                Manage Subjects
+              </button>
+            </div>
+          </div>
+        </div>
+
+        {/* Dynamic Grade Cards Section (Show only when subjects exist for some grades) */}
+        {activeGrades.length > 0 && (
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
+            <h4 style={{ fontSize: '0.95rem', fontWeight: 800, color: 'var(--text-main)', margin: 0 }}>
+              Configured Grade Subjects
+            </h4>
+            
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(280px, 1fr))', gap: '20px' }}>
+              {activeGrades.map((g, idx) => {
+                const gradeSubjects = subjects.filter(s => s.grade === g);
+                const gradients = [
+                  'linear-gradient(135deg, #6366f1 0%, #4f46e5 100%)',
+                  'linear-gradient(135deg, #06b6d4 0%, #0891b2 100%)',
+                  'linear-gradient(135deg, #10b981 0%, #059669 100%)',
+                  'linear-gradient(135deg, #f59e0b 0%, #d97706 100%)',
+                  'linear-gradient(135deg, #ec4899 0%, #db2777 100%)',
+                  'linear-gradient(135deg, #8b5cf6 0%, #7c3aed 100%)',
+                  'linear-gradient(135deg, #3b82f6 0%, #2563eb 100%)',
+                  'linear-gradient(135deg, #14b8a6 0%, #0d9488 100%)',
+                  'linear-gradient(135deg, #f43f5e 0%, #e11d48 100%)',
+                  'linear-gradient(135deg, #a855f7 0%, #9333ea 100%)'
+                ];
+                const borderGrad = gradients[idx % gradients.length];
+
+                return (
+                  <div 
+                    key={g} 
+                    className="glass-panel animate-scale-up" 
+                    style={{ 
+                      padding: '20px', 
+                      display: 'flex', 
+                      flexDirection: 'column', 
+                      gap: '16px',
+                      position: 'relative',
+                      overflow: 'hidden',
+                      borderRadius: '12px',
+                      minHeight: '180px',
+                      justifyContent: 'space-between'
+                    }}
+                  >
+                    {/* Decorative Top Accent Bar */}
+                    <div style={{ position: 'absolute', top: 0, left: 0, right: 0, height: '3px', background: borderGrad }} />
+
+                    {/* Card Header */}
+                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                      <h4 style={{ fontSize: '1rem', fontWeight: 800, margin: 0, color: 'var(--text-main)' }}>
+                        Grade {g}
+                      </h4>
+                      <span style={{ 
+                        fontSize: '0.75rem', 
+                        fontWeight: 700, 
+                        padding: '2px 8px', 
+                        borderRadius: '12px', 
+                        background: 'rgba(99, 102, 241, 0.08)', 
+                        color: 'hsl(var(--color-primary))' 
+                      }}>
+                        {gradeSubjects.length} {gradeSubjects.length === 1 ? 'Subject' : 'Subjects'}
+                      </span>
+                    </div>
+                    {/* Configured subjects list - rendered one below another without scroll */}
+                    <div style={{ 
+                      display: 'flex', 
+                      flexDirection: 'column', 
+                      gap: '8px'
+                    }}>
+                      {gradeSubjects.map((sub) => (
+                        <div 
+                          key={sub.id} 
+                          style={{ 
+                            fontSize: '0.85rem', 
+                            fontWeight: 600, 
+                            color: 'var(--text-main)',
+                            padding: '6px 0',
+                            borderBottom: '1px solid var(--border-glass)',
+                            display: 'flex',
+                            alignItems: 'center',
+                            gap: '10px'
+                          }}
+                        >
+                          <span style={{ 
+                            width: '6px', 
+                            height: '6px', 
+                            borderRadius: '50%', 
+                            background: borderGrad 
+                          }} />
+                          {sub.subjectName}
+                        </div>
+                      ))}
+                    </div>
+
+                    {/* Actions Row */}
+                    <div style={{ 
+                      display: 'grid', 
+                      gridTemplateColumns: '1fr 1fr', 
+                      gap: '10px', 
+                      borderTop: '1px solid var(--border-glass)', 
+                      paddingTop: '12px',
+                      marginTop: 'auto'
+                    }}>
+                      <button 
+                        onClick={() => {
+                          setNewSubjectGrade(g);
+                          setNewSubjectsList(Array(10).fill(''));
+                          setShowSubjectsModal(true);
+                        }}
+                        className="btn-secondary"
+                        style={{ 
+                          padding: '6px 12px', 
+                          fontSize: '0.75rem', 
+                          borderRadius: '8px',
+                          display: 'flex',
+                          alignItems: 'center',
+                          justifyContent: 'center',
+                          gap: '6px',
+                          border: '1px solid var(--border-glass)'
+                        }}
+                      >
+                        <Edit3 size={12} /> Edit
+                      </button>
+                      <button 
+                        onClick={() => handleDeleteAllGradeSubjects(g)}
+                        className="btn-secondary"
+                        style={{ 
+                          padding: '6px 12px', 
+                          fontSize: '0.75rem', 
+                          borderRadius: '8px',
+                          display: 'flex',
+                          alignItems: 'center',
+                          justifyContent: 'center',
+                          gap: '6px',
+                          border: '1px solid rgb(var(--color-danger-rgb))',
+                          color: 'rgb(var(--color-danger-rgb))'
+                        }}
+                      >
+                        <Trash2 size={12} /> Delete
+                      </button>
+                    </div>
+
+                  </div>
+                );
+              })}
+            </div>
+          </div>
+        )}
+
+      </div>
+    );
+  };
 
   const renderClassTimetable = () => {
     const classSlots = timetables.filter(t => t.cohort === activeClass);
     return (
       <div style={{ display: 'flex', flexDirection: 'column', gap: '24px' }}>
-        <div className="glass-panel" style={{ padding: '20px 24px', display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '16px' }}>
-          <div>
-            <h3 style={{ fontSize: '1.1rem', fontWeight: 700 }}>Class Period Timetables</h3>
-            <p style={{ fontSize: '0.85rem', color: 'var(--text-muted)' }}>Create and manage student cohort weekly class scheduling structures.</p>
-          </div>
-          <div style={{ display: 'flex', gap: '12px', alignItems: 'center' }}>
-            <div style={{ display: 'flex', gap: '8px', alignItems: 'center', background: 'var(--bg-glass-active)', padding: '6px 12px', borderRadius: '10px', border: '1px solid var(--border-glass)' }}>
-              <span style={{ fontSize: '0.8rem', color: 'var(--text-muted)', fontWeight: 700, textTransform: 'uppercase' }}>Grade</span>
-              <select 
-                className="select-custom" 
-                value={activeClass.split('-')[0] || 'I'} 
-                onChange={(e) => {
-                  const currentSection = activeClass.split('-')[1] || 'A';
-                  setActiveClass(`${e.target.value}-${currentSection}`);
-                }}
-                style={{ border: 'none', padding: '2px 8px', background: 'transparent' }}
-              >
-                {['I', 'II', 'III', 'IV', 'V', 'VI', 'VII', 'VIII', 'IX', 'X', 'XI', 'XII'].map(g => (
-                  <option key={g} value={g}>{g}</option>
-                ))}
-              </select>
-              <span style={{ fontSize: '0.8rem', color: 'var(--text-muted)', fontWeight: 700, textTransform: 'uppercase', marginLeft: '6px', borderLeft: '1px solid var(--border-glass)', paddingLeft: '8px' }}>Section</span>
-              <select 
-                className="select-custom" 
-                value={activeClass.split('-')[1] || 'A'} 
-                onChange={(e) => {
-                  const currentGrade = activeClass.split('-')[0] || 'I';
-                  setActiveClass(`${currentGrade}-${e.target.value}`);
-                }}
-                style={{ border: 'none', padding: '2px 8px', background: 'transparent' }}
-              >
-                {['A', 'B', 'C', 'D', 'E', 'F'].map(s => (
-                  <option key={s} value={s}>{s}</option>
-                ))}
-              </select>
+        
+        {/* Operations Grid */}
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(300px, 1fr))', gap: '20px' }}>
+          
+          {/* Card 1: Time Slots Management */}
+          <div className="glass-panel" style={{ padding: '20px', display: 'flex', flexDirection: 'column', justifyContent: 'space-between', gap: '16px' }}>
+            <div style={{ display: 'flex', gap: '12px', alignItems: 'center' }}>
+              <div style={{ padding: '8px', borderRadius: '8px', background: 'rgba(6, 182, 212, 0.08)', color: 'hsl(var(--color-info))' }}>
+                <Clock size={20} />
+              </div>
+              <div>
+                <h4 style={{ fontSize: '0.95rem', fontWeight: 800, margin: 0 }}>Period Slots</h4>
+                <p style={{ fontSize: '0.75rem', color: 'var(--text-muted)', margin: 0 }}>Register and delete daily school hours.</p>
+              </div>
             </div>
-            
-            <button className="btn-secondary" onClick={() => setShowTimeslotsModal(true)} style={{ borderRadius: '8px', display: 'flex', alignItems: 'center', gap: '6px', padding: '10px 14px' }}>
-              <Clock size={15} /> Manage Slots
-            </button>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '10px', height: '100%', justifyContent: 'flex-end' }}>
+              <p style={{ fontSize: '0.75rem', color: 'var(--text-muted)', margin: '0 0 10px 0' }}>
+                Active slots configured: <strong>{timeslots.length} slots</strong>
+              </p>
+              <button 
+                className="btn-secondary" 
+                onClick={() => setShowTimeslotsModal(true)} 
+                style={{ width: '100%', borderRadius: '8px', padding: '10px', justifyContent: 'center' }}
+              >
+                Manage Slots
+              </button>
+            </div>
+          </div>
 
-            <button className="btn-primary" onClick={() => {
-              setTimetableForm({ day: 'Monday', time: timeslots[0] || '09:00 AM - 10:00 AM', subject: '', teacher: '', room: '', session: '2026-2027' });
-              setShowAddModal(true);
-            }}>
-              <Plus size={16} /> Add Class Period
-            </button>
+          {/* Card 3: Bulk Timetable Creation */}
+          <div className="glass-panel" style={{ padding: '20px', display: 'flex', flexDirection: 'column', justifyContent: 'space-between', gap: '16px' }}>
+            <div style={{ display: 'flex', gap: '12px', alignItems: 'center' }}>
+              <div style={{ padding: '8px', borderRadius: '8px', background: 'rgba(139, 92, 246, 0.08)', color: '#8b5cf6' }}>
+                <Calendar size={20} />
+              </div>
+              <div>
+                <h4 style={{ fontSize: '0.95rem', fontWeight: 800, margin: 0 }}>Create Bulk Timetable</h4>
+                <p style={{ fontSize: '0.75rem', color: 'var(--text-muted)', margin: 0 }}>Setup the weekly matrix for a cohort.</p>
+              </div>
+            </div>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
+              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '10px' }}>
+                <div className="form-group" style={{ margin: 0 }}>
+                  <label style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>Grade</label>
+                  <select 
+                    className="select-custom" 
+                    value={activeClass.split('-')[0] || 'I'} 
+                    onChange={(e) => {
+                      const currentSection = activeClass.split('-')[1] || 'A';
+                      setActiveClass(`${e.target.value}-${currentSection}`);
+                    }}
+                    style={{ width: '100%', marginTop: '4px', background: 'var(--bg-glass-active)', border: '1px solid var(--border-glass)' }}
+                  >
+                    {['I', 'II', 'III', 'IV', 'V', 'VI', 'VII', 'VIII', 'IX', 'X'].filter(g => subjects.some(s => s.grade === g)).map(g => (
+                      <option key={g} value={g}>Grade {g}</option>
+                    ))}
+                  </select>
+                </div>
+                <div className="form-group" style={{ margin: 0 }}>
+                  <label style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>Section</label>
+                  <select 
+                    className="select-custom" 
+                    value={activeClass.split('-')[1] || 'A'} 
+                    onChange={(e) => {
+                      const currentGrade = activeClass.split('-')[0] || 'I';
+                      setActiveClass(`${currentGrade}-${e.target.value}`);
+                    }}
+                    style={{ width: '100%', marginTop: '4px', background: 'var(--bg-glass-active)', border: '1px solid var(--border-glass)' }}
+                  >
+                    {['A', 'B', 'C', 'D'].map(s => (
+                      <option key={s} value={s}>Section {s}</option>
+                    ))}
+                  </select>
+                </div>
+              </div>
+              <button 
+                className="btn-primary" 
+                onClick={handleOpenBulkModal} 
+                style={{ 
+                  width: '100%', 
+                  background: 'linear-gradient(135deg, hsl(var(--color-primary)) 0%, #4f46e5 100%)', 
+                  borderRadius: '8px', 
+                  padding: '10px', 
+                  justifyContent: 'center',
+                  fontWeight: 700
+                }}
+              >
+                Create Bulk Timetable
+              </button>
+            </div>
+          </div>
+
+        </div>
+
+        {/* Search & Filter Bar */}
+        <div className="glass-panel" style={{ padding: '16px 20px', display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '16px' }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+            <Search size={18} style={{ color: 'var(--text-muted)' }} />
+            <h4 style={{ fontSize: '0.9rem', fontWeight: 800, margin: 0, color: 'var(--text-main)' }}>Search & Filter Timetables</h4>
+          </div>
+          <div style={{ display: 'flex', gap: '12px', flexWrap: 'wrap', alignItems: 'center' }}>
+            <input 
+              type="text" 
+              className="form-control" 
+              placeholder="Search cohort (e.g. IX-A)..." 
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
+              style={{ width: '220px', padding: '6px 12px', borderRadius: '8px', fontSize: '0.82rem', background: 'var(--bg-glass-active)', border: '1px solid var(--border-glass)', color: 'var(--text-main)' }}
+            />
+            
+            <select 
+              className="select-custom" 
+              value={searchGrade}
+              onChange={(e) => setSearchGrade(e.target.value)}
+              style={{ padding: '6px 12px', borderRadius: '8px', fontSize: '0.82rem', background: 'var(--bg-glass-active)', border: '1px solid var(--border-glass)', color: 'var(--text-main)' }}
+            >
+              <option value="All">All Grades</option>
+              {['I', 'II', 'III', 'IV', 'V', 'VI', 'VII', 'VIII', 'IX', 'X'].filter(g => subjects.some(s => s.grade === g)).map(g => (
+                <option key={g} value={g}>Grade {g}</option>
+              ))}
+            </select>
+
+            <select 
+              className="select-custom" 
+              value={searchSection}
+              onChange={(e) => setSearchSection(e.target.value)}
+              style={{ padding: '6px 12px', borderRadius: '8px', fontSize: '0.82rem', background: 'var(--bg-glass-active)', border: '1px solid var(--border-glass)', color: 'var(--text-main)' }}
+            >
+              <option value="All">All Sections</option>
+              {['A', 'B', 'C', 'D'].map(s => (
+                <option key={s} value={s}>Section {s}</option>
+              ))}
+            </select>
+
+            {(searchQuery || searchGrade !== 'All' || searchSection !== 'All') && (
+              <button 
+                onClick={() => {
+                  setSearchQuery('');
+                  setSearchGrade('All');
+                  setSearchSection('All');
+                }}
+                className="btn-secondary"
+                style={{ padding: '6px 12px', fontSize: '0.8rem', borderRadius: '8px', border: '1px solid #ef4444', color: '#ef4444' }}
+              >
+                Clear Filters
+              </button>
+            )}
           </div>
         </div>
 
-        <div className="glass-panel" style={{ padding: '24px', overflowX: 'auto' }}>
-          <table className="table-custom" style={{ width: '100%', minWidth: '700px' }}>
-            <thead>
-              <tr>
-                <th style={{ width: '150px' }}>Time Slot</th>
-                {daysOfWeek.map(d => <th key={d}>{d}</th>)}
-              </tr>
-            </thead>
-            <tbody>
-              {timeslots.map(slot => (
-                <tr key={slot}>
-                  <td style={{ fontWeight: 700, color: 'hsl(var(--color-primary))', fontSize: '0.8rem' }}>{slot}</td>
-                  {daysOfWeek.map(day => {
-                    const matched = classSlots.find(t => t.day === day && t.time === slot);
-                    return (
-                      <td key={day} style={{ padding: '8px' }}>
-                        {matched ? (
-                          <div style={{
-                            background: 'var(--bg-glass-active)',
-                            border: '1px solid var(--border-glass)',
-                            padding: '10px 12px',
-                            borderRadius: '10px',
-                            display: 'flex',
-                            flexDirection: 'column',
-                            gap: '4px',
-                            position: 'relative'
-                          }}>
-                            <strong style={{ fontSize: '0.82rem', color: 'var(--text-main)' }}>{matched.subject}</strong>
-                            <span style={{ fontSize: '0.74rem', color: 'var(--text-muted)', display: 'flex', alignItems: 'center', gap: '4px' }}>
-                              <UserCheck size={10} /> {matched.teacher}
-                            </span>
-                            <span style={{ fontSize: '0.72rem', color: 'var(--text-muted)' }}>Room {matched.room}</span>
-                            <button 
-                              onClick={() => deleteTimetablePeriod(matched.id)}
-                              style={{
-                                position: 'absolute', top: '6px', right: '6px',
-                                border: 'none', background: 'none', cursor: 'pointer',
-                                color: 'rgb(var(--color-danger-rgb))', opacity: 0.6
-                              }}
-                              onMouseEnter={e => e.currentTarget.style.opacity = 1}
-                              onMouseLeave={e => e.currentTarget.style.opacity = 0.6}
-                            >
-                              <Trash2 size={12} />
-                            </button>
-                          </div>
-                        ) : (
-                          <div style={{ color: 'var(--text-muted)', fontSize: '0.75rem', fontStyle: 'italic', padding: '12px', textAlign: 'center' }}>
-                            Free Study
-                          </div>
-                        )}
-                      </td>
-                    );
-                  })}
-                </tr>
-              ))}
-            </tbody>
-          </table>
+        {/* Timetable Grid Views */}
+        <div style={{ display: 'flex', flexDirection: 'column', gap: '32px' }}>
+          {(() => {
+            const cohortsWithTimetables = [...new Set(timetables.map(t => t.cohort))].sort();
+            const filteredCohorts = cohortsWithTimetables.filter(cohort => {
+              const matchesQuery = searchQuery.trim() === '' || cohort.toLowerCase().includes(searchQuery.toLowerCase());
+              const [g, s] = cohort.split('-');
+              const matchesGrade = searchGrade === 'All' || g === searchGrade;
+              const matchesSection = searchSection === 'All' || s === searchSection;
+              return matchesQuery && matchesGrade && matchesSection;
+            });
+
+            return filteredCohorts.length > 0 ? (
+              filteredCohorts.map(cohort => {
+                const classSlots = timetables.filter(t => t.cohort === cohort);
+                return (
+                  <div key={cohort} className="glass-panel" style={{ padding: '24px', overflowX: 'auto', display: 'flex', flexDirection: 'column', gap: '16px' }}>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', borderBottom: '1px solid var(--border-glass)', paddingBottom: '12px' }}>
+                      <div>
+                        <h3 style={{ fontSize: '1.15rem', fontWeight: 800, margin: 0 }}>
+                          Class Timetable: <span style={{ color: 'hsl(var(--color-primary))' }}>{cohort}</span>
+                        </h3>
+                        <p style={{ fontSize: '0.8rem', color: 'var(--text-muted)', margin: '2px 0 0 0' }}>
+                          Weekly schedule grid mapping all structured hours for Class {cohort}.
+                        </p>
+                      </div>
+                      <div style={{ display: 'flex', gap: '8px' }}>
+                        <button 
+                          className="btn-secondary" 
+                          onClick={() => handleOpenBulkModalForCohort(cohort)}
+                          style={{ padding: '6px 12px', fontSize: '0.8rem', borderRadius: '8px', display: 'flex', alignItems: 'center', gap: '6px', border: '1px solid var(--border-glass)' }}
+                        >
+                          <Settings size={13} /> Edit Timetable
+                        </button>
+                        <button 
+                          className="btn-secondary" 
+                          onClick={() => handleDeleteWholeTimetable(cohort)}
+                          style={{ padding: '6px 12px', fontSize: '0.8rem', borderRadius: '8px', display: 'flex', alignItems: 'center', gap: '6px', border: '1px solid rgb(var(--color-danger-rgb))', color: 'rgb(var(--color-danger-rgb))' }}
+                        >
+                          <Trash2 size={13} /> Delete Timetable
+                        </button>
+                      </div>
+                    </div>
+
+                    <table className="table-custom" style={{ width: '100%', minWidth: '700px' }}>
+                      <thead>
+                        <tr>
+                          <th style={{ width: '150px' }}>Time Slot</th>
+                          {daysOfWeek.map(d => <th key={d}>{d}</th>)}
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {timeslots.map(slot => {
+                          const breakMatch = slot.match(/\[(.*?)\]/);
+                          const breakType = breakMatch ? breakMatch[1] : null;
+                          const isBreak = !!breakType;
+
+                          if (isBreak) {
+                            return (
+                              <tr key={slot} style={{ background: 'rgba(245, 158, 11, 0.02)' }}>
+                                <td style={{ fontWeight: 700, color: 'hsl(var(--color-primary))', fontSize: '0.8rem', padding: '12px' }}>{slot}</td>
+                                <td colSpan={6} style={{ 
+                                  textAlign: 'center', 
+                                  verticalAlign: 'middle', 
+                                  padding: '12px', 
+                                  fontWeight: 800, 
+                                  color: '#d97706', 
+                                  letterSpacing: '3px', 
+                                  fontSize: '0.85rem',
+                                  textTransform: 'uppercase',
+                                  background: 'rgba(245, 158, 11, 0.04)',
+                                  borderLeft: '1px solid var(--border-glass)',
+                                  borderRadius: '8px'
+                                }}>
+                                  {breakType === 'Lunch Break' ? '🍱 ' : breakType === 'Short Break' ? '☕ ' : breakType === 'Recess' ? '🏃 ' : breakType === 'Assembly' ? '📢 ' : '⚡ '}{breakType}
+                                </td>
+                              </tr>
+                            );
+                          }
+
+                          return (
+                            <tr key={slot}>
+                              <td style={{ fontWeight: 700, color: 'hsl(var(--color-primary))', fontSize: '0.8rem' }}>{slot}</td>
+                              {daysOfWeek.map(day => {
+                                const matched = classSlots.find(t => t.day === day && t.time === slot);
+                                return (
+                                  <td key={day} style={{ padding: '8px' }}>
+                                    {matched ? (
+                                      <div style={{
+                                        display: 'flex',
+                                        flexDirection: 'column',
+                                        gap: '2px'
+                                      }}>
+                                        <span style={{ fontSize: '0.85rem', fontWeight: 700, color: 'var(--text-main)', textTransform: 'capitalize' }}>{matched.subject}</span>
+                                        {matched.teacher && matched.teacher.trim() !== '' && matched.teacher.toLowerCase() !== 'n/a' && (
+                                          <span style={{ fontSize: '0.72rem', color: 'var(--text-muted)', display: 'flex', alignItems: 'center', gap: '3px' }}>
+                                            <UserCheck size={9} /> {matched.teacher}
+                                          </span>
+                                        )}
+                                      </div>
+                                    ) : (
+                                      <div style={{ color: 'var(--text-muted)', fontSize: '0.75rem', fontStyle: 'italic', padding: '12px', textAlign: 'center' }}>
+                                        Free Study
+                                      </div>
+                                    )}
+                                  </td>
+                                );
+                              })}
+                            </tr>
+                          );
+                        })}                      </tbody>
+                    </table>
+                  </div>
+                );
+              })
+            ) : (
+              <div className="glass-panel" style={{ padding: '40px', textAlign: 'center', color: 'var(--text-muted)' }}>
+                No timetables scheduled yet. Use the "Create Bulk Timetable" card above to set up a schedule for a grade and section.
+              </div>
+            );
+          })()}
         </div>
+
       </div>
     );
   };
 
   const renderTeacherTimetable = () => {
-    const teacherSlots = timetables.filter(t => t.teacher && activeTeacher && t.teacher.toLowerCase() === activeTeacher.toLowerCase());
     return (
       <div style={{ display: 'flex', flexDirection: 'column', gap: '24px' }}>
-        <div className="glass-panel" style={{ padding: '20px 24px', display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '16px' }}>
-          <div>
-            <h3 style={{ fontSize: '1.1rem', fontWeight: 700 }}>Teacher Schedule Matrix</h3>
-            <p style={{ fontSize: '0.85rem', color: 'var(--text-muted)' }}>Automatically generated schedules mapping active academic workloads for faculty members.</p>
-          </div>
-          <div style={{ display: 'flex', gap: '12px' }}>
-            <select className="select-custom" value={activeTeacher} onChange={(e) => setActiveTeacher(e.target.value)}>
-              {Array.isArray(teachers) && teachers.map((t, idx) => <option key={idx} value={t.name}>{t.name} ({t.department || 'Academic'})</option>)}
-            </select>
+        
+        {/* Operations Grid */}
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(300px, 1fr))', gap: '20px' }}>
+          {/* Card: Configure Teacher Timetable */}
+          <div className="glass-panel" style={{ padding: '20px', display: 'flex', flexDirection: 'column', justifyContent: 'space-between', gap: '16px' }}>
+            <div style={{ display: 'flex', gap: '12px', alignItems: 'center' }}>
+              <div style={{ padding: '8px', borderRadius: '8px', background: 'rgba(99, 102, 241, 0.08)', color: 'hsl(var(--color-primary))' }}>
+                <Calendar size={20} />
+              </div>
+              <div>
+                <h4 style={{ fontSize: '0.95rem', fontWeight: 800, margin: 0 }}>Configure Teacher Schedule</h4>
+                <p style={{ fontSize: '0.75rem', color: 'var(--text-muted)', margin: 0 }}>Setup the weekly matrix for a faculty member.</p>
+              </div>
+            </div>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
+              <div className="form-group" style={{ margin: 0 }}>
+                <label style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>Select Teacher</label>
+                <select 
+                  className="select-custom" 
+                  value={activeTeacher} 
+                  onChange={(e) => setActiveTeacher(e.target.value)}
+                  style={{ width: '100%', marginTop: '4px', background: 'var(--bg-glass-active)', border: '1px solid var(--border-glass)' }}
+                >
+                  {Array.isArray(teachers) && teachers.map((t, idx) => (
+                    <option key={idx} value={t.name}>{t.name} ({t.department || 'Academic'})</option>
+                  ))}
+                </select>
+              </div>
+              <button 
+                className="btn-primary" 
+                onClick={handleOpenTeacherBulkModal} 
+                style={{ 
+                  width: '100%', 
+                  background: 'linear-gradient(135deg, hsl(var(--color-primary)) 0%, #4f46e5 100%)', 
+                  borderRadius: '8px', 
+                  padding: '10px', 
+                  justifyContent: 'center',
+                  fontWeight: 700
+                }}
+              >
+                Configure / Edit Timetable
+              </button>
+            </div>
           </div>
         </div>
 
-        <div className="glass-panel" style={{ padding: '24px', overflowX: 'auto' }}>
-          <table className="table-custom" style={{ width: '100%', minWidth: '700px' }}>
-            <thead>
-              <tr>
-                <th style={{ width: '150px' }}>Time Slot</th>
-                {daysOfWeek.map(d => <th key={d}>{d}</th>)}
-              </tr>
-            </thead>
-            <tbody>
-              {timeslots.map(slot => (
-                <tr key={slot}>
-                  <td style={{ fontWeight: 700, color: 'hsl(var(--color-info))', fontSize: '0.8rem' }}>{slot}</td>
-                  {daysOfWeek.map(day => {
-                    const matched = teacherSlots.find(t => t.day === day && t.time === slot);
-                    return (
-                      <td key={day} style={{ padding: '8px' }}>
-                        {matched ? (
-                          <div style={{
-                            background: 'rgba(6, 182, 212, 0.05)',
-                            border: '1px solid rgba(6, 182, 212, 0.15)',
-                            padding: '10px 12px',
-                            borderRadius: '10px',
-                            display: 'flex',
-                            flexDirection: 'column',
-                            gap: '4px'
-                          }}>
-                            <strong style={{ fontSize: '0.82rem', color: 'var(--text-main)' }}>{matched.subject}</strong>
-                            <span style={{ fontSize: '0.74rem', color: 'var(--text-muted)', display: 'flex', alignItems: 'center', gap: '4px' }}>
-                              <Users size={10} /> Grade {matched.cohort}
-                            </span>
-                            <span style={{ fontSize: '0.72rem', color: 'var(--text-muted)' }}>Room {matched.room}</span>
-                          </div>
-                        ) : (
-                          <div style={{ color: 'var(--text-muted)', fontSize: '0.75rem', fontStyle: 'italic', padding: '12px', textAlign: 'center' }}>
-                            Unassigned
-                          </div>
-                        )}
-                      </td>
-                    );
-                  })}
-                </tr>
-              ))}
-            </tbody>
-          </table>
+        {/* Search & Filter Bar */}
+        <div className="glass-panel" style={{ padding: '16px 20px', display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '16px' }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+            <Search size={18} style={{ color: 'var(--text-muted)' }} />
+            <h4 style={{ fontSize: '0.9rem', fontWeight: 800, margin: 0, color: 'var(--text-main)' }}>Search Faculty Timetables</h4>
+          </div>
+          <div style={{ display: 'flex', gap: '12px', flexWrap: 'wrap', alignItems: 'center' }}>
+            <input 
+              type="text" 
+              className="form-control" 
+              placeholder="Search teacher by name..." 
+              value={teacherSearchQuery}
+              onChange={(e) => setTeacherSearchQuery(e.target.value)}
+              style={{ width: '250px', padding: '6px 12px', borderRadius: '8px', fontSize: '0.82rem', background: 'var(--bg-glass-active)', border: '1px solid var(--border-glass)', color: 'var(--text-main)' }}
+            />
+            {teacherSearchQuery && (
+              <button 
+                onClick={() => setTeacherSearchQuery('')}
+                className="btn-secondary"
+                style={{ padding: '6px 12px', fontSize: '0.8rem', borderRadius: '8px', border: '1px solid #ef4444', color: '#ef4444' }}
+              >
+                Clear Search
+              </button>
+            )}
+          </div>
+        </div>
+
+        {/* Timetable Grid Views */}
+        <div style={{ display: 'flex', flexDirection: 'column', gap: '32px' }}>
+          {(() => {
+            const teachersWithTimetables = [...new Set(teacherTimetables.filter(t => t.teacher && t.teacher.trim() !== '').map(t => t.teacher))].sort();
+            const filteredTeachers = teachersWithTimetables.filter(tName => 
+              teacherSearchQuery.trim() === '' || tName.toLowerCase().includes(teacherSearchQuery.toLowerCase())
+            );
+
+            return filteredTeachers.length > 0 ? (
+              filteredTeachers.map(tName => {
+                const teacherSlots = teacherTimetables.filter(t => t.teacher && t.teacher.toLowerCase() === tName.toLowerCase());
+                
+                // Get teacher details for department/specialization
+                const teacherObj = Array.isArray(teachers) ? teachers.find(t => t.name.toLowerCase() === tName.toLowerCase()) : null;
+                const deptStr = teacherObj ? (teacherObj.department || teacherObj.subjectSpecialization || 'Academic') : 'Academic';
+
+                return (
+                  <div key={tName} className="glass-panel" style={{ padding: '24px', overflowX: 'auto', display: 'flex', flexDirection: 'column', gap: '16px' }}>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', borderBottom: '1px solid var(--border-glass)', paddingBottom: '12px' }}>
+                      <div>
+                        <h3 style={{ fontSize: '1.15rem', fontWeight: 800, margin: 0 }}>
+                          Teacher Timetable: <span style={{ color: 'hsl(var(--color-info))' }}>{tName}</span> <span style={{ fontSize: '0.85rem', color: 'var(--text-muted)', fontWeight: 500 }}>({deptStr})</span>
+                        </h3>
+                        <p style={{ fontSize: '0.8rem', color: 'var(--text-muted)', margin: '2px 0 0 0' }}>
+                          Weekly matrix layout mapping classroom workloads for {tName}.
+                        </p>
+                      </div>
+                      <div style={{ display: 'flex', gap: '8px' }}>
+                        <button 
+                          className="btn-secondary" 
+                          onClick={() => {
+                            setActiveTeacher(tName);
+                            handleOpenTeacherBulkModalForName(tName);
+                          }}
+                          style={{ padding: '6px 12px', fontSize: '0.8rem', borderRadius: '8px', display: 'flex', alignItems: 'center', gap: '6px', border: '1px solid var(--border-glass)' }}
+                        >
+                          <Settings size={13} /> Edit Timetable
+                        </button>
+                        <button 
+                          className="btn-secondary" 
+                          onClick={() => handleDeleteWholeTeacherTimetable(tName)}
+                          style={{ padding: '6px 12px', fontSize: '0.8rem', borderRadius: '8px', display: 'flex', alignItems: 'center', gap: '6px', border: '1px solid rgb(var(--color-danger-rgb))', color: 'rgb(var(--color-danger-rgb))' }}
+                        >
+                          <Trash2 size={13} /> Delete Timetable
+                        </button>
+                      </div>
+                    </div>
+
+                    <table className="table-custom" style={{ width: '100%', minWidth: '700px' }}>
+                      <thead>
+                        <tr>
+                          <th style={{ width: '150px' }}>Time Slot</th>
+                          {daysOfWeek.map(d => <th key={d}>{d}</th>)}
+                        </tr>
+                      </thead>
+                      <tbody>                        {timeslots.map(slot => {
+                          const breakMatch = slot.match(/\[(.*?)\]/);
+                          const breakType = breakMatch ? breakMatch[1] : null;
+                          const isBreak = !!breakType;
+
+                          if (isBreak) {
+                            return (
+                              <tr key={slot} style={{ background: 'rgba(245, 158, 11, 0.02)' }}>
+                                <td style={{ fontWeight: 700, color: 'hsl(var(--color-info))', fontSize: '0.8rem', padding: '12px' }}>{slot}</td>
+                                <td colSpan={6} style={{ 
+                                  textAlign: 'center', 
+                                  verticalAlign: 'middle', 
+                                  padding: '12px', 
+                                  fontWeight: 800, 
+                                  color: '#d97706', 
+                                  letterSpacing: '3px', 
+                                  fontSize: '0.85rem',
+                                  textTransform: 'uppercase',
+                                  background: 'rgba(245, 158, 11, 0.04)',
+                                  borderLeft: '1px solid var(--border-glass)',
+                                  borderRadius: '8px'
+                                }}>
+                                  {breakType === 'Lunch Break' ? '🍱 ' : breakType === 'Short Break' ? '☕ ' : breakType === 'Recess' ? '🏃 ' : breakType === 'Assembly' ? '📢 ' : '⚡ '}{breakType}
+                                </td>
+                              </tr>
+                            );
+                          }
+
+                          return (
+                            <tr key={slot}>
+                              <td style={{ fontWeight: 700, color: 'hsl(var(--color-info))', fontSize: '0.8rem' }}>{slot}</td>
+                              {daysOfWeek.map(day => {
+                                const matched = teacherSlots.find(t => t.day === day && t.time === slot);
+                                return (
+                                  <td key={day} style={{ padding: '8px' }}>
+                                    {matched ? (
+                                      <div style={{
+                                         display: 'flex',
+                                         alignItems: 'center',
+                                         gap: '4px'
+                                       }}>
+                                         <Users size={12} style={{ color: 'hsl(var(--color-info))' }} />
+                                         <span style={{ fontSize: '0.85rem', fontWeight: 700, color: 'var(--text-main)' }}>Grade {matched.cohort}</span>
+                                       </div>
+                                    ) : (
+                                      <div style={{ color: 'var(--text-muted)', fontSize: '0.75rem', fontStyle: 'italic', padding: '12px', textAlign: 'center' }}>
+                                        Free Study
+                                      </div>
+                                    )}
+                                  </td>
+                                );
+                              })}
+                            </tr>
+                          );
+                        })}
+                      </tbody>
+                    </table>
+                  </div>
+                );
+              })
+            ) : (
+              <div className="glass-panel" style={{ padding: '40px', textAlign: 'center', color: 'var(--text-muted)' }}>
+                No teacher timetables scheduled yet. Use the card above to set up a schedule for a teacher.
+              </div>
+            );
+          })()}
         </div>
       </div>
     );
   };
 
   const renderExams = () => {
+    const sessions = [...new Set(exams.map(e => e.academicSession).filter(Boolean))].sort().reverse();
+
+    const filteredExams = exams.filter(ex => ex.status !== 'Completed').filter(ex => {
+      const matchSearch = examSearch === '' || ex.examName.toLowerCase().includes(examSearch.toLowerCase());
+      const matchSession = examSessionFilter === 'All' || ex.academicSession === examSessionFilter;
+      const matchType = examTypeFilter === 'All' || ex.examType === examTypeFilter;
+      const matchGrade = examGradeFilter === 'All' || (ex.gradeSections || []).some(gs => gs.grade === examGradeFilter);
+      const matchSection = examSectionFilter === 'All' || (ex.gradeSections || []).some(gs => gs.section === examSectionFilter);
+      return matchSearch && matchSession && matchType && matchGrade && matchSection;
+    });
+
+    const handleGenerateSchedule = async (examId) => {
+      setGeneratingSchedule(true);
+      try {
+        const res = await fetch('/api/academics/exams/generate-schedule', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ examId, gapDays: 1 })
+        });
+        const data = await res.json();
+        if (res.ok) {
+          showToast('Schedule generated successfully!', 'success');
+          fetchAllData();
+        } else {
+          showToast(data.error || 'Failed to generate schedule.', 'error');
+        }
+      } catch (e) {
+        showToast('Network error.', 'error');
+      } finally {
+        setGeneratingSchedule(false);
+      }
+    };
+
+    const handlePublishExam = async (examId) => {
+      try {
+        const res = await fetch(`/api/academics/exams/${examId}/publish`, { method: 'PUT' });
+        if (res.ok) {
+          showToast('Exam published successfully!', 'success');
+          fetchAllData();
+        } else {
+          const data = await res.json();
+          showToast(data.error || 'Failed to publish.', 'error');
+        }
+      } catch (e) {
+        showToast('Network error.', 'error');
+      }
+    };
+
+    const handleViewSchedule = (examId) => {
+      const exam = exams.find(e => e.id === examId);
+      if (exam) setViewScheduleExam(exam);
+    };
+
+    const handleDelete = async (id) => {
+      if (!confirm('Delete this exam configuration? This will also remove all generated schedules.')) return;
+      try {
+        const res = await fetch(`/api/academics/exams/${id}`, { method: 'DELETE' });
+        if (res.ok) {
+          showToast('Exam deleted.', 'success');
+          fetchAllData();
+        }
+      } catch (e) {
+        showToast('Delete failed.', 'error');
+      }
+    };
+
     return (
       <div style={{ display: 'flex', flexDirection: 'column', gap: '24px' }}>
+        {/* Header */}
         <div className="glass-panel" style={{ padding: '20px 24px', display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '16px' }}>
           <div>
-            <h3 style={{ fontSize: '1.1rem', fontWeight: 700 }}>Examination Configurations</h3>
-            <p style={{ fontSize: '0.85rem', color: 'var(--text-muted)' }}>Define test syllabus configurations, schedules, and grading targets.</p>
+            <h3 style={{ fontSize: '1.1rem', fontWeight: 700 }}>Exam Management</h3>
+            <p style={{ fontSize: '0.85rem', color: 'var(--text-muted)' }}>Create and manage exams with auto schedule generation.</p>
           </div>
           <button className="btn-primary" onClick={() => {
-            setExamForm({ examName: '', examType: 'Unit Test', grade: 'XII', section: 'A', startDate: '', endDate: '', totalMarks: 100, passingMarks: 40, status: 'Scheduled' });
-            setShowAddModal(true);
+            setWizardForm({ examName: '', examType: 'Unit Test', academicSession: '2026-2027', description: '', selectedGrades: [], startDates: {}, endDates: {}, gapDays: 1 });
+            setExamWizardStep(1);
+            setShowExamWizard(true);
           }}>
-            <Plus size={16} /> Configure Term Exam
+            <Plus size={16} /> Create New Exam
           </button>
         </div>
 
-        <div className="glass-panel" style={{ padding: '0px', overflowX: 'auto' }}>
-          {exams.length > 0 ? (
-            <table className="table-custom" style={{ width: '100%', borderCollapse: 'collapse' }}>
-              <thead>
-                <tr>
-                  <th>Exam Name</th>
-                  <th>Exam Type</th>
-                  <th>Class / Section</th>
-                  <th>Dates (Start - End)</th>
-                  <th>Total Marks</th>
-                  <th>Passing Marks</th>
-                  <th>Status</th>
-                  <th style={{ width: '100px', textAlign: 'center' }}>Actions</th>
-                </tr>
-              </thead>
-              <tbody>
-                {exams.map(ex => (
-                  <tr key={ex.id}>
-                    <td style={{ fontWeight: 700 }}>{ex.examName}</td>
-                    <td><span style={{ fontSize: '0.72rem', padding: '3px 8px', borderRadius: '12px', background: 'var(--bg-glass-active)', border: '1px solid var(--border-glass)', fontWeight: 600 }}>{ex.examType}</span></td>
-                    <td>Grade {ex.grade}-{ex.section}</td>
-                    <td>{ex.startDate} to {ex.endDate}</td>
-                    <td style={{ fontWeight: 600 }}>{ex.totalMarks}</td>
-                    <td style={{ color: 'rgb(var(--color-danger-rgb))', fontWeight: 600 }}>{ex.passingMarks}</td>
-                    <td>
-                      <span style={{
-                        padding: '4px 8px', borderRadius: '20px', fontSize: '0.68rem', fontWeight: 700,
-                        background: ex.status === 'Completed' ? 'rgba(16, 185, 129, 0.08)' : 'rgba(99, 102, 241, 0.08)',
-                        color: ex.status === 'Completed' ? '#10b981' : 'hsl(var(--color-primary))',
-                        border: ex.status === 'Completed' ? '1px solid rgba(16, 185, 129, 0.15)' : '1px solid rgba(99,102,241,0.15)'
-                      }}>
-                        {ex.status}
-                      </span>
-                    </td>
-                    <td style={{ textAlign: 'center' }}>
-                      <button className="btn-secondary" onClick={() => deleteExamConfig(ex.id)} style={{ padding: '6px', color: 'rgb(var(--color-danger-rgb))', border: 'none', background: 'none', cursor: 'pointer' }}>
-                        <Trash2 size={16} />
-                      </button>
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          ) : (
-            <div style={{ padding: '40px', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', color: 'var(--text-muted)', gap: '12px' }}>
-              <BookOpen size={40} style={{ opacity: 0.4 }} />
-              <span>No exams configured yet. Click "Configure Term Exam" to define academic test sets.</span>
-            </div>
-          )}
+        {/* Search & Filter */}
+        <div className="glass-panel" style={{ padding: '16px 20px', display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '16px' }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+            <Search size={18} style={{ color: 'var(--text-muted)' }} />
+            <h4 style={{ fontSize: '0.9rem', fontWeight: 800, margin: 0, color: 'var(--text-main)' }}>Filter Exams</h4>
+          </div>
+          <div style={{ display: 'flex', gap: '12px', flexWrap: 'wrap', alignItems: 'center' }}>
+            <input type="text" className="form-control" placeholder="Search exam name..." value={examSearch} onChange={e => setExamSearch(e.target.value)} style={{ width: '200px', padding: '6px 12px', borderRadius: '8px', fontSize: '0.82rem', background: 'var(--bg-glass-active)', border: '1px solid var(--border-glass)', color: 'var(--text-main)' }} />
+            <select className="select-custom" value={examSessionFilter} onChange={e => setExamSessionFilter(e.target.value)} style={{ padding: '6px 12px', borderRadius: '8px', fontSize: '0.82rem', background: 'var(--bg-glass-active)', border: '1px solid var(--border-glass)' }}>
+              <option value="All">All Sessions</option>
+              {sessions.map(s => <option key={s} value={s}>{s}</option>)}
+            </select>
+            <select className="select-custom" value={examTypeFilter} onChange={e => setExamTypeFilter(e.target.value)} style={{ padding: '6px 12px', borderRadius: '8px', fontSize: '0.82rem', background: 'var(--bg-glass-active)', border: '1px solid var(--border-glass)' }}>
+              <option value="All">All Types</option>
+              {['Unit Test', 'Half Yearly', 'Final Exam', 'Pre Board', 'Custom Exam'].map(t => <option key={t} value={t}>{t}</option>)}
+            </select>
+            <select className="select-custom" value={examGradeFilter} onChange={e => setExamGradeFilter(e.target.value)} style={{ padding: '6px 12px', borderRadius: '8px', fontSize: '0.82rem', background: 'var(--bg-glass-active)', border: '1px solid var(--border-glass)' }}>
+              <option value="All">All Grades</option>
+              {['I', 'II', 'III', 'IV', 'V', 'VI', 'VII', 'VIII', 'IX', 'X'].filter(g => subjects.some(s => s.grade === g)).map(g => <option key={g} value={g}>Grade {g}</option>)}
+            </select>
+            <select className="select-custom" value={examSectionFilter} onChange={e => setExamSectionFilter(e.target.value)} style={{ padding: '6px 12px', borderRadius: '8px', fontSize: '0.82rem', background: 'var(--bg-glass-active)', border: '1px solid var(--border-glass)' }}>
+              <option value="All">All Sections</option>
+              {['A', 'B', 'C', 'D', 'E', 'F'].map(s => <option key={s} value={s}>Section {s}</option>)}
+            </select>
+          </div>
         </div>
+
+        {/* Exam Cards */}
+        {filteredExams.length > 0 ? (
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(360px, 1fr))', gap: '20px' }}>
+            {filteredExams.map(ex => {
+              const gsList = ex.gradeSections || [];
+              const earliestStart = gsList.length > 0 ? gsList.map(g => g.startDate).filter(Boolean).sort()[0] : '';
+              const totalSubjects = ex.scheduleCount || 0;
+              const statusColors = { Draft: { bg: 'rgba(107,114,128,0.08)', color: '#6b7280', border: '1px solid rgba(107,114,128,0.15)' }, Scheduled: { bg: 'rgba(99,102,241,0.08)', color: 'hsl(var(--color-primary))', border: '1px solid rgba(99,102,241,0.15)' }, Published: { bg: 'rgba(16,185,129,0.08)', color: '#10b981', border: '1px solid rgba(16,185,129,0.15)' }, Completed: { bg: 'rgba(59,130,246,0.08)', color: '#3b82f6', border: '1px solid rgba(59,130,246,0.15)' } };
+              const sc = statusColors[ex.status] || statusColors.Draft;
+
+              return (
+                <div 
+                  key={ex.id} 
+                  className="glass-panel" 
+                  onClick={() => handleViewSchedule(ex.id)}
+                  style={{ 
+                    padding: '0', 
+                    borderRadius: '16px', 
+                    overflow: 'hidden', 
+                    display: 'flex', 
+                    flexDirection: 'column', 
+                    transition: 'transform 0.2s, box-shadow 0.2s',
+                    cursor: 'pointer'
+                  }}
+                >
+                  {/* Card Header */}
+                  <div style={{ padding: '20px 20px 16px', borderBottom: '1px solid var(--border-glass)', display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
+                    <div>
+                      <h3 style={{ fontSize: '1.05rem', fontWeight: 800, margin: 0, color: 'var(--text-main)' }}>{ex.examName}</h3>
+                      <span style={{ fontSize: '0.72rem', padding: '2px 8px', borderRadius: '10px', background: 'rgba(99, 102, 241, 0.08)', color: 'hsl(var(--color-primary))', border: '1px solid rgba(99, 102, 241, 0.15)', display: 'inline-block', marginTop: '6px', fontWeight: 600 }}>{ex.examType}</span>
+                    </div>
+                    <span style={{ padding: '4px 10px', borderRadius: '20px', fontSize: '0.68rem', fontWeight: 700, ...sc }}>{ex.status}</span>
+                  </div>
+
+                  {/* Card Body */}
+                  <div style={{ padding: '16px 20px', display: 'flex', flexDirection: 'column', gap: '10px', flex: 1 }}>
+                    <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '8px', fontSize: '0.8rem' }}>
+                      <div style={{ color: 'var(--text-muted)' }}>Session</div>
+                      <div style={{ fontWeight: 600, textAlign: 'right' }}>{ex.academicSession || '-'}</div>
+                      <div style={{ color: 'var(--text-muted)' }}>Grades</div>
+                      <div style={{ fontWeight: 600, textAlign: 'right' }}>
+                        {gsList.length > 0 ? gsList.map(gs => `${gs.grade}-${gs.section}`).join(', ') : '-'}
+                      </div>
+                      <div style={{ color: 'var(--text-muted)' }}>Total Subjects</div>
+                      <div style={{ fontWeight: 600, textAlign: 'right' }}>{totalSubjects}</div>
+                      <div style={{ color: 'var(--text-muted)' }}>Start Date</div>
+                      <div style={{ fontWeight: 600, textAlign: 'right' }}>{earliestStart || '-'}</div>
+                      <div style={{ color: 'var(--text-muted)' }}>End Date</div>
+                      <div style={{ fontWeight: 600, textAlign: 'right' }}>{ex.endDate || 'Not generated'}</div>
+                    </div>
+                  </div>
+
+                  {/* Card Actions */}
+                  <div style={{ padding: '12px 20px', borderTop: '1px solid var(--border-glass)', display: 'flex', gap: '8px', flexWrap: 'wrap', justifyContent: 'flex-end' }}>
+                    {ex.status === 'Draft' && (
+                      <button 
+                        onClick={(e) => { e.stopPropagation(); handleGenerateSchedule(ex.id); }} 
+                        disabled={generatingSchedule} 
+                        className="btn-primary" 
+                        style={{ padding: '6px 10px', fontSize: '0.72rem', borderRadius: '8px', display: 'flex', alignItems: 'center', gap: '4px', background: 'linear-gradient(135deg, #8b5cf6, #6366f1)' }}
+                      >
+                        <Zap size={13} /> {generatingSchedule ? 'Generating...' : 'Generate'}
+                      </button>
+                    )}
+                    {ex.status !== 'Completed' && (
+                      <button 
+                        onClick={async (e) => { 
+                          e.stopPropagation(); 
+                          if (confirm('Are you sure you want to mark this exam as completed? It will be moved to Exam History.')) {
+                            try {
+                              const res = await fetch(`/api/academics/exams/${ex.id}`, {
+                                method: 'PUT',
+                                headers: { 'Content-Type': 'application/json' },
+                                body: JSON.stringify({ status: 'Completed' })
+                              });
+                              if (res.ok) {
+                                showToast('Exam marked as completed!', 'success');
+                                fetchAllData();
+                              } else {
+                                const data = await res.json();
+                                showToast(data.error || 'Failed to complete exam.', 'error');
+                              }
+                            } catch (err) {
+                              showToast('Network error.', 'error');
+                            }
+                          }
+                        }} 
+                        className="btn-primary" 
+                        style={{ padding: '6px 10px', fontSize: '0.72rem', borderRadius: '8px', display: 'flex', alignItems: 'center', gap: '4px', background: 'linear-gradient(135deg, #10b981 0%, #059669 100%)', border: 'none', color: '#fff' }}
+                      >
+                        <CheckCircle size={13} /> Mark Completed
+                      </button>
+                    )}
+                    <button 
+                      onClick={(e) => { e.stopPropagation(); handleDelete(ex.id); }} 
+                      className="btn-secondary" 
+                      style={{ padding: '6px 10px', fontSize: '0.72rem', borderRadius: '8px', display: 'flex', alignItems: 'center', gap: '4px', border: '1px solid rgba(239,68,68,0.3)', color: '#ef4444' }}
+                    >
+                      <Trash2 size={13} /> Delete
+                    </button>
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+        ) : (
+          <div className="glass-panel" style={{ padding: '60px 40px', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', color: 'var(--text-muted)', gap: '16px', textAlign: 'center' }}>
+            <BookOpen size={48} style={{ opacity: 0.3 }} />
+            <span style={{ fontSize: '1rem', fontWeight: 600 }}>No exams found</span>
+            <p style={{ fontSize: '0.85rem', margin: 0 }}>Click "Create New Exam" to get started with the multi-step wizard.</p>
+          </div>
+        )}
       </div>
     );
   };
@@ -774,28 +1853,335 @@ export default function AcademicPanel({ subView }) {
   const renderExamTimetable = () => {
     const selectedExamObj = exams.find(e => e.id === activeExam);
     const schedules = examTimetables.filter(et => et.examId === activeExam);
+    const cohorts = [...new Set(schedules.map(s => s.cohort).filter(Boolean))].sort();
+    const sessions = [...new Set(exams.map(e => e.academicSession).filter(Boolean))].sort().reverse();
+
+
+    const examGradeSections = selectedExamObj ? (selectedExamObj.gradeSections || []) : [];
+    const earliestStart = examGradeSections.length > 0 ? examGradeSections.map(g => g.startDate).filter(Boolean).sort()[0] : '';
+    const uniqueGrades = [...new Set(examGradeSections.map(gs => gs.grade))].filter(g => 
+      subjects.some(sub => sub.grade === g)
+    );
+    const filteredSectionsForGrade = examGradeSections.filter(gs => gs.grade === manualGrade).map(gs => gs.section);
+
+
+    const handleDeleteSlot = async (id) => {
+      if (!confirm('Remove this exam slot from schedule?')) return;
+      try {
+        const res = await fetch(`/api/academics/exam-timetables/${id}`, { method: 'DELETE' });
+        if (res.ok) {
+          showToast('Schedule slot removed.', 'success');
+          fetchAllData();
+        }
+      } catch (e) {
+        showToast('Error removing slot.', 'error');
+      }
+    };
+
+    const handleRegenerate = async () => {
+      if (!confirm('Regenerate schedule? This will replace existing slots.')) return;
+      try {
+        const res = await fetch('/api/academics/exams/generate-schedule', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ examId: activeExam, gapDays: 1 })
+        });
+        const data = await res.json();
+        if (res.ok) {
+          showToast('Schedule regenerated successfully!', 'success');
+          fetchAllData();
+        } else {
+          showToast(data.error || 'Failed to regenerate.', 'error');
+        }
+      } catch (e) {
+        showToast('Network error.', 'error');
+      }
+    };
+
+    const formatDate = (dateStr) => {
+      if (!dateStr) return '-';
+      return new Date(dateStr + 'T00:00:00').toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric', year: 'numeric' });
+    };
+
+    const getDayOfWeek = (dateStr) => {
+      if (!dateStr) return '';
+      return new Date(dateStr + 'T00:00:00').toLocaleDateString('en-US', { weekday: 'long' });
+    };
+
+    const getConsecutiveExamDates = (startStr, count) => {
+      if (!startStr) return [];
+      const dates = [];
+      let current = new Date(startStr + 'T00:00:00');
+      while (dates.length < count) {
+        const dayOfWeek = current.getDay(); // 0 = Sunday
+        const yyyy = current.getFullYear();
+        const mm = String(current.getMonth() + 1).padStart(2, '0');
+        const dd = String(current.getDate()).padStart(2, '0');
+        const dateStr = `${yyyy}-${mm}-${dd}`;
+        
+        const isSunday = dayOfWeek === 0;
+        const isHoliday = holidays.some(h => dateStr >= h.startDate && dateStr <= h.endDate);
+        
+        if (!isSunday && !isHoliday) {
+          dates.push(dateStr);
+        }
+        current.setDate(current.getDate() + 1);
+      }
+      return dates;
+    };
+
+    const handleOpenManualScheduler = () => {
+      const gsObj = examGradeSections.find(gs => gs.grade === manualGrade && gs.section === manualSection);
+      const gradeSubjects = subjects.filter(s => s.grade === manualGrade);
+      if (gradeSubjects.length === 0) {
+        showToast(`No subjects configured for Grade ${manualGrade}. Please configure subjects first.`, 'error');
+        return;
+      }
+      const startStr = gsObj ? gsObj.startDate : new Date().toISOString().split('T')[0];
+      
+      const existingCohortSlots = schedules.filter(s => s.cohort === `${manualGrade}-${manualSection}`);
+      let initialSlots = [];
+      if (existingCohortSlots.length > 0) {
+        initialSlots = existingCohortSlots.map(s => ({
+          subject: s.subject,
+          examDate: s.examDate
+        }));
+      } else {
+        const dates = getConsecutiveExamDates(startStr, gradeSubjects.length);
+        initialSlots = gradeSubjects.map((sub, idx) => ({
+          subject: sub.subjectName,
+          examDate: dates[idx] || startStr
+        }));
+      }
+      setManualSlots(initialSlots);
+      setIsManualSchedulerOpen(true);
+    };
+
+    const handleDragStart = (e, index) => {
+      setDraggedSlotIndex(index);
+      e.dataTransfer.effectAllowed = 'move';
+    };
+
+    const handleDragOver = (e, index) => {
+      e.preventDefault();
+    };
+
+    const handleDrop = (e, targetIndex) => {
+      e.preventDefault();
+      if (draggedSlotIndex === null || draggedSlotIndex === targetIndex) return;
+
+      const updatedSlots = [...manualSlots];
+      const [draggedItem] = updatedSlots.splice(draggedSlotIndex, 1);
+      updatedSlots.splice(targetIndex, 0, draggedItem);
+
+      const gsObj = examGradeSections.find(gs => gs.grade === manualGrade && gs.section === manualSection);
+      const startStr = gsObj ? gsObj.startDate : new Date().toISOString().split('T')[0];
+      const dates = getConsecutiveExamDates(startStr, updatedSlots.length);
+      
+      const reSequencedSlots = updatedSlots.map((slot, idx) => ({
+        ...slot,
+        examDate: dates[idx] || slot.examDate
+      }));
+
+      setManualSlots(reSequencedSlots);
+      setDraggedSlotIndex(null);
+    };
+
+    const handleDragEnd = () => {
+      setDraggedSlotIndex(null);
+    };
+
+    const handleDateChange = (index, newDate) => {
+      const updated = [...manualSlots];
+      updated[index].examDate = newDate;
+      setManualSlots(updated);
+    };
+
+    const handleSaveCustomTimetable = async () => {
+      try {
+        const res = await fetch('/api/academics/exam-timetables/bulk', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            examId: activeExam,
+            cohort: `${manualGrade}-${manualSection}`,
+            schedules: manualSlots
+          })
+        });
+        const data = await res.json();
+        if (res.ok) {
+          showToast('Custom exam timetable saved successfully!', 'success');
+          setIsManualSchedulerOpen(false);
+          fetchAllData();
+        } else {
+          showToast(data.error || 'Failed to save custom timetable.', 'error');
+        }
+      } catch (err) {
+        showToast('Network error while saving.', 'error');
+      }
+    };
+
+    if (isManualSchedulerOpen) {
+      const gsObj = examGradeSections.find(gs => gs.grade === manualGrade && gs.section === manualSection);
+      return (
+        <div style={{ display: 'flex', flexDirection: 'column', gap: '24px' }}>
+          <div className="glass-panel" style={{ padding: '20px 24px', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+            <div>
+              <h3 style={{ fontSize: '1.1rem', fontWeight: 700 }}>Custom Exam Timetable Editor</h3>
+              <p style={{ fontSize: '0.85rem', color: 'var(--text-muted)' }}>
+                Grade {manualGrade} - Section {manualSection} | Exam: {selectedExamObj?.examName}
+              </p>
+            </div>
+            <div style={{ display: 'flex', gap: '12px' }}>
+              <button className="btn-secondary" onClick={() => setIsManualSchedulerOpen(false)} style={{ padding: '8px 16px', borderRadius: '8px', fontSize: '0.85rem' }}>
+                Cancel
+              </button>
+              <button className="btn-primary" onClick={handleSaveCustomTimetable} style={{ padding: '8px 16px', borderRadius: '8px', fontSize: '0.85rem', background: 'linear-gradient(135deg, hsl(var(--color-primary)) 0%, #4f46e5 100%)', fontWeight: 700 }}>
+                Save Timetable
+              </button>
+            </div>
+          </div>
+
+          <div className="glass-panel" style={{ padding: '24px', display: 'flex', flexDirection: 'column', gap: '20px' }}>
+
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
+              {manualSlots.map((slot, index) => {
+                const isDragged = draggedSlotIndex === index;
+                return (
+                  <div
+                    key={index}
+                    draggable
+                    onDragStart={(e) => handleDragStart(e, index)}
+                    onDragOver={(e) => handleDragOver(e, index)}
+                    onDrop={(e) => handleDrop(e, index)}
+                    onDragEnd={handleDragEnd}
+                    style={{
+                      display: 'flex',
+                      alignItems: 'center',
+                      gap: '16px',
+                      padding: '16px',
+                      background: isDragged ? 'rgba(99,102,241,0.04)' : 'var(--bg-glass-active)',
+                      border: isDragged ? '2px dashed hsl(var(--color-primary))' : '1px solid var(--border-glass)',
+                      borderRadius: '12px',
+                      opacity: isDragged ? 0.5 : 1,
+                      cursor: 'grab',
+                      transition: 'all 0.2s ease',
+                      boxShadow: 'var(--shadow-glass)'
+                    }}
+                  >
+                    <div style={{ color: 'var(--text-muted)', display: 'flex', alignItems: 'center' }}>
+                      <GripVertical size={18} />
+                    </div>
+
+                    <div style={{ width: '40px', height: '40px', borderRadius: '50%', background: 'rgba(99, 102, 241, 0.08)', display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'hsl(var(--color-primary))', fontWeight: 800, fontSize: '0.9rem' }}>
+                      {index + 1}
+                    </div>
+
+                    <div style={{ flex: 1 }}>
+                      <div style={{ fontWeight: 800, fontSize: '0.95rem', color: 'var(--text-main)' }}>
+                        {slot.subject}
+                      </div>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginTop: '4px' }}>
+                        <span style={{ fontSize: '0.72rem', padding: '2px 8px', borderRadius: '12px', background: 'rgba(99, 102, 241, 0.06)', color: 'hsl(var(--color-primary))', fontWeight: 700 }}>
+                          {getDayOfWeek(slot.examDate) || 'No day'}
+                        </span>
+                      </div>
+                    </div>
+
+                    <div style={{ width: '200px' }}>
+                      <input
+                        type="date"
+                        className="form-control"
+                        value={slot.examDate}
+                        onChange={(e) => handleDateChange(index, e.target.value)}
+                        style={{
+                          width: '100%',
+                          padding: '8px 12px',
+                          borderRadius: '8px',
+                          fontSize: '0.85rem',
+                          background: 'rgba(255,255,255,0.05)',
+                          border: '1px solid var(--border-glass)',
+                          color: 'var(--text-main)'
+                        }}
+                      />
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+          </div>
+        </div>
+      );
+    }
+
     return (
       <div style={{ display: 'flex', flexDirection: 'column', gap: '24px' }}>
         <div className="glass-panel" style={{ padding: '20px 24px', display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '16px' }}>
           <div>
-            <h3 style={{ fontSize: '1.1rem', fontWeight: 700 }}>Term Exam Date Sheets</h3>
-            <p style={{ fontSize: '0.85rem', color: 'var(--text-muted)' }}>Configure classroom allocations, duration terms, and faculty invigilator duties.</p>
+            <h3 style={{ fontSize: '1.1rem', fontWeight: 700 }}>Exam Timetable</h3>
+            <p style={{ fontSize: '0.85rem', color: 'var(--text-muted)' }}>View auto-generated exam schedules. Manage from Exam Management section.</p>
           </div>
-          <div style={{ display: 'flex', gap: '12px' }}>
-            <select className="select-custom" value={activeExam} onChange={(e) => setActiveExam(e.target.value)}>
-              <option value="">Select Exam Set</option>
-              {exams.map(ex => <option key={ex.id} value={ex.id}>{ex.examName} (Grade {ex.grade})</option>)}
+          <div style={{ display: 'flex', gap: '12px', flexWrap: 'wrap', alignItems: 'center' }}>
+            <select 
+              className="select-custom" 
+              value={timetableSession} 
+              onChange={(e) => { 
+                setTimetableSession(e.target.value); 
+                setActiveExam(''); 
+                setManualGrade(''); 
+                setManualSection(''); 
+              }} 
+              style={{ padding: '6px 12px', borderRadius: '8px', fontSize: '0.82rem' }}
+            >
+              <option value="All">All Sessions</option>
+              {sessions.map(s => (
+                <option key={s} value={s}>{s}</option>
+              ))}
             </select>
+            <select 
+              className="select-custom" 
+              value={activeExam} 
+              onChange={(e) => { 
+                setActiveExam(e.target.value); 
+                setManualGrade(''); 
+                setManualSection(''); 
+              }} 
+              style={{ padding: '6px 12px', borderRadius: '8px', fontSize: '0.82rem' }}
+            >
+              <option value="">Select Exam</option>
+              {exams
+                .filter(ex => timetableSession === 'All' || ex.academicSession === timetableSession)
+                .map(ex => (
+                  <option key={ex.id} value={ex.id}>
+                    {ex.examName}
+                  </option>
+                ))}
+            </select>
+
             {activeExam && (
               <>
-                <button className="btn-secondary" onClick={() => handlePrint('printable-exam-timetable')}>
-                  <Printer size={16} /> Export Schedule
+                <select className="select-custom" value={manualGrade} onChange={(e) => { setManualGrade(e.target.value); setManualSection(''); }} style={{ padding: '6px 12px', borderRadius: '8px', fontSize: '0.82rem' }}>
+                  <option value="">Select Grade</option>
+                  {uniqueGrades.map(g => (
+                    <option key={g} value={g}>Grade {g}</option>
+                  ))}
+                </select>
+                <select className="select-custom" value={manualSection} onChange={(e) => setManualSection(e.target.value)} style={{ padding: '6px 12px', borderRadius: '8px', fontSize: '0.82rem' }} disabled={!manualGrade}>
+                  <option value="">Select Section</option>
+                  {filteredSectionsForGrade.map(s => (
+                    <option key={s} value={s}>Section {s}</option>
+                  ))}
+                </select>
+                <button 
+                  className="btn-primary" 
+                  disabled={!manualGrade || !manualSection} 
+                  onClick={handleOpenManualScheduler} 
+                  style={{ padding: '6px 12px', fontSize: '0.8rem', borderRadius: '8px', display: 'flex', alignItems: 'center', gap: '6px', background: 'linear-gradient(135deg, hsl(var(--color-primary)) 0%, #4f46e5 100%)' }}
+                >
+                  <Plus size={14} /> Create Timetable
                 </button>
-                <button className="btn-primary" onClick={() => {
-                  setExamTimetableForm({ examId: activeExam, subject: 'Mathematics', examDate: '', startTime: '09:00 AM', endTime: '12:00 PM', duration: '3 Hours', roomAllocation: '', invigilator: '' });
-                  setShowAddModal(true);
-                }}>
-                  <Plus size={16} /> Add Schedule Period
+                <button className="btn-secondary" onClick={handleRegenerate} style={{ padding: '6px 12px', fontSize: '0.8rem', borderRadius: '8px', display: 'flex', alignItems: 'center', gap: '6px' }}>
+                  <Zap size={14} /> Regenerate
                 </button>
               </>
             )}
@@ -804,59 +2190,210 @@ export default function AcademicPanel({ subView }) {
 
         {activeExam && selectedExamObj ? (
           <div className="glass-panel" style={{ padding: '24px' }}>
-            <div id="printable-exam-timetable">
-              <div className="header">
-                <h1>{selectedExamObj.examName} Date Sheet</h1>
-                <p>Term: {selectedExamObj.examType} | Grade: {selectedExamObj.grade}-{selectedExamObj.section}</p>
-                <div style={{ display: 'flex', justifyContent: 'space-between', marginTop: '12px', fontSize: '0.85rem', color: 'var(--text-muted)', borderTop: '1px dashed var(--border-glass)', paddingTop: '10px' }}>
-                  <span>Total Marks: {selectedExamObj.totalMarks}</span>
-                  <span>Passing Score Limit: {selectedExamObj.passingMarks}</span>
-                  <span>Status: <strong>{selectedExamObj.status}</strong></span>
+            <div>
+              <div style={{ borderBottom: '2px solid var(--border-glass)', paddingBottom: '16px', marginBottom: '20px' }}>
+                <h2 style={{ fontSize: '1.2rem', fontWeight: 800, margin: 0 }}>{selectedExamObj.examName}</h2>
+                <div style={{ display: 'flex', gap: '20px', fontSize: '0.82rem', color: 'var(--text-muted)', marginTop: '6px' }}>
+                  <span>Type: <strong>{selectedExamObj.examType}</strong></span>
+                  <span>Session: <strong>{selectedExamObj.academicSession || '-'}</strong></span>
+                  {earliestStart && <span>Starts: <strong>{earliestStart}</strong></span>}
+                  {selectedExamObj.endDate && <span>Ends: <strong>{selectedExamObj.endDate}</strong></span>}
                 </div>
               </div>
 
               {schedules.length > 0 ? (
-                <table className="table-custom" style={{ width: '100%', marginTop: '20px' }}>
-                  <thead>
-                    <tr>
-                      <th>Subject</th>
-                      <th>Exam Date</th>
-                      <th>Time Slot</th>
-                      <th>Duration</th>
-                      <th>Room Allocated</th>
-                      <th>Invigilator Assigned</th>
-                      <th className="no-print" style={{ width: '80px', textAlign: 'center' }}>Action</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {schedules.map(slot => (
-                      <tr key={slot.id}>
-                        <td style={{ fontWeight: 700 }}>{slot.subject}</td>
-                        <td>{new Date(slot.examDate).toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric', year: 'numeric' })}</td>
-                        <td>{slot.startTime} to {slot.endTime}</td>
-                        <td>{slot.duration}</td>
-                        <td><span style={{ fontSize: '0.75rem', fontWeight: 700, padding: '3px 8px', borderRadius: '8px', background: 'rgba(139, 92, 246, 0.08)', color: '#8b5cf6' }}>Room {slot.roomAllocation}</span></td>
-                        <td>{slot.invigilator}</td>
-                        <td className="no-print" style={{ textAlign: 'center' }}>
-                          <button className="btn-secondary" onClick={() => deleteExamTimetableSlot(slot.id)} style={{ padding: '4px', border: 'none', background: 'none', cursor: 'pointer', color: 'rgb(var(--color-danger-rgb))' }}>
-                            <Trash2 size={14} />
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '24px' }}>
+                  {cohorts.map(cohort => {
+                    const cohortSchedules = schedules.filter(s => s.cohort === cohort);
+                    const [grade, section] = cohort.split('-');
+                    return (
+                      <div key={cohort} id={`printable-exam-timetable-${cohort}`} style={{ display: 'flex', flexDirection: 'column', gap: '16px', background: 'var(--bg-glass-active)', border: '1px solid var(--border-glass)', padding: '20px', borderRadius: '12px' }}>
+                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', borderBottom: '1px solid var(--border-glass)', paddingBottom: '10px' }}>
+                          <h4 style={{ fontSize: '0.95rem', fontWeight: 700, margin: 0, color: 'hsl(var(--color-primary))' }}>
+                            Grade {grade} - Section {section}
+                          </h4>
+                          <button 
+                            className="btn-secondary no-print" 
+                            onClick={() => handlePrint(`printable-exam-timetable-${cohort}`)} 
+                            style={{ padding: '4px 10px', fontSize: '0.75rem', borderRadius: '6px', display: 'flex', alignItems: 'center', gap: '4px', border: '1px solid var(--border-glass)' }}
+                          >
+                            <Printer size={12} /> Print
                           </button>
-                        </td>
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
+                        </div>
+                        <table className="table-custom" style={{ width: '100%', borderCollapse: 'collapse', marginTop: '10px' }}>
+                          <thead>
+                            <tr>
+                              <th style={{ textAlign: 'left', padding: '12px 16px' }}>Subject</th>
+                              <th style={{ textAlign: 'left', padding: '12px 16px' }}>Exam Date</th>
+                            </tr>
+                          </thead>
+                          <tbody>
+                            {cohortSchedules.map(slot => (
+                              <tr key={slot.id} style={{ borderBottom: '1px solid var(--border-glass)' }}>
+                                <td style={{ fontWeight: 700, textAlign: 'left', padding: '12px 16px' }}>{slot.subject}</td>
+                                <td style={{ textAlign: 'left', padding: '12px 16px' }}>{formatDate(slot.examDate)}</td>
+                              </tr>
+                            ))}
+                          </tbody>
+                        </table>
+                      </div>
+                    );
+                  })}
+                </div>
               ) : (
-                <div style={{ padding: '40px', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', color: 'var(--text-muted)', gap: '12px' }}>
-                  <Calendar size={32} style={{ opacity: 0.4 }} />
-                  <span>No schedule slots mapped for this exam configure. Click "Add Schedule Period".</span>
+                <div style={{ padding: '60px 40px', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', color: 'var(--text-muted)', gap: '16px', textAlign: 'center' }}>
+                  <Calendar size={40} style={{ opacity: 0.3 }} />
+                  <span style={{ fontWeight: 600 }}>No schedule generated yet</span>
+                  <p style={{ fontSize: '0.85rem', margin: 0 }}>Go to Exam Management and click "Generate" to auto-create the subject-wise timetable.</p>
                 </div>
               )}
             </div>
           </div>
         ) : (
-          <div className="glass-panel" style={{ padding: '40px', textAlign: 'center', color: 'var(--text-muted)' }}>
-            Please select an exam configuration from the dropdown to visualize the schedule grid.
+          <div className="glass-panel" style={{ padding: '60px 40px', textAlign: 'center', color: 'var(--text-muted)' }}>
+            <Calendar size={40} style={{ opacity: 0.3 }} />
+            <p style={{ fontWeight: 600, marginTop: '12px' }}>Select an exam to view its timetable</p>
+          </div>
+        )}
+      </div>
+    );
+  };
+
+  const renderExamsHistory = () => {
+    const sessions = [...new Set(exams.map(e => e.academicSession).filter(Boolean))].sort().reverse();
+    const completedExams = exams.filter(ex => ex.status === 'Completed');
+
+    const filteredHistory = completedExams.filter(ex => {
+      const matchSearch = examSearch === '' || ex.examName.toLowerCase().includes(examSearch.toLowerCase());
+      const matchSession = examSessionFilter === 'All' || ex.academicSession === examSessionFilter;
+      const matchType = examTypeFilter === 'All' || ex.examType === examTypeFilter;
+      const matchGrade = examGradeFilter === 'All' || (ex.gradeSections || []).some(gs => gs.grade === examGradeFilter);
+      const matchSection = examSectionFilter === 'All' || (ex.gradeSections || []).some(gs => gs.section === examSectionFilter);
+      return matchSearch && matchSession && matchType && matchGrade && matchSection;
+    });
+
+    const handleViewSchedule = (examId) => {
+      const exam = exams.find(e => e.id === examId);
+      if (exam) setViewScheduleExam(exam);
+    };
+
+    const handleDelete = async (id) => {
+      if (!confirm('Delete this completed exam history? This will permanently remove the record.')) return;
+      try {
+        const res = await fetch(`/api/academics/exams/${id}`, { method: 'DELETE' });
+        if (res.ok) {
+          showToast('Exam history deleted.', 'success');
+          fetchAllData();
+        }
+      } catch (e) {
+        showToast('Delete failed.', 'error');
+      }
+    };
+
+    const formatDate = (dateStr) => {
+      if (!dateStr) return '-';
+      return new Date(dateStr + 'T00:00:00').toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
+    };
+
+    return (
+      <div style={{ display: 'flex', flexDirection: 'column', gap: '24px' }}>
+        {/* Header */}
+        <div className="glass-panel" style={{ padding: '20px 24px', display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '16px' }}>
+          <div>
+            <h3 style={{ fontSize: '1.1rem', fontWeight: 700 }}>Exam History</h3>
+            <p style={{ fontSize: '0.85rem', color: 'var(--text-muted)' }}>View and audit historical completed examinations and schedules.</p>
+          </div>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+            <span style={{ fontSize: '0.85rem', fontWeight: 700, color: 'var(--text-muted)' }}>Select Session:</span>
+            <select className="select-custom" value={examSessionFilter} onChange={e => setExamSessionFilter(e.target.value)} style={{ padding: '8px 16px', borderRadius: '8px', fontSize: '0.85rem', background: 'var(--bg-glass-active)', border: '1px solid var(--border-glass)', minWidth: '150px' }}>
+              <option value="All">All Sessions</option>
+              {sessions.map(s => <option key={s} value={s}>{s}</option>)}
+            </select>
+          </div>
+        </div>
+
+        {/* Search & Filter */}
+        <div className="glass-panel" style={{ padding: '16px 20px', display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '16px' }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+            <Search size={18} style={{ color: 'var(--text-muted)' }} />
+            <h4 style={{ fontSize: '0.9rem', fontWeight: 800, margin: 0, color: 'var(--text-main)' }}>Filter History</h4>
+          </div>
+          <div style={{ display: 'flex', gap: '12px', flexWrap: 'wrap', alignItems: 'center' }}>
+            <input type="text" className="form-control" placeholder="Search exam name..." value={examSearch} onChange={e => setExamSearch(e.target.value)} style={{ width: '200px', padding: '6px 12px', borderRadius: '8px', fontSize: '0.82rem', background: 'var(--bg-glass-active)', border: '1px solid var(--border-glass)', color: 'var(--text-main)' }} />
+            <select className="select-custom" value={examTypeFilter} onChange={e => setExamTypeFilter(e.target.value)} style={{ padding: '6px 12px', borderRadius: '8px', fontSize: '0.82rem', background: 'var(--bg-glass-active)', border: '1px solid var(--border-glass)' }}>
+              <option value="All">All Types</option>
+              {['Unit Test', 'Half Yearly', 'Final Exam', 'Pre Board', 'Custom Exam'].map(t => <option key={t} value={t}>{t}</option>)}
+            </select>
+            <select className="select-custom" value={examGradeFilter} onChange={e => setExamGradeFilter(e.target.value)} style={{ padding: '6px 12px', borderRadius: '8px', fontSize: '0.82rem', background: 'var(--bg-glass-active)', border: '1px solid var(--border-glass)' }}>
+              <option value="All">All Grades</option>
+              {['I', 'II', 'III', 'IV', 'V', 'VI', 'VII', 'VIII', 'IX', 'X'].filter(g => subjects.some(s => s.grade === g)).map(g => <option key={g} value={g}>Grade {g}</option>)}
+            </select>
+            <select className="select-custom" value={examSectionFilter} onChange={e => setExamSectionFilter(e.target.value)} style={{ padding: '6px 12px', borderRadius: '8px', fontSize: '0.82rem', background: 'var(--bg-glass-active)', border: '1px solid var(--border-glass)' }}>
+              <option value="All">All Sections</option>
+              {['A', 'B', 'C', 'D', 'E', 'F'].map(s => <option key={s} value={s}>Section {s}</option>)}
+            </select>
+          </div>
+        </div>
+
+        {/* History Cards */}
+        {filteredHistory.length > 0 ? (
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(360px, 1fr))', gap: '20px' }}>
+            {filteredHistory.map(ex => {
+              const gsList = ex.gradeSections || [];
+              const earliestStart = gsList.length > 0 ? gsList.map(g => g.startDate).filter(Boolean).sort()[0] : '';
+              const totalSubjects = ex.scheduleCount || 0;
+              const statusColors = { Draft: { bg: 'rgba(107,114,128,0.08)', color: '#6b7280', border: '1px solid rgba(107,114,128,0.15)' }, Scheduled: { bg: 'rgba(99,102,241,0.08)', color: 'hsl(var(--color-primary))', border: '1px solid rgba(99,102,241,0.15)' }, Published: { bg: 'rgba(16,185,129,0.08)', color: '#10b981', border: '1px solid rgba(16,185,129,0.15)' }, Completed: { bg: 'rgba(59,130,246,0.08)', color: '#3b82f6', border: '1px solid rgba(59,130,246,0.15)' } };
+              const sc = statusColors[ex.status] || statusColors.Draft;
+
+              return (
+                <div 
+                  key={ex.id} 
+                  className="glass-panel" 
+                  style={{ 
+                    padding: '0', 
+                    borderRadius: '16px', 
+                    overflow: 'hidden', 
+                    display: 'flex', 
+                    flexDirection: 'column', 
+                    transition: 'transform 0.2s, box-shadow 0.2s'
+                  }}
+                >
+                  {/* Card Header */}
+                  <div style={{ padding: '20px 20px 16px', borderBottom: '1px solid var(--border-glass)', display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
+                    <div>
+                      <h3 style={{ fontSize: '1.05rem', fontWeight: 800, margin: 0, color: 'var(--text-main)' }}>{ex.examName}</h3>
+                      <span style={{ fontSize: '0.72rem', padding: '2px 8px', borderRadius: '10px', background: 'rgba(99, 102, 241, 0.08)', color: 'hsl(var(--color-primary))', border: '1px solid rgba(99, 102, 241, 0.15)', display: 'inline-block', marginTop: '6px', fontWeight: 600 }}>{ex.examType}</span>
+                    </div>
+                    <span style={{ padding: '4px 10px', borderRadius: '20px', fontSize: '0.68rem', fontWeight: 700, ...sc }}>{ex.status}</span>
+                  </div>
+
+                  {/* Card Body */}
+                  <div style={{ padding: '16px 20px', display: 'flex', flexDirection: 'column', gap: '10px', flex: 1 }}>
+                    <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '8px', fontSize: '0.8rem' }}>
+                      <div style={{ color: 'var(--text-muted)' }}>Session</div>
+                      <div style={{ fontWeight: 600, textAlign: 'right' }}>{ex.academicSession || '-'}</div>
+                      <div style={{ color: 'var(--text-muted)' }}>Grades</div>
+                      <div style={{ fontWeight: 600, textAlign: 'right' }}>
+                        {gsList.length > 0 ? gsList.map(gs => `${gs.grade}-${gs.section}`).join(', ') : '-'}
+                      </div>
+                      <div style={{ color: 'var(--text-muted)' }}>Total Subjects</div>
+                      <div style={{ fontWeight: 600, textAlign: 'right' }}>{totalSubjects}</div>
+                      <div style={{ color: 'var(--text-muted)' }}>Start Date</div>
+                      <div style={{ fontWeight: 600, textAlign: 'right' }}>{earliestStart || '-'}</div>
+                      <div style={{ color: 'var(--text-muted)' }}>End Date</div>
+                      <div style={{ fontWeight: 600, textAlign: 'right' }}>{ex.endDate || 'Not generated'}</div>
+                    </div>
+                  </div>
+
+                </div>
+              );
+            })}
+          </div>
+        ) : (
+          <div className="glass-panel" style={{ padding: '60px 40px', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', color: 'var(--text-muted)', gap: '16px', textAlign: 'center' }}>
+            <BookOpen size={48} style={{ opacity: 0.3 }} />
+            <span style={{ fontSize: '1rem', fontWeight: 600 }}>No completed exams found</span>
+            <p style={{ fontSize: '0.85rem', margin: 0 }}>Completed exams will appear here after being marked as completed.</p>
           </div>
         )}
       </div>
@@ -1166,8 +2703,11 @@ export default function AcademicPanel({ subView }) {
             <select className="select-custom" value={activeClass} onChange={(e) => { setActiveClass(e.target.value); setResultsEntry({}); }}>
               {classesList.map((cls, idx) => <option key={idx} value={cls}>Class {cls}</option>)}
             </select>
-            <select className="select-custom" value={activeSubject} onChange={(e) => { setActiveSubject(e.target.value); setResultsEntry({}); }}>
-              {subjectsList.map((sub, idx) => <option key={idx} value={sub}>{sub}</option>)}
+             <select className="select-custom" value={activeSubject} onChange={(e) => { setActiveSubject(e.target.value); setResultsEntry({}); }}>
+              <option value="">Select Subject</option>
+              {subjects.filter(s => s.grade === activeClass.split('-')[0]).map(sub => (
+                <option key={sub.id} value={sub.subjectName}>{sub.subjectName}</option>
+              ))}
             </select>
             <select className="select-custom" value={activeExam} onChange={(e) => { setActiveExam(e.target.value); setResultsEntry({}); }}>
               <option value="">Select Exam Set</option>
@@ -1372,7 +2912,10 @@ export default function AcademicPanel({ subView }) {
     const classResults = results.filter(r => r.studentClass === activeClass);
     
     // 1. Calculate subject averages
-    const subjectAverages = subjectsList.map(subject => {
+    const gradeSubjects = subjects.filter(s => s.grade === activeClass.split('-')[0]);
+    const currentSubjects = gradeSubjects.map(s => s.subjectName);
+
+    const subjectAverages = currentSubjects.map(subject => {
       const subResults = classResults.filter(r => r.subject && subject && r.subject.toLowerCase() === subject.toLowerCase());
       const average = subResults.length > 0
         ? Math.round(subResults.reduce((sum, r) => sum + r.percentage, 0) / subResults.length)
@@ -1477,141 +3020,95 @@ export default function AcademicPanel({ subView }) {
   // Render modal forms dynamically based on active subView
   const renderModalForm = () => {
     switch (subView) {
-      case 'academic-class-timetable':
+      case 'academic-grade-subjects':
         return (
-          <form onSubmit={handleTimetableSubmit}>
-            <div className="modal-body" style={{ display: 'flex', flexDirection: 'column', gap: '14px' }}>
-              <div className="form-group">
-                <label>Day of Week</label>
-                <select className="form-control" value={timetableForm.day} onChange={(e) => setTimetableForm({ ...timetableForm, day: e.target.value })}>
-                  {daysOfWeek.map(d => <option key={d} value={d}>{d}</option>)}
-                </select>
-              </div>
-              <div className="form-group">
-                <label>Time Slot</label>
-                <select className="form-control" value={timetableForm.time} onChange={(e) => setTimetableForm({ ...timetableForm, time: e.target.value })}>
-                  {timeslots.map(slot => <option key={slot} value={slot}>{slot}</option>)}
-                </select>
-              </div>
-              <div className="form-group">
-                <label>Subject</label>
-                <select className="form-control" value={timetableForm.subject} onChange={(e) => setTimetableForm({ ...timetableForm, subject: e.target.value })}>
-                  <option value="">Select Subject</option>
-                  {subjectsList.map(sub => <option key={sub} value={sub}>{sub}</option>)}
-                </select>
-              </div>
-              <div className="form-group">
-                <label>Teacher Assignment</label>
-                <select className="form-control" value={timetableForm.teacher} onChange={(e) => setTimetableForm({ ...timetableForm, teacher: e.target.value })}>
-                  <option value="">Select Faculty</option>
-                  {Array.isArray(teachers) && teachers.map((t, idx) => <option key={idx} value={t.name}>{t.name}</option>)}
-                </select>
-              </div>
-              <div className="form-group">
-                <label>Room Number</label>
-                <input type="text" className="form-control" placeholder="e.g. 101" value={timetableForm.room} onChange={(e) => setTimetableForm({ ...timetableForm, room: e.target.value })} required />
-              </div>
-            </div>
-            <div className="modal-footer">
-              <button type="button" className="btn-secondary" onClick={() => setShowAddModal(false)}>Cancel</button>
-              <button type="submit" className="btn-primary">Schedule Period</button>
-            </div>
-          </form>
+          <div className="modal-body" style={{ padding: '30px', textAlign: 'center', color: 'var(--text-muted)' }}>
+            <p>Use the "Manage Subjects" button in the Grade Subjects page.</p>
+          </div>
         );
+      case 'academic-class-timetable':
+        {
+          const gradeSubjects = subjects.filter(s => s.grade === (activeClass.split('-')[0] || 'I'));
+          return (
+            <form onSubmit={handleTimetableSubmit}>
+              <div className="modal-body" style={{ display: 'flex', flexDirection: 'column', gap: '14px' }}>
+                <div className="form-group">
+                  <label>Day of Week</label>
+                  <select className="form-control" value={timetableForm.day} onChange={(e) => setTimetableForm({ ...timetableForm, day: e.target.value })}>
+                    {daysOfWeek.map(d => <option key={d} value={d}>{d}</option>)}
+                  </select>
+                </div>
+                <div className="form-group">
+                  <label>Time Slot</label>
+                  <select className="form-control" value={timetableForm.time} onChange={(e) => setTimetableForm({ ...timetableForm, time: e.target.value })}>
+                    {timeslots.map(slot => <option key={slot} value={slot}>{slot}</option>)}
+                  </select>
+                </div>
+                <div className="form-group">
+                  <label>Subject</label>
+                  <select 
+                    className="form-control" 
+                    value={timetableForm.subject} 
+                    onChange={(e) => setTimetableForm({ ...timetableForm, subject: e.target.value })}
+                    required
+                  >
+                    <option value="">Select Subject</option>
+                    {gradeSubjects.map(sub => <option key={sub.id} value={sub.subjectName}>{sub.subjectName}</option>)}
+                  </select>
+                </div>
+                <div className="form-group">
+                  <label>Teacher Assignment</label>
+                  <select 
+                    className="form-control" 
+                    value={timetableForm.teacher} 
+                    onChange={(e) => setTimetableForm({ ...timetableForm, teacher: e.target.value })}
+                  >
+                    <option value="">Select Teacher</option>
+                    {Array.isArray(teachers) && teachers.map((t, idx) => (
+                      <option key={idx} value={t.name}>{t.name}</option>
+                    ))}
+                  </select>
+                </div>
+                <div className="form-group">
+                  <label>Room Allocation</label>
+                  <input 
+                    type="text" 
+                    className="form-control" 
+                    placeholder="e.g. Room 101" 
+                    value={timetableForm.room} 
+                    onChange={(e) => setTimetableForm({ ...timetableForm, room: e.target.value })} 
+                  />
+                </div>
+              </div>
+              <div className="modal-footer">
+                <button type="button" className="btn-secondary" onClick={() => setShowAddModal(false)}>Cancel</button>
+                <button type="submit" className="btn-primary">Schedule Period</button>
+              </div>
+            </form>
+          );
+        }
 
       case 'academic-exams':
         return (
-          <form onSubmit={handleExamSubmit}>
-            <div className="modal-body" style={{ display: 'flex', flexDirection: 'column', gap: '14px' }}>
-              <div className="form-group">
-                <label>Exam Set Name</label>
-                <input type="text" className="form-control" placeholder="e.g. Semester Finals" value={examForm.examName} onChange={(e) => setExamForm({ ...examForm, examName: e.target.value })} required />
-              </div>
-              <div className="form-group">
-                <label>Exam Classification Type</label>
-                <select className="form-control" value={examForm.examType} onChange={(e) => setExamForm({ ...examForm, examType: e.target.value })}>
-                  <option value="Unit Test">Unit Test</option>
-                  <option value="Mid-Term Exam">Mid-Term Exam</option>
-                  <option value="Final Exam">Final Exam</option>
-                  <option value="Practical Exam">Practical Exam</option>
-                </select>
-              </div>
-              <div className="form-group">
-                <label>Grade Level</label>
-                <select className="form-control" value={examForm.grade} onChange={(e) => setExamForm({ ...examForm, grade: e.target.value })}>
-                  <option value="I">Grade I</option>
-                  <option value="VIII">Grade VIII</option>
-                  <option value="XII">Grade XII</option>
-                </select>
-              </div>
-              <div className="form-group">
-                <label>Section</label>
-                <input type="text" className="form-control" placeholder="e.g. A" value={examForm.section} onChange={(e) => setExamForm({ ...examForm, section: e.target.value })} />
-              </div>
-              <div className="form-group">
-                <label>Start Date</label>
-                <input type="date" className="form-control" value={examForm.startDate} onChange={(e) => setExamForm({ ...examForm, startDate: e.target.value })} required />
-              </div>
-              <div className="form-group">
-                <label>End Date</label>
-                <input type="date" className="form-control" value={examForm.endDate} onChange={(e) => setExamForm({ ...examForm, endDate: e.target.value })} required />
-              </div>
-              <div className="form-group">
-                <label>Total Marks</label>
-                <input type="number" className="form-control" value={examForm.totalMarks} onChange={(e) => setExamForm({ ...examForm, totalMarks: e.target.value })} required />
-              </div>
-              <div className="form-group">
-                <label>Passing Marks</label>
-                <input type="number" className="form-control" value={examForm.passingMarks} onChange={(e) => setExamForm({ ...examForm, passingMarks: e.target.value })} required />
-              </div>
-            </div>
-            <div className="modal-footer">
-              <button type="button" className="btn-secondary" onClick={() => setShowAddModal(false)}>Cancel</button>
-              <button type="submit" className="btn-primary">Save Configuration</button>
-            </div>
-          </form>
+          <div className="modal-body" style={{ padding: '30px', textAlign: 'center', color: 'var(--text-muted)' }}>
+            <BookOpen size={40} style={{ opacity: 0.3, marginBottom: '12px' }} />
+            <p>Use the "Create New Exam" wizard for multi-step exam creation.</p>
+            <button className="btn-primary" onClick={() => { setShowAddModal(false); setShowExamWizard(true); }} style={{ marginTop: '12px' }}>
+              Open Exam Wizard
+            </button>
+          </div>
         );
 
       case 'academic-exam-timetable':
-        return (
-          <form onSubmit={handleExamTimetableSubmit}>
-            <div className="modal-body" style={{ display: 'flex', flexDirection: 'column', gap: '14px' }}>
-              <div className="form-group">
-                <label>Subject</label>
-                <select className="form-control" value={examTimetableForm.subject} onChange={(e) => setExamTimetableForm({ ...examTimetableForm, subject: e.target.value })}>
-                  {subjectsList.map(s => <option key={s} value={s}>{s}</option>)}
-                </select>
-              </div>
-              <div className="form-group">
-                <label>Exam Date</label>
-                <input type="date" className="form-control" value={examTimetableForm.examDate} onChange={(e) => setExamTimetableForm({ ...examTimetableForm, examDate: e.target.value })} required />
-              </div>
-              <div className="form-group">
-                <label>Start Time</label>
-                <input type="text" className="form-control" placeholder="e.g. 09:00 AM" value={examTimetableForm.startTime} onChange={(e) => setExamTimetableForm({ ...examTimetableForm, startTime: e.target.value })} required />
-              </div>
-              <div className="form-group">
-                <label>End Time</label>
-                <input type="text" className="form-control" placeholder="e.g. 12:00 PM" value={examTimetableForm.endTime} onChange={(e) => setExamTimetableForm({ ...examTimetableForm, endTime: e.target.value })} required />
-              </div>
-              <div className="form-group">
-                <label>Room Allocation</label>
-                <input type="text" className="form-control" placeholder="e.g. Hall A" value={examTimetableForm.roomAllocation} onChange={(e) => setExamTimetableForm({ ...examTimetableForm, roomAllocation: e.target.value })} required />
-              </div>
-              <div className="form-group">
-                <label>Invigilator Duty Assignment</label>
-                <select className="form-control" value={examTimetableForm.invigilator} onChange={(e) => setExamTimetableForm({ ...examTimetableForm, invigilator: e.target.value })}>
-                  <option value="">Select Staff</option>
-                  {Array.isArray(teachers) && teachers.map((t, idx) => <option key={idx} value={t.name}>{t.name}</option>)}
-                </select>
-              </div>
+        {
+          return (
+            <div className="modal-body" style={{ padding: '30px', textAlign: 'center', color: 'var(--text-muted)' }}>
+              <Calendar size={40} style={{ opacity: 0.3, marginBottom: '12px' }} />
+              <p>Exam timetables are auto-generated from Exam Management.</p>
+              <p style={{ fontSize: '0.8rem' }}>Use the "Generate" button in Exam Management to create schedules.</p>
             </div>
-            <div className="modal-footer">
-              <button type="button" className="btn-secondary" onClick={() => setShowAddModal(false)}>Cancel</button>
-              <button type="submit" className="btn-primary">Schedule Exam Slot</button>
-            </div>
-          </form>
-        );
+          );
+        }
 
       case 'academic-events':
         return (
@@ -1745,12 +3242,16 @@ export default function AcademicPanel({ subView }) {
   // Switch Render core content page views
   const renderSubViewContent = () => {
     switch (subView) {
+      case 'academic-grade-subjects':
+        return renderGradeSubjects();
       case 'academic-class-timetable':
         return renderClassTimetable();
       case 'academic-teacher-timetable':
         return renderTeacherTimetable();
       case 'academic-exams':
         return renderExams();
+      case 'academic-exams-history':
+        return renderExamsHistory();
       case 'academic-exam-timetable':
         return renderExamTimetable();
       case 'academic-events':
@@ -1815,13 +3316,363 @@ export default function AcademicPanel({ subView }) {
         document.body
       )}
 
+      {/* Exam Creation Wizard Modal */}
+      {showExamWizard && createPortal(
+        <div className="modal-overlay" style={{ zIndex: 20000000 }}>
+          <div className="animate-scale-up" style={{
+            width: '100%', maxWidth: '680px', maxHeight: '90vh', overflowY: 'auto', padding: '32px', borderRadius: '20px',
+            background: 'var(--bg-card)', border: '1px solid var(--border-glass)',
+            boxShadow: '0 25px 50px -12px rgba(0,0,0,0.5)', display: 'flex', flexDirection: 'column', gap: '24px'
+          }}>
+            {/* Header */}
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', borderBottom: '1px solid var(--border-glass)', paddingBottom: '16px' }}>
+              <div>
+                <h3 style={{ fontSize: '1.2rem', fontWeight: 800, margin: 0, display: 'flex', alignItems: 'center', gap: '8px' }}>
+                  <BookOpen size={20} style={{ color: 'hsl(var(--color-primary))' }} /> Create New Exam
+                </h3>
+                <p style={{ fontSize: '0.8rem', color: 'var(--text-muted)', margin: '4px 0 0 0' }}>
+                  Step {examWizardStep} of 4
+                </p>
+              </div>
+              <button onClick={() => setShowExamWizard(false)} style={{ background: 'none', border: 'none', color: 'var(--text-muted)', cursor: 'pointer', fontSize: '1.8rem', lineHeight: 1, padding: '4px' }}>×</button>
+            </div>
+
+            {/* Step Progress */}
+            <div style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>
+              {[1, 2, 3, 4].map(step => (
+                <div key={step} style={{ display: 'flex', alignItems: 'center', gap: '8px', flex: 1 }}>
+                  <div style={{
+                    width: '32px', height: '32px', borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '0.75rem', fontWeight: 700,
+                    background: step <= examWizardStep ? 'hsl(var(--color-primary))' : 'var(--bg-glass-active)', color: step <= examWizardStep ? '#fff' : 'var(--text-muted)'
+                  }}>{step}</div>
+                  <div style={{ flex: 1, height: '2px', background: step < examWizardStep ? 'hsl(var(--color-primary))' : 'var(--border-glass)', borderRadius: '1px' }} />
+                </div>
+              ))}
+            </div>
+
+            {/* Step 1: Basic Information */}
+            {examWizardStep === 1 && (
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
+                <h4 style={{ fontSize: '1rem', fontWeight: 700, margin: 0 }}>Basic Information</h4>
+                <div className="form-group">
+                  <label>Exam Title *</label>
+                  <input type="text" className="form-control" placeholder="e.g. Unit Test 1" value={wizardForm.examName} onChange={e => setWizardForm({ ...wizardForm, examName: e.target.value })} required style={{ marginTop: '4px' }} />
+                </div>
+                <div className="form-group">
+                  <label>Academic Session *</label>
+                  <select className="form-control" value={wizardForm.academicSession} onChange={e => setWizardForm({ ...wizardForm, academicSession: e.target.value })} style={{ marginTop: '4px' }}>
+                    {['2024-2025', '2025-2026', '2026-2027', '2027-2028'].map(s => <option key={s} value={s}>{s}</option>)}
+                  </select>
+                </div>
+                <div className="form-group">
+                  <label>Exam Type *</label>
+                  <select className="form-control" value={wizardForm.examType} onChange={e => setWizardForm({ ...wizardForm, examType: e.target.value })} style={{ marginTop: '4px' }}>
+                    <option value="Unit Test">Unit Test</option>
+                    <option value="Half Yearly">Half Yearly</option>
+                    <option value="Final Exam">Final Exam</option>
+                    <option value="Pre Board">Pre Board</option>
+                    <option value="Custom Exam">Custom Exam</option>
+                  </select>
+                </div>
+                <div className="form-group">
+                  <label>Description</label>
+                  <textarea className="form-control" placeholder="Optional description..." value={wizardForm.description} onChange={e => setWizardForm({ ...wizardForm, description: e.target.value })} rows={3} style={{ marginTop: '4px', resize: 'vertical' }} />
+                </div>
+              </div>
+            )}
+
+            {/* Step 2: Select Grades */}
+            {examWizardStep === 2 && (
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
+                <h4 style={{ fontSize: '1rem', fontWeight: 700, margin: 0 }}>Select Grades</h4>
+                <p style={{ fontSize: '0.8rem', color: 'var(--text-muted)', margin: 0 }}>Select one or more grades.</p>
+                {(() => {
+                  const uniqueGradesWithSubjects = [...new Set(subjects.map(s => s.grade))].sort((a, b) => {
+                    const gradeOrder = ['I', 'II', 'III', 'IV', 'V', 'VI', 'VII', 'VIII', 'IX', 'X'];
+                    return gradeOrder.indexOf(a) - gradeOrder.indexOf(b);
+                  });
+                  return uniqueGradesWithSubjects.length > 0 ? (
+                    <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(140px, 1fr))', gap: '10px', maxHeight: '300px', overflowY: 'auto', padding: '4px' }}>
+                      {uniqueGradesWithSubjects.map((g, idx) => {
+                        const isSelected = wizardForm.selectedGrades.some(sg => sg.grade === g);
+                        return (
+                          <div key={idx} onClick={() => {
+                            const updated = isSelected
+                              ? wizardForm.selectedGrades.filter(sg => sg.grade !== g)
+                              : [...wizardForm.selectedGrades, { grade: g, section: "" }];
+                            const newStartDates = { ...wizardForm.startDates };
+                            const newEndDates = { ...wizardForm.endDates };
+                            if (!isSelected) {
+                              newStartDates[g] = '';
+                              newEndDates[g] = '';
+                            } else {
+                              delete newStartDates[g];
+                              delete newEndDates[g];
+                            }
+                            setWizardForm({ ...wizardForm, selectedGrades: updated, startDates: newStartDates, endDates: newEndDates });
+                          }} style={{
+                            padding: '12px', borderRadius: '10px', cursor: 'pointer', userSelect: 'none',
+                            background: isSelected ? 'rgba(99,102,241,0.12)' : 'var(--bg-glass-active)',
+                            border: isSelected ? '2px solid hsl(var(--color-primary))' : '1px solid var(--border-glass)',
+                            textAlign: 'center', fontWeight: 600, fontSize: '0.85rem',
+                            transition: 'all 0.15s'
+                          }}>
+                            Grade {g}
+                          </div>
+                        );
+                      })}
+                    </div>
+                  ) : (
+                    <div style={{ padding: '30px', textAlign: 'center', color: 'var(--text-muted)' }}>
+                      No grades found with subjects. Please add subjects to a grade first.
+                    </div>
+                  );
+                })()}
+              </div>
+            )}
+
+            {/* Step 3: Subject Assignment (Display Only) */}
+            {examWizardStep === 3 && (
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
+                <h4 style={{ fontSize: '1rem', fontWeight: 700, margin: 0 }}>Subject Assignment</h4>
+                <p style={{ fontSize: '0.8rem', color: 'var(--text-muted)', margin: 0 }}>
+                  Subjects are automatically loaded from grade configuration.
+                </p>
+                {(() => {
+                  const uniqueGrades = [...new Set(wizardForm.selectedGrades.map(g => g.grade))];
+                  return uniqueGrades.length > 0 ? (
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
+                      {uniqueGrades.map(grade => {
+                        const gradeSubjects = subjects.filter(s => s.grade === grade).map(s => s.subjectName);
+                        return (
+                          <div key={grade} className="glass-panel" style={{ padding: '16px', background: 'var(--bg-glass-active)', border: '1px solid var(--border-glass)', borderRadius: '12px' }}>
+                            <h5 style={{ fontSize: '0.9rem', fontWeight: 700, margin: '0 0 8px 0', color: 'hsl(var(--color-primary))' }}>
+                              Grade {grade}
+                            </h5>
+                            {gradeSubjects.length > 0 ? (
+                              <div style={{ display: 'flex', flexWrap: 'wrap', gap: '8px' }}>
+                                {gradeSubjects.map((sub, i) => (
+                                  <span key={i} style={{ padding: '4px 12px', borderRadius: '8px', background: 'rgba(99,102,241,0.06)', border: '1px solid rgba(99,102,241,0.12)', fontSize: '0.8rem', fontWeight: 600 }}>
+                                    {sub}
+                                  </span>
+                                ))}
+                              </div>
+                            ) : (
+                              <span style={{ fontSize: '0.8rem', color: 'var(--text-muted)', fontStyle: 'italic' }}>
+                                No subjects configured for Grade {grade}. Please add subjects in the Class Timetable section.
+                              </span>
+                            )}
+                          </div>
+                        );
+                      })}
+                    </div>
+                  ) : (
+                    <div style={{ padding: '20px', textAlign: 'center', color: 'var(--text-muted)' }}>
+                      No grades selected.
+                    </div>
+                  );
+                })()}
+              </div>
+            )}
+
+            {/* Step 4: Schedule Configuration */}
+            {examWizardStep === 4 && (
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
+                <h4 style={{ fontSize: '1rem', fontWeight: 700, margin: 0 }}>Schedule Configuration</h4>
+                <p style={{ fontSize: '0.8rem', color: 'var(--text-muted)', margin: 0 }}>
+                  Set the exam start and end dates for each grade-section.
+                </p>
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
+                  {wizardForm.selectedGrades.map((gs, idx) => {
+                    const key = `${gs.grade}-${gs.section}`;
+                    return (
+                      <div key={idx} style={{ display: 'flex', alignItems: 'center', gap: '16px', padding: '12px 16px', background: 'var(--bg-glass-active)', border: '1px solid var(--border-glass)', borderRadius: '10px', flexWrap: 'wrap' }}>
+                        <div style={{ minWidth: '120px', fontWeight: 700, fontSize: '0.9rem' }}>
+                          Grade {gs.grade} - {gs.section}
+                        </div>
+                        <div style={{ flex: 1, minWidth: '160px' }}>
+                          <label style={{ fontSize: '0.75rem', color: 'var(--text-muted)', display: 'block', marginBottom: '4px' }}>Start Date *</label>
+                          <input type="date" className="form-control" value={wizardForm.startDates[key] || ''} onChange={e => setWizardForm({ ...wizardForm, startDates: { ...wizardForm.startDates, [key]: e.target.value } })} required style={{ padding: '6px 10px', borderRadius: '8px', fontSize: '0.82rem' }} />
+                        </div>
+                        <div style={{ flex: 1, minWidth: '160px' }}>
+                          <label style={{ fontSize: '0.75rem', color: 'var(--text-muted)', display: 'block', marginBottom: '4px' }}>End Date *</label>
+                          <input type="date" className="form-control" value={wizardForm.endDates[key] || ''} onChange={e => setWizardForm({ ...wizardForm, endDates: { ...wizardForm.endDates, [key]: e.target.value } })} required style={{ padding: '6px 10px', borderRadius: '8px', fontSize: '0.82rem' }} />
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+              </div>
+            )}
+
+            {/* Footer Buttons */}
+            <div style={{ display: 'flex', justifyContent: 'space-between', borderTop: '1px solid var(--border-glass)', paddingTop: '16px' }}>
+              <div>
+                {examWizardStep > 1 && (
+                  <button className="btn-secondary" onClick={() => setExamWizardStep(examWizardStep - 1)} style={{ padding: '10px 20px', borderRadius: '8px', fontWeight: 600 }}>
+                    ← Back
+                  </button>
+                )}
+              </div>
+              <div style={{ display: 'flex', gap: '12px' }}>
+                <button className="btn-secondary" onClick={() => setShowExamWizard(false)} style={{ padding: '10px 20px', borderRadius: '8px', fontWeight: 600 }}>
+                  Cancel
+                </button>
+                {examWizardStep < 4 ? (
+                  <button className="btn-primary" onClick={() => {
+                    if (examWizardStep === 1 && !wizardForm.examName.trim()) { showToast('Please enter an exam title.', 'error'); return; }
+                    if (examWizardStep === 2 && wizardForm.selectedGrades.length === 0) { showToast('Please select at least one grade-section.', 'error'); return; }
+                    setExamWizardStep(examWizardStep + 1);
+                  }} style={{ padding: '10px 20px', borderRadius: '8px', fontWeight: 700 }}>
+                    Next →
+                  </button>
+                ) : (
+                  <button className="btn-primary" onClick={async () => {
+                    // Validate: all start and end dates required
+                    const missingDates = wizardForm.selectedGrades.filter(gs => {
+                      const key = `${gs.grade}-${gs.section}`;
+                      return !wizardForm.startDates[key] || !wizardForm.endDates[key];
+                    });
+                    if (missingDates.length > 0) {
+                      showToast('Please set start and end dates for all grade-sections.', 'error');
+                      return;
+                    }
+
+                    // Check: end date must not be earlier than start date
+                    const invalidDates = wizardForm.selectedGrades.filter(gs => {
+                      const key = `${gs.grade}-${gs.section}`;
+                      return new Date(wizardForm.startDates[key]) > new Date(wizardForm.endDates[key]);
+                    });
+                    if (invalidDates.length > 0) {
+                      showToast('End date cannot be earlier than start date.', 'error');
+                      return;
+                    }
+
+                    const gradeSections = wizardForm.selectedGrades.map(gs => ({
+                      grade: gs.grade,
+                      section: gs.section,
+                      startDate: wizardForm.startDates[`${gs.grade}-${gs.section}`],
+                      endDate: wizardForm.endDates[`${gs.grade}-${gs.section}`]
+                    }));
+
+                    try {
+                      const res = await fetch('/api/academics/exams', {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({
+                          examName: wizardForm.examName,
+                          examType: wizardForm.examType,
+                          academicSession: wizardForm.academicSession,
+                          description: wizardForm.description,
+                          gradeSections
+                        })
+                      });
+                      const data = await res.json();
+                      if (res.ok) {
+                        showToast('Exam created! Now generating schedule...', 'success');
+                        setShowExamWizard(false);
+
+                        // Auto-generate schedule
+                        try {
+                          const genRes = await fetch('/api/academics/exams/generate-schedule', {
+                            method: 'POST',
+                            headers: { 'Content-Type': 'application/json' },
+                            body: JSON.stringify({ examId: data.id, gapDays: 1 })
+                          });
+                          if (genRes.ok) {
+                            showToast('Exam created and schedule generated successfully!', 'success');
+                          } else {
+                            const genData = await genRes.json();
+                            showToast(genData.error || 'Exam created but schedule generation failed.', 'error');
+                          }
+                        } catch (e) {
+                          showToast('Network error during schedule generation.', 'error');
+                        }
+
+                        fetchAllData();
+                      } else {
+                        showToast(data.error || 'Failed to create exam.', 'error');
+                      }
+                    } catch (e) {
+                      showToast('Network error.', 'error');
+                    }
+                  }} style={{ padding: '10px 24px', borderRadius: '8px', fontWeight: 700, background: 'linear-gradient(135deg, hsl(var(--color-primary)) 0%, #4f46e5 100%)', border: 'none', color: '#fff', cursor: 'pointer' }}>
+                    Create & Generate Schedule
+                  </button>
+                )}
+              </div>
+            </div>
+          </div>
+        </div>,
+        document.body
+      )}
+
+      {/* Schedule View Modal */}
+      {viewScheduleExam && createPortal(
+        <div className="modal-overlay" style={{ zIndex: 20000001 }}>
+          <div className="animate-scale-up glass-panel" style={{
+            width: '100%', maxWidth: '700px', maxHeight: '85vh', overflowY: 'auto', padding: '28px', borderRadius: '20px',
+            display: 'flex', flexDirection: 'column', gap: '20px'
+          }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', borderBottom: '1px solid var(--border-glass)', paddingBottom: '12px' }}>
+              <div>
+                <h3 style={{ fontSize: '1.15rem', fontWeight: 800, margin: 0 }}>{viewScheduleExam.examName}</h3>
+                <p style={{ fontSize: '0.8rem', color: 'var(--text-muted)', margin: '2px 0 0 0' }}>
+                  {viewScheduleExam.examType} · {viewScheduleExam.academicSession || 'N/A'}
+                </p>
+              </div>
+              <button onClick={() => setViewScheduleExam(null)} style={{ background: 'none', border: 'none', color: 'var(--text-muted)', cursor: 'pointer', fontSize: '1.8rem', lineHeight: 1, padding: '4px' }}>×</button>
+            </div>
+
+            {(() => {
+              const schedules = examTimetables.filter(et => et.examId === viewScheduleExam.id);
+              const cohorts = [...new Set(schedules.map(s => s.cohort).filter(Boolean))].sort();
+              if (schedules.length === 0) {
+                return (
+                  <div style={{ padding: '40px', textAlign: 'center', color: 'var(--text-muted)' }}>
+                    <Calendar size={32} style={{ opacity: 0.3 }} />
+                    <p style={{ marginTop: '8px' }}>No schedule generated yet. Click "Generate" in exam management.</p>
+                  </div>
+                );
+              }
+              const formatDate = (d) => d ? new Date(d + 'T00:00:00').toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric' }) : '-';
+              return cohorts.map(cohort => {
+                const cs = schedules.filter(s => s.cohort === cohort);
+                const [g, sec] = cohort.split('-');
+                return (
+                  <div key={cohort} style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+                    <h4 style={{ fontSize: '0.9rem', fontWeight: 700, margin: 0, color: 'hsl(var(--color-primary))' }}>Grade {g} - Section {sec}</h4>
+                    <table className="table-custom" style={{ width: '100%', fontSize: '0.82rem', borderCollapse: 'collapse' }}>
+                      <thead>
+                        <tr>
+                          <th style={{ textAlign: 'left', padding: '10px 0', borderBottom: '2px solid var(--border-glass)', color: 'var(--text-muted)', fontWeight: 700 }}>Subject</th>
+                          <th style={{ textAlign: 'left', padding: '10px 0', borderBottom: '2px solid var(--border-glass)', color: 'var(--text-muted)', fontWeight: 700 }}>Date</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {cs.map(s => (
+                          <tr key={s.id}>
+                            <td style={{ fontWeight: 600, padding: '12px 0', borderBottom: '1px solid var(--border-glass)' }}>{s.subject}</td>
+                            <td style={{ padding: '12px 0', borderBottom: '1px solid var(--border-glass)' }}>{formatDate(s.examDate)}</td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
+                );
+              });
+            })()}
+
+            <div style={{ display: 'flex', justifyContent: 'flex-end', borderTop: '1px solid var(--border-glass)', paddingTop: '16px' }}>
+              <button className="btn-secondary" onClick={() => setViewScheduleExam(null)} style={{ borderRadius: '8px', padding: '8px 20px', fontWeight: 600 }}>Close</button>
+            </div>
+          </div>
+        </div>,
+        document.body
+      )}
+
       {showTimeslotsModal && createPortal(
-        <div style={{
-          position: 'fixed', top: 0, left: 0, right: 0, bottom: 0,
-          background: 'rgba(15, 23, 42, 0.6)', backdropFilter: 'blur(4px)',
-          display: 'flex', justifyContent: 'center', alignItems: 'center',
-          zIndex: 999999, padding: '20px'
-        }}>
+        <div className="modal-overlay" style={{ zIndex: 20000000 }}>
           <div className="animate-scale-up" style={{
             width: '100%', maxWidth: '440px', padding: '28px', borderRadius: '16px',
             background: 'var(--bg-card)', border: '1px solid var(--border-glass)',
@@ -1861,8 +3712,7 @@ export default function AcademicPanel({ subView }) {
 
             {/* Add New Time Slot form */}
             <form onSubmit={handleAddTimeslot} style={{ display: 'flex', flexDirection: 'column', gap: '14px', borderTop: '1px solid var(--border-glass)', paddingTop: '16px' }}>
-              <span style={{ fontSize: '0.75rem', fontWeight: 800, color: 'hsl(var(--color-primary))', textTransform: 'uppercase' }}>Add New Period Slot</span>
-              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px' }}>
+              <span style={{ fontSize: '0.75rem', fontWeight: 800, color: 'hsl(var(--color-primary))', textTransform: 'uppercase' }}>Add New Period Slot</span>              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px' }}>
                 <div className="form-group">
                   <label style={{ fontSize: '0.75rem' }}>Start Time *</label>
                   <input 
@@ -1884,10 +3734,530 @@ export default function AcademicPanel({ subView }) {
                   />
                 </div>
               </div>
+              <div className="form-group" style={{ margin: 0 }}>
+                <label style={{ fontSize: '0.75rem' }}>Slot Type</label>
+                <select 
+                  className="form-control" 
+                  value={timeslotType} 
+                  onChange={e => setTimeslotType(e.target.value)}
+                  style={{ marginTop: '4px' }}
+                >
+                  <option value="Regular">Regular Period</option>
+                  <option value="Lunch Break">Lunch Break</option>
+                  <option value="Short Break">Short Break</option>
+                  <option value="Recess">Recess</option>
+                  <option value="Assembly">Assembly</option>
+                </select>
+              </div>
+
               <button type="submit" className="btn-primary" style={{ borderRadius: '8px', padding: '10px', fontSize: '0.85rem' }}>
                 Register Time Slot
               </button>
             </form>
+          </div>
+        </div>,
+        document.body
+      )}
+
+      {showSubjectsModal && createPortal(
+        <div className="modal-overlay" style={{ zIndex: 20000000 }}>
+          <div className="animate-scale-up" style={{
+            width: '100%', maxWidth: '550px', padding: '28px', borderRadius: '16px',
+            background: 'var(--bg-card)', border: '1px solid var(--border-glass)',
+            boxShadow: '0 25px 50px -12px rgba(0,0,0,0.25)', display: 'flex', flexDirection: 'column', gap: '20px'
+          }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', borderBottom: '1px solid var(--border-glass)', paddingBottom: '12px' }}>
+              <h3 style={{ fontSize: '1.1rem', fontWeight: 800, color: 'var(--text-main)', margin: 0, display: 'flex', alignItems: 'center', gap: '8px' }}>
+                <BookOpen size={18} /> Manage Grade Subjects
+              </h3>
+              <button 
+                type="button" 
+                onClick={() => setShowSubjectsModal(false)}
+                style={{ background: 'none', border: 'none', color: 'var(--text-muted)', cursor: 'pointer', fontSize: '1.5rem', lineHeight: 1 }}
+              >
+                ×
+              </button>
+            </div>
+
+            {/* Filter by Grade */}
+            <div className="form-group" style={{ margin: 0 }}>
+              <label style={{ fontSize: '0.75rem', fontWeight: 700 }}>Select Grade Level</label>
+              <select 
+                className="form-control" 
+                value={newSubjectGrade} 
+                onChange={(e) => {
+                  setNewSubjectGrade(e.target.value);
+                  setNewSubjectsList(Array(10).fill(''));
+                }}
+                style={{ marginTop: '4px' }}
+              >
+                {['I', 'II', 'III', 'IV', 'V', 'VI', 'VII', 'VIII', 'IX', 'X'].map(g => (
+                  <option key={g} value={g}>Grade {g}</option>
+                ))}
+              </select>
+            </div>
+
+            {/* List of custom subjects for the selected grade */}
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '8px', maxHeight: '150px', overflowY: 'auto', paddingRight: '4px' }}>
+              <span style={{ fontSize: '0.75rem', fontWeight: 800, color: 'var(--text-muted)', textTransform: 'uppercase' }}>Subjects for Grade {newSubjectGrade}</span>
+              {subjects.filter(s => s.grade === newSubjectGrade).length > 0 ? (
+                subjects.filter(s => s.grade === newSubjectGrade).map((sub, idx) => (
+                  <div key={idx} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '8px 12px', background: 'var(--bg-glass-active)', border: '1px solid var(--border-glass)', borderRadius: '8px' }}>
+                    <span style={{ fontSize: '0.85rem', fontWeight: 600, color: 'var(--text-main)' }}>{sub.subjectName}</span>
+                    <button 
+                      onClick={() => handleDeleteSubject(sub.id)}
+                      style={{ background: 'none', border: 'none', color: '#ef4444', cursor: 'pointer', display: 'flex', alignItems: 'center', padding: '4px' }}
+                    >
+                      <Trash2 size={14} />
+                    </button>
+                  </div>
+                ))
+              ) : (
+                <span style={{ fontSize: '0.8rem', color: 'var(--text-muted)', fontStyle: 'italic', textAlign: 'center', padding: '10px 0' }}>No subjects defined for Grade {newSubjectGrade}</span>
+              )}
+            </div>
+
+            {/* Add New Subjects form in Bulk */}
+            <form onSubmit={handleBulkSubjectsSubmit} style={{ display: 'flex', flexDirection: 'column', gap: '14px', borderTop: '1px solid var(--border-glass)', paddingTop: '16px' }}>
+              <span style={{ fontSize: '0.75rem', fontWeight: 800, color: 'hsl(var(--color-primary))', textTransform: 'uppercase' }}>Add New Subjects (Up to 10)</span>
+              
+              <div style={{
+                display: 'grid',
+                gridTemplateColumns: '1fr 1fr',
+                gap: '10px',
+                maxHeight: '220px',
+                overflowY: 'auto',
+                padding: '4px'
+              }}>
+                {newSubjectsList.map((val, idx) => (
+                  <div key={idx} className="form-group" style={{ margin: 0 }}>
+                    <label style={{ fontSize: '0.7rem', color: 'var(--text-muted)' }}>Subject {idx + 1}</label>
+                    <input 
+                      type="text" 
+                      className="form-control" 
+                      placeholder={`e.g. Subject ${idx + 1}`}
+                      value={val} 
+                      onChange={e => {
+                        const updated = [...newSubjectsList];
+                        updated[idx] = e.target.value;
+                        setNewSubjectsList(updated);
+                      }} 
+                      style={{ marginTop: '2px', padding: '6px 10px', fontSize: '0.8rem' }}
+                    />
+                  </div>
+                ))}
+              </div>
+
+              <button type="submit" className="btn-primary" style={{ borderRadius: '8px', padding: '10px', fontSize: '0.85rem', marginTop: '4px' }}>
+                Save Subjects for Grade {newSubjectGrade}
+              </button>
+            </form>
+          </div>
+        </div>,
+        document.body
+      )}
+
+      {showBulkModal && createPortal(
+        <div className="modal-overlay" style={{ zIndex: 20000000 }}>
+          <div className="animate-scale-up glass-panel" style={{
+            width: '100%', maxWidth: '1200px', maxHeight: '90vh', overflowY: 'auto',
+            padding: '32px', borderRadius: '20px',
+            background: 'var(--bg-card)', border: '1px solid var(--border-glass)',
+            boxShadow: '0 25px 50px -12px rgba(0,0,0,0.5)', display: 'flex', flexDirection: 'column', gap: '24px'
+          }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', borderBottom: '1px solid var(--border-glass)', paddingBottom: '16px' }}>
+              <div>
+                <h3 style={{ fontSize: '1.25rem', fontWeight: 800, color: 'var(--text-main)', margin: 0, display: 'flex', alignItems: 'center', gap: '10px' }}>
+                  <Calendar size={22} style={{ color: 'hsl(var(--color-primary))' }} /> Weekly Timetable Bulk Editor
+                </h3>
+                <p style={{ fontSize: '0.85rem', color: 'var(--text-muted)', margin: '4px 0 0 0' }}>
+                  Configure the entire weekly schedule for Class <strong style={{ color: 'hsl(var(--color-primary))' }}>{activeClass}</strong> at once.
+                </p>
+              </div>
+              <button 
+                type="button" 
+                onClick={() => setShowBulkModal(false)}
+                style={{ background: 'none', border: 'none', color: 'var(--text-muted)', cursor: 'pointer', fontSize: '2rem', lineHeight: 1, padding: '4px' }}
+              >
+                ×
+              </button>
+            </div>
+
+            <form onSubmit={handleBulkSubmit} style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>
+              <div style={{ overflowX: 'auto', borderRadius: '12px', border: '1px solid var(--border-glass)', background: 'var(--bg-glass-active)' }}>
+                <table className="table-custom" style={{ width: '100%', borderCollapse: 'collapse', minWidth: '1000px' }}>
+                  <thead>
+                    <tr style={{ background: 'var(--bg-glass-active)' }}>
+                      <th style={{ padding: '16px', fontSize: '0.8rem', textTransform: 'uppercase', color: 'var(--text-muted)', width: '120px' }}>Day</th>
+                      {timeslots.map(slot => (
+                        <th key={slot} style={{ padding: '16px', fontSize: '0.8rem', textTransform: 'uppercase', color: 'var(--text-muted)', textAlign: 'center' }}>
+                          {slot}
+                        </th>
+                      ))}
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {daysOfWeek.map(day => (
+                      <tr key={day} style={{ borderBottom: '1px solid var(--border-glass)' }}>
+                        <td style={{ padding: '16px', fontWeight: 800, color: 'hsl(var(--color-primary))', fontSize: '0.85rem', background: 'rgba(255,255,255,0.01)' }}>
+                          {day}
+                        </td>
+                        {timeslots.map(slot => {
+                          const key = `${day}_${slot}`;
+                          const cell = bulkGrid[key] || { subject: '', teacher: '', room: '' };
+                          const gradeSubjects = subjects.filter(s => s.grade === activeClass.split('-')[0]);
+
+                          const breakMatch = slot.match(/\[(.*?)\]/);
+                          const breakType = breakMatch ? breakMatch[1] : null;
+                          const isBreak = !!breakType;
+
+                          if (isBreak) {
+                            return (
+                              <td key={slot} style={{ 
+                                padding: '12px', 
+                                verticalAlign: 'middle', 
+                                borderLeft: '1px solid var(--border-glass)',
+                                background: 'rgba(245, 158, 11, 0.03)',
+                                textAlign: 'center',
+                                fontWeight: 700,
+                                color: '#d97706',
+                                fontSize: '0.8rem'
+                              }}>
+                                {breakType === 'Lunch Break' ? '🍱 ' : breakType === 'Short Break' ? '☕ ' : breakType === 'Recess' ? '🏃 ' : breakType === 'Assembly' ? '📢 ' : '⚡ '}{breakType}
+                              </td>
+                            );
+                          }
+
+                          return (
+                            <td key={slot} style={{ padding: '12px', verticalAlign: 'top', borderLeft: '1px solid var(--border-glass)' }}>
+                              <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+                                <select 
+                                  value={cell.subject}
+                                  onChange={(e) => handleBulkCellChange(day, slot, 'subject', e.target.value)}
+                                  style={{ 
+                                    width: '100%', 
+                                    padding: '6px 18px 6px 8px', 
+                                    borderRadius: '6px', 
+                                    border: '1px solid var(--border-glass)', 
+                                    fontSize: '0.75rem', 
+                                    fontWeight: 600,
+                                    textOverflow: 'ellipsis',
+                                    whiteSpace: 'nowrap',
+                                    overflow: 'hidden'
+                                  }}
+                                >
+                                  <option value="">Select Subject</option>
+                                  {gradeSubjects.map(s => <option key={s.id} value={s.subjectName}>{s.subjectName}</option>)}
+                                </select>
+                                <select 
+                                  value={cell.teacher}
+                                  onChange={(e) => handleBulkCellChange(day, slot, 'teacher', e.target.value)}
+                                  style={{ 
+                                    width: '100%', 
+                                    padding: '6px 18px 6px 8px', 
+                                    borderRadius: '6px', 
+                                    border: '1px solid var(--border-glass)', 
+                                    fontSize: '0.75rem', 
+                                    fontWeight: 600,
+                                    textOverflow: 'ellipsis',
+                                    whiteSpace: 'nowrap',
+                                    overflow: 'hidden'
+                                  }}
+                                >
+                                  <option value="">Select Teacher</option>
+                                  {Array.isArray(teachers) && teachers.map((t, idx) => (
+                                    <option key={idx} value={t.name}>{t.name}</option>
+                                  ))}
+                                </select>
+                              </div>
+                            </td>
+                          );
+                        })}
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginTop: '10px' }}>
+                <button 
+                  type="button" 
+                  onClick={handleClearBulkGrid}
+                  className="btn-secondary" 
+                  style={{ borderColor: '#ef4444', color: '#ef4444', borderRadius: '8px', padding: '10px 18px', fontWeight: 600 }}
+                >
+                  Clear All Slots
+                </button>
+                <div style={{ display: 'flex', gap: '12px' }}>
+                  <button 
+                    type="button" 
+                    onClick={() => setShowBulkModal(false)} 
+                    className="btn-secondary"
+                    style={{ borderRadius: '8px', padding: '10px 18px', fontWeight: 600 }}
+                  >
+                    Cancel
+                  </button>
+                  <button 
+                    type="submit" 
+                    className="btn-primary"
+                    style={{
+                      background: 'linear-gradient(135deg, hsl(var(--color-primary)) 0%, #4f46e5 100%)',
+                      border: 'none',
+                      borderRadius: '8px',
+                      padding: '10px 24px',
+                      fontWeight: 700,
+                      boxShadow: '0 4px 12px rgba(99, 102, 241, 0.3)'
+                    }}
+                  >
+                    Save Timetable Matrix
+                  </button>
+                </div>
+              </div>
+            </form>
+          </div>
+        </div>,
+        document.body
+      )}
+
+      {showTeacherBulkModal && createPortal(
+        <div className="modal-overlay" style={{ zIndex: 20000000 }}>
+          <div className="animate-scale-up glass-panel" style={{
+            width: '100%', maxWidth: '1200px', maxHeight: '90vh', overflowY: 'auto',
+            padding: '32px', borderRadius: '20px',
+            background: 'var(--bg-card)', border: '1px solid var(--border-glass)',
+            boxShadow: '0 25px 50px -12px rgba(0,0,0,0.5)', display: 'flex', flexDirection: 'column', gap: '24px'
+          }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', borderBottom: '1px solid var(--border-glass)', paddingBottom: '16px' }}>
+              <div>
+                <h3 style={{ fontSize: '1.25rem', fontWeight: 800, color: 'var(--text-main)', margin: 0, display: 'flex', alignItems: 'center', gap: '10px' }}>
+                  <Calendar size={22} style={{ color: 'hsl(var(--color-primary))' }} /> Weekly Teacher Timetable Bulk Editor
+                </h3>
+                <p style={{ fontSize: '0.85rem', color: 'var(--text-muted)', margin: '4px 0 0 0' }}>
+                  Configure the entire weekly schedule workload for teacher <strong style={{ color: 'hsl(var(--color-primary))' }}>{activeTeacher}</strong> at once.
+                </p>
+              </div>
+              <button 
+                type="button" 
+                onClick={() => setShowTeacherBulkModal(false)}
+                style={{ background: 'none', border: 'none', color: 'var(--text-muted)', cursor: 'pointer', fontSize: '2rem', lineHeight: 1, padding: '4px' }}
+              >
+                ×
+              </button>
+            </div>
+
+
+
+            <form onSubmit={handleTeacherBulkSubmit} style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>
+              <div style={{ overflowX: 'auto', borderRadius: '12px', border: '1px solid var(--border-glass)', background: 'var(--bg-glass-active)' }}>
+                <table className="table-custom" style={{ width: '100%', borderCollapse: 'collapse', minWidth: '1000px' }}>
+                  <thead>
+                    <tr style={{ background: 'var(--bg-glass-active)' }}>
+                      <th style={{ padding: '16px', fontSize: '0.8rem', textTransform: 'uppercase', color: 'var(--text-muted)', width: '120px' }}>Day</th>
+                      {timeslots.map(slot => (
+                        <th key={slot} style={{ padding: '16px', fontSize: '0.8rem', textTransform: 'uppercase', color: 'var(--text-muted)', textAlign: 'center' }}>
+                          {slot}
+                        </th>
+                      ))}
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {daysOfWeek.map(day => (
+                      <tr key={day} style={{ borderBottom: '1px solid var(--border-glass)' }}>
+                        <td style={{ padding: '16px', fontWeight: 800, color: 'hsl(var(--color-primary))', fontSize: '0.85rem', background: 'rgba(255,255,255,0.01)' }}>
+                          {day}
+                        </td>
+                        {timeslots.map(slot => {
+                          const key = `${day}_${slot}`;
+                          const cell = teacherBulkGrid[key] || { cohort: '', subject: '' };
+                          const grades = ['I', 'II', 'III', 'IV', 'V', 'VI', 'VII', 'VIII', 'IX', 'X'].filter(g => subjects.some(s => s.grade === g));
+                          const sections = ['A', 'B', 'C', 'D'];
+                          const allCohortsSet = new Set();
+                          grades.forEach(g => {
+                            sections.forEach(sec => {
+                              allCohortsSet.add(`${g}-${sec}`);
+                            });
+                          });
+                          if (Array.isArray(students)) {
+                            students.forEach(s => {
+                              const c = s.grade || `${s.studentClass || 'I'}-${s.section || 'A'}`;
+                              if (c) allCohortsSet.add(c);
+                            });
+                          }
+                          const allCohorts = [...allCohortsSet];
+
+                          // Ensure current cell's cohort is always included
+                          const cellCohorts = [...allCohorts];
+                          if (cell.cohort && !cellCohorts.includes(cell.cohort)) {
+                            cellCohorts.push(cell.cohort);
+                          }
+
+                          // Sort cohorts: Grade order first, then Section order
+                          cellCohorts.sort((a, b) => {
+                            const gradeOrder = ['I', 'II', 'III', 'IV', 'V', 'VI', 'VII', 'VIII', 'IX', 'X'];
+                            const [gA, sA] = a.split('-');
+                            const [gB, sB] = b.split('-');
+                            const idxA = gradeOrder.indexOf(gA);
+                            const idxB = gradeOrder.indexOf(gB);
+                            if (idxA !== idxB) {
+                              return idxA - idxB;
+                            }
+                            return (sA || '').localeCompare(sB || '');
+                          });
+                          return (() => {
+                            const breakMatch = slot.match(/\[(.*?)\]/);
+                            const breakType = breakMatch ? breakMatch[1] : null;
+                            const isBreak = !!breakType;
+
+                            if (isBreak) {
+                              return (
+                                <td key={slot} style={{ 
+                                  padding: '12px', 
+                                  verticalAlign: 'middle', 
+                                  borderLeft: '1px solid var(--border-glass)',
+                                  background: 'rgba(245, 158, 11, 0.03)',
+                                  textAlign: 'center',
+                                  fontWeight: 700,
+                                  color: '#d97706',
+                                  fontSize: '0.8rem'
+                                }}>
+                                  {breakType === 'Lunch Break' ? '🍱 ' : breakType === 'Short Break' ? '☕ ' : breakType === 'Recess' ? '🏃 ' : breakType === 'Assembly' ? '📢 ' : '⚡ '}{breakType}
+                                </td>
+                              );
+                            }
+
+                            return (
+                              <td key={slot} style={{ padding: '12px', verticalAlign: 'top', borderLeft: '1px solid var(--border-glass)' }}>
+                                <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+                                  <select 
+                                    value={cell.cohort}
+                                    onChange={(e) => handleTeacherBulkCellChange(day, slot, 'cohort', e.target.value)}
+                                    style={{
+                                      width: '100%',
+                                      padding: '6px 18px 6px 8px',
+                                      borderRadius: '6px',
+                                      background: 'var(--bg-glass-active)',
+                                      border: '1px solid var(--border-glass)',
+                                      color: 'var(--text-main)',
+                                      fontSize: '0.78rem',
+                                      fontWeight: 600,
+                                      outline: 'none',
+                                      textOverflow: 'ellipsis',
+                                      whiteSpace: 'nowrap',
+                                      overflow: 'hidden'
+                                    }}
+                                  >
+                                    <option value="">-- Off / Free --</option>
+                                    {cellCohorts.map(cohort => {
+                                      const parts = cohort.split('-');
+                                      const displayLabel = parts.length === 2 ? `${parts[0]} (${parts[1]})` : cohort;
+                                      return (
+                                        <option key={cohort} value={cohort}>{displayLabel}</option>
+                                      );
+                                    })}
+                                  </select>
+                                </div>
+                              </td>
+                            );
+                          })();
+                        })}
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginTop: '10px' }}>
+                <button 
+                  type="button" 
+                  onClick={handleClearTeacherBulkGrid}
+                  className="btn-secondary" 
+                  style={{ borderColor: '#ef4444', color: '#ef4444', borderRadius: '8px', padding: '10px 18px', fontWeight: 600 }}
+                >
+                  Clear All Slots
+                </button>
+                <div style={{ display: 'flex', gap: '12px' }}>
+                  <button 
+                    type="button" 
+                    onClick={() => setShowTeacherBulkModal(false)} 
+                    className="btn-secondary"
+                    style={{ borderRadius: '8px', padding: '10px 18px', fontWeight: 600 }}
+                  >
+                    Cancel
+                  </button>
+                  <button 
+                    type="submit" 
+                    className="btn-primary"
+                    style={{
+                      background: 'linear-gradient(135deg, hsl(var(--color-primary)) 0%, #4f46e5 100%)',
+                      border: 'none',
+                      borderRadius: '8px',
+                      padding: '10px 24px',
+                      fontWeight: 700,
+                      boxShadow: '0 4px 12px rgba(99, 102, 241, 0.3)'
+                    }}
+                  >
+                    Save Timetable Matrix
+                  </button>
+                </div>
+              </div>
+            </form>
+          </div>
+        </div>,
+        document.body
+      )}
+
+      {showConfirmModal && createPortal(
+        <div className="modal-overlay" style={{ zIndex: 20000000 }}>
+          <div className="animate-scale-up glass-panel" style={{
+            width: '100%', maxWidth: '400px', padding: '28px', borderRadius: '16px',
+            background: 'var(--bg-card)', border: '1px solid var(--border-glass)',
+            boxShadow: '0 25px 50px -12px rgba(0,0,0,0.5)', display: 'flex', flexDirection: 'column', gap: '20px',
+            textAlign: 'center', alignItems: 'center'
+          }}>
+            <div style={{
+              width: '56px', height: '56px', borderRadius: '50%', background: 'rgba(239, 68, 68, 0.1)',
+              display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#ef4444', marginBottom: '8px'
+            }}>
+              <AlertCircle size={32} />
+            </div>
+            
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+              <h3 style={{ fontSize: '1.2rem', fontWeight: 800, color: 'var(--text-main)', margin: 0 }}>
+                Are you sure to delete?
+              </h3>
+              <p style={{ fontSize: '0.85rem', color: 'var(--text-muted)', margin: 0 }}>
+                This will completely delete the timetable for Class <strong>{cohortToDelete}</strong>. This action cannot be undone.
+              </p>
+            </div>
+
+            <div style={{ display: 'flex', gap: '12px', width: '100%', marginTop: '8px' }}>
+              <button 
+                type="button" 
+                onClick={cancelDeleteWholeTimetable} 
+                className="btn-secondary"
+                style={{ flex: 1, borderRadius: '8px', padding: '10px 18px', fontWeight: 600, justifyContent: 'center' }}
+              >
+                Cancel
+              </button>
+              <button 
+                type="button" 
+                onClick={confirmDeleteWholeTimetable}
+                className="btn-primary"
+                style={{
+                  flex: 1,
+                  background: 'linear-gradient(135deg, #ef4444 0%, #dc2626 100%)',
+                  border: 'none',
+                  borderRadius: '8px',
+                  padding: '10px 18px',
+                  fontWeight: 700,
+                  color: '#ffffff',
+                  boxShadow: '0 4px 12px rgba(239, 68, 68, 0.3)',
+                  justifyContent: 'center'
+                }}
+              >
+                Delete
+              </button>
+            </div>
           </div>
         </div>,
         document.body

@@ -30,7 +30,8 @@ import {
   TrendingDown,
   BookOpen,
   Clock,
-  Calendar
+  Calendar,
+  History
 } from 'lucide-react';
 
 export default function Sidebar({ 
@@ -63,7 +64,8 @@ export default function Sidebar({
   setExpenseView,
   onAccessAdmin,
   isDeveloperAdmin,
-  onDeveloperAdminLogout
+  onDeveloperAdminLogout,
+  onBackToMain
 }) {
   const [studentOpen, setStudentOpen] = useState(false);
   const [teacherOpen, setTeacherOpen] = useState(false);
@@ -79,11 +81,12 @@ export default function Sidebar({
   const [recepStudentOpen, setRecepStudentOpen] = useState(false);
   const [recepTeacherOpen, setRecepTeacherOpen] = useState(false);
   const [recepStaffOpen, setRecepStaffOpen] = useState(false);
+  const [teacherAttendanceOpen, setTeacherAttendanceOpen] = useState(() => {
+    return ['mark-attendance', 'attendance-tracker', 'attendance-history', 'student-reports', 'monthly-calendar'].includes(teacherView);
+  });
   const menuItems = [
     { id: 'overview', label: 'Overview', icon: LayoutDashboard },
     { id: 'students', label: 'Students', icon: Users },
-    { id: 'teacher-list', label: 'Teacher List', icon: UserCheck },
-    { id: 'staff', label: 'Staff Directory', icon: UserCog },
     { id: 'school', label: 'School', icon: School },
   ];
 
@@ -112,6 +115,7 @@ export default function Sidebar({
     { id: 'attendance-history', label: 'Attendance History', icon: List },
     { id: 'student-reports', label: 'Student Reports', icon: Users },
     { id: 'monthly-calendar', label: 'Monthly Calendar', icon: School },
+    { id: 'class-timetable', label: 'Class Timetable', icon: Clock },
     { id: 'students', label: 'Student Directory', icon: Users },
     { id: 'teacher-list', label: 'Teacher Directory', icon: UserCheck },
     { id: 'staff', label: 'Staff Directory', icon: UserCog },
@@ -124,7 +128,7 @@ export default function Sidebar({
           <div className="brand-icon">
             <GraduationCap size={24} />
           </div>
-          <span className="brand-name">{isAdmin ? 'Admin Dashboard' : (isAccountant ? 'Finance Dashboard' : (isExpense ? 'Expense Dashboard' : (isRecep ? 'Receptionist Dashboard' : (isTeacher ? 'Teacher Dashboard' : (schoolDetails?.name || 'Dashboard')))))}</span>
+          <span className="brand-name">{isDeveloperAdmin ? 'Dev Dashboard' : (isAdmin ? 'Admin Dashboard' : (isAccountant ? 'Finance Dashboard' : (isExpense ? 'Expense Dashboard' : (isRecep ? 'Receptionist Dashboard' : (isTeacher ? 'Teacher Dashboard' : (schoolDetails?.name || 'Dashboard'))))))}</span>
         </div>
         <button 
           onClick={() => {
@@ -153,6 +157,32 @@ export default function Sidebar({
       </div>
 
       <nav className="sidebar-nav">
+        {(isAdmin || isAccountant || isExpense || isTeacher || isRecep) && (
+          <button
+            onClick={() => {
+              onBackToMain();
+              setMobileOpen(false);
+            }}
+            className="nav-item"
+            style={{ 
+              color: 'hsl(var(--color-primary))', 
+              marginBottom: '16px', 
+              border: '1.5px dashed rgba(99, 102, 241, 0.4)', 
+              background: 'rgba(99, 102, 241, 0.05)', 
+              borderRadius: '12px',
+              padding: '12px 16px',
+              width: '100%',
+              display: 'flex',
+              alignItems: 'center',
+              gap: '12px',
+              cursor: 'pointer',
+              fontWeight: 700
+            }}
+          >
+            <LayoutDashboard size={20} className="flex-shrink-0" style={{ color: 'hsl(var(--color-primary))' }} />
+            <span className="nav-label">Back to Main Dash</span>
+          </button>
+        )}
         {isDeveloperAdmin ? (
           <>
             <button
@@ -332,6 +362,14 @@ export default function Sidebar({
               {adminAcademicOpen && (
                 <div style={{ display: 'flex', flexDirection: 'column', paddingLeft: '16px', borderLeft: '1px solid rgba(255,255,255,0.06)', marginLeft: '24px', marginTop: '2px', marginBottom: '6px', gap: '4px' }}>
                   <button
+                    onClick={() => { setAdminView('academic-grade-subjects'); setMobileOpen(false); }}
+                    className={`nav-item ${adminView === 'academic-grade-subjects' ? 'active' : ''}`}
+                    style={{ padding: '10px 12px', fontSize: '0.88rem', position: 'relative' }}
+                  >
+                    <BookOpen size={18} className="flex-shrink-0" />
+                    <span className="nav-label">Grade Subjects</span>
+                  </button>
+                  <button
                     onClick={() => { setAdminView('academic-class-timetable'); setMobileOpen(false); }}
                     className={`nav-item ${adminView === 'academic-class-timetable' ? 'active' : ''}`}
                     style={{ padding: '10px 12px', fontSize: '0.88rem', position: 'relative' }}
@@ -362,6 +400,14 @@ export default function Sidebar({
                   >
                     <Calendar size={18} className="flex-shrink-0" />
                     <span className="nav-label">Exam Timetable</span>
+                  </button>
+                  <button
+                    onClick={() => { setAdminView('academic-exams-history'); setMobileOpen(false); }}
+                    className={`nav-item ${adminView === 'academic-exams-history' ? 'active' : ''}`}
+                    style={{ padding: '10px 12px', fontSize: '0.88rem', position: 'relative' }}
+                  >
+                    <History size={18} className="flex-shrink-0" />
+                    <span className="nav-label">Exam History</span>
                   </button>
                   <button
                     onClick={() => { setAdminView('academic-events'); setMobileOpen(false); }}
@@ -917,22 +963,84 @@ export default function Sidebar({
           </>
         ) : isTeacher ? (
           <>
-            {teacherMenuItems.map((item) => {
-              const Icon = item.icon;
-              return (
-                <button
-                  key={item.id}
-                  onClick={() => {
-                    setTeacherView(item.id);
-                    setMobileOpen(false);
-                  }}
-                  className={`nav-item ${teacherView === item.id ? 'active' : ''}`}
-                >
-                  <Icon size={20} className="flex-shrink-0" />
-                  <span className="nav-label">{item.label}</span>
-                </button>
-              );
-            })}
+
+            {/* Attendance Manager Folder */}
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '2px' }}>
+              <button
+                type="button"
+                onClick={() => setTeacherAttendanceOpen(!teacherAttendanceOpen)}
+                className="nav-item"
+                style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', width: '100%', cursor: 'pointer' }}
+              >
+                <div style={{ display: 'flex', alignItems: 'center', gap: '16px', minWidth: 0, overflow: 'hidden' }}>
+                  <ClipboardCheck size={20} className="flex-shrink-0" />
+                  <span className="nav-label" style={{ fontWeight: 600 }}>Attendance Manager</span>
+                </div>
+                {teacherAttendanceOpen ? <ChevronDown size={16} className="flex-shrink-0" /> : <ChevronRight size={16} className="flex-shrink-0" />}
+              </button>
+              {teacherAttendanceOpen && (
+                <div style={{ display: 'flex', flexDirection: 'column', paddingLeft: '16px', borderLeft: '1px solid rgba(255,255,255,0.06)', marginLeft: '24px', marginTop: '2px', marginBottom: '6px', gap: '4px' }}>
+                  <button
+                    onClick={() => { setTeacherView('mark-attendance'); setMobileOpen(false); }}
+                    className={`nav-item ${teacherView === 'mark-attendance' ? 'active' : ''}`}
+                    style={{ padding: '10px 12px', fontSize: '0.88rem', position: 'relative' }}
+                  >
+                    <ClipboardCheck size={18} className="flex-shrink-0" />
+                    <span className="nav-label">Mark Attendance</span>
+                  </button>
+                  <button
+                    onClick={() => { setTeacherView('attendance-tracker'); setMobileOpen(false); }}
+                    className={`nav-item ${teacherView === 'attendance-tracker' ? 'active' : ''}`}
+                    style={{ padding: '10px 12px', fontSize: '0.88rem', position: 'relative' }}
+                  >
+                    <TrendingUp size={18} className="flex-shrink-0" />
+                    <span className="nav-label">Attendance Tracker</span>
+                  </button>
+                  <button
+                    onClick={() => { setTeacherView('attendance-history'); setMobileOpen(false); }}
+                    className={`nav-item ${teacherView === 'attendance-history' ? 'active' : ''}`}
+                    style={{ padding: '10px 12px', fontSize: '0.88rem', position: 'relative' }}
+                  >
+                    <List size={18} className="flex-shrink-0" />
+                    <span className="nav-label">Attendance History</span>
+                  </button>
+                  <button
+                    onClick={() => { setTeacherView('student-reports'); setMobileOpen(false); }}
+                    className={`nav-item ${teacherView === 'student-reports' ? 'active' : ''}`}
+                    style={{ padding: '10px 12px', fontSize: '0.88rem', position: 'relative' }}
+                  >
+                    <Users size={18} className="flex-shrink-0" />
+                    <span className="nav-label">Student Reports</span>
+                  </button>
+                  <button
+                    onClick={() => { setTeacherView('monthly-calendar'); setMobileOpen(false); }}
+                    className={`nav-item ${teacherView === 'monthly-calendar' ? 'active' : ''}`}
+                    style={{ padding: '10px 12px', fontSize: '0.88rem', position: 'relative' }}
+                  >
+                    <School size={18} className="flex-shrink-0" />
+                    <span className="nav-label">Monthly Calendar</span>
+                  </button>
+                </div>
+              )}
+            </div>
+
+            {/* Class Timetable */}
+            <button
+              onClick={() => { setTeacherView('class-timetable'); setMobileOpen(false); }}
+              className={`nav-item ${teacherView === 'class-timetable' ? 'active' : ''}`}
+            >
+              <Clock size={20} className="flex-shrink-0" />
+              <span className="nav-label">Class Timetable</span>
+            </button>
+
+            {/* Student Directory */}
+            <button
+              onClick={() => { setTeacherView('students'); setMobileOpen(false); }}
+              className={`nav-item ${teacherView === 'students' ? 'active' : ''}`}
+            >
+              <Users size={20} className="flex-shrink-0" />
+              <span className="nav-label">Student Directory</span>
+            </button>
           </>
         ) : isRecep ? (
           <>
@@ -1074,6 +1182,25 @@ export default function Sidebar({
                 </button>
               );
             })}
+            {sessionStorage.getItem('from_dev_admin') === 'true' && (
+              <button
+                onClick={() => {
+                  sessionStorage.clear();
+                  sessionStorage.setItem('role', 'Developer Admin');
+                  sessionStorage.setItem('portal_role', 'Developer Admin');
+                  sessionStorage.setItem('username', 'uttam306115@gmail.com');
+                  sessionStorage.setItem('name', 'Platform Owner');
+                  localStorage.removeItem('tenant_subdomain');
+                  setMobileOpen(false);
+                  window.location.href = '/';
+                }}
+                className="nav-item"
+                style={{ color: 'hsl(var(--color-primary))', marginTop: '16px', border: '1px dashed rgba(99, 102, 241, 0.4)', background: 'rgba(99, 102, 241, 0.04)', borderRadius: '8px' }}
+              >
+                <Shield size={20} className="flex-shrink-0" style={{ color: 'hsl(var(--color-primary))' }} />
+                <span className="nav-label" style={{ fontWeight: 700 }}>Back to Dev Admin</span>
+              </button>
+            )}
           </>
         )}
       </nav>

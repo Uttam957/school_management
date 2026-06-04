@@ -44,7 +44,7 @@ import AddTeacher from './AddTeacher';
 import AddStaff from './AddStaff';
 import ExpensePanel from './ExpensePanel';
 
-export default function AdminPanel({ setActiveView, onLogout, adminView, setAdminView }) {
+export default function AdminPanel({ setActiveView, onLogout, adminView, setAdminView, onBackToMain }) {
   // Roster/Filter States for Admin Attendance Panel
   const [selectedDate, setSelectedDate] = useState(new Date().toISOString().split('T')[0]);
   const [selectedClass, setSelectedClass] = useState('IX');
@@ -84,6 +84,7 @@ export default function AdminPanel({ setActiveView, onLogout, adminView, setAdmi
       case 'academic-class-timetable':
       case 'academic-teacher-timetable':
       case 'academic-exams':
+      case 'academic-exams-history':
       case 'academic-exam-timetable':
       case 'academic-events':
       case 'academic-notices':
@@ -91,6 +92,7 @@ export default function AdminPanel({ setActiveView, onLogout, adminView, setAdmi
       case 'academic-calendar':
       case 'academic-results':
       case 'academic-reports':
+      case 'academic-grade-subjects':
         return <AcademicPanel subView={adminView} />;
       case 'students':
         return <StudentDirectory readOnly={false} onAddClick={() => setAdminView('register-student')} />;
@@ -333,7 +335,7 @@ export default function AdminPanel({ setActiveView, onLogout, adminView, setAdmi
             Sign Out
           </button>
           <button
-            onClick={onLogout}
+            onClick={onBackToMain}
             className="btn-primary"
             style={{ padding: '8px 16px', fontSize: '0.85rem', display: 'flex', alignItems: 'center', gap: '6px' }}
           >

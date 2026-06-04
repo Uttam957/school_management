@@ -21,12 +21,13 @@ import {
   Mail,
   Phone,
   Info,
-  LayoutDashboard
+  LayoutDashboard,
+  Clock
 } from 'lucide-react';
 import StudentDirectory from './StudentDirectory';
 import TeacherList from './TeacherList';
 
-export default function TeacherPanel({ setActiveView, onLogout, teacherView, setTeacherView }) {
+export default function TeacherPanel({ setActiveView, onLogout, teacherView, setTeacherView, onBackToMain }) {
   // Global filter states
   const [selectedDate, setSelectedDate] = useState(new Date().toISOString().split('T')[0]);
   const [selectedClass, setSelectedClass] = useState('IX');
@@ -78,6 +79,7 @@ export default function TeacherPanel({ setActiveView, onLogout, teacherView, set
       case 'student-reports': return 'Generate attendance metrics and export spreadsheets';
       case 'class-reports': return 'Evaluate overall cohort averages and stats';
       case 'monthly-calendar': return 'Monthly calendar tracker grid per student';
+      case 'class-timetable': return 'View weekly class timetables';
       case 'students': return 'Access complete student academic records directory';
       case 'teacher-list': return 'View faculty roster and teacher profiles';
       default: return 'Mark and review today\'s student attendance';
@@ -138,6 +140,12 @@ export default function TeacherPanel({ setActiveView, onLogout, teacherView, set
       case 'monthly-calendar':
         return (
           <MonthlyCalendarView 
+            showToast={showToast}
+          />
+        );
+      case 'class-timetable':
+        return (
+          <ClassTimetableView 
             showToast={showToast}
           />
         );
@@ -216,7 +224,7 @@ export default function TeacherPanel({ setActiveView, onLogout, teacherView, set
             Sign Out
           </button>
           <button
-            onClick={onLogout}
+            onClick={onBackToMain}
             className="btn-primary"
             style={{ padding: '8px 16px', fontSize: '0.85rem', display: 'flex', alignItems: 'center', gap: '6px' }}
           >
@@ -389,8 +397,6 @@ export function MarkAttendanceView({ date, setDate, studentClass, setClass, sect
                 <option value="VIII">Grade VIII</option>
                 <option value="IX">Grade IX</option>
                 <option value="X">Grade X</option>
-                <option value="XI">Grade XI</option>
-                <option value="XII">Grade XII</option>
               </select>
             </div>
 
@@ -795,8 +801,6 @@ export function AttendanceHistoryView({ showToast }) {
               <option value="VIII">Grade VIII</option>
               <option value="IX">Grade IX</option>
               <option value="X">Grade X</option>
-              <option value="XI">Grade XI</option>
-              <option value="XII">Grade XII</option>
             </select>
           </div>
 
@@ -1040,8 +1044,6 @@ export function StudentReportsView({ showToast }) {
                 <option value="VIII">Grade VIII</option>
                 <option value="IX">Grade IX</option>
                 <option value="X">Grade X</option>
-                <option value="XI">Grade XI</option>
-                <option value="XII">Grade XII</option>
               </select>
             </div>
 
@@ -1770,6 +1772,196 @@ export function AttendanceTrackerView({ date, setDate, showToast }) {
           )}
         </div>
       )}
+
+    </div>
+  );
+}
+
+// ============================================================================
+// TAB G: CLASS TIMETABLE LOG VIEW (READ ONLY)
+// ============================================================================
+export function ClassTimetableView({ showToast }) {
+  const [timetables, setTimetables] = useState([]);
+  const [timeslots, setTimeslots] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [searchQuery, setSearchQuery] = useState('');
+  const [searchGrade, setSearchGrade] = useState('All');
+  const [searchSection, setSearchSection] = useState('All');
+
+  const daysOfWeek = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
+
+  const fetchTimetableData = async () => {
+    try {
+      setLoading(true);
+      const [resTimetables, resTimeslots] = await Promise.all([
+        fetch('/api/academics/timetables'),
+        fetch('/api/academics/timeslots')
+      ]);
+
+      if (resTimetables.ok && resTimeslots.ok) {
+        const dataTimetables = await resTimetables.json();
+        const dataTimeslots = await resTimeslots.json();
+        setTimetables(dataTimetables);
+        setTimeslots(dataTimeslots);
+      } else {
+        showToast('Failed to sync academic schedule.', 'error');
+      }
+    } catch (err) {
+      console.error('Error fetching timetable data:', err);
+      showToast('Network error while fetching schedules.', 'error');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    fetchTimetableData();
+  }, []);
+
+  const cohortsWithTimetables = [...new Set(timetables.map(t => t.cohort))].sort();
+  
+  const filteredCohorts = cohortsWithTimetables.filter(cohort => {
+    const matchesQuery = searchQuery.trim() === '' || cohort.toLowerCase().includes(searchQuery.toLowerCase());
+    const [g, s] = cohort.split('-');
+    const matchesGrade = searchGrade === 'All' || g === searchGrade;
+    const matchesSection = searchSection === 'All' || s === searchSection;
+    return matchesQuery && matchesGrade && matchesSection;
+  });
+
+  return (
+    <div style={{ display: 'flex', flexDirection: 'column', gap: '24px' }}>
+      
+      {/* Search & Filter Bar */}
+      <div className="glass-panel" style={{ padding: '16px 20px', display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '16px' }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+          <Search size={18} style={{ color: 'var(--text-muted)' }} />
+          <h4 style={{ fontSize: '0.9rem', fontWeight: 800, margin: 0, color: 'var(--text-main)' }}>Search & Filter Timetables</h4>
+        </div>
+        <div style={{ display: 'flex', gap: '12px', flexWrap: 'wrap', alignItems: 'center' }}>
+          <input 
+            type="text" 
+            className="form-control" 
+            placeholder="Search cohort (e.g. IX-A)..." 
+            value={searchQuery}
+            onChange={(e) => setSearchQuery(e.target.value)}
+            style={{ width: '220px', padding: '6px 12px', borderRadius: '8px', fontSize: '0.82rem', background: 'var(--bg-glass-active)', border: '1px solid var(--border-glass)', color: 'var(--text-main)' }}
+          />
+          
+          <select 
+            className="select-custom" 
+            value={searchGrade}
+            onChange={(e) => setSearchGrade(e.target.value)}
+            style={{ padding: '6px 12px', borderRadius: '8px', fontSize: '0.82rem', background: 'var(--bg-glass-active)', border: '1px solid var(--border-glass)', color: 'var(--text-main)' }}
+          >
+            <option value="All">All Grades</option>
+            {['I', 'II', 'III', 'IV', 'V', 'VI', 'VII', 'VIII', 'IX', 'X'].map(g => (
+              <option key={g} value={g}>Grade {g}</option>
+            ))}
+          </select>
+
+          <select 
+            className="select-custom" 
+            value={searchSection}
+            onChange={(e) => setSearchSection(e.target.value)}
+            style={{ padding: '6px 12px', borderRadius: '8px', fontSize: '0.82rem', background: 'var(--bg-glass-active)', border: '1px solid var(--border-glass)', color: 'var(--text-main)' }}
+          >
+            <option value="All">All Sections</option>
+            {['A', 'B', 'C', 'D', 'E', 'F'].map(s => (
+              <option key={s} value={s}>Section {s}</option>
+            ))}
+          </select>
+
+          {(searchQuery || searchGrade !== 'All' || searchSection !== 'All') && (
+            <button 
+              onClick={() => {
+                setSearchQuery('');
+                setSearchGrade('All');
+                setSearchSection('All');
+              }}
+              className="btn-secondary"
+              style={{ padding: '6px 12px', fontSize: '0.8rem', borderRadius: '8px', border: '1px solid #ef4444', color: '#ef4444' }}
+            >
+              Clear Filters
+            </button>
+          )}
+        </div>
+      </div>
+
+      {/* Timetable Grid Views */}
+      <div style={{ display: 'flex', flexDirection: 'column', gap: '32px' }}>
+        {loading ? (
+          <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', minHeight: '300px', flexDirection: 'column', gap: '16px' }}>
+            <Loader2 className="animate-spin" size={36} style={{ color: 'hsl(var(--color-primary))' }} />
+            <p style={{ color: 'var(--text-muted)' }}>Loading timetables...</p>
+          </div>
+        ) : filteredCohorts.length > 0 ? (
+          filteredCohorts.map(cohort => {
+            const classSlots = timetables.filter(t => t.cohort === cohort);
+            return (
+              <div key={cohort} className="glass-panel" style={{ padding: '24px', overflowX: 'auto', display: 'flex', flexDirection: 'column', gap: '16px' }}>
+                <div style={{ borderBottom: '1px solid var(--border-glass)', paddingBottom: '12px' }}>
+                  <h3 style={{ fontSize: '1.15rem', fontWeight: 800, margin: 0 }}>
+                    Class Timetable: <span style={{ color: 'hsl(var(--color-primary))' }}>{cohort}</span>
+                  </h3>
+                  <p style={{ fontSize: '0.8rem', color: 'var(--text-muted)', margin: '2px 0 0 0' }}>
+                    Weekly schedule grid mapping all structured hours for Class {cohort}.
+                  </p>
+                </div>
+
+                <table className="table-custom" style={{ width: '100%', minWidth: '700px' }}>
+                  <thead>
+                    <tr>
+                      <th style={{ width: '150px' }}>Time Slot</th>
+                      {daysOfWeek.map(d => <th key={d}>{d}</th>)}
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {timeslots.map(slot => (
+                      <tr key={slot}>
+                        <td style={{ fontWeight: 700, color: 'hsl(var(--color-primary))', fontSize: '0.8rem' }}>{slot}</td>
+                        {daysOfWeek.map(day => {
+                          const matched = classSlots.find(t => t.day === day && t.time === slot);
+                          return (
+                            <td key={day} style={{ padding: '8px' }}>
+                              {matched ? (
+                                <div style={{
+                                  background: 'var(--bg-glass-active)',
+                                  border: '1px solid var(--border-glass)',
+                                  padding: '10px 12px',
+                                  borderRadius: '10px',
+                                  display: 'flex',
+                                  flexDirection: 'column',
+                                  gap: '4px',
+                                  position: 'relative'
+                                }}>
+                                  <strong style={{ fontSize: '1.05rem', color: 'var(--text-main)', textTransform: 'capitalize' }}>{matched.subject}</strong>
+                                  {matched.teacher && matched.teacher.trim() !== '' && matched.teacher.toLowerCase() !== 'n/a' && (
+                                    <span style={{ fontSize: '0.76rem', color: 'var(--text-muted)', display: 'flex', alignItems: 'center', gap: '4px' }}>
+                                      <UserCheck size={10} /> {matched.teacher}
+                                    </span>
+                                  )}
+                                </div>
+                              ) : (
+                                <div style={{ color: 'var(--text-muted)', fontSize: '0.75rem', fontStyle: 'italic', padding: '12px', textAlign: 'center' }}>
+                                  Free Study
+                                </div>
+                              )}
+                            </td>
+                          );
+                        })}
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            );
+          })
+        ) : (
+          <div className="glass-panel" style={{ padding: '40px', textAlign: 'center', color: 'var(--text-muted)' }}>
+            No timetables scheduled yet or matching search criteria.
+          </div>
+        )}
+      </div>
 
     </div>
   );

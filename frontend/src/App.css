@@ -302,6 +302,11 @@
 .search-bar-container {
   position: relative;
   width: 260px;
+  transition: width 0.3s ease;
+}
+
+.search-bar-container:focus-within {
+  width: 300px;
 }
 
 .search-bar-input {
@@ -325,7 +330,6 @@
   outline: none;
   border-color: hsl(var(--color-primary));
   box-shadow: 0 0 0 3px rgba(hsl(var(--color-primary)), 0.1);
-  width: 300px;
   background: #ffffff;
 }
 
@@ -989,6 +993,9 @@
     justify-content: space-between;
   }
   .search-bar-container {
+    width: 100%;
+  }
+  .search-bar-container:focus-within {
     width: 100%;
   }
   .search-bar-input:focus {

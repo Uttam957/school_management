@@ -17,7 +17,7 @@ export default function Academics() {
   const [loading, setLoading] = useState(true);
   const [showAddModal, setShowAddModal] = useState(false);
 
-  const classOptions = ['Grade 9-A', 'Grade 9-B', 'Grade 10-A', 'Grade 10-B', 'Grade 11-A'];
+  const classOptions = ['Grade 9-A', 'Grade 9-B', 'Grade 10-A', 'Grade 10-B'];
   const timeslots = ['09:00 AM', '10:00 AM', '11:00 AM', '01:00 PM'];
 
   // Form State
