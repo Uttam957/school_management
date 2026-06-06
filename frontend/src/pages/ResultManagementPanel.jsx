@@ -69,6 +69,8 @@ export default function ResultManagementPanel({ activeTab: propActiveTab = 'anal
   const [activeStudentForModal, setActiveStudentForModal] = useState(null);
   const [activeExamForModal, setActiveExamForModal] = useState(null);
   const [modalViewOnly, setModalViewOnly] = useState(false);
+  const [studentHistoryExams, setStudentHistoryExams] = useState([]);
+  const [historySelectedExam, setHistorySelectedExam] = useState(null);
   const [formMarks, setFormMarks] = useState({}); // subject -> obtainedMarks
   const [formRemarks, setFormRemarks] = useState({}); // subject -> remarks
 
@@ -708,6 +710,34 @@ export default function ResultManagementPanel({ activeTab: propActiveTab = 'anal
       return matchesClass && matchesSection && matchesSearch;
     });
   }, [overallResults, results, students, exams, historySearch, historyClassFilter, historySectionFilter]);
+
+  const groupedStudentEntries = useMemo(() => {
+    const studentMap = {};
+    filteredHistoryEntries.forEach(entry => {
+      const sid = entry.studentId;
+      if (!studentMap[sid]) {
+        studentMap[sid] = {
+          studentId: sid,
+          studentName: entry.studentName,
+          studentClass: entry.studentClass,
+          section: entry.section,
+          roll: entry.roll,
+          studentObj: entry.studentObj,
+          exams: []
+        };
+      }
+      studentMap[sid].exams.push({
+        examId: entry.examId,
+        examName: entry.examName,
+        percentage: entry.percentage,
+        grade: entry.grade,
+        gpa: entry.gpa,
+        passStatus: entry.passStatus,
+        examObj: entry.examObj
+      });
+    });
+    return Object.values(studentMap);
+  }, [filteredHistoryEntries]);
 
   const modalClass = activeStudentForModal?.studentClass || selectedClass;
   const modalSection = activeStudentForModal?.section || selectedSection;
@@ -1406,11 +1436,11 @@ export default function ResultManagementPanel({ activeTab: propActiveTab = 'anal
               </div>
 
               {/* Cards Grid */}
-              {filteredHistoryEntries.length > 0 ? (
+              {groupedStudentEntries.length > 0 ? (
                 <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(320px, 1fr))', gap: '20px' }}>
-                  {filteredHistoryEntries.map(entry => (
+                  {groupedStudentEntries.map(student => (
                     <div 
-                      key={entry.id} 
+                      key={student.studentId} 
                       className="glass-panel" 
                       style={{ 
                         padding: '20px', 
@@ -1423,59 +1453,30 @@ export default function ResultManagementPanel({ activeTab: propActiveTab = 'anal
                         position: 'relative'
                       }}
                     >
-                      {/* Top Header Row with Exam Tag & Status */}
-                      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                        <span style={{ 
-                          fontSize: '0.7rem', 
-                          fontWeight: 700, 
-                          background: 'rgba(99, 102, 241, 0.1)', 
-                          color: 'hsl(var(--color-primary))', 
-                          padding: '4px 10px', 
-                          borderRadius: '6px' 
-                        }}>
-                          {entry.examName}
-                        </span>
-                        <span style={{ 
-                          fontSize: '0.72rem', 
-                          fontWeight: 700, 
-                          color: entry.passStatus === 'Pass' ? '#10b981' : '#ef4444' 
-                        }}>
-                          {entry.passStatus}
-                        </span>
-                      </div>
-
                       {/* Student Details */}
                       <div>
-                        <strong style={{ fontSize: '1.05rem', color: 'var(--text-main)', display: 'block', marginBottom: '2px' }}>
-                          {entry.studentName}
+                        <strong style={{ fontSize: '1.1rem', color: 'var(--text-main)', display: 'block', marginBottom: '2px' }}>
+                          {student.studentName}
                         </strong>
                         <span style={{ fontSize: '0.78rem', color: 'var(--text-muted)' }}>
-                          Roll {entry.roll} · Grade {entry.studentClass}-{entry.section}
+                          Roll {student.roll} · Grade {student.studentClass}-{student.section}
                         </span>
                       </div>
 
-                      {/* Cumulative Scores / CGPA */}
-                      <div style={{ 
-                        display: 'grid', 
-                        gridTemplateColumns: '1fr 1fr', 
-                        gap: '12px', 
-                        background: 'rgba(0,0,0,0.02)', 
-                        padding: '10px', 
-                        borderRadius: '8px',
-                        border: '1px solid rgba(0,0,0,0.04)' 
-                      }}>
-                        <div>
-                          <span style={{ fontSize: '0.68rem', color: 'var(--text-muted)', display: 'block' }}>Score Percentage</span>
-                          <strong style={{ fontSize: '0.95rem' }}>{entry.percentage}% ({entry.grade})</strong>
-                        </div>
-                        <div>
-                          <span style={{ fontSize: '0.68rem', color: 'var(--text-muted)', display: 'block' }}>Calculated GPA</span>
-                          <strong style={{ fontSize: '0.95rem' }}>{entry.gpa.toFixed(2)}</strong>
-                        </div>
+                      {/* Exams Summary */}
+                      <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
+                        {student.exams.map(exam => (
+                          <div key={exam.examId} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '6px 10px', background: 'rgba(0,0,0,0.02)', borderRadius: '6px' }}>
+                            <span style={{ fontSize: '0.82rem', fontWeight: 600 }}>{exam.examName}</span>
+                            <span style={{ fontSize: '0.78rem', fontWeight: 700, color: exam.passStatus === 'Pass' ? '#10b981' : '#ef4444' }}>
+                              {exam.percentage}% ({exam.grade})
+                            </span>
+                          </div>
+                        ))}
                       </div>
 
                       {/* Footer Actions */}
-                      <div style={{ display: 'flex', justifyContent: 'flex-end', marginTop: '4px' }}>
+                      <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '8px', marginTop: '4px' }}>
                         <button
                           className="btn-primary"
                           style={{ 
@@ -1487,16 +1488,49 @@ export default function ResultManagementPanel({ activeTab: propActiveTab = 'anal
                             gap: '4px' 
                           }}
                           onClick={() => {
-                            if (entry.studentObj && entry.examObj) {
+                            if (student.studentObj && student.exams.length > 0) {
                               setModalViewOnly(true);
-                              setActiveStudentForModal(entry.studentObj);
-                              setActiveExamForModal(entry.examObj);
+                              setActiveStudentForModal(student.studentObj);
+                              setStudentHistoryExams(student.exams);
+                              const firstExam = exams.find(e => e.id === student.exams[0].examId);
+                              setActiveExamForModal(firstExam || student.exams[0].examObj);
+                              setHistorySelectedExam(student.exams[0].examId);
                             } else {
                               showToast('Failed to load student details.', 'error');
                             }
                           }}
                         >
                           <Eye size={12} /> View Results
+                        </button>
+                        <button
+                          className="btn-secondary"
+                          style={{ 
+                            padding: '6px 14px', 
+                            fontSize: '0.78rem', 
+                            borderRadius: '8px', 
+                            display: 'inline-flex', 
+                            alignItems: 'center', 
+                            gap: '4px',
+                            border: '1px solid rgba(239,68,68,0.3)', 
+                            color: '#ef4444'
+                          }}
+                          onClick={async () => {
+                            const sid = student.studentObj?.id || student.studentId;
+                            if (!sid) { showToast('Cannot delete: missing student data.', 'error'); return; }
+                            if (!confirm('Are you sure you want to delete all results for this student? This action cannot be undone.')) return;
+                            let allOk = true;
+                            for (const exam of student.exams) {
+                              try {
+                                const res = await fetch(`/api/academics/results/student/${sid}/exam/${exam.examId}`, { method: 'DELETE' });
+                                if (!res.ok) allOk = false;
+                              } catch (e) { allOk = false; }
+                            }
+                            if (allOk) showToast('All student results deleted successfully.', 'success');
+                            else showToast('Some results could not be deleted.', 'error');
+                            fetchAllData();
+                          }}
+                        >
+                          <Trash2 size={12} /> Delete All
                         </button>
                       </div>
                     </div>
@@ -1530,10 +1564,28 @@ export default function ResultManagementPanel({ activeTab: propActiveTab = 'anal
                   Roll Number: {activeStudentForModal.rollNumber || activeStudentForModal.roll || '-'} · Class {modalClass}-{modalSection}
                 </p>
               </div>
-              <button className="modal-close" onClick={() => { setActiveStudentForModal(null); setActiveExamForModal(null); }} style={{ fontSize: '1.5rem', lineHeight: 1 }}>×</button>
+              <button className="modal-close" onClick={() => { setActiveStudentForModal(null); setActiveExamForModal(null); setStudentHistoryExams([]); setHistorySelectedExam(null); }} style={{ fontSize: '1.5rem', lineHeight: 1 }}>×</button>
             </div>
             
             <div className="modal-body" style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>
+              {studentHistoryExams.length > 0 && (
+                <div style={{ display: 'flex', gap: '12px', alignItems: 'center' }}>
+                  <label style={{ fontSize: '0.8rem', fontWeight: 700, color: 'var(--text-muted)', whiteSpace: 'nowrap' }}>Select Exam:</label>
+                  <select className="form-control" value={historySelectedExam || ''}
+                    onChange={(e) => {
+                      const examId = e.target.value;
+                      setHistorySelectedExam(examId);
+                      const examObj = exams.find(ex => ex.id === examId) || studentHistoryExams.find(ex => ex.examId === examId)?.examObj;
+                      if (examObj) setActiveExamForModal(examObj);
+                    }}
+                    style={{ marginTop: '4px', flex: 1 }}
+                  >
+                    {studentHistoryExams.map(ex => (
+                      <option key={ex.examId} value={ex.examId}>{ex.examName}</option>
+                    ))}
+                  </select>
+                </div>
+              )}
               <div style={{ padding: '12px', background: 'rgba(99, 102, 241, 0.06)', border: '1px solid rgba(99, 102, 241, 0.15)', borderRadius: '10px' }}>
                 <span style={{ fontSize: '0.75rem', color: 'var(--text-muted)', display: 'block' }}>Exam Target</span>
                 <strong style={{ fontSize: '0.9rem', color: 'hsl(var(--color-primary))' }}>
@@ -1675,12 +1727,12 @@ export default function ResultManagementPanel({ activeTab: propActiveTab = 'anal
 
             <div className="modal-footer" style={{ display: 'flex', gap: '12px', justifyContent: 'flex-end', marginTop: '16px' }}>
               {modalViewOnly ? (
-                <button className="btn-primary" onClick={() => { setActiveStudentForModal(null); setActiveExamForModal(null); }}>
+                <button className="btn-primary" onClick={() => { setActiveStudentForModal(null); setActiveExamForModal(null); setStudentHistoryExams([]); setHistorySelectedExam(null); }}>
                   Close
                 </button>
               ) : (
                 <>
-                  <button className="btn-secondary" onClick={() => { setActiveStudentForModal(null); setActiveExamForModal(null); }}>
+                  <button className="btn-secondary" onClick={() => { setActiveStudentForModal(null); setActiveExamForModal(null); setStudentHistoryExams([]); setHistorySelectedExam(null); }}>
                     Cancel
                   </button>
                   {(() => {
