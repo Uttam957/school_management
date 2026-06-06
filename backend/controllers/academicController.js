@@ -129,7 +129,7 @@ export const getExams = (req, res) => {
 };
 
 export const createExam = (req, res) => {
-  const { examName, examType, academicSession, description, gradeSections } = req.body;
+  const { examName, examType, academicSession, description, gradeSections, totalMarks, subjectMarks, subjectIncluded } = req.body;
 
   if (!examName || !examType || !academicSession || !gradeSections || gradeSections.length === 0) {
     return res.status(400).json({ error: 'Missing required exam fields.' });
@@ -147,6 +147,9 @@ export const createExam = (req, res) => {
     examType,
     academicSession,
     description: description || '',
+    totalMarks: totalMarks || 100,
+    subjectMarks: subjectMarks || {},
+    subjectIncluded: subjectIncluded || {},
     gradeSections: gradeSections.map(gs => ({
       grade: gs.grade,
       section: gs.section,
@@ -167,7 +170,7 @@ export const createExam = (req, res) => {
 
 export const updateExam = (req, res) => {
   const { id } = req.params;
-  const { examName, examType, academicSession, description, gradeSections, status } = req.body;
+  const { examName, examType, academicSession, description, gradeSections, status, totalMarks, subjectMarks, subjectIncluded } = req.body;
 
   const db = readDb();
   const examIndex = db.exams.findIndex(e => e.id === id);
@@ -181,7 +184,17 @@ export const updateExam = (req, res) => {
   if (academicSession) db.exams[examIndex].academicSession = academicSession;
   if (description !== undefined) db.exams[examIndex].description = description;
   if (gradeSections) db.exams[examIndex].gradeSections = gradeSections;
-  if (status) db.exams[examIndex].status = status;
+  
+  if (status) {
+    db.exams[examIndex].status = status;
+  } else if (db.exams[examIndex].status === 'Published') {
+    const schedulesCount = db.examTimetables ? db.examTimetables.filter(et => et.examId === id).length : 0;
+    db.exams[examIndex].status = schedulesCount > 0 ? 'Scheduled' : 'Draft';
+  }
+
+  if (totalMarks !== undefined) db.exams[examIndex].totalMarks = totalMarks;
+  if (subjectMarks !== undefined) db.exams[examIndex].subjectMarks = subjectMarks;
+  if (subjectIncluded !== undefined) db.exams[examIndex].subjectIncluded = subjectIncluded;
 
   writeDb(db);
   res.json(db.exams[examIndex]);
@@ -227,11 +240,15 @@ export const generateExamSchedule = (req, res) => {
   let anyError = null;
 
   exam.gradeSections.forEach(gs => {
-    const gradeSubjects = subjectsByGrade[gs.grade] || [];
-    if (gradeSubjects.length === 0) {
-      anyError = `No subjects found for Grade ${gs.grade}`;
+    const dbGradeSubjects = subjectsByGrade[gs.grade] || [];
+    if (dbGradeSubjects.length === 0) {
       return;
     }
+
+    const gradeSubjects = dbGradeSubjects.filter(sub => {
+      const subKey = `${gs.grade}-${sub}`;
+      return exam.subjectIncluded ? exam.subjectIncluded[subKey] !== false : true;
+    });
 
     const startDate = new Date(gs.startDate + 'T00:00:00');
     const cohort = gs.section ? `${gs.grade}-${gs.section}` : gs.grade;
@@ -323,7 +340,7 @@ export const generateExamSchedule = (req, res) => {
     }
   }
 
-  exam.status = 'Published';
+  exam.status = 'Scheduled';
   db.examTimetables.push(...newSchedules);
   writeDb(db);
 
@@ -472,7 +489,7 @@ export const deleteExamTimetable = (req, res) => {
 // =============================================
 export const getEvents = (req, res) => {
   const db = readDb();
-  res.json(db.events);
+  res.json(db.events || []);
 };
 
 export const createEvent = (req, res) => {
@@ -1043,8 +1060,418 @@ export const createExamTimetableBulk = (req, res) => {
     }
   });
 
+  // Find parent exam and transition its status from Draft or Published to Scheduled
+  const exam = (db.exams || []).find(e => e.id === examId);
+  if (exam && (exam.status === 'Draft' || exam.status === 'Published')) {
+    exam.status = 'Scheduled';
+  }
+
   writeDb(db);
   res.status(201).json({ message: 'Exam timetable updated successfully.' });
 };
+
+// =============================================
+// 11. BULK RESULTS & CALCULATIONS CONTROLLERS
+// =============================================
+export const createResultBulk = (req, res) => {
+  const { examId, subject, marksList, status, session } = req.body;
+  if (!examId || !subject || !Array.isArray(marksList)) {
+    return res.status(400).json({ error: 'Missing required bulk marks entry fields.' });
+  }
+
+  const db = readDb();
+  const added = [];
+
+  marksList.forEach((item, index) => {
+    const { studentId, obtainedMarks, totalMarks, remarks } = item;
+    if (!studentId || obtainedMarks === undefined || !totalMarks) return;
+
+    const obt = parseFloat(obtainedMarks);
+    const tot = parseFloat(totalMarks);
+    const percentage = Math.round((obt / tot) * 100);
+
+    // Grade mapping
+    let grade = 'F';
+    let gpa = 0.0;
+    if (percentage >= 90) { grade = 'A+'; gpa = 4.0; }
+    else if (percentage >= 80) { grade = 'A'; gpa = 3.7; }
+    else if (percentage >= 70) { grade = 'B+'; gpa = 3.3; }
+    else if (percentage >= 60) { grade = 'B'; gpa = 3.0; }
+    else if (percentage >= 50) { grade = 'C'; gpa = 2.0; }
+    else if (percentage >= 40) { grade = 'D'; gpa = 1.0; }
+    else { grade = 'F'; gpa = 0.0; }
+
+    const resultEntry = {
+      id: `RST-${Date.now()}-${index}-${Math.random().toString(36).substr(2, 4)}`,
+      studentId,
+      examId,
+      subject,
+      obtainedMarks: obt,
+      totalMarks: tot,
+      percentage,
+      grade,
+      gpa,
+      remarks: remarks || '',
+      status: status || 'Draft',
+      session: session || '2026-2027',
+      rank: '-',
+      updatedAt: new Date().toISOString()
+    };
+
+    const matchIdx = db.results.findIndex(r => r.studentId === studentId && r.examId === examId && r.subject.toLowerCase() === subject.toLowerCase());
+    if (matchIdx !== -1) {
+      if (db.results[matchIdx].locked) {
+        return;
+      }
+      db.results[matchIdx] = { ...db.results[matchIdx], ...resultEntry, id: db.results[matchIdx].id };
+      added.push(db.results[matchIdx]);
+    } else {
+      db.results.push(resultEntry);
+      added.push(resultEntry);
+    }
+  });
+
+  // Calculate subject ranks
+  if (marksList.length > 0) {
+    const firstStudent = (db.students || []).find(s => s.id === marksList[0].studentId);
+    const targetClass = firstStudent ? firstStudent.studentClass : null;
+    if (targetClass) {
+      const classStudentIds = (db.students || []).filter(s => s.studentClass === targetClass).map(s => s.id);
+      const cohortResults = db.results.filter(r => r.examId === examId && r.subject.toLowerCase() === subject.toLowerCase() && classStudentIds.includes(r.studentId));
+      cohortResults.sort((a, b) => b.percentage - a.percentage);
+      cohortResults.forEach((resItem, index) => {
+        const idxInDb = db.results.findIndex(r => r.id === resItem.id);
+        if (idxInDb !== -1) {
+          db.results[idxInDb].rank = index + 1;
+        }
+      });
+    }
+  }
+
+  writeDb(db);
+  res.json({ message: 'Bulk marks saved successfully.', count: added.length });
+};
+
+export const recalculateResults = (req, res) => {
+  const { examId, cohort } = req.body;
+  if (!examId || !cohort) {
+    return res.status(400).json({ error: 'Exam ID and Cohort are required.' });
+  }
+
+  const db = readDb();
+  const [grade, section] = cohort.split('-');
+
+  const cohortStudents = (db.students || []).filter(s => s.studentClass === grade && (!section || s.section === section));
+  const studentIds = cohortStudents.map(s => s.id);
+
+  const studentTotals = studentIds.map(studentId => {
+    const studentResults = (db.results || []).filter(r => r.studentId === studentId && r.examId === examId);
+    if (studentResults.length === 0) return { studentId, totalObtained: 0, totalMax: 0, percentage: 0, gpa: 0, subjectsCount: 0 };
+
+    const totalObtained = studentResults.reduce((sum, r) => sum + r.obtainedMarks, 0);
+    const totalMax = studentResults.reduce((sum, r) => sum + r.totalMarks, 0);
+    const percentage = totalMax > 0 ? Math.round((totalObtained / totalMax) * 100) : 0;
+    const avgGpa = studentResults.reduce((sum, r) => sum + r.gpa, 0) / studentResults.length;
+
+    return {
+      studentId,
+      totalObtained,
+      totalMax,
+      percentage,
+      gpa: avgGpa,
+      subjectsCount: studentResults.length
+    };
+  });
+
+  studentTotals.sort((a, b) => b.percentage - a.percentage);
+
+  if (!db.overallResults) db.overallResults = [];
+
+  studentTotals.forEach((item, index) => {
+    const overallRank = index + 1;
+    let overallGrade = 'F';
+    if (item.percentage >= 90) overallGrade = 'A+';
+    else if (item.percentage >= 80) overallGrade = 'A';
+    else if (item.percentage >= 70) overallGrade = 'B+';
+    else if (item.percentage >= 60) overallGrade = 'B';
+    else if (item.percentage >= 50) overallGrade = 'C';
+    else if (item.percentage >= 40) overallGrade = 'D';
+    else overallGrade = 'F';
+
+    const overallEntry = {
+      id: `OVR-${examId}-${item.studentId}`,
+      examId,
+      cohort,
+      studentId: item.studentId,
+      totalObtained: item.totalObtained,
+      totalMax: item.totalMax,
+      percentage: item.percentage,
+      gpa: item.gpa,
+      grade: overallGrade,
+      rank: overallRank,
+      subjectsCount: item.subjectsCount,
+      passStatus: item.percentage >= 40 ? 'Pass' : 'Fail',
+      updatedAt: new Date().toISOString()
+    };
+
+    const idx = db.overallResults.findIndex(o => o.examId === examId && o.studentId === item.studentId);
+    if (idx !== -1) {
+      db.overallResults[idx] = { ...db.overallResults[idx], ...overallEntry };
+    } else {
+      db.overallResults.push(overallEntry);
+    }
+  });
+
+  writeDb(db);
+  res.json({ message: 'Ranks and overall scores calculated successfully.', count: studentTotals.length });
+};
+
+export const lockResults = (req, res) => {
+  const { examId, cohort, locked } = req.body;
+  if (!examId || !cohort) {
+    return res.status(400).json({ error: 'Exam ID and Cohort are required.' });
+  }
+
+  const db = readDb();
+  const [grade, section] = cohort.split('-');
+  const studentIds = (db.students || []).filter(s => s.studentClass === grade && (!section || s.section === section)).map(s => s.id);
+
+  db.results = db.results.map(r => {
+    if (r.examId === examId && studentIds.includes(r.studentId)) {
+      return { ...r, locked: locked !== false };
+    }
+    return r;
+  });
+
+  if (!db.overallResults) db.overallResults = [];
+  db.overallResults = db.overallResults.map(o => {
+    if (o.examId === examId && o.cohort === cohort) {
+      return { ...o, locked: locked !== false };
+    }
+    return o;
+  });
+
+  writeDb(db);
+  res.json({ message: `Results successfully ${locked !== false ? 'locked' : 'unlocked'}.` });
+};
+
+export const publishResults = (req, res) => {
+  const { examId, cohort, published } = req.body;
+  if (!examId || !cohort) {
+    return res.status(400).json({ error: 'Exam ID and Cohort are required.' });
+  }
+
+  const db = readDb();
+
+  if (!db.overallResults) db.overallResults = [];
+  db.overallResults = db.overallResults.map(o => {
+    if (o.examId === examId && o.cohort === cohort) {
+      return { ...o, published: published !== false };
+    }
+    return o;
+  });
+
+  const [grade, section] = cohort.split('-');
+  const studentIds = (db.students || []).filter(s => s.studentClass === grade && (!section || s.section === section)).map(s => s.id);
+  db.results = db.results.map(r => {
+    if (r.examId === examId && studentIds.includes(r.studentId)) {
+      return { ...r, published: published !== false };
+    }
+    return r;
+  });
+
+  writeDb(db);
+  res.json({ message: `Results successfully ${published !== false ? 'published' : 'unpublished'}.` });
+};
+
+export const getOverallResults = (req, res) => {
+  const db = readDb();
+  const overall = (db.overallResults || []).map(o => {
+    const student = (db.students || []).find(s => s.id === o.studentId);
+    const exam = (db.exams || []).find(e => e.id === o.examId);
+    return {
+      ...o,
+      studentName: student ? student.name : 'Unknown Student',
+      studentRoll: student ? student.rollNumber || student.roll : 'N/A',
+      studentPhoto: student ? student.photo : '',
+      examName: exam ? exam.examName : 'Unknown Exam'
+    };
+  });
+  res.json(overall);
+};
+
+export const createResultStudentBulk = (req, res) => {
+  const { studentId, examId, resultsList, status, session } = req.body;
+  if (!studentId || !examId || !Array.isArray(resultsList)) {
+    return res.status(400).json({ error: 'Missing required student bulk marks entry fields.' });
+  }
+
+  const db = readDb();
+  const student = (db.students || []).find(s => s.id === studentId);
+  const targetClass = student ? student.studentClass : null;
+  const added = [];
+
+  resultsList.forEach((item, index) => {
+    const { subject, obtainedMarks, totalMarks, remarks } = item;
+    if (!subject || obtainedMarks === undefined || !totalMarks) return;
+
+    const obt = parseFloat(obtainedMarks);
+    const tot = parseFloat(totalMarks);
+    const percentage = Math.round((obt / tot) * 100);
+
+    // Grade mapping
+    let grade = 'F';
+    let gpa = 0.0;
+    if (percentage >= 90) { grade = 'A+'; gpa = 4.0; }
+    else if (percentage >= 80) { grade = 'A'; gpa = 3.7; }
+    else if (percentage >= 70) { grade = 'B+'; gpa = 3.3; }
+    else if (percentage >= 60) { grade = 'B'; gpa = 3.0; }
+    else if (percentage >= 50) { grade = 'C'; gpa = 2.0; }
+    else if (percentage >= 40) { grade = 'D'; gpa = 1.0; }
+    else { grade = 'F'; gpa = 0.0; }
+
+    const resultEntry = {
+      id: `RST-${Date.now()}-${index}-${Math.random().toString(36).substr(2, 4)}`,
+      studentId,
+      examId,
+      subject,
+      obtainedMarks: obt,
+      totalMarks: tot,
+      percentage,
+      grade,
+      gpa,
+      remarks: remarks || '',
+      status: status || 'Draft',
+      session: session || '2026-2027',
+      rank: '-',
+      updatedAt: new Date().toISOString()
+    };
+
+    if (!db.results) db.results = [];
+
+    const matchIdx = db.results.findIndex(r => r.studentId === studentId && r.examId === examId && r.subject.toLowerCase() === subject.toLowerCase());
+    if (matchIdx !== -1) {
+      if (db.results[matchIdx].locked) {
+        return;
+      }
+      db.results[matchIdx] = { ...db.results[matchIdx], ...resultEntry, id: db.results[matchIdx].id };
+      added.push(db.results[matchIdx]);
+    } else {
+      db.results.push(resultEntry);
+      added.push(resultEntry);
+    }
+    
+    // Recalculate class ranks for this subject
+    if (targetClass) {
+      const classStudentIds = (db.students || []).filter(s => s.studentClass === targetClass).map(s => s.id);
+      const cohortResults = db.results.filter(r => 
+        r.examId === examId && 
+        r.subject.toLowerCase() === subject.toLowerCase() && 
+        classStudentIds.includes(r.studentId)
+      );
+      cohortResults.sort((a, b) => b.percentage - a.percentage);
+      cohortResults.forEach((resItem, idx) => {
+        const idxInDb = db.results.findIndex(r => r.id === resItem.id);
+        if (idxInDb !== -1) {
+          db.results[idxInDb].rank = idx + 1;
+        }
+      });
+    }
+  });
+
+  // Calculate overall result for this student and recalculate cohort ranks
+  const studentResults = db.results.filter(r => r.studentId === studentId && r.examId === examId);
+  if (studentResults.length > 0 && targetClass) {
+    const totalObtained = studentResults.reduce((sum, r) => sum + r.obtainedMarks, 0);
+    const totalMax = studentResults.reduce((sum, r) => sum + r.totalMarks, 0);
+    const percentage = totalMax > 0 ? Math.round((totalObtained / totalMax) * 100) : 0;
+    const avgGpa = studentResults.reduce((sum, r) => sum + r.gpa, 0) / studentResults.length;
+
+    let overallGrade = 'F';
+    if (percentage >= 90) overallGrade = 'A+';
+    else if (percentage >= 80) overallGrade = 'A';
+    else if (percentage >= 70) overallGrade = 'B+';
+    else if (percentage >= 60) overallGrade = 'B';
+    else if (percentage >= 50) overallGrade = 'C';
+    else if (percentage >= 40) overallGrade = 'D';
+    else overallGrade = 'F';
+
+    const overallEntry = {
+      id: `OVR-${examId}-${studentId}`,
+      examId,
+      cohort: targetClass,
+      studentId,
+      totalObtained,
+      totalMax,
+      percentage,
+      gpa: avgGpa,
+      grade: overallGrade,
+      rank: '-',
+      subjectsCount: studentResults.length,
+      passStatus: percentage >= 40 ? 'Pass' : 'Fail',
+      updatedAt: new Date().toISOString()
+    };
+
+    if (!db.overallResults) db.overallResults = [];
+    const idx = db.overallResults.findIndex(o => o.examId === examId && o.studentId === studentId);
+    if (idx !== -1) {
+      db.overallResults[idx] = { ...db.overallResults[idx], ...overallEntry };
+    } else {
+      db.overallResults.push(overallEntry);
+    }
+
+    // Recalculate ranks for the cohort
+    const cohortStudentIds = (db.students || []).filter(s => s.studentClass === targetClass).map(s => s.id);
+    const cohortOverallResults = db.overallResults.filter(o => o.examId === examId && cohortStudentIds.includes(o.studentId));
+    cohortOverallResults.sort((a, b) => b.percentage - a.percentage);
+    cohortOverallResults.forEach((ovItem, idx) => {
+      const dbIdx = db.overallResults.findIndex(o => o.id === ovItem.id);
+      if (dbIdx !== -1) {
+        db.overallResults[dbIdx].rank = idx + 1;
+      }
+    });
+  }
+
+  writeDb(db);
+  res.status(201).json({ message: 'Student results saved successfully.', count: added.length });
+};
+
+export const deleteStudentExamResults = (req, res) => {
+  const { studentId, examId } = req.params;
+  if (!studentId || !examId) {
+    return res.status(400).json({ error: 'Student ID and Exam ID are required.' });
+  }
+
+  const db = readDb();
+
+  // 1. Delete all subject-level results for this student and exam
+  if (db.results) {
+    db.results = db.results.filter(r => !(r.studentId === studentId && r.examId === examId));
+  }
+
+  // 2. Delete the overall result for this student and exam
+  if (db.overallResults) {
+    db.overallResults = db.overallResults.filter(o => !(o.studentId === studentId && o.examId === examId));
+  }
+
+  // 3. Recalculate ranks for the cohort
+  const student = (db.students || []).find(s => s.id === studentId);
+  const targetClass = student ? student.studentClass : null;
+  if (targetClass && db.overallResults) {
+    const cohortStudentIds = (db.students || []).filter(s => s.studentClass === targetClass).map(s => s.id);
+    const cohortOverallResults = db.overallResults.filter(o => o.examId === examId && cohortStudentIds.includes(o.studentId));
+    cohortOverallResults.sort((a, b) => b.percentage - a.percentage);
+    cohortOverallResults.forEach((ovItem, idx) => {
+      const dbIdx = db.overallResults.findIndex(o => o.id === ovItem.id);
+      if (dbIdx !== -1) {
+        db.overallResults[dbIdx].rank = idx + 1;
+      }
+    });
+  }
+
+  writeDb(db);
+  res.json({ message: 'Student exam result record deleted successfully.' });
+};
+
 
 

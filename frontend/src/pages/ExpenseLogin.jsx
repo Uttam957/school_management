@@ -110,7 +110,7 @@ export default function ExpenseLogin({ onLogin, onCancel }) {
             className="btn-secondary"
             style={{ width: '100%', justifyContent: 'center', marginTop: '12px', padding: '14px 24px', fontSize: '0.95rem' }}
           >
-            Return to Main Dashboard
+            Cancel
           </button>
         </form>
 

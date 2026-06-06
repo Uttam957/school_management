@@ -31,7 +31,10 @@ import {
   BookOpen,
   Clock,
   Calendar,
-  History
+  History,
+  FileSpreadsheet,
+  Award,
+  RefreshCw
 } from 'lucide-react';
 
 export default function Sidebar({ 
@@ -73,11 +76,15 @@ export default function Sidebar({
   const [adminCoreOpen, setAdminCoreOpen] = useState(false);
   const [adminAttendanceOpen, setAdminAttendanceOpen] = useState(false);
   const [adminAcademicOpen, setAdminAcademicOpen] = useState(false);
+  const [adminAcademicActivitiesOpen, setAdminAcademicActivitiesOpen] = useState(false);
   const [adminRecepOpen, setAdminRecepOpen] = useState(false);
   const [adminStudentFinanceOpen, setAdminStudentFinanceOpen] = useState(false);
   const [adminTeacherFinanceOpen, setAdminTeacherFinanceOpen] = useState(false);
   const [adminStaffFinanceOpen, setAdminStaffFinanceOpen] = useState(false);
   const [adminExpensesOpen, setAdminExpensesOpen] = useState(false);
+  const [adminResultsOpen, setAdminResultsOpen] = useState(() => {
+    return typeof adminView === 'string' && (adminView.startsWith('results-') || adminView === 'academic-results');
+  });
   const [recepStudentOpen, setRecepStudentOpen] = useState(false);
   const [recepTeacherOpen, setRecepTeacherOpen] = useState(false);
   const [recepStaffOpen, setRecepStaffOpen] = useState(false);
@@ -85,40 +92,8 @@ export default function Sidebar({
     return ['mark-attendance', 'attendance-tracker', 'attendance-history', 'student-reports', 'monthly-calendar'].includes(teacherView);
   });
   const menuItems = [
-    { id: 'overview', label: 'Overview', icon: LayoutDashboard },
     { id: 'students', label: 'Students', icon: Users },
     { id: 'school', label: 'School', icon: School },
-  ];
-
-  const adminMenuItems = [
-    { id: 'overview', label: 'Main Dashboard', icon: List },
-    { id: 'students', label: 'Student List', icon: Users },
-    { id: 'teachers', label: 'Teacher List', icon: UserCheck },
-    { id: 'staff', label: 'Staff List', icon: UserCog },
-    { id: 'attendance', label: 'Attendance Manager', icon: ClipboardCheck },
-  ];
-
-  const recepMenuItems = [
-    { id: 'overview', label: 'Receptionist Panel', icon: List },
-    { id: 'register-student', label: 'Register Student', icon: UserPlus },
-    { id: 'students', label: 'All Students', icon: Users },
-    { id: 'add-teacher', label: 'Add Teacher', icon: UserPlus2 },
-    { id: 'teachers', label: 'All Teachers', icon: UserCheck },
-    { id: 'add-staff', label: 'Add Staff', icon: UserPlus2 },
-    { id: 'staff', label: 'All Staff', icon: UserCog },
-  ];
-
-  const teacherMenuItems = [
-    { id: 'dashboard', label: 'Teacher Panel', icon: LayoutDashboard },
-    { id: 'mark-attendance', label: 'Mark Attendance', icon: ClipboardCheck },
-    { id: 'attendance-tracker', label: 'Attendance Tracker', icon: TrendingUp },
-    { id: 'attendance-history', label: 'Attendance History', icon: List },
-    { id: 'student-reports', label: 'Student Reports', icon: Users },
-    { id: 'monthly-calendar', label: 'Monthly Calendar', icon: School },
-    { id: 'class-timetable', label: 'Class Timetable', icon: Clock },
-    { id: 'students', label: 'Student Directory', icon: Users },
-    { id: 'teacher-list', label: 'Teacher Directory', icon: UserCheck },
-    { id: 'staff', label: 'Staff Directory', icon: UserCog },
   ];
 
   return (
@@ -157,32 +132,7 @@ export default function Sidebar({
       </div>
 
       <nav className="sidebar-nav">
-        {(isAdmin || isAccountant || isExpense || isTeacher || isRecep) && (
-          <button
-            onClick={() => {
-              onBackToMain();
-              setMobileOpen(false);
-            }}
-            className="nav-item"
-            style={{ 
-              color: 'hsl(var(--color-primary))', 
-              marginBottom: '16px', 
-              border: '1.5px dashed rgba(99, 102, 241, 0.4)', 
-              background: 'rgba(99, 102, 241, 0.05)', 
-              borderRadius: '12px',
-              padding: '12px 16px',
-              width: '100%',
-              display: 'flex',
-              alignItems: 'center',
-              gap: '12px',
-              cursor: 'pointer',
-              fontWeight: 700
-            }}
-          >
-            <LayoutDashboard size={20} className="flex-shrink-0" style={{ color: 'hsl(var(--color-primary))' }} />
-            <span className="nav-label">Back to Main Dash</span>
-          </button>
-        )}
+
         {isDeveloperAdmin ? (
           <>
             <button
@@ -409,6 +359,27 @@ export default function Sidebar({
                     <History size={18} className="flex-shrink-0" />
                     <span className="nav-label">Exam History</span>
                   </button>
+
+                </div>
+              )}
+            </div>
+
+            {/* Academic Activities Folder */}
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '2px' }}>
+              <button
+                type="button"
+                onClick={() => setAdminAcademicActivitiesOpen(!adminAcademicActivitiesOpen)}
+                className="nav-item"
+                style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', width: '100%', cursor: 'pointer' }}
+              >
+                <div style={{ display: 'flex', alignItems: 'center', gap: '16px', minWidth: 0, overflow: 'hidden' }}>
+                  <Calendar size={20} className="flex-shrink-0" />
+                  <span className="nav-label" style={{ fontWeight: 600 }}>Academic Activities</span>
+                </div>
+                {adminAcademicActivitiesOpen ? <ChevronDown size={16} className="flex-shrink-0" /> : <ChevronRight size={16} className="flex-shrink-0" />}
+              </button>
+              {adminAcademicActivitiesOpen && (
+                <div style={{ display: 'flex', flexDirection: 'column', paddingLeft: '16px', borderLeft: '1px solid rgba(255,255,255,0.06)', marginLeft: '24px', marginTop: '2px', marginBottom: '6px', gap: '4px' }}>
                   <button
                     onClick={() => { setAdminView('academic-events'); setMobileOpen(false); }}
                     className={`nav-item ${adminView === 'academic-events' ? 'active' : ''}`}
@@ -441,21 +412,65 @@ export default function Sidebar({
                     <Calendar size={18} className="flex-shrink-0" />
                     <span className="nav-label">Academic Calendar</span>
                   </button>
+                </div>
+              )}
+            </div>
+
+            {/* Results Manager Section */}
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '2px' }}>
+              <button
+                type="button"
+                onClick={() => setAdminResultsOpen(!adminResultsOpen)}
+                className="nav-item"
+                style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', width: '100%', cursor: 'pointer' }}
+              >
+                <div style={{ display: 'flex', alignItems: 'center', gap: '16px', minWidth: 0, overflow: 'hidden' }}>
+                  <GraduationCap size={20} className="flex-shrink-0" />
+                  <span className="nav-label" style={{ fontWeight: 600 }}>Results Manager</span>
+                </div>
+                {adminResultsOpen ? <ChevronDown size={16} className="flex-shrink-0" /> : <ChevronRight size={16} className="flex-shrink-0" />}
+              </button>
+              {adminResultsOpen && (
+                <div style={{ display: 'flex', flexDirection: 'column', paddingLeft: '16px', borderLeft: '1px solid rgba(255,255,255,0.06)', marginLeft: '24px', marginTop: '2px', marginBottom: '6px', gap: '4px' }}>
                   <button
-                    onClick={() => { setAdminView('academic-results'); setMobileOpen(false); }}
-                    className={`nav-item ${adminView === 'academic-results' ? 'active' : ''}`}
-                    style={{ padding: '10px 12px', fontSize: '0.88rem', position: 'relative' }}
-                  >
-                    <GraduationCap size={18} className="flex-shrink-0" />
-                    <span className="nav-label">Results Manager</span>
-                  </button>
-                  <button
-                    onClick={() => { setAdminView('academic-reports'); setMobileOpen(false); }}
-                    className={`nav-item ${adminView === 'academic-reports' ? 'active' : ''}`}
+                    onClick={() => { setAdminView('results-analytics'); setMobileOpen(false); }}
+                    className={`nav-item ${adminView === 'results-analytics' ? 'active' : ''}`}
                     style={{ padding: '10px 12px', fontSize: '0.88rem', position: 'relative' }}
                   >
                     <BarChart3 size={18} className="flex-shrink-0" />
-                    <span className="nav-label">Academic Reports</span>
+                    <span className="nav-label">Analytics Dashboard</span>
+                  </button>
+                  <button
+                    onClick={() => { setAdminView('results-marks-entry'); setMobileOpen(false); }}
+                    className={`nav-item ${adminView === 'results-marks-entry' ? 'active' : ''}`}
+                    style={{ padding: '10px 12px', fontSize: '0.88rem', position: 'relative' }}
+                  >
+                    <FileSpreadsheet size={18} className="flex-shrink-0" />
+                    <span className="nav-label">Marks Entry</span>
+                  </button>
+                  <button
+                    onClick={() => { setAdminView('results-generation'); setMobileOpen(false); }}
+                    className={`nav-item ${adminView === 'results-generation' ? 'active' : ''}`}
+                    style={{ padding: '10px 12px', fontSize: '0.88rem', position: 'relative' }}
+                  >
+                    <RefreshCw size={18} className="flex-shrink-0" />
+                    <span className="nav-label">Result Generation</span>
+                  </button>
+                  <button
+                    onClick={() => { setAdminView('results-report-cards'); setMobileOpen(false); }}
+                    className={`nav-item ${adminView === 'results-report-cards' ? 'active' : ''}`}
+                    style={{ padding: '10px 12px', fontSize: '0.88rem', position: 'relative' }}
+                  >
+                    <Award size={18} className="flex-shrink-0" />
+                    <span className="nav-label">Report Cards</span>
+                  </button>
+                  <button
+                    onClick={() => { setAdminView('results-history'); setMobileOpen(false); }}
+                    className={`nav-item ${adminView === 'results-history' ? 'active' : ''}`}
+                    style={{ padding: '10px 12px', fontSize: '0.88rem', position: 'relative' }}
+                  >
+                    <History size={18} className="flex-shrink-0" />
+                    <span className="nav-label">Academic History</span>
                   </button>
                 </div>
               )}

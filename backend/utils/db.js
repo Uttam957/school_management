@@ -90,7 +90,9 @@ export const readDb = () => {
     if (!db.examTimetables) db.examTimetables = [];
     if (!db.notices) db.notices = [];
     if (!db.holidays) db.holidays = [];
+    if (!db.events) db.events = [];
     if (!db.results) db.results = [];
+    if (!db.overallResults) db.overallResults = [];
     if (!db.subjects) db.subjects = [];
 
     if (!db.timeslots) {
@@ -126,7 +128,9 @@ export const readDb = () => {
       examTimetables: [],
       notices: [],
       holidays: [],
+      events: [],
       results: [],
+      overallResults: [],
 
       timeslots: [
         '09:00 AM - 10:00 AM',

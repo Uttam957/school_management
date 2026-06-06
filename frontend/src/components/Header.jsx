@@ -40,7 +40,6 @@ export default function Header({
   const [showDashboardMenu, setShowDashboardMenu] = useState(false);
 
   const viewTitles = {
-    overview: { title: 'Dashboard Overview', desc: `Welcome back, Principal ${schoolDetails?.principal || 'Alex'}. Here is your academy's status.` },
     students: { title: 'Student Directory', desc: 'Manage all student profiles, registrations, and academic standings.' },
     'add-teacher': { title: 'Teacher Registration Form', desc: 'Enroll a new teacher with full professional profile, credentials, and document uploads.' },
     'teacher-list': { title: 'Teacher Directory', desc: 'Review and manage all faculty profiles, departments, and employment records.' },

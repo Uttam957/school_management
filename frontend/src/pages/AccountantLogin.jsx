@@ -101,7 +101,7 @@ export default function AccountantLogin({ onLogin, onCancel }) {
             style={{ width: '100%', justifyContent: 'center', marginTop: '12px', padding: '14px 24px', fontSize: '0.95rem' }}
           >
             <ArrowLeft size={16} />
-            Return to Main Dashboard
+            Cancel
           </button>
         </form>
 

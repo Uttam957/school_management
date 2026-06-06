@@ -18,7 +18,6 @@ import {
 import StudentDirectory from './StudentDirectory';
 import TeacherList from './TeacherList';
 import StaffDirectory from './StaffDirectory';
-import DashboardOverview from './DashboardOverview';
 import AcademicPanel from './AcademicPanel';
 import { 
   MarkAttendanceView, 
@@ -72,7 +71,7 @@ export default function AdminPanel({ setActiveView, onLogout, adminView, setAdmi
       return (
         <ExpensePanel
           setActiveView={setActiveView}
-          onLogout={() => setAdminView('overview')}
+          onLogout={() => setAdminView('students')}
           expenseView={subView}
           setExpenseView={(v) => setAdminView('expense-' + v)}
           hideHeader={true}
@@ -93,26 +92,19 @@ export default function AdminPanel({ setActiveView, onLogout, adminView, setAdmi
       case 'academic-results':
       case 'academic-reports':
       case 'academic-grade-subjects':
-        return <AcademicPanel subView={adminView} />;
+      case 'results-analytics':
+      case 'results-marks-entry':
+      case 'results-generation':
+      case 'results-report-cards':
+      case 'results-history':
+        return <AcademicPanel subView={adminView} setAdminView={setAdminView} />;
       case 'students':
         return <StudentDirectory readOnly={false} onAddClick={() => setAdminView('register-student')} />;
       case 'teachers':
         return <TeacherList setActiveView={setActiveView} readOnly={false} onAddClick={() => setAdminView('add-teacher')} />;
       case 'staff':
         return <StaffDirectory readOnly={false} onAddClick={() => setAdminView('add-staff')} />;
-      case 'overview':
-        return (
-          <DashboardOverview 
-            onQuickAction={(action) => {
-              if (action === 'add-student') setAdminView('register-student');
-              else if (action === 'add-teacher') setAdminView('add-teacher');
-              else if (action === 'add-staff') setAdminView('add-staff');
-              else if (action === 'mark-attendance') setAdminView('attendance');
-              else if (action === 'collect-fee') setAdminView('collect-fees');
-              else if (action === 'add-expense') setAdminView('expenses');
-            }} 
-          />
-        );
+
       case 'collect-fees':
         return <CollectFeesView showToast={showToast} />;
       case 'fee-structure':
@@ -272,18 +264,7 @@ export default function AdminPanel({ setActiveView, onLogout, adminView, setAdmi
           </div>
         );
       default:
-        return (
-          <DashboardOverview 
-            onQuickAction={(action) => {
-              if (action === 'add-student') setAdminView('register-student');
-              else if (action === 'add-teacher') setAdminView('add-teacher');
-              else if (action === 'add-staff') setAdminView('add-staff');
-              else if (action === 'mark-attendance') setAdminView('attendance');
-              else if (action === 'collect-fee') setAdminView('collect-fees');
-              else if (action === 'add-expense') setAdminView('expenses');
-            }} 
-          />
-        );
+        return <StudentDirectory readOnly={false} onAddClick={() => setAdminView('register-student')} />;
     }
   };
 
@@ -303,8 +284,7 @@ export default function AdminPanel({ setActiveView, onLogout, adminView, setAdmi
           <div>
             <h2 style={{ fontSize: '1.25rem', fontWeight: 700 }}>Admin Dashboard</h2>
             <p style={{ fontSize: '0.85rem', color: 'var(--text-muted)' }}>
-              {adminView === 'overview' ? 'Viewing Main Dashboard Overview' :
-               adminView === 'students' ? 'Viewing Registered Students Directory' :
+              {adminView === 'students' ? 'Viewing Registered Students Directory' :
                adminView === 'teachers' ? 'Viewing Faculty Registry' :
                adminView === 'staff' ? 'Viewing Non-Academic Staff Directory' :
                adminView === 'attendance-tracker' ? 'Tracking Schoolwide Attendance Cohorts' :
@@ -334,14 +314,7 @@ export default function AdminPanel({ setActiveView, onLogout, adminView, setAdmi
             <LogOut size={16} />
             Sign Out
           </button>
-          <button
-            onClick={onBackToMain}
-            className="btn-primary"
-            style={{ padding: '8px 16px', fontSize: '0.85rem', display: 'flex', alignItems: 'center', gap: '6px' }}
-          >
-            <LayoutDashboard size={16} />
-            Main Dashboard
-          </button>
+
         </div>
       </div>
 

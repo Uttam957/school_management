@@ -1,7 +1,6 @@
 import React, { useState, useEffect, useRef } from 'react';
 import Sidebar from './components/Sidebar';
 import Header from './components/Header';
-import DashboardOverview from './pages/DashboardOverview';
 import StudentDirectory from './pages/StudentDirectory';
 import AddTeacher from './pages/AddTeacher';
 import TeacherList from './pages/TeacherList';
@@ -69,7 +68,7 @@ const getInitialAuthState = (targetRole) => {
   
   if (savedRole === 'Developer Admin' && targetRole === 'Developer') return true;
   if (savedRole === 'Admin Dashboard' && targetRole === 'Admin') return true;
-  if ((savedRole === 'Main Admin' || savedRole === 'admin') && targetRole === 'SchoolAdmin') return true;
+  if ((savedRole === 'Main Admin' || savedRole === 'admin') && targetRole === 'Admin') return true;
   if ((savedRole === 'Receptionist' || savedRole === 'recep') && targetRole === 'Receptionist') return true;
   if ((savedRole === 'Teacher' || savedRole === 'teacher') && targetRole === 'Teacher') return true;
   if ((savedRole === 'Finance Manager' || savedRole === 'accountant') && targetRole === 'Accountant') return true;
@@ -79,7 +78,7 @@ const getInitialAuthState = (targetRole) => {
 };
 
 export default function App() {
-  const [activeView, setActiveViewState] = useState('overview');
+  const [activeView, setActiveViewState] = useState('students');
   const [activeSubadminLogin, setActiveSubadminLogin] = useState(null);
 
   const setActiveView = (view) => {
@@ -113,7 +112,7 @@ export default function App() {
   const [isExpense, setIsExpense] = useState(() => getInitialAuthState('Expense'));
 
   // Active view states for sub-dashboards
-  const [adminView, setAdminView] = useState('dashboard');
+  const [adminView, setAdminView] = useState('students');
   const [recepView, setRecepView] = useState('dashboard');
   const [teacherView, setTeacherView] = useState('dashboard');
   const [accountantView, setAccountantView] = useState('dashboard');
@@ -205,14 +204,14 @@ export default function App() {
             break;
           case 'Main Admin':
           case 'admin':
-            setIsAdmin(false);
-            setIsSchoolAdmin(true);
-            setActiveView('overview');
+            setIsAdmin(true);
+            setIsSchoolAdmin(false);
+            setAdminView('students');
             break;
           case 'Admin Dashboard':
             setIsAdmin(true);
             setIsSchoolAdmin(false);
-            setAdminView('dashboard');
+            setAdminView('students');
             break;
           case 'Receptionist':
           case 'recep':
@@ -264,14 +263,14 @@ export default function App() {
               break;
             case 'Main Admin':
             case 'admin':
-              setIsAdmin(false);
-              setIsSchoolAdmin(true);
-              setActiveView('overview');
+              setIsAdmin(true);
+              setIsSchoolAdmin(false);
+              setAdminView('students');
               break;
             case 'Admin Dashboard':
               setIsAdmin(true);
               setIsSchoolAdmin(false);
-              setAdminView('dashboard');
+              setAdminView('students');
               break;
             case 'Receptionist':
             case 'recep':
@@ -294,11 +293,11 @@ export default function App() {
               setExpenseView('dashboard');
               break;
             default:
-              setActiveView('overview');
+              setActiveView('students');
               break;
           }
         } else {
-          setActiveView('overview');
+          setActiveView('students');
         }
       }
     };
@@ -389,14 +388,14 @@ export default function App() {
         setActiveView('school');
         break;
       case 'Main Admin':
-        setIsAdmin(false);
-        setIsSchoolAdmin(true);
-        setActiveView('overview');
+        setIsAdmin(true);
+        setIsSchoolAdmin(false);
+        setAdminView('students');
         break;
       case 'Admin Dashboard':
         setIsAdmin(true);
         setIsSchoolAdmin(false);
-        setAdminView('dashboard');
+        setAdminView('students');
         break;
       case 'Teacher':
         setIsTeacher(true);
@@ -430,7 +429,7 @@ export default function App() {
     setIsTeacher(false);
     setIsAccountant(false);
     setIsExpense(false);
-    setActiveView('overview');
+    setActiveView('students');
     
     // Clear path on logout
     const tenant = getActiveTenant();
@@ -451,13 +450,13 @@ export default function App() {
     setIsAccountant(false);
     setIsExpense(false);
     setIsSchoolAdmin(true);
-    setActiveViewState('overview');
+    setActiveViewState('students');
     sessionStorage.setItem('role', 'Main Admin');
     sessionStorage.setItem('portal_role', 'Main Admin');
 
     const tenant = getActiveTenant();
     const query = tenant ? `?tenant=${tenant}` : '';
-    window.history.pushState(null, '', `/overview${query}`);
+    window.history.pushState(null, '', `/students${query}`);
   };
 
   const renderCurrentView = () => {
@@ -486,17 +485,6 @@ export default function App() {
     }
 
     switch (activeView) {
-      case 'overview':
-        return (
-          <DashboardOverview 
-            setActiveView={setActiveView} 
-            onQuickAction={(action) => {
-              if (action === 'add-student') setActiveView('register-student');
-              else if (action === 'add-teacher') setActiveView('add-teacher');
-              else if (action === 'add-staff') setActiveView('add-staff');
-            }} 
-          />
-        );
       case 'students':
         return <StudentDirectory readOnly={true} onAddClick={() => setActiveView('register-student')} />;
       case 'register-student':
@@ -521,9 +509,9 @@ export default function App() {
               sessionStorage.setItem('portal_role', 'Admin Dashboard');
               setIsAdmin(true);
               setIsSchoolAdmin(false);
-              setAdminView('dashboard');
+              setAdminView('students');
             }} 
-            onCancel={() => setActiveView('overview')} 
+            onCancel={() => setActiveView('students')} 
           />
         );
       case 'accountant-login':
@@ -535,7 +523,7 @@ export default function App() {
               setIsAccountant(true);
               setAccountantView('dashboard');
             }} 
-            onCancel={() => setActiveView('overview')} 
+            onCancel={() => setActiveView('students')} 
           />
         );
       case 'recep-login':
@@ -547,7 +535,7 @@ export default function App() {
               setIsRecep(true);
               setRecepView('overview');
             }} 
-            onCancel={() => setActiveView('overview')} 
+            onCancel={() => setActiveView('students')} 
           />
         );
       case 'teacher-login':
@@ -559,7 +547,7 @@ export default function App() {
               setIsTeacher(true);
               setTeacherView('dashboard');
             }} 
-            onCancel={() => setActiveView('overview')} 
+            onCancel={() => setActiveView('students')} 
           />
         );
       case 'expense-login':
@@ -571,11 +559,11 @@ export default function App() {
               setIsExpense(true);
               setExpenseView('dashboard');
             }} 
-            onCancel={() => setActiveView('overview')} 
+            onCancel={() => setActiveView('students')} 
           />
         );
       default:
-        return <DashboardOverview setActiveView={setActiveView} onQuickAction={() => {}} />;
+        return <StudentDirectory readOnly={true} onAddClick={() => setActiveView('register-student')} />;
     }
   };
 

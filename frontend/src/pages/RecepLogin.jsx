@@ -101,7 +101,7 @@ export default function RecepLogin({ onLogin, onCancel }) {
             className="btn-secondary"
             style={{ width: '100%', justifyContent: 'center', marginTop: '12px', padding: '14px 24px', fontSize: '0.95rem' }}
           >
-            Back to Main Dashboard
+            Cancel
           </button>
         </form>
 

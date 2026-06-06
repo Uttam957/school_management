@@ -29,9 +29,12 @@ import {
   ChevronDown,
   GripVertical
 } from 'lucide-react';
+import ResultManagementPanel from './ResultManagementPanel';
+import EXAM_TYPES from '../utils/examTypes';
+import { getGradesWithSubjects, getGradeOptions, GRADE_ORDER } from '../utils/grades';
 
 
-export default function AcademicPanel({ subView }) {
+export default function AcademicPanel({ subView, setAdminView }) {
   // Master API states
   const [timetables, setTimetables] = useState([]);
   const [teacherTimetables, setTeacherTimetables] = useState([]);
@@ -48,6 +51,7 @@ export default function AcademicPanel({ subView }) {
   const [newSubjectGrade, setNewSubjectGrade] = useState('I');
   const [newSubjectName, setNewSubjectName] = useState('');
   const [newSubjectsList, setNewSubjectsList] = useState(Array(10).fill(''));
+  const [editingSubjects, setEditingSubjects] = useState([]);
   const [quickSubjectInputs, setQuickSubjectInputs] = useState({});
   const [subjectSearchQuery, setSubjectSearchQuery] = useState('');
   const [showBulkModal, setShowBulkModal] = useState(false);
@@ -83,20 +87,41 @@ export default function AcademicPanel({ subView }) {
     day: 'Monday', time: '09:00 AM - 10:00 AM', subject: '', teacher: '', room: '', session: '2026-2027'
   });
   const [examForm, setExamForm] = useState({
-    examName: '', examType: 'Unit Test', grade: 'IX', section: 'A', startDate: '', endDate: '', totalMarks: 100, passingMarks: 40, status: 'Scheduled'
+    examName: '', examType: EXAM_TYPES[0], grade: 'IX', section: 'A', startDate: '', endDate: '', totalMarks: 100, passingMarks: 40, status: 'Scheduled'
   });
   const [showExamWizard, setShowExamWizard] = useState(false);
   const [examWizardStep, setExamWizardStep] = useState(1);
   const [wizardForm, setWizardForm] = useState({
     examName: '',
-    examType: 'Unit Test',
+    examType: EXAM_TYPES[0],
     academicSession: '2026-2027',
     description: '',
+    totalMarks: 100,
     selectedGrades: [],
     startDates: {},
     endDates: {},
+    subjectMarks: {},
+    subjectIncluded: {},
     gapDays: 1
   });
+
+  const resetWizardForm = () => {
+    setWizardForm({
+      examName: '',
+      examType: EXAM_TYPES[0],
+      academicSession: '2026-2027',
+      description: '',
+      totalMarks: 100,
+      selectedGrades: [],
+      startDates: {},
+      endDates: {},
+      subjectMarks: {},
+      subjectIncluded: {},
+      gapDays: 1
+    });
+    setExamWizardStep(1);
+  };
+
   const [availableGradeSections, setAvailableGradeSections] = useState([]);
   const [generatingSchedule, setGeneratingSchedule] = useState(false);
   const [examSearch, setExamSearch] = useState('');
@@ -334,6 +359,21 @@ export default function AcademicPanel({ subView }) {
     }
 
     try {
+      // Find existing subjects that were removed or renamed, and delete them server-side
+      const normalizedNew = subjectNames.map(n => n.trim().toLowerCase());
+      const subjectsToDelete = editingSubjects.filter(
+        es => !normalizedNew.includes(es.subjectName.trim().toLowerCase())
+      );
+
+      // Delete any removed/renamed existing subjects
+      if (subjectsToDelete.length > 0) {
+        await Promise.all(
+          subjectsToDelete.map(sub =>
+            fetch(`/api/academics/subjects/${sub.id}`, { method: 'DELETE' })
+          )
+        );
+      }
+
       const res = await fetch('/api/academics/subjects/bulk', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -347,6 +387,7 @@ export default function AcademicPanel({ subView }) {
         }
         showToast(msg, 'success');
         setNewSubjectsList(Array(10).fill(''));
+        setEditingSubjects([]);
         fetchAllData();
       } else {
         showToast(data.error || 'Failed to save subjects.', 'error');
@@ -942,7 +983,7 @@ export default function AcademicPanel({ subView }) {
   // SUB-VIEW RENDERERS
   // =============================================
   const renderGradeSubjects = () => {
-    const gradesList = ['I', 'II', 'III', 'IV', 'V', 'VI', 'VII', 'VIII', 'IX', 'X'];
+    const gradesList = GRADE_ORDER;
     
     // Find grades that have subjects configured
     const activeGrades = gradesList.filter(g => subjects.some(s => s.grade === g));
@@ -980,7 +1021,13 @@ export default function AcademicPanel({ subView }) {
               <button 
                 className="btn-secondary" 
                 onClick={() => {
-                  setNewSubjectsList(Array(10).fill(''));
+                  const gradeSubjects = subjects.filter(s => s.grade === newSubjectGrade);
+                  setEditingSubjects(gradeSubjects);
+                  const prefilled = Array(10).fill('');
+                  gradeSubjects.slice(0, 10).forEach((sub, idx) => {
+                    prefilled[idx] = sub.subjectName;
+                  });
+                  setNewSubjectsList(prefilled);
                   setShowSubjectsModal(true);
                 }} 
                 style={{ borderRadius: '8px', padding: '10px 24px', justifyContent: 'center', height: '38px', minWidth: '160px' }}
@@ -1092,8 +1139,14 @@ export default function AcademicPanel({ subView }) {
                     }}>
                       <button 
                         onClick={() => {
+                          const gradeSubjects = subjects.filter(s => s.grade === g);
                           setNewSubjectGrade(g);
-                          setNewSubjectsList(Array(10).fill(''));
+                          setEditingSubjects(gradeSubjects);
+                          const prefilled = Array(10).fill('');
+                          gradeSubjects.slice(0, 10).forEach((sub, idx) => {
+                            prefilled[idx] = sub.subjectName;
+                          });
+                          setNewSubjectsList(prefilled);
                           setShowSubjectsModal(true);
                         }}
                         className="btn-secondary"
@@ -1197,7 +1250,7 @@ export default function AcademicPanel({ subView }) {
                     }}
                     style={{ width: '100%', marginTop: '4px', background: 'var(--bg-glass-active)', border: '1px solid var(--border-glass)' }}
                   >
-                    {['I', 'II', 'III', 'IV', 'V', 'VI', 'VII', 'VIII', 'IX', 'X'].filter(g => subjects.some(s => s.grade === g)).map(g => (
+                    {getGradesWithSubjects(subjects).map(g => (
                       <option key={g} value={g}>Grade {g}</option>
                     ))}
                   </select>
@@ -1261,7 +1314,7 @@ export default function AcademicPanel({ subView }) {
               style={{ padding: '6px 12px', borderRadius: '8px', fontSize: '0.82rem', background: 'var(--bg-glass-active)', border: '1px solid var(--border-glass)', color: 'var(--text-main)' }}
             >
               <option value="All">All Grades</option>
-              {['I', 'II', 'III', 'IV', 'V', 'VI', 'VII', 'VIII', 'IX', 'X'].filter(g => subjects.some(s => s.grade === g)).map(g => (
+              {getGradesWithSubjects(subjects).map(g => (
                 <option key={g} value={g}>Grade {g}</option>
               ))}
             </select>
@@ -1552,7 +1605,7 @@ export default function AcademicPanel({ subView }) {
                           {daysOfWeek.map(d => <th key={d}>{d}</th>)}
                         </tr>
                       </thead>
-                      <tbody>                        {timeslots.map(slot => {
+                      <tbody>{timeslots.map(slot => {
                           const breakMatch = slot.match(/\[(.*?)\]/);
                           const breakType = breakMatch ? breakMatch[1] : null;
                           const isBreak = !!breakType;
@@ -1635,28 +1688,6 @@ export default function AcademicPanel({ subView }) {
       return matchSearch && matchSession && matchType && matchGrade && matchSection;
     });
 
-    const handleGenerateSchedule = async (examId) => {
-      setGeneratingSchedule(true);
-      try {
-        const res = await fetch('/api/academics/exams/generate-schedule', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ examId, gapDays: 1 })
-        });
-        const data = await res.json();
-        if (res.ok) {
-          showToast('Schedule generated successfully!', 'success');
-          fetchAllData();
-        } else {
-          showToast(data.error || 'Failed to generate schedule.', 'error');
-        }
-      } catch (e) {
-        showToast('Network error.', 'error');
-      } finally {
-        setGeneratingSchedule(false);
-      }
-    };
-
     const handlePublishExam = async (examId) => {
       try {
         const res = await fetch(`/api/academics/exams/${examId}/publish`, { method: 'PUT' });
@@ -1678,7 +1709,7 @@ export default function AcademicPanel({ subView }) {
     };
 
     const handleDelete = async (id) => {
-      if (!confirm('Delete this exam configuration? This will also remove all generated schedules.')) return;
+      if (!confirm('Delete this exam configuration? This will also remove all schedules.')) return;
       try {
         const res = await fetch(`/api/academics/exams/${id}`, { method: 'DELETE' });
         if (res.ok) {
@@ -1699,8 +1730,7 @@ export default function AcademicPanel({ subView }) {
             <p style={{ fontSize: '0.85rem', color: 'var(--text-muted)' }}>Create and manage exams with auto schedule generation.</p>
           </div>
           <button className="btn-primary" onClick={() => {
-            setWizardForm({ examName: '', examType: 'Unit Test', academicSession: '2026-2027', description: '', selectedGrades: [], startDates: {}, endDates: {}, gapDays: 1 });
-            setExamWizardStep(1);
+            resetWizardForm();
             setShowExamWizard(true);
           }}>
             <Plus size={16} /> Create New Exam
@@ -1721,15 +1751,11 @@ export default function AcademicPanel({ subView }) {
             </select>
             <select className="select-custom" value={examTypeFilter} onChange={e => setExamTypeFilter(e.target.value)} style={{ padding: '6px 12px', borderRadius: '8px', fontSize: '0.82rem', background: 'var(--bg-glass-active)', border: '1px solid var(--border-glass)' }}>
               <option value="All">All Types</option>
-              {['Unit Test', 'Half Yearly', 'Final Exam', 'Pre Board', 'Custom Exam'].map(t => <option key={t} value={t}>{t}</option>)}
+              {EXAM_TYPES.map(t => <option key={t} value={t}>{t}</option>)}
             </select>
             <select className="select-custom" value={examGradeFilter} onChange={e => setExamGradeFilter(e.target.value)} style={{ padding: '6px 12px', borderRadius: '8px', fontSize: '0.82rem', background: 'var(--bg-glass-active)', border: '1px solid var(--border-glass)' }}>
               <option value="All">All Grades</option>
-              {['I', 'II', 'III', 'IV', 'V', 'VI', 'VII', 'VIII', 'IX', 'X'].filter(g => subjects.some(s => s.grade === g)).map(g => <option key={g} value={g}>Grade {g}</option>)}
-            </select>
-            <select className="select-custom" value={examSectionFilter} onChange={e => setExamSectionFilter(e.target.value)} style={{ padding: '6px 12px', borderRadius: '8px', fontSize: '0.82rem', background: 'var(--bg-glass-active)', border: '1px solid var(--border-glass)' }}>
-              <option value="All">All Sections</option>
-              {['A', 'B', 'C', 'D', 'E', 'F'].map(s => <option key={s} value={s}>Section {s}</option>)}
+              {getGradesWithSubjects(subjects).map(g => <option key={g} value={g}>Grade {g}</option>)}
             </select>
           </div>
         </div>
@@ -1744,58 +1770,117 @@ export default function AcademicPanel({ subView }) {
               const statusColors = { Draft: { bg: 'rgba(107,114,128,0.08)', color: '#6b7280', border: '1px solid rgba(107,114,128,0.15)' }, Scheduled: { bg: 'rgba(99,102,241,0.08)', color: 'hsl(var(--color-primary))', border: '1px solid rgba(99,102,241,0.15)' }, Published: { bg: 'rgba(16,185,129,0.08)', color: '#10b981', border: '1px solid rgba(16,185,129,0.15)' }, Completed: { bg: 'rgba(59,130,246,0.08)', color: '#3b82f6', border: '1px solid rgba(59,130,246,0.15)' } };
               const sc = statusColors[ex.status] || statusColors.Draft;
 
+              const handleEditExam = (examObj) => {
+                const startDates = {};
+                const endDates = {};
+                (examObj.gradeSections || []).forEach(gs => {
+                  const key = `${gs.grade}-${gs.section}`;
+                  startDates[key] = gs.startDate;
+                  endDates[key] = gs.endDate || '';
+                });
+
+                setWizardForm({
+                  id: examObj.id,
+                  examName: examObj.examName,
+                  examType: examObj.examType,
+                  academicSession: examObj.academicSession,
+                  description: examObj.description || '',
+                  totalMarks: examObj.totalMarks || 100,
+                  selectedGrades: (examObj.gradeSections || []).map(gs => ({ grade: gs.grade, section: gs.section })),
+                  startDates,
+                  endDates,
+                  subjectMarks: examObj.subjectMarks || {},
+                  subjectIncluded: examObj.subjectIncluded || {},
+                  gapDays: examObj.gapDays || 1
+                });
+                setExamWizardStep(1);
+                setShowExamWizard(true);
+              };
+
               return (
                 <div 
                   key={ex.id} 
                   className="glass-panel" 
-                  onClick={() => handleViewSchedule(ex.id)}
                   style={{ 
                     padding: '0', 
                     borderRadius: '16px', 
                     overflow: 'hidden', 
                     display: 'flex', 
                     flexDirection: 'column', 
-                    transition: 'transform 0.2s, box-shadow 0.2s',
-                    cursor: 'pointer'
+                    transition: 'transform 0.2s, box-shadow 0.2s'
                   }}
                 >
                   {/* Card Header */}
                   <div style={{ padding: '20px 20px 16px', borderBottom: '1px solid var(--border-glass)', display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
                     <div>
+                      <div style={{ fontSize: '0.75rem', fontWeight: 700, color: 'hsl(var(--color-primary))', textTransform: 'uppercase', letterSpacing: '0.5px', marginBottom: '4px' }}>
+                        {gsList.length > 0 ? gsList.map(gs => gs.section ? `Grade - ${gs.grade}-${gs.section}` : `Grade - ${gs.grade}`).join(', ') : 'No Grades'}
+                        {ex.academicSession && ` · Session ${ex.academicSession}`}
+                      </div>
                       <h3 style={{ fontSize: '1.05rem', fontWeight: 800, margin: 0, color: 'var(--text-main)' }}>{ex.examName}</h3>
-                      <span style={{ fontSize: '0.72rem', padding: '2px 8px', borderRadius: '10px', background: 'rgba(99, 102, 241, 0.08)', color: 'hsl(var(--color-primary))', border: '1px solid rgba(99, 102, 241, 0.15)', display: 'inline-block', marginTop: '6px', fontWeight: 600 }}>{ex.examType}</span>
+                      <div style={{ display: 'flex', gap: '6px', flexWrap: 'wrap', marginTop: '6px' }}>
+                        <span style={{ fontSize: '0.72rem', padding: '2px 8px', borderRadius: '10px', background: 'rgba(99, 102, 241, 0.08)', color: 'hsl(var(--color-primary))', border: '1px solid rgba(99, 102, 241, 0.15)', fontWeight: 600 }}>{ex.examType}</span>
+                        <span style={{ fontSize: '0.72rem', padding: '2px 8px', borderRadius: '10px', background: 'rgba(245, 158, 11, 0.08)', color: '#f59e0b', border: '1px solid rgba(245, 158, 11, 0.15)', fontWeight: 600 }}>Total Marks: {ex.totalMarks || 100}</span>
+                      </div>
                     </div>
                     <span style={{ padding: '4px 10px', borderRadius: '20px', fontSize: '0.68rem', fontWeight: 700, ...sc }}>{ex.status}</span>
                   </div>
 
                   {/* Card Body */}
-                  <div style={{ padding: '16px 20px', display: 'flex', flexDirection: 'column', gap: '10px', flex: 1 }}>
-                    <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '8px', fontSize: '0.8rem' }}>
-                      <div style={{ color: 'var(--text-muted)' }}>Session</div>
-                      <div style={{ fontWeight: 600, textAlign: 'right' }}>{ex.academicSession || '-'}</div>
-                      <div style={{ color: 'var(--text-muted)' }}>Grades</div>
-                      <div style={{ fontWeight: 600, textAlign: 'right' }}>
-                        {gsList.length > 0 ? gsList.map(gs => `${gs.grade}-${gs.section}`).join(', ') : '-'}
-                      </div>
+                  <div style={{ padding: '16px 20px', display: 'flex', flexDirection: 'column', gap: '12px', flex: 1 }}>
+                    <div style={{ display: 'grid', gridTemplateColumns: '130px 1fr', gap: '8px', fontSize: '0.8rem' }}>
+
                       <div style={{ color: 'var(--text-muted)' }}>Total Subjects</div>
                       <div style={{ fontWeight: 600, textAlign: 'right' }}>{totalSubjects}</div>
                       <div style={{ color: 'var(--text-muted)' }}>Start Date</div>
                       <div style={{ fontWeight: 600, textAlign: 'right' }}>{earliestStart || '-'}</div>
                       <div style={{ color: 'var(--text-muted)' }}>End Date</div>
-                      <div style={{ fontWeight: 600, textAlign: 'right' }}>{ex.endDate || 'Not generated'}</div>
+                      <div style={{ fontWeight: 600, textAlign: 'right' }}>{ex.endDate || 'Not scheduled'}</div>
+                    </div>
+
+                    {/* Subjects and corresponding marks */}
+                    <div style={{ marginTop: '4px', paddingTop: '10px', borderTop: '1px dashed var(--border-glass)' }}>
+                      <div style={{ fontSize: '0.75rem', fontWeight: 700, color: 'var(--text-muted)', marginBottom: '8px', textTransform: 'uppercase', letterSpacing: '0.5px' }}>Subjects & Marks</div>
+                      <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
+                        {(() => {
+                          const list = [];
+                          gsList.forEach(gs => {
+                            const gradeSubs = subjects.filter(sub => sub.grade === gs.grade).map(sub => sub.subjectName);
+                            const uniqueGradeSubs = [...new Set(gradeSubs)];
+                            uniqueGradeSubs.forEach(sub => {
+                              const subKey = `${gs.grade}-${sub}`;
+                              const isIncluded = ex.subjectIncluded ? ex.subjectIncluded[subKey] !== false : true;
+                              if (isIncluded) {
+                                const marks = ex.subjectMarks && ex.subjectMarks[subKey] !== undefined ? ex.subjectMarks[subKey] : (ex.totalMarks || 100);
+                                list.push({ grade: gs.grade, section: gs.section, subject: sub, marks });
+                              }
+                            });
+                          });
+                          if (list.length === 0) {
+                            return <div style={{ fontSize: '0.78rem', color: 'var(--text-muted)', fontStyle: 'italic' }}>No subjects added</div>;
+                          }
+                          return list.map((item, idx) => (
+                            <div key={idx} style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.8rem', alignItems: 'center', padding: '4px 0' }}>
+                              <span style={{ fontWeight: 600, color: 'var(--text-main)' }}>
+                                {item.subject}
+                              </span>
+                              <span style={{ fontWeight: 700, color: '#f59e0b', fontSize: '0.78rem' }}>{item.marks} Marks</span>
+                            </div>
+                          ));
+                        })()}
+                      </div>
                     </div>
                   </div>
 
                   {/* Card Actions */}
                   <div style={{ padding: '12px 20px', borderTop: '1px solid var(--border-glass)', display: 'flex', gap: '8px', flexWrap: 'wrap', justifyContent: 'flex-end' }}>
-                    {ex.status === 'Draft' && (
+                    {ex.status !== 'Published' && ex.status !== 'Completed' && (
                       <button 
-                        onClick={(e) => { e.stopPropagation(); handleGenerateSchedule(ex.id); }} 
-                        disabled={generatingSchedule} 
+                        onClick={(e) => { e.stopPropagation(); handlePublishExam(ex.id); }} 
                         className="btn-primary" 
-                        style={{ padding: '6px 10px', fontSize: '0.72rem', borderRadius: '8px', display: 'flex', alignItems: 'center', gap: '4px', background: 'linear-gradient(135deg, #8b5cf6, #6366f1)' }}
+                        style={{ padding: '6px 10px', fontSize: '0.72rem', borderRadius: '8px', display: 'flex', alignItems: 'center', gap: '4px', background: 'linear-gradient(135deg, #10b981 0%, #059669 100%)', border: 'none', color: '#fff' }}
                       >
-                        <Zap size={13} /> {generatingSchedule ? 'Generating...' : 'Generate'}
+                        <Send size={13} /> Publish
                       </button>
                     )}
                     {ex.status !== 'Completed' && (
@@ -1828,6 +1913,13 @@ export default function AcademicPanel({ subView }) {
                       </button>
                     )}
                     <button 
+                      onClick={(e) => { e.stopPropagation(); handleEditExam(ex); }} 
+                      className="btn-secondary" 
+                      style={{ padding: '6px 10px', fontSize: '0.72rem', borderRadius: '8px', display: 'flex', alignItems: 'center', gap: '4px', border: '1px solid rgba(99,102,241,0.3)', color: 'hsl(var(--color-primary))' }}
+                    >
+                      <Edit3 size={13} /> Edit
+                    </button>
+                    <button 
                       onClick={(e) => { e.stopPropagation(); handleDelete(ex.id); }} 
                       className="btn-secondary" 
                       style={{ padding: '6px 10px', fontSize: '0.72rem', borderRadius: '8px', display: 'flex', alignItems: 'center', gap: '4px', border: '1px solid rgba(239,68,68,0.3)', color: '#ef4444' }}
@@ -1852,17 +1944,24 @@ export default function AcademicPanel({ subView }) {
 
   const renderExamTimetable = () => {
     const selectedExamObj = exams.find(e => e.id === activeExam);
-    const schedules = examTimetables.filter(et => et.examId === activeExam);
+    const timetableExamName = selectedExamObj ? selectedExamObj.examName : null;
+    const matchingExams = timetableExamName ? exams.filter(e => e.examName === timetableExamName && e.status !== 'Completed') : [];
+    const matchingExamIds = matchingExams.map(e => e.id);
+    const schedules = examTimetables.filter(et => matchingExamIds.includes(et.examId));
     const cohorts = [...new Set(schedules.map(s => s.cohort).filter(Boolean))].sort();
     const sessions = [...new Set(exams.map(e => e.academicSession).filter(Boolean))].sort().reverse();
+    const visibleExams = activeExam
+      ? matchingExams
+      : exams.filter(ex => ex.status !== 'Completed' && (timetableSession === 'All' || ex.academicSession === timetableSession));
 
 
     const examGradeSections = selectedExamObj ? (selectedExamObj.gradeSections || []) : [];
     const earliestStart = examGradeSections.length > 0 ? examGradeSections.map(g => g.startDate).filter(Boolean).sort()[0] : '';
-    const uniqueGrades = [...new Set(examGradeSections.map(gs => gs.grade))].filter(g => 
-      subjects.some(sub => sub.grade === g)
-    );
-    const filteredSectionsForGrade = examGradeSections.filter(gs => gs.grade === manualGrade).map(gs => gs.section);
+    const allExamGradeSections = matchingExams.flatMap(e => e.gradeSections || []);
+    const uniqueGrades = activeExam
+      ? [...new Set(allExamGradeSections.map(gs => gs.grade))].filter(g => subjects.some(s => s.grade === g))
+      : [];
+    const filteredSectionsForGrade = allExamGradeSections.filter(gs => gs.grade === manualGrade).map(gs => gs.section);
 
 
     const handleDeleteSlot = async (id) => {
@@ -1878,29 +1977,18 @@ export default function AcademicPanel({ subView }) {
       }
     };
 
-    const handleRegenerate = async () => {
-      if (!confirm('Regenerate schedule? This will replace existing slots.')) return;
-      try {
-        const res = await fetch('/api/academics/exams/generate-schedule', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ examId: activeExam, gapDays: 1 })
-        });
-        const data = await res.json();
-        if (res.ok) {
-          showToast('Schedule regenerated successfully!', 'success');
-          fetchAllData();
-        } else {
-          showToast(data.error || 'Failed to regenerate.', 'error');
-        }
-      } catch (e) {
-        showToast('Network error.', 'error');
-      }
-    };
-
     const formatDate = (dateStr) => {
       if (!dateStr) return '-';
-      return new Date(dateStr + 'T00:00:00').toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric', year: 'numeric' });
+      try {
+        const dateObj = new Date(dateStr + 'T00:00:00');
+        const weekday = dateObj.toLocaleDateString('en-US', { weekday: 'short' });
+        const day = String(dateObj.getDate()).padStart(2, '0');
+        const month = String(dateObj.getMonth() + 1).padStart(2, '0');
+        const year = dateObj.getFullYear();
+        return `${weekday},\u00a0\u00a0\u00a0${day}/${month}/${year}`;
+      } catch (e) {
+        return dateStr;
+      }
     };
 
     const getDayOfWeek = (dateStr) => {
@@ -1930,16 +2018,23 @@ export default function AcademicPanel({ subView }) {
       return dates;
     };
 
-    const handleOpenManualScheduler = () => {
-      const gsObj = examGradeSections.find(gs => gs.grade === manualGrade && gs.section === manualSection);
-      const gradeSubjects = subjects.filter(s => s.grade === manualGrade);
+    const handleOpenManualScheduler = (gradeVal = manualGrade, sectionVal = manualSection, examIdVal = activeExam) => {
+      const targetGrade = gradeVal;
+      const targetSection = sectionVal;
+      const targetExamId = examIdVal;
+      
+      const targetExamObj = exams.find(e => e.id === targetExamId);
+      const targetGradeSections = targetExamObj ? (targetExamObj.gradeSections || []) : [];
+      const gsObj = targetGradeSections.find(gs => gs.grade === targetGrade && gs.section === targetSection);
+      const gradeSubjects = subjects.filter(s => s.grade === targetGrade);
       if (gradeSubjects.length === 0) {
-        showToast(`No subjects configured for Grade ${manualGrade}. Please configure subjects first.`, 'error');
+        showToast(`No subjects configured for Grade ${targetGrade}. Please configure subjects first.`, 'error');
         return;
       }
       const startStr = gsObj ? gsObj.startDate : new Date().toISOString().split('T')[0];
       
-      const existingCohortSlots = schedules.filter(s => s.cohort === `${manualGrade}-${manualSection}`);
+      const examSchedules = examTimetables.filter(s => s.examId === targetExamId);
+      const existingCohortSlots = examSchedules.filter(s => s.cohort === `${targetGrade}-${targetSection}`);
       let initialSlots = [];
       if (existingCohortSlots.length > 0) {
         initialSlots = existingCohortSlots.map(s => ({
@@ -1953,6 +2048,12 @@ export default function AcademicPanel({ subView }) {
           examDate: dates[idx] || startStr
         }));
       }
+      
+      if (targetExamId) {
+        setActiveExam(targetExamId);
+      }
+      setManualGrade(targetGrade);
+      setManualSection(targetSection);
       setManualSlots(initialSlots);
       setIsManualSchedulerOpen(true);
     };
@@ -1999,22 +2100,26 @@ export default function AcademicPanel({ subView }) {
 
     const handleSaveCustomTimetable = async () => {
       try {
-        const res = await fetch('/api/academics/exam-timetables/bulk', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({
-            examId: activeExam,
-            cohort: `${manualGrade}-${manualSection}`,
-            schedules: manualSlots
+        const sectionsToSave = filteredSectionsForGrade.length > 0 ? filteredSectionsForGrade : [manualSection || 'A'];
+        const promises = sectionsToSave.map(sec => 
+          fetch('/api/academics/exam-timetables/bulk', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              examId: activeExam,
+              cohort: `${manualGrade}-${sec}`,
+              schedules: manualSlots
+            })
           })
-        });
-        const data = await res.json();
-        if (res.ok) {
+        );
+        const responses = await Promise.all(promises);
+        const allOk = responses.every(res => res.ok);
+        if (allOk) {
           showToast('Custom exam timetable saved successfully!', 'success');
           setIsManualSchedulerOpen(false);
           fetchAllData();
         } else {
-          showToast(data.error || 'Failed to save custom timetable.', 'error');
+          showToast('Failed to save custom timetable.', 'error');
         }
       } catch (err) {
         showToast('Network error while saving.', 'error');
@@ -2029,7 +2134,7 @@ export default function AcademicPanel({ subView }) {
             <div>
               <h3 style={{ fontSize: '1.1rem', fontWeight: 700 }}>Custom Exam Timetable Editor</h3>
               <p style={{ fontSize: '0.85rem', color: 'var(--text-muted)' }}>
-                Grade {manualGrade} - Section {manualSection} | Exam: {selectedExamObj?.examName}
+                Grade {manualGrade}{manualSection ? ` - Section ${manualSection}` : ''} | Exam: {selectedExamObj?.examName}
               </p>
             </div>
             <div style={{ display: 'flex', gap: '12px' }}>
@@ -2119,7 +2224,7 @@ export default function AcademicPanel({ subView }) {
         <div className="glass-panel" style={{ padding: '20px 24px', display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '16px' }}>
           <div>
             <h3 style={{ fontSize: '1.1rem', fontWeight: 700 }}>Exam Timetable</h3>
-            <p style={{ fontSize: '0.85rem', color: 'var(--text-muted)' }}>View auto-generated exam schedules. Manage from Exam Management section.</p>
+            <p style={{ fontSize: '0.85rem', color: 'var(--text-muted)' }}>Configure and view exam schedules manually.</p>
           </div>
           <div style={{ display: 'flex', gap: '12px', flexWrap: 'wrap', alignItems: 'center' }}>
             <select 
@@ -2142,117 +2247,161 @@ export default function AcademicPanel({ subView }) {
               className="select-custom" 
               value={activeExam} 
               onChange={(e) => { 
-                setActiveExam(e.target.value); 
+                const selectedVal = e.target.value;
+                // Find the first non-completed exam with this name
+                const firstExam = exams.find(ex => ex.examName === selectedVal && ex.status !== 'Completed');
+                setActiveExam(firstExam ? firstExam.id : selectedVal); 
                 setManualGrade(''); 
                 setManualSection(''); 
               }} 
               style={{ padding: '6px 12px', borderRadius: '8px', fontSize: '0.82rem' }}
             >
-              <option value="">Select Exam</option>
-              {exams
-                .filter(ex => timetableSession === 'All' || ex.academicSession === timetableSession)
-                .map(ex => (
-                  <option key={ex.id} value={ex.id}>
-                    {ex.examName}
-                  </option>
-                ))}
+              <option value="">All Exams</option>
+              {(() => {
+                const seen = new Set();
+                return exams
+                  .filter(ex => ex.status !== 'Completed')
+                  .filter(ex => timetableSession === 'All' || ex.academicSession === timetableSession)
+                  .filter(ex => {
+                    const isDuplicate = seen.has(ex.examName);
+                    seen.add(ex.examName);
+                    return !isDuplicate;
+                  })
+                  .map(ex => (
+                    <option key={ex.id} value={ex.examName}>
+                      {ex.examName}
+                    </option>
+                  ));
+              })()}
             </select>
 
             {activeExam && (
               <>
-                <select className="select-custom" value={manualGrade} onChange={(e) => { setManualGrade(e.target.value); setManualSection(''); }} style={{ padding: '6px 12px', borderRadius: '8px', fontSize: '0.82rem' }}>
+                <select 
+                  className="select-custom" 
+                  value={manualGrade} 
+                  onChange={(e) => { 
+                    const gradeVal = e.target.value;
+                    setManualGrade(gradeVal); 
+                    if (gradeVal) {
+                      const sections = allExamGradeSections.filter(gs => gs.grade === gradeVal).map(gs => gs.section);
+                      setManualSection(sections[0] !== undefined ? sections[0] : 'A');
+                    } else {
+                      setManualSection('');
+                    }
+                  }} 
+                  style={{ padding: '6px 12px', borderRadius: '8px', fontSize: '0.82rem' }}
+                >
                   <option value="">Select Grade</option>
                   {uniqueGrades.map(g => (
                     <option key={g} value={g}>Grade {g}</option>
                   ))}
                 </select>
-                <select className="select-custom" value={manualSection} onChange={(e) => setManualSection(e.target.value)} style={{ padding: '6px 12px', borderRadius: '8px', fontSize: '0.82rem' }} disabled={!manualGrade}>
-                  <option value="">Select Section</option>
-                  {filteredSectionsForGrade.map(s => (
-                    <option key={s} value={s}>Section {s}</option>
-                  ))}
-                </select>
                 <button 
                   className="btn-primary" 
-                  disabled={!manualGrade || !manualSection} 
-                  onClick={handleOpenManualScheduler} 
+                  disabled={!manualGrade} 
+                  onClick={() => {
+                    const matchingExam = matchingExams.find(e => (e.gradeSections || []).some(gs => gs.grade === manualGrade));
+                    const examId = matchingExam?.id || activeExam;
+                    handleOpenManualScheduler(manualGrade, manualSection, examId);
+                  }} 
                   style={{ padding: '6px 12px', fontSize: '0.8rem', borderRadius: '8px', display: 'flex', alignItems: 'center', gap: '6px', background: 'linear-gradient(135deg, hsl(var(--color-primary)) 0%, #4f46e5 100%)' }}
                 >
                   <Plus size={14} /> Create Timetable
                 </button>
-                <button className="btn-secondary" onClick={handleRegenerate} style={{ padding: '6px 12px', fontSize: '0.8rem', borderRadius: '8px', display: 'flex', alignItems: 'center', gap: '6px' }}>
-                  <Zap size={14} /> Regenerate
-                </button>
+
               </>
             )}
           </div>
         </div>
 
-        {activeExam && selectedExamObj ? (
-          <div className="glass-panel" style={{ padding: '24px' }}>
-            <div>
-              <div style={{ borderBottom: '2px solid var(--border-glass)', paddingBottom: '16px', marginBottom: '20px' }}>
-                <h2 style={{ fontSize: '1.2rem', fontWeight: 800, margin: 0 }}>{selectedExamObj.examName}</h2>
-                <div style={{ display: 'flex', gap: '20px', fontSize: '0.82rem', color: 'var(--text-muted)', marginTop: '6px' }}>
-                  <span>Type: <strong>{selectedExamObj.examType}</strong></span>
-                  <span>Session: <strong>{selectedExamObj.academicSession || '-'}</strong></span>
-                  {earliestStart && <span>Starts: <strong>{earliestStart}</strong></span>}
-                  {selectedExamObj.endDate && <span>Ends: <strong>{selectedExamObj.endDate}</strong></span>}
+        {visibleExams.length > 0 ? (
+          visibleExams.map(ex => {
+            const examSchedules = examTimetables.filter(et => et.examId === ex.id);
+            const examGradeSections = ex.gradeSections || [];
+            const earliestStart = examGradeSections.length > 0 ? examGradeSections.map(g => g.startDate).filter(Boolean).sort()[0] : '';
+            const examCohorts = [...new Set(examSchedules.map(s => s.cohort).filter(Boolean))].sort();
+
+            const isExplicitlySelected = ex.id === activeExam;
+            if (examSchedules.length === 0 && !isExplicitlySelected) return null;
+
+            return (
+              <div key={ex.id} className="glass-panel" style={{ padding: '24px', marginBottom: '24px' }}>
+                <div>
+                  <div style={{ borderBottom: '2px solid var(--border-glass)', paddingBottom: '16px', marginBottom: '20px' }}>
+                    <h2 style={{ fontSize: '1.2rem', fontWeight: 800, margin: 0 }}>{ex.examName}</h2>
+                    <div style={{ display: 'flex', gap: '20px', fontSize: '0.82rem', color: 'var(--text-muted)', marginTop: '6px' }}>
+                      <span>Type: <strong>{ex.examType}</strong></span>
+                      <span>Session: <strong>{ex.academicSession || '-'}</strong></span>
+                      {earliestStart && <span>Starts: <strong>{formatDate(earliestStart)}</strong></span>}
+                      {ex.endDate && <span>Ends: <strong>{formatDate(ex.endDate)}</strong></span>}
+                      <span>Total Marks: <strong>{ex.totalMarks || '-'}</strong></span>
+                    </div>
+                  </div>
+
+                  {examSchedules.length > 0 ? (
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: '24px' }}>
+                      {examCohorts.map(cohort => {
+                        const cohortSchedules = examSchedules.filter(s => s.cohort === cohort);
+                        const [grade, section] = cohort.split('-');
+                        return (
+                          <div key={cohort} id={`printable-exam-timetable-${cohort}`} style={{ display: 'flex', flexDirection: 'column', gap: '16px', background: 'var(--bg-glass-active)', border: '1px solid var(--border-glass)', padding: '20px', borderRadius: '12px' }}>
+                            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', borderBottom: '1px solid var(--border-glass)', paddingBottom: '10px' }}>
+                              <h4 style={{ fontSize: '0.95rem', fontWeight: 700, margin: 0, color: 'hsl(var(--color-primary))' }}>
+                                Grade {grade}{section ? ` - Section ${section}` : ''}
+                              </h4>
+                              <div style={{ display: 'flex', gap: '8px' }} className="no-print">
+                                <button 
+                                  className="btn-secondary" 
+                                  onClick={() => handleOpenManualScheduler(grade, section, ex.id)} 
+                                  style={{ padding: '4px 10px', fontSize: '0.75rem', borderRadius: '6px', display: 'flex', alignItems: 'center', gap: '4px', border: '1px solid var(--border-glass)' }}
+                                >
+                                  <Edit3 size={12} /> Edit
+                                </button>
+                                <button 
+                                  className="btn-secondary" 
+                                  onClick={() => handlePrint(`printable-exam-timetable-${cohort}`)} 
+                                  style={{ padding: '4px 10px', fontSize: '0.75rem', borderRadius: '6px', display: 'flex', alignItems: 'center', gap: '4px', border: '1px solid var(--border-glass)' }}
+                                >
+                                  <Printer size={12} /> Print
+                                </button>
+                              </div>
+                            </div>
+                            <table className="table-custom" style={{ width: '100%', borderCollapse: 'collapse', marginTop: '10px' }}>
+                              <thead>
+                                <tr>
+                                  <th style={{ textAlign: 'left', padding: '12px 16px' }}>Subject</th>
+                                  <th style={{ textAlign: 'left', padding: '12px 16px' }}>Exam Date</th>
+                                </tr>
+                              </thead>
+                              <tbody>
+                                {cohortSchedules.map(slot => (
+                                  <tr key={slot.id} style={{ borderBottom: '1px solid var(--border-glass)' }}>
+                                    <td style={{ fontWeight: 700, textAlign: 'left', padding: '12px 16px' }}>{slot.subject}</td>
+                                    <td style={{ textAlign: 'left', padding: '12px 16px' }}>{formatDate(slot.examDate)}</td>
+                                  </tr>
+                                ))}
+                              </tbody>
+                            </table>
+                          </div>
+                        );
+                      })}
+                    </div>
+                  ) : (
+                    <div style={{ padding: '60px 40px', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', color: 'var(--text-muted)', gap: '16px', textAlign: 'center' }}>
+                      <Calendar size={40} style={{ opacity: 0.3 }} />
+                      <span style={{ fontWeight: 600 }}>No schedule created yet</span>
+                      <p style={{ fontSize: '0.85rem', margin: 0 }}>Select the Grade and Section above, then click "Create Timetable" to configure slots manually.</p>
+                    </div>
+                  )}
                 </div>
               </div>
-
-              {schedules.length > 0 ? (
-                <div style={{ display: 'flex', flexDirection: 'column', gap: '24px' }}>
-                  {cohorts.map(cohort => {
-                    const cohortSchedules = schedules.filter(s => s.cohort === cohort);
-                    const [grade, section] = cohort.split('-');
-                    return (
-                      <div key={cohort} id={`printable-exam-timetable-${cohort}`} style={{ display: 'flex', flexDirection: 'column', gap: '16px', background: 'var(--bg-glass-active)', border: '1px solid var(--border-glass)', padding: '20px', borderRadius: '12px' }}>
-                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', borderBottom: '1px solid var(--border-glass)', paddingBottom: '10px' }}>
-                          <h4 style={{ fontSize: '0.95rem', fontWeight: 700, margin: 0, color: 'hsl(var(--color-primary))' }}>
-                            Grade {grade} - Section {section}
-                          </h4>
-                          <button 
-                            className="btn-secondary no-print" 
-                            onClick={() => handlePrint(`printable-exam-timetable-${cohort}`)} 
-                            style={{ padding: '4px 10px', fontSize: '0.75rem', borderRadius: '6px', display: 'flex', alignItems: 'center', gap: '4px', border: '1px solid var(--border-glass)' }}
-                          >
-                            <Printer size={12} /> Print
-                          </button>
-                        </div>
-                        <table className="table-custom" style={{ width: '100%', borderCollapse: 'collapse', marginTop: '10px' }}>
-                          <thead>
-                            <tr>
-                              <th style={{ textAlign: 'left', padding: '12px 16px' }}>Subject</th>
-                              <th style={{ textAlign: 'left', padding: '12px 16px' }}>Exam Date</th>
-                            </tr>
-                          </thead>
-                          <tbody>
-                            {cohortSchedules.map(slot => (
-                              <tr key={slot.id} style={{ borderBottom: '1px solid var(--border-glass)' }}>
-                                <td style={{ fontWeight: 700, textAlign: 'left', padding: '12px 16px' }}>{slot.subject}</td>
-                                <td style={{ textAlign: 'left', padding: '12px 16px' }}>{formatDate(slot.examDate)}</td>
-                              </tr>
-                            ))}
-                          </tbody>
-                        </table>
-                      </div>
-                    );
-                  })}
-                </div>
-              ) : (
-                <div style={{ padding: '60px 40px', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', color: 'var(--text-muted)', gap: '16px', textAlign: 'center' }}>
-                  <Calendar size={40} style={{ opacity: 0.3 }} />
-                  <span style={{ fontWeight: 600 }}>No schedule generated yet</span>
-                  <p style={{ fontSize: '0.85rem', margin: 0 }}>Go to Exam Management and click "Generate" to auto-create the subject-wise timetable.</p>
-                </div>
-              )}
-            </div>
-          </div>
+            );
+          })
         ) : (
           <div className="glass-panel" style={{ padding: '60px 40px', textAlign: 'center', color: 'var(--text-muted)' }}>
             <Calendar size={40} style={{ opacity: 0.3 }} />
-            <p style={{ fontWeight: 600, marginTop: '12px' }}>Select an exam to view its timetable</p>
+            <p style={{ fontWeight: 600, marginTop: '12px' }}>No active exam schedules found</p>
           </div>
         )}
       </div>
@@ -2322,11 +2471,11 @@ export default function AcademicPanel({ subView }) {
             <input type="text" className="form-control" placeholder="Search exam name..." value={examSearch} onChange={e => setExamSearch(e.target.value)} style={{ width: '200px', padding: '6px 12px', borderRadius: '8px', fontSize: '0.82rem', background: 'var(--bg-glass-active)', border: '1px solid var(--border-glass)', color: 'var(--text-main)' }} />
             <select className="select-custom" value={examTypeFilter} onChange={e => setExamTypeFilter(e.target.value)} style={{ padding: '6px 12px', borderRadius: '8px', fontSize: '0.82rem', background: 'var(--bg-glass-active)', border: '1px solid var(--border-glass)' }}>
               <option value="All">All Types</option>
-              {['Unit Test', 'Half Yearly', 'Final Exam', 'Pre Board', 'Custom Exam'].map(t => <option key={t} value={t}>{t}</option>)}
+              {EXAM_TYPES.map(t => <option key={t} value={t}>{t}</option>)}
             </select>
             <select className="select-custom" value={examGradeFilter} onChange={e => setExamGradeFilter(e.target.value)} style={{ padding: '6px 12px', borderRadius: '8px', fontSize: '0.82rem', background: 'var(--bg-glass-active)', border: '1px solid var(--border-glass)' }}>
               <option value="All">All Grades</option>
-              {['I', 'II', 'III', 'IV', 'V', 'VI', 'VII', 'VIII', 'IX', 'X'].filter(g => subjects.some(s => s.grade === g)).map(g => <option key={g} value={g}>Grade {g}</option>)}
+              {getGradesWithSubjects(subjects).map(g => <option key={g} value={g}>Grade {g}</option>)}
             </select>
             <select className="select-custom" value={examSectionFilter} onChange={e => setExamSectionFilter(e.target.value)} style={{ padding: '6px 12px', borderRadius: '8px', fontSize: '0.82rem', background: 'var(--bg-glass-active)', border: '1px solid var(--border-glass)' }}>
               <option value="All">All Sections</option>
@@ -2361,6 +2510,10 @@ export default function AcademicPanel({ subView }) {
                   {/* Card Header */}
                   <div style={{ padding: '20px 20px 16px', borderBottom: '1px solid var(--border-glass)', display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
                     <div>
+                      <div style={{ fontSize: '0.75rem', fontWeight: 700, color: 'hsl(var(--color-primary))', textTransform: 'uppercase', letterSpacing: '0.5px', marginBottom: '4px' }}>
+                        {gsList.length > 0 ? gsList.map(gs => gs.section ? `Grade - ${gs.grade}-${gs.section}` : `Grade - ${gs.grade}`).join(', ') : 'No Grades'}
+                        {ex.academicSession && ` · Session ${ex.academicSession}`}
+                      </div>
                       <h3 style={{ fontSize: '1.05rem', fontWeight: 800, margin: 0, color: 'var(--text-main)' }}>{ex.examName}</h3>
                       <span style={{ fontSize: '0.72rem', padding: '2px 8px', borderRadius: '10px', background: 'rgba(99, 102, 241, 0.08)', color: 'hsl(var(--color-primary))', border: '1px solid rgba(99, 102, 241, 0.15)', display: 'inline-block', marginTop: '6px', fontWeight: 600 }}>{ex.examType}</span>
                     </div>
@@ -2368,23 +2521,70 @@ export default function AcademicPanel({ subView }) {
                   </div>
 
                   {/* Card Body */}
-                  <div style={{ padding: '16px 20px', display: 'flex', flexDirection: 'column', gap: '10px', flex: 1 }}>
-                    <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '8px', fontSize: '0.8rem' }}>
-                      <div style={{ color: 'var(--text-muted)' }}>Session</div>
-                      <div style={{ fontWeight: 600, textAlign: 'right' }}>{ex.academicSession || '-'}</div>
-                      <div style={{ color: 'var(--text-muted)' }}>Grades</div>
-                      <div style={{ fontWeight: 600, textAlign: 'right' }}>
-                        {gsList.length > 0 ? gsList.map(gs => `${gs.grade}-${gs.section}`).join(', ') : '-'}
-                      </div>
+                  <div style={{ padding: '16px 20px', display: 'flex', flexDirection: 'column', gap: '12px', flex: 1 }}>
+                    <div style={{ display: 'grid', gridTemplateColumns: '130px 1fr', gap: '8px', fontSize: '0.8rem' }}>
+
                       <div style={{ color: 'var(--text-muted)' }}>Total Subjects</div>
                       <div style={{ fontWeight: 600, textAlign: 'right' }}>{totalSubjects}</div>
                       <div style={{ color: 'var(--text-muted)' }}>Start Date</div>
                       <div style={{ fontWeight: 600, textAlign: 'right' }}>{earliestStart || '-'}</div>
                       <div style={{ color: 'var(--text-muted)' }}>End Date</div>
-                      <div style={{ fontWeight: 600, textAlign: 'right' }}>{ex.endDate || 'Not generated'}</div>
+                      <div style={{ fontWeight: 600, textAlign: 'right' }}>{ex.endDate || 'Not scheduled'}</div>
+                    </div>
+
+                    {/* Subjects and corresponding marks */}
+                    <div style={{ marginTop: '4px', paddingTop: '10px', borderTop: '1px dashed var(--border-glass)' }}>
+                      <div style={{ fontSize: '0.75rem', fontWeight: 700, color: 'var(--text-muted)', marginBottom: '8px', textTransform: 'uppercase', letterSpacing: '0.5px' }}>Subjects & Marks</div>
+                      <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
+                        {(() => {
+                          const list = [];
+                          gsList.forEach(gs => {
+                            const gradeSubs = subjects.filter(sub => sub.grade === gs.grade).map(sub => sub.subjectName);
+                            const uniqueGradeSubs = [...new Set(gradeSubs)];
+                            uniqueGradeSubs.forEach(sub => {
+                              const subKey = `${gs.grade}-${sub}`;
+                              const isIncluded = ex.subjectIncluded ? ex.subjectIncluded[subKey] !== false : true;
+                              if (isIncluded) {
+                                const marks = ex.subjectMarks && ex.subjectMarks[subKey] !== undefined ? ex.subjectMarks[subKey] : (ex.totalMarks || 100);
+                                list.push({ grade: gs.grade, section: gs.section, subject: sub, marks });
+                              }
+                            });
+                          });
+                          if (list.length === 0) {
+                            return <div style={{ fontSize: '0.78rem', color: 'var(--text-muted)', fontStyle: 'italic' }}>No subjects added</div>;
+                          }
+                          return list.map((item, idx) => (
+                            <div key={idx} style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.8rem', alignItems: 'center', padding: '4px 0' }}>
+                              <span style={{ fontWeight: 600, color: 'var(--text-main)' }}>
+                                {item.subject}
+                              </span>
+                              <span style={{ fontWeight: 700, color: '#f59e0b', fontSize: '0.78rem' }}>{item.marks} Marks</span>
+                            </div>
+                          ));
+                        })()}
+                      </div>
                     </div>
                   </div>
 
+                  {/* Card Actions */}
+                  <div style={{ padding: '12px 20px', borderTop: '1px solid var(--border-glass)', display: 'flex', gap: '8px', flexWrap: 'wrap', justifyContent: 'flex-end' }}>
+                    {examTimetables.some(et => et.examId === ex.id) && (
+                      <button 
+                        onClick={(e) => { e.stopPropagation(); handleViewSchedule(ex.id); }} 
+                        className="btn-secondary" 
+                        style={{ padding: '6px 10px', fontSize: '0.72rem', borderRadius: '8px', display: 'flex', alignItems: 'center', gap: '4px', border: '1px solid var(--border-glass)' }}
+                      >
+                        <Eye size={13} /> View Timetable
+                      </button>
+                    )}
+                    <button 
+                      onClick={(e) => { e.stopPropagation(); handleDelete(ex.id); }} 
+                      className="btn-secondary" 
+                      style={{ padding: '6px 10px', fontSize: '0.72rem', borderRadius: '8px', display: 'flex', alignItems: 'center', gap: '4px', border: '1px solid rgba(239,68,68,0.3)', color: '#ef4444' }}
+                    >
+                      <Trash2 size={13} /> Delete
+                    </button>
+                  </div>
                 </div>
               );
             })}
@@ -2907,115 +3107,7 @@ export default function AcademicPanel({ subView }) {
     );
   };
 
-  const renderReports = () => {
-    // Generate analytics calculations
-    const classResults = results.filter(r => r.studentClass === activeClass);
-    
-    // 1. Calculate subject averages
-    const gradeSubjects = subjects.filter(s => s.grade === activeClass.split('-')[0]);
-    const currentSubjects = gradeSubjects.map(s => s.subjectName);
 
-    const subjectAverages = currentSubjects.map(subject => {
-      const subResults = classResults.filter(r => r.subject && subject && r.subject.toLowerCase() === subject.toLowerCase());
-      const average = subResults.length > 0
-        ? Math.round(subResults.reduce((sum, r) => sum + r.percentage, 0) / subResults.length)
-        : 0;
-      return { subject, average };
-    });
-
-    // 2. GPA distribution
-    const gpaCategories = {
-      'A+ (Excellent)': classResults.filter(r => r.gpa === 4.0).length,
-      'A / B+ (Good)': classResults.filter(r => r.gpa >= 3.3 && r.gpa < 4.0).length,
-      'B / C (Average)': classResults.filter(r => r.gpa >= 2.0 && r.gpa < 3.3).length,
-      'D / F (Passing/Fail)': classResults.filter(r => r.gpa < 2.0).length
-    };
-    
-    const maxAvgVal = Math.max(...subjectAverages.map(s => s.average), 1);
-
-    return (
-      <div style={{ display: 'flex', flexDirection: 'column', gap: '24px' }}>
-        <div className="glass-panel" style={{ padding: '20px 24px', display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '16px' }}>
-          <div>
-            <h3 style={{ fontSize: '1.1rem', fontWeight: 700 }}>Academic Performance Analytics</h3>
-            <p style={{ fontSize: '0.85rem', color: 'var(--text-muted)' }}>Visualize curriculum benchmarks, subject averages, and grade distributions.</p>
-          </div>
-          <select className="select-custom" value={activeClass} onChange={(e) => setActiveClass(e.target.value)}>
-            {classesList.map((cls, idx) => <option key={idx} value={cls}>Class {cls}</option>)}
-          </select>
-        </div>
-
-        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(320px, 1fr))', gap: '24px' }}>
-          
-          {/* Chart 1: Subject Averages */}
-          <div className="glass-panel" style={{ padding: '24px', display: 'flex', flexDirection: 'column', gap: '16px' }}>
-            <h4 style={{ fontSize: '0.95rem', fontWeight: 700, margin: 0 }}>Subject Class Averages (%)</h4>
-            
-            {classResults.length > 0 ? (
-              <div style={{ position: 'relative', width: '100%' }}>
-                <svg viewBox="0 0 400 220" style={{ width: '100%', height: 'auto', overflow: 'visible' }}>
-                  {/* Grid lines */}
-                  {[40, 80, 120, 160].map((y, idx) => (
-                    <line key={idx} x1="50" y1={y} x2="380" y2={y} stroke="var(--border-glass)" strokeDasharray="3 3" strokeWidth="1" />
-                  ))}
-                  
-                  {subjectAverages.map((item, idx) => {
-                    const xBase = 60 + idx * 65;
-                    const h = (item.average / 100) * 120;
-                    const y = 160 - h;
-                    
-                    return (
-                      <g key={idx}>
-                        <rect x={xBase} y={y} width="24" height={Math.max(4, h)} rx="4" fill="hsl(var(--color-primary))" opacity="0.85" />
-                        <text x={xBase + 12} y={y - 6} textAnchor="middle" fill="var(--text-main)" fontSize="9" fontWeight="700">{item.average}%</text>
-                        <text x={xBase + 12} y="180" textAnchor="middle" fill="var(--text-muted)" fontSize="8" fontWeight="600" transform={`rotate(-15 ${xBase + 12} 180)`}>
-                          {item.subject.length > 8 ? `${item.subject.slice(0, 7)}.` : item.subject}
-                        </text>
-                      </g>
-                    );
-                  })}
-                </svg>
-              </div>
-            ) : (
-              <div style={{ padding: '40px', textAlign: 'center', color: 'var(--text-muted)' }}>
-                No score cards calculated for Class {activeClass}.
-              </div>
-            )}
-          </div>
-
-          {/* Chart 2: GPA Grade Distribution */}
-          <div className="glass-panel" style={{ padding: '24px', display: 'flex', flexDirection: 'column', gap: '16px' }}>
-            <h4 style={{ fontSize: '0.95rem', fontWeight: 700, margin: 0 }}>Student GPA Distributions</h4>
-
-            {classResults.length > 0 ? (
-              <div style={{ display: 'flex', flexDirection: 'column', gap: '14px', justifyContent: 'center', height: '100%' }}>
-                {Object.entries(gpaCategories).map(([label, count], idx) => {
-                  const pct = classResults.length > 0 ? Math.round((count / classResults.length) * 100) : 0;
-                  const colors = ['#10b981', '#6366f1', '#f59e0b', '#ef4444'];
-                  return (
-                    <div key={idx} style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
-                      <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.78rem', fontWeight: 600 }}>
-                        <span style={{ color: 'var(--text-muted)' }}>{label}</span>
-                        <span>{count} Students ({pct}%)</span>
-                      </div>
-                      <div style={{ width: '100%', height: '8px', background: 'var(--bg-glass-active)', borderRadius: '99px', overflow: 'hidden' }}>
-                        <div style={{ width: `${pct}%`, height: '100%', borderRadius: '99px', background: colors[idx % colors.length] }} />
-                      </div>
-                    </div>
-                  );
-                })}
-              </div>
-            ) : (
-              <div style={{ padding: '40px', textAlign: 'center', color: 'var(--text-muted)' }}>
-                No records to categorize.
-              </div>
-            )}
-          </div>
-
-        </div>
-      </div>
-    );
-  };
 
   // Render modal forms dynamically based on active subView
   const renderModalForm = () => {
@@ -3093,7 +3185,7 @@ export default function AcademicPanel({ subView }) {
           <div className="modal-body" style={{ padding: '30px', textAlign: 'center', color: 'var(--text-muted)' }}>
             <BookOpen size={40} style={{ opacity: 0.3, marginBottom: '12px' }} />
             <p>Use the "Create New Exam" wizard for multi-step exam creation.</p>
-            <button className="btn-primary" onClick={() => { setShowAddModal(false); setShowExamWizard(true); }} style={{ marginTop: '12px' }}>
+            <button className="btn-primary" onClick={() => { resetWizardForm(); setShowAddModal(false); setShowExamWizard(true); }} style={{ marginTop: '12px' }}>
               Open Exam Wizard
             </button>
           </div>
@@ -3104,8 +3196,8 @@ export default function AcademicPanel({ subView }) {
           return (
             <div className="modal-body" style={{ padding: '30px', textAlign: 'center', color: 'var(--text-muted)' }}>
               <Calendar size={40} style={{ opacity: 0.3, marginBottom: '12px' }} />
-              <p>Exam timetables are auto-generated from Exam Management.</p>
-              <p style={{ fontSize: '0.8rem' }}>Use the "Generate" button in Exam Management to create schedules.</p>
+              <p>Configure exam timetables under the Exam Timetable tab.</p>
+              <p style={{ fontSize: '0.8rem' }}>Select the exam, grade, section, and click "Create Timetable" to configure slots manually.</p>
             </div>
           );
         }
@@ -3263,9 +3355,17 @@ export default function AcademicPanel({ subView }) {
       case 'academic-calendar':
         return renderAcademicCalendar();
       case 'academic-results':
-        return renderResults();
-      case 'academic-reports':
-        return renderReports();
+      case 'results-analytics':
+        return <ResultManagementPanel activeTab="analytics" setAdminView={setAdminView} />;
+      case 'results-marks-entry':
+        return <ResultManagementPanel activeTab="marks-entry" setAdminView={setAdminView} />;
+      case 'results-generation':
+        return <ResultManagementPanel activeTab="generation" setAdminView={setAdminView} />;
+      case 'results-report-cards':
+        return <ResultManagementPanel activeTab="report-cards" setAdminView={setAdminView} />;
+      case 'results-history':
+        return <ResultManagementPanel activeTab="history" setAdminView={setAdminView} />;
+
       default:
         return renderClassTimetable();
     }
@@ -3334,7 +3434,7 @@ export default function AcademicPanel({ subView }) {
                   Step {examWizardStep} of 4
                 </p>
               </div>
-              <button onClick={() => setShowExamWizard(false)} style={{ background: 'none', border: 'none', color: 'var(--text-muted)', cursor: 'pointer', fontSize: '1.8rem', lineHeight: 1, padding: '4px' }}>×</button>
+              <button onClick={() => { resetWizardForm(); setShowExamWizard(false); }} style={{ background: 'none', border: 'none', color: 'var(--text-muted)', cursor: 'pointer', fontSize: '1.8rem', lineHeight: 1, padding: '4px' }}>×</button>
             </div>
 
             {/* Step Progress */}
@@ -3355,10 +3455,6 @@ export default function AcademicPanel({ subView }) {
               <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
                 <h4 style={{ fontSize: '1rem', fontWeight: 700, margin: 0 }}>Basic Information</h4>
                 <div className="form-group">
-                  <label>Exam Title *</label>
-                  <input type="text" className="form-control" placeholder="e.g. Unit Test 1" value={wizardForm.examName} onChange={e => setWizardForm({ ...wizardForm, examName: e.target.value })} required style={{ marginTop: '4px' }} />
-                </div>
-                <div className="form-group">
                   <label>Academic Session *</label>
                   <select className="form-control" value={wizardForm.academicSession} onChange={e => setWizardForm({ ...wizardForm, academicSession: e.target.value })} style={{ marginTop: '4px' }}>
                     {['2024-2025', '2025-2026', '2026-2027', '2027-2028'].map(s => <option key={s} value={s}>{s}</option>)}
@@ -3367,16 +3463,17 @@ export default function AcademicPanel({ subView }) {
                 <div className="form-group">
                   <label>Exam Type *</label>
                   <select className="form-control" value={wizardForm.examType} onChange={e => setWizardForm({ ...wizardForm, examType: e.target.value })} style={{ marginTop: '4px' }}>
-                    <option value="Unit Test">Unit Test</option>
-                    <option value="Half Yearly">Half Yearly</option>
-                    <option value="Final Exam">Final Exam</option>
-                    <option value="Pre Board">Pre Board</option>
-                    <option value="Custom Exam">Custom Exam</option>
+                    {EXAM_TYPES.map(t => <option key={t} value={t}>{t}</option>)}
                   </select>
                 </div>
                 <div className="form-group">
                   <label>Description</label>
                   <textarea className="form-control" placeholder="Optional description..." value={wizardForm.description} onChange={e => setWizardForm({ ...wizardForm, description: e.target.value })} rows={3} style={{ marginTop: '4px', resize: 'vertical' }} />
+                </div>
+                <div className="form-group">
+                  <label>Total Marks (per subject) *</label>
+                  <input type="number" className="form-control" placeholder="e.g. 100" min="1" value={wizardForm.totalMarks} onChange={e => setWizardForm({ ...wizardForm, totalMarks: parseInt(e.target.value) || 0 })} style={{ marginTop: '4px' }} />
+                  <p style={{ fontSize: '0.75rem', color: 'var(--text-muted)', margin: '4px 0 0 0' }}>Default marks for each subject. You can override per subject in Step 3.</p>
                 </div>
               </div>
             )}
@@ -3388,8 +3485,7 @@ export default function AcademicPanel({ subView }) {
                 <p style={{ fontSize: '0.8rem', color: 'var(--text-muted)', margin: 0 }}>Select one or more grades.</p>
                 {(() => {
                   const uniqueGradesWithSubjects = [...new Set(subjects.map(s => s.grade))].sort((a, b) => {
-                    const gradeOrder = ['I', 'II', 'III', 'IV', 'V', 'VI', 'VII', 'VIII', 'IX', 'X'];
-                    return gradeOrder.indexOf(a) - gradeOrder.indexOf(b);
+                    return GRADE_ORDER.indexOf(a) - GRADE_ORDER.indexOf(b);
                   });
                   return uniqueGradesWithSubjects.length > 0 ? (
                     <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(140px, 1fr))', gap: '10px', maxHeight: '300px', overflowY: 'auto', padding: '4px' }}>
@@ -3431,35 +3527,104 @@ export default function AcademicPanel({ subView }) {
               </div>
             )}
 
-            {/* Step 3: Subject Assignment (Display Only) */}
+            {/* Step 3: Subject Assignment & Configuration */}
             {examWizardStep === 3 && (
               <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
-                <h4 style={{ fontSize: '1rem', fontWeight: 700, margin: 0 }}>Subject Assignment</h4>
+                <h4 style={{ fontSize: '1rem', fontWeight: 700, margin: 0 }}>Subject Configuration</h4>
                 <p style={{ fontSize: '0.8rem', color: 'var(--text-muted)', margin: 0 }}>
-                  Subjects are automatically loaded from grade configuration.
+                  Set marks per subject and choose which subjects to include in the exam schedule.
                 </p>
                 {(() => {
                   const uniqueGrades = [...new Set(wizardForm.selectedGrades.map(g => g.grade))];
                   return uniqueGrades.length > 0 ? (
-                    <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: '20px', maxHeight: '400px', overflowY: 'auto', paddingRight: '4px' }}>
                       {uniqueGrades.map(grade => {
                         const gradeSubjects = subjects.filter(s => s.grade === grade).map(s => s.subjectName);
                         return (
-                          <div key={grade} className="glass-panel" style={{ padding: '16px', background: 'var(--bg-glass-active)', border: '1px solid var(--border-glass)', borderRadius: '12px' }}>
-                            <h5 style={{ fontSize: '0.9rem', fontWeight: 700, margin: '0 0 8px 0', color: 'hsl(var(--color-primary))' }}>
-                              Grade {grade}
-                            </h5>
+                          <div key={grade} className="glass-panel" style={{ padding: '16px 20px', background: 'var(--bg-glass-active)', border: '1px solid var(--border-glass)', borderRadius: '14px' }}>
+                            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '12px', paddingBottom: '10px', borderBottom: '1px solid var(--border-glass)' }}>
+                              <h5 style={{ fontSize: '0.95rem', fontWeight: 700, margin: 0, color: 'hsl(var(--color-primary))' }}>
+                                Grade {grade}
+                              </h5>
+                              <span style={{ fontSize: '0.75rem', color: 'var(--text-muted)', fontWeight: 600 }}>
+                                {gradeSubjects.filter(sub => wizardForm.subjectIncluded[`${grade}-${sub}`] !== false).length} / {gradeSubjects.length} subjects included
+                              </span>
+                            </div>
                             {gradeSubjects.length > 0 ? (
-                              <div style={{ display: 'flex', flexWrap: 'wrap', gap: '8px' }}>
-                                {gradeSubjects.map((sub, i) => (
-                                  <span key={i} style={{ padding: '4px 12px', borderRadius: '8px', background: 'rgba(99,102,241,0.06)', border: '1px solid rgba(99,102,241,0.12)', fontSize: '0.8rem', fontWeight: 600 }}>
-                                    {sub}
-                                  </span>
-                                ))}
+                              <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
+                                {/* Header Row */}
+                                <div style={{ display: 'grid', gridTemplateColumns: '1fr 120px 100px', gap: '12px', padding: '0 4px', alignItems: 'center' }}>
+                                  <span style={{ fontSize: '0.72rem', fontWeight: 700, color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.5px' }}>Subject</span>
+                                  <span style={{ fontSize: '0.72rem', fontWeight: 700, color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.5px', textAlign: 'center' }}>Marks</span>
+                                  <span style={{ fontSize: '0.72rem', fontWeight: 700, color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.5px', textAlign: 'center' }}>Include</span>
+                                </div>
+                                {gradeSubjects.map((sub, i) => {
+                                  const subKey = `${grade}-${sub}`;
+                                  const isIncluded = wizardForm.subjectIncluded[subKey] !== false;
+                                  const subMarks = wizardForm.subjectMarks[subKey] !== undefined ? wizardForm.subjectMarks[subKey] : wizardForm.totalMarks;
+                                  return (
+                                    <div key={i} style={{
+                                      display: 'grid', gridTemplateColumns: '1fr 120px 100px', gap: '12px', padding: '10px 12px',
+                                      background: isIncluded ? 'rgba(99,102,241,0.04)' : 'rgba(239,68,68,0.03)',
+                                      border: isIncluded ? '1px solid rgba(99,102,241,0.15)' : '1px solid rgba(239,68,68,0.12)',
+                                      borderRadius: '10px', alignItems: 'center',
+                                      opacity: isIncluded ? 1 : 0.6,
+                                      transition: 'all 0.2s ease'
+                                    }}>
+                                      <div style={{ display: 'flex', alignItems: 'center', gap: '10px', minWidth: 0 }}>
+                                        <div style={{
+                                          width: '8px', height: '8px', borderRadius: '50%', flexShrink: 0,
+                                          background: isIncluded ? 'hsl(var(--color-primary))' : 'rgb(var(--color-danger-rgb))'
+                                        }} />
+                                        <span style={{
+                                          fontSize: '0.88rem', fontWeight: 600,
+                                          textDecoration: isIncluded ? 'none' : 'line-through',
+                                          overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap'
+                                        }}>{sub}</span>
+                                      </div>
+                                      <input
+                                        type="number"
+                                        min="1"
+                                        value={subMarks}
+                                        onChange={e => setWizardForm({
+                                          ...wizardForm,
+                                          subjectMarks: { ...wizardForm.subjectMarks, [subKey]: parseInt(e.target.value) || 0 }
+                                        })}
+                                        disabled={!isIncluded}
+                                        className="form-control"
+                                        style={{
+                                          padding: '6px 10px', fontSize: '0.82rem', textAlign: 'center',
+                                          borderRadius: '8px', width: '100%',
+                                          opacity: isIncluded ? 1 : 0.4
+                                        }}
+                                      />
+                                      <div style={{ display: 'flex', justifyContent: 'center' }}>
+                                        <button
+                                          type="button"
+                                          onClick={() => setWizardForm({
+                                            ...wizardForm,
+                                            subjectIncluded: { ...wizardForm.subjectIncluded, [subKey]: !isIncluded }
+                                          })}
+                                          style={{
+                                            padding: '5px 16px', borderRadius: '20px', cursor: 'pointer',
+                                            fontSize: '0.78rem', fontWeight: 700, border: 'none',
+                                            background: isIncluded
+                                              ? 'linear-gradient(135deg, rgba(16,185,129,0.15), rgba(16,185,129,0.08))'
+                                              : 'linear-gradient(135deg, rgba(239,68,68,0.15), rgba(239,68,68,0.08))',
+                                            color: isIncluded ? '#10b981' : 'rgb(var(--color-danger-rgb))',
+                                            transition: 'all 0.2s ease'
+                                          }}
+                                        >
+                                          {isIncluded ? 'Yes' : 'No'}
+                                        </button>
+                                      </div>
+                                    </div>
+                                  );
+                                })}
                               </div>
                             ) : (
                               <span style={{ fontSize: '0.8rem', color: 'var(--text-muted)', fontStyle: 'italic' }}>
-                                No subjects configured for Grade {grade}. Please add subjects in the Class Timetable section.
+                                No subjects configured for Grade {grade}. Please add subjects in the Grade & Subjects section.
                               </span>
                             )}
                           </div>
@@ -3515,28 +3680,34 @@ export default function AcademicPanel({ subView }) {
                 )}
               </div>
               <div style={{ display: 'flex', gap: '12px' }}>
-                <button className="btn-secondary" onClick={() => setShowExamWizard(false)} style={{ padding: '10px 20px', borderRadius: '8px', fontWeight: 600 }}>
+                <button className="btn-secondary" onClick={() => { resetWizardForm(); setShowExamWizard(false); }} style={{ padding: '10px 20px', borderRadius: '8px', fontWeight: 600 }}>
                   Cancel
                 </button>
                 {examWizardStep < 4 ? (
                   <button className="btn-primary" onClick={() => {
-                    if (examWizardStep === 1 && !wizardForm.examName.trim()) { showToast('Please enter an exam title.', 'error'); return; }
+                    if (examWizardStep === 1 && !wizardForm.examType.trim()) { showToast('Please select an exam type.', 'error'); return; }
                     if (examWizardStep === 2 && wizardForm.selectedGrades.length === 0) { showToast('Please select at least one grade-section.', 'error'); return; }
                     setExamWizardStep(examWizardStep + 1);
                   }} style={{ padding: '10px 20px', borderRadius: '8px', fontWeight: 700 }}>
                     Next →
                   </button>
                 ) : (
-                  <button className="btn-primary" onClick={async () => {
-                    // Validate: all start and end dates required
-                    const missingDates = wizardForm.selectedGrades.filter(gs => {
-                      const key = `${gs.grade}-${gs.section}`;
-                      return !wizardForm.startDates[key] || !wizardForm.endDates[key];
-                    });
-                    if (missingDates.length > 0) {
-                      showToast('Please set start and end dates for all grade-sections.', 'error');
-                      return;
-                    }
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+                    <span style={{ fontSize: '0.9rem', fontWeight: 600, color: 'hsl(var(--color-primary))', background: 'rgba(99,102,241,0.1)', padding: '6px 12px', borderRadius: '6px' }}>
+                      {wizardForm.examType}
+                    </span>
+                    <button className="btn-primary" onClick={async () => {
+                      // Auto-generate examName from examType
+                      const examName = wizardForm.examType;
+                      // Validate: all start and end dates required
+                      const missingDates = wizardForm.selectedGrades.filter(gs => {
+                        const key = `${gs.grade}-${gs.section}`;
+                        return !wizardForm.startDates[key] || !wizardForm.endDates[key];
+                      });
+                      if (missingDates.length > 0) {
+                        showToast('Please set start and end dates for all grade-sections.', 'error');
+                        return;
+                      }
 
                     // Check: end date must not be earlier than start date
                     const invalidDates = wizardForm.selectedGrades.filter(gs => {
@@ -3556,50 +3727,45 @@ export default function AcademicPanel({ subView }) {
                     }));
 
                     try {
-                      const res = await fetch('/api/academics/exams', {
-                        method: 'POST',
+                      const url = wizardForm.id ? `/api/academics/exams/${wizardForm.id}` : '/api/academics/exams';
+                      const method = wizardForm.id ? 'PUT' : 'POST';
+                      
+                      const existingExam = wizardForm.id ? exams.find(e => e.id === wizardForm.id) : null;
+                      const hasSchedules = wizardForm.id ? examTimetables.some(et => et.examId === wizardForm.id) : false;
+                      const statusVal = existingExam ? (hasSchedules ? 'Scheduled' : 'Draft') : 'Draft';
+
+                      const res = await fetch(url, {
+                        method: method,
                         headers: { 'Content-Type': 'application/json' },
                         body: JSON.stringify({
-                          examName: wizardForm.examName,
+                          examName: wizardForm.examType,
                           examType: wizardForm.examType,
                           academicSession: wizardForm.academicSession,
                           description: wizardForm.description,
-                          gradeSections
+                          totalMarks: wizardForm.totalMarks,
+                          subjectMarks: wizardForm.subjectMarks,
+                          subjectIncluded: wizardForm.subjectIncluded,
+                          gradeSections,
+                          status: statusVal
                         })
                       });
-                      const data = await res.json();
                       if (res.ok) {
-                        showToast('Exam created! Now generating schedule...', 'success');
+                        showToast(wizardForm.id ? 'Exam updated successfully!' : 'Exam created successfully!', 'success');
+                        resetWizardForm();
                         setShowExamWizard(false);
-
-                        // Auto-generate schedule
-                        try {
-                          const genRes = await fetch('/api/academics/exams/generate-schedule', {
-                            method: 'POST',
-                            headers: { 'Content-Type': 'application/json' },
-                            body: JSON.stringify({ examId: data.id, gapDays: 1 })
-                          });
-                          if (genRes.ok) {
-                            showToast('Exam created and schedule generated successfully!', 'success');
-                          } else {
-                            const genData = await genRes.json();
-                            showToast(genData.error || 'Exam created but schedule generation failed.', 'error');
-                          }
-                        } catch (e) {
-                          showToast('Network error during schedule generation.', 'error');
-                        }
-
                         fetchAllData();
                       } else {
-                        showToast(data.error || 'Failed to create exam.', 'error');
+                        const data = await res.json();
+                        showToast(data.error || 'Failed to save exam.', 'error');
                       }
                     } catch (e) {
                       showToast('Network error.', 'error');
                     }
                   }} style={{ padding: '10px 24px', borderRadius: '8px', fontWeight: 700, background: 'linear-gradient(135deg, hsl(var(--color-primary)) 0%, #4f46e5 100%)', border: 'none', color: '#fff', cursor: 'pointer' }}>
-                    Create & Generate Schedule
+                    {wizardForm.id ? 'Save Exam' : 'Create Exam'}
                   </button>
-                )}
+                </div>
+              )}
               </div>
             </div>
           </div>
@@ -3631,7 +3797,7 @@ export default function AcademicPanel({ subView }) {
                 return (
                   <div style={{ padding: '40px', textAlign: 'center', color: 'var(--text-muted)' }}>
                     <Calendar size={32} style={{ opacity: 0.3 }} />
-                    <p style={{ marginTop: '8px' }}>No schedule generated yet. Click "Generate" in exam management.</p>
+                    <p style={{ marginTop: '8px' }}>No timetable created yet. Please manually configure the exam timetable in the Exam Timetable section.</p>
                   </div>
                 );
               }
@@ -3641,21 +3807,31 @@ export default function AcademicPanel({ subView }) {
                 const [g, sec] = cohort.split('-');
                 return (
                   <div key={cohort} style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
-                    <h4 style={{ fontSize: '0.9rem', fontWeight: 700, margin: 0, color: 'hsl(var(--color-primary))' }}>Grade {g} - Section {sec}</h4>
+                    <h4 style={{ fontSize: '0.9rem', fontWeight: 700, margin: 0, color: 'hsl(var(--color-primary))' }}>
+                      {sec ? `Grade ${g} - Section ${sec}` : `Grade ${g}`}
+                    </h4>
                     <table className="table-custom" style={{ width: '100%', fontSize: '0.82rem', borderCollapse: 'collapse' }}>
                       <thead>
                         <tr>
                           <th style={{ textAlign: 'left', padding: '10px 0', borderBottom: '2px solid var(--border-glass)', color: 'var(--text-muted)', fontWeight: 700 }}>Subject</th>
-                          <th style={{ textAlign: 'left', padding: '10px 0', borderBottom: '2px solid var(--border-glass)', color: 'var(--text-muted)', fontWeight: 700 }}>Date</th>
+                          <th style={{ textAlign: 'center', padding: '10px 0', borderBottom: '2px solid var(--border-glass)', color: 'var(--text-muted)', fontWeight: 700 }}>Marks</th>
+                          <th style={{ textAlign: 'right', padding: '10px 0', borderBottom: '2px solid var(--border-glass)', color: 'var(--text-muted)', fontWeight: 700 }}>Date</th>
                         </tr>
                       </thead>
                       <tbody>
-                        {cs.map(s => (
-                          <tr key={s.id}>
-                            <td style={{ fontWeight: 600, padding: '12px 0', borderBottom: '1px solid var(--border-glass)' }}>{s.subject}</td>
-                            <td style={{ padding: '12px 0', borderBottom: '1px solid var(--border-glass)' }}>{formatDate(s.examDate)}</td>
-                          </tr>
-                        ))}
+                        {cs.map(s => {
+                          const subKey = `${s.grade}-${s.subject}`;
+                          const subMarks = (viewScheduleExam.subjectMarks && viewScheduleExam.subjectMarks[subKey] !== undefined)
+                            ? viewScheduleExam.subjectMarks[subKey]
+                            : (viewScheduleExam.totalMarks || 100);
+                          return (
+                            <tr key={s.id}>
+                              <td style={{ fontWeight: 600, padding: '12px 0', borderBottom: '1px solid var(--border-glass)' }}>{s.subject}</td>
+                              <td style={{ textAlign: 'center', padding: '12px 0', borderBottom: '1px solid var(--border-glass)', fontWeight: 600, color: 'hsl(var(--color-primary))' }}>{subMarks}</td>
+                              <td style={{ textAlign: 'right', padding: '12px 0', borderBottom: '1px solid var(--border-glass)' }}>{formatDate(s.examDate)}</td>
+                            </tr>
+                          );
+                        })}
                       </tbody>
                     </table>
                   </div>
@@ -3786,12 +3962,19 @@ export default function AcademicPanel({ subView }) {
                 className="form-control" 
                 value={newSubjectGrade} 
                 onChange={(e) => {
-                  setNewSubjectGrade(e.target.value);
-                  setNewSubjectsList(Array(10).fill(''));
+                  const newGrade = e.target.value;
+                  setNewSubjectGrade(newGrade);
+                  const gradeSubjects = subjects.filter(s => s.grade === newGrade);
+                  setEditingSubjects(gradeSubjects);
+                  const prefilled = Array(10).fill('');
+                  gradeSubjects.slice(0, 10).forEach((sub, idx) => {
+                    prefilled[idx] = sub.subjectName;
+                  });
+                  setNewSubjectsList(prefilled);
                 }}
                 style={{ marginTop: '4px' }}
               >
-                {['I', 'II', 'III', 'IV', 'V', 'VI', 'VII', 'VIII', 'IX', 'X'].map(g => (
+                {GRADE_ORDER.map(g => (
                   <option key={g} value={g}>Grade {g}</option>
                 ))}
               </select>
@@ -3805,7 +3988,15 @@ export default function AcademicPanel({ subView }) {
                   <div key={idx} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '8px 12px', background: 'var(--bg-glass-active)', border: '1px solid var(--border-glass)', borderRadius: '8px' }}>
                     <span style={{ fontSize: '0.85rem', fontWeight: 600, color: 'var(--text-main)' }}>{sub.subjectName}</span>
                     <button 
-                      onClick={() => handleDeleteSubject(sub.id)}
+                      onClick={async () => {
+                        await handleDeleteSubject(sub.id);
+                        // Also clear this subject from the form list so it reflects the deletion
+                        const cleared = [...newSubjectsList];
+                        const inputIdx = cleared.findIndex(v => v.trim().toLowerCase() === sub.subjectName.trim().toLowerCase());
+                        if (inputIdx !== -1) cleared[inputIdx] = '';
+                        setNewSubjectsList(cleared);
+                        setEditingSubjects(prev => prev.filter(es => es.id !== sub.id));
+                      }}
                       style={{ background: 'none', border: 'none', color: '#ef4444', cursor: 'pointer', display: 'flex', alignItems: 'center', padding: '4px' }}
                     >
                       <Trash2 size={14} />
@@ -3819,7 +4010,7 @@ export default function AcademicPanel({ subView }) {
 
             {/* Add New Subjects form in Bulk */}
             <form onSubmit={handleBulkSubjectsSubmit} style={{ display: 'flex', flexDirection: 'column', gap: '14px', borderTop: '1px solid var(--border-glass)', paddingTop: '16px' }}>
-              <span style={{ fontSize: '0.75rem', fontWeight: 800, color: 'hsl(var(--color-primary))', textTransform: 'uppercase' }}>Add New Subjects (Up to 10)</span>
+              <span style={{ fontSize: '0.75rem', fontWeight: 800, color: 'hsl(var(--color-primary))', textTransform: 'uppercase' }}>Edit / Add Subjects (Up to 10)</span>
               
               <div style={{
                 display: 'grid',
@@ -4069,7 +4260,7 @@ export default function AcademicPanel({ subView }) {
                         {timeslots.map(slot => {
                           const key = `${day}_${slot}`;
                           const cell = teacherBulkGrid[key] || { cohort: '', subject: '' };
-                          const grades = ['I', 'II', 'III', 'IV', 'V', 'VI', 'VII', 'VIII', 'IX', 'X'].filter(g => subjects.some(s => s.grade === g));
+                          const grades = getGradesWithSubjects(subjects);
                           const sections = ['A', 'B', 'C', 'D'];
                           const allCohortsSet = new Set();
                           grades.forEach(g => {
@@ -4093,11 +4284,10 @@ export default function AcademicPanel({ subView }) {
 
                           // Sort cohorts: Grade order first, then Section order
                           cellCohorts.sort((a, b) => {
-                            const gradeOrder = ['I', 'II', 'III', 'IV', 'V', 'VI', 'VII', 'VIII', 'IX', 'X'];
                             const [gA, sA] = a.split('-');
                             const [gB, sB] = b.split('-');
-                            const idxA = gradeOrder.indexOf(gA);
-                            const idxB = gradeOrder.indexOf(gB);
+                            const idxA = GRADE_ORDER.indexOf(gA);
+                            const idxB = GRADE_ORDER.indexOf(gB);
                             if (idxA !== idxB) {
                               return idxA - idxB;
                             }

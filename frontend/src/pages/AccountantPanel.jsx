@@ -108,14 +108,7 @@ export default function AccountantPanel({ setActiveView, onLogout, accountantVie
             <LogOut size={16} />
             Sign Out
           </button>
-          <button
-            onClick={onBackToMain}
-            className="btn-primary"
-            style={{ padding: '8px 16px', fontSize: '0.85rem', display: 'flex', alignItems: 'center', gap: '6px' }}
-          >
-            <LayoutDashboard size={16} />
-            Main Dashboard
-          </button>
+
         </div>
       </div>
 

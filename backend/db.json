@@ -28,6 +28,16 @@
   ],
   "activities": [
     {
+      "id": "ACT-1780633875219",
+      "type": "alert",
+      "title": "New School Onboarded",
+      "desc": "School \"Eve Lawson\" registered on the platform.",
+      "time": "Just now",
+      "timestamp": "2026-06-05T04:31:15.219Z",
+      "color": "hsl(var(--color-primary))",
+      "bg": "rgba(hsl(var(--color-primary)), 0.1)"
+    },
+    {
       "id": "ACT-1780569087950",
       "type": "registration",
       "title": "New Faculty Registered",
