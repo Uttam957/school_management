@@ -215,15 +215,6 @@ export default function TeacherPanel({ setActiveView, onLogout, teacherView, set
           </div>
         </div>
         <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
-          <button
-            onClick={onLogout}
-            className="btn-secondary"
-            style={{ padding: '8px 16px', fontSize: '0.85rem', color: 'rgb(var(--color-danger-rgb))', display: 'flex', alignItems: 'center', gap: '6px' }}
-          >
-            <LogOut size={16} />
-            Sign Out
-          </button>
-
         </div>
       </div>
 
@@ -240,6 +231,10 @@ export function MarkAttendanceView({ date, setDate, studentClass, setClass, sect
   const [roster, setRoster] = useState([]);
   const [loading, setLoading] = useState(false);
   const [saving, setSaving] = useState(false);
+  const [submitting, setSubmitting] = useState(false);
+
+  // Check if attendance is already submitted
+  const isSubmitted = roster.length > 0 && roster.some(s => s.submitted);
 
   // Load roster
   const fetchRoster = async () => {
@@ -338,6 +333,30 @@ export function MarkAttendanceView({ date, setDate, studentClass, setClass, sect
       showToast('API network connection error.', 'error');
     } finally {
       setSaving(false);
+    }
+  };
+
+  // Submit Attendance (finalize)
+  const submitAttendance = async () => {
+    try {
+      setSubmitting(true);
+      const res = await fetch('/api/attendance/submit', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ date, studentClass, section })
+      });
+      if (res.ok) {
+        showToast('Attendance submitted successfully!', 'success');
+        fetchRoster();
+      } else {
+        const err = await res.json();
+        showToast(err.error || 'Failed to submit attendance.', 'error');
+      }
+    } catch (err) {
+      console.error('Error submitting attendance:', err);
+      showToast('Network error submitting attendance.', 'error');
+    } finally {
+      setSubmitting(false);
     }
   };
 
@@ -620,37 +639,64 @@ export function MarkAttendanceView({ date, setDate, studentClass, setClass, sect
         <div className="glass-panel" style={{ 
           padding: '16px 24px', 
           display: 'flex', 
-          justifyContent: 'flex-end', 
+          justifyContent: 'space-between',
           alignItems: 'center', 
           border: '1px solid rgba(255,255,255,0.08)',
           marginTop: '16px'
         }}>
-          <button 
-            onClick={saveAttendance}
-            disabled={saving}
-            className="btn-primary"
-            style={{ 
-              background: '#6366f1', 
-              border: 'none', 
-              boxShadow: '0 4px 14px rgba(99, 102, 241, 0.3)',
-              display: 'flex',
-              alignItems: 'center',
-              gap: '8px',
-              padding: '10px 24px',
-              borderRadius: '8px',
-              fontWeight: 700
-            }}
-          >
-            {saving ? (
-              <>
-                <Loader2 className="animate-spin" size={16} /> Saving Attendance...
-              </>
-            ) : (
-              <>
-                <ClipboardCheck size={18} /> Save Attendance
-              </>
-            )}
-          </button>
+          {isSubmitted ? (
+            <div style={{ display: 'flex', alignItems: 'center', gap: '8px', color: '#10b981' }}>
+              <CheckCircle size={18} />
+              <span style={{ fontWeight: 700 }}>Attendance Submitted</span>
+            </div>
+          ) : (
+            <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+              <button 
+                onClick={saveAttendance}
+                disabled={saving}
+                className="btn-primary"
+                style={{ 
+                  background: '#6366f1', 
+                  border: 'none', 
+                  boxShadow: '0 4px 14px rgba(99, 102, 241, 0.3)',
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: '8px',
+                  padding: '10px 24px',
+                  borderRadius: '8px',
+                  fontWeight: 700
+                }}
+              >
+                {saving ? (
+                  <><Loader2 className="animate-spin" size={16} /> Saving Attendance...</>
+                ) : (
+                  <><ClipboardCheck size={18} /> Save Attendance</>
+                )}
+              </button>
+              <button 
+                onClick={submitAttendance}
+                disabled={submitting}
+                className="btn-primary"
+                style={{ 
+                  background: '#10b981', 
+                  border: 'none', 
+                  boxShadow: '0 4px 14px rgba(16, 185, 129, 0.3)',
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: '8px',
+                  padding: '10px 24px',
+                  borderRadius: '8px',
+                  fontWeight: 700
+                }}
+              >
+                {submitting ? (
+                  <><Loader2 className="animate-spin" size={16} /> Submitting...</>
+                ) : (
+                  <><CheckCircle size={18} /> Submit Attendance</>
+                )}
+              </button>
+            </div>
+          )}
         </div>
       )}
 
@@ -669,8 +715,26 @@ export function AttendanceHistoryView({ showToast }) {
   const [roster, setRoster] = useState([]);
   const [loading, setLoading] = useState(false);
   const [saving, setSaving] = useState(false);
+  const [activeTab, setActiveTab] = useState('all'); // 'all' or 'submitted'
+  const [submittedDates, setSubmittedDates] = useState([]);
+  const [loadingSubmitted, setLoadingSubmitted] = useState(false);
 
-  const fetchRoster = async () => {
+  const fetchSubmittedDates = async () => {
+    try {
+      setLoadingSubmitted(true);
+      const res = await fetch('/api/attendance/submitted-dates');
+      if (res.ok) {
+        const data = await res.json();
+        setSubmittedDates(data);
+      }
+    } catch (err) {
+      console.error(err);
+    } finally {
+      setLoadingSubmitted(false);
+    }
+  };
+
+  const fetchRoster = async (submittedOnly = false) => {
     try {
       setLoading(true);
       const queryParams = new URLSearchParams({
@@ -678,8 +742,9 @@ export function AttendanceHistoryView({ showToast }) {
         studentClass,
         section,
         search
-      }).toString();
-      const res = await fetch(`/api/attendance?${queryParams}`);
+      });
+      if (submittedOnly) queryParams.set('submitted', 'true');
+      const res = await fetch(`/api/attendance?${queryParams.toString()}`);
       if (res.ok) {
         const data = await res.json();
         setRoster(data);
@@ -692,9 +757,18 @@ export function AttendanceHistoryView({ showToast }) {
     }
   };
 
+  const loadSubmittedView = async () => {
+    await fetchSubmittedDates();
+    await fetchRoster(true);
+  };
+
   useEffect(() => {
-    fetchRoster();
-  }, [date, studentClass, section, search]);
+    if (activeTab === 'all') {
+      fetchRoster(false);
+    } else {
+      loadSubmittedView();
+    }
+  }, [date, studentClass, section, search, activeTab]);
 
   const handleStatusToggle = (stuId, status) => {
     setRoster(prev => prev.map(s => {
@@ -760,7 +834,66 @@ export function AttendanceHistoryView({ showToast }) {
 
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: '24px' }}>
-      
+
+      {/* Tab Switcher */}
+      <div className="glass-panel" style={{ padding: '12px 16px', display: 'flex', gap: '8px' }}>
+        <button
+          onClick={() => setActiveTab('all')}
+          style={{
+            padding: '8px 20px', borderRadius: '8px', border: 'none', cursor: 'pointer', fontWeight: 700, fontSize: '0.85rem',
+            background: activeTab === 'all' ? '#6366f1' : 'rgba(255,255,255,0.03)',
+            color: activeTab === 'all' ? '#fff' : 'var(--text-muted)',
+            border: activeTab === 'all' ? 'none' : '1px solid var(--border-glass)'
+          }}
+        >
+          Attendance History
+        </button>
+        <button
+          onClick={() => setActiveTab('submitted')}
+          style={{
+            padding: '8px 20px', borderRadius: '8px', border: 'none', cursor: 'pointer', fontWeight: 700, fontSize: '0.85rem',
+            background: activeTab === 'submitted' ? '#10b981' : 'rgba(255,255,255,0.03)',
+            color: activeTab === 'submitted' ? '#fff' : 'var(--text-muted)',
+            border: activeTab === 'submitted' ? 'none' : '1px solid var(--border-glass)'
+          }}
+        >
+          Submitted Records
+        </button>
+      </div>
+
+      {activeTab === 'submitted' && (
+        <div className="glass-panel" style={{ padding: '20px 24px' }}>
+          <h4 style={{ fontSize: '0.95rem', fontWeight: 700, color: 'var(--text-main)', margin: '0 0 12px 0', display: 'flex', alignItems: 'center', gap: '8px' }}>
+            <CheckCircle size={18} style={{ color: '#10b981' }} /> Submitted Attendance Dates
+          </h4>
+          {loadingSubmitted ? (
+            <div style={{ textAlign: 'center', padding: '20px', color: 'var(--text-muted)' }}>
+              <Loader2 className="animate-spin" size={20} />
+            </div>
+          ) : submittedDates.length === 0 ? (
+            <p style={{ color: 'var(--text-muted)', fontSize: '0.85rem', margin: 0 }}>
+              No submitted attendance records found for Grade {studentClass}-{section}.
+            </p>
+          ) : (
+            <div style={{ display: 'flex', flexWrap: 'wrap', gap: '8px' }}>
+              {submittedDates.map((item, idx) => (
+                <button
+                  key={idx}
+                  onClick={() => { setDate(item.date); setActiveTab('all'); }}
+                  style={{
+                    padding: '8px 16px', borderRadius: '8px', border: '1px solid rgba(16,185,129,0.2)',
+                    background: 'rgba(16,185,129,0.06)', cursor: 'pointer', fontWeight: 600, fontSize: '0.85rem',
+                    color: '#10b981', display: 'flex', alignItems: 'center', gap: '6px'
+                  }}
+                >
+                  <CheckCircle size={14} /> {item.date} ({item.count} students)
+                </button>
+              ))}
+            </div>
+          )}
+        </div>
+      )}
+
       {/* Search & Filters */}
       <div className="glass-panel" style={{ padding: '20px 24px' }}>
         <div style={{ display: 'flex', gap: '16px', flexWrap: 'wrap', alignItems: 'center' }}>

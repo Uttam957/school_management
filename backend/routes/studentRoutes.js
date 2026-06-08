@@ -17,7 +17,10 @@ const uploadFields = upload.fields([
   { name: 'aadhaarFile', maxCount: 1 },
   { name: 'birthCertificateFile', maxCount: 1 },
   { name: 'marksheetFile', maxCount: 1 },
-  { name: 'transferCertificateFile', maxCount: 1 }
+  { name: 'transferCertificateFile', maxCount: 1 },
+  { name: 'addressProofFile', maxCount: 1 },
+  { name: 'medicalCertificateFile', maxCount: 1 },
+  { name: 'additionalFile', maxCount: 1 }
 ]);
 
 // 1. GET ALL STUDENTS (Support Query Search, Filter, Sort, Pagination)

@@ -897,3 +897,121 @@ export const deleteStaffSalaryStructure = (req, res) => {
     res.status(500).json({ error: 'Server error deleting staff salary structure.' });
   }
 };
+
+export const updateFeeStructure = (req, res) => {
+  try {
+    const { id } = req.params;
+    const { studentClass, admissionFee, tuitionFee, examFee, transportFee, hostelFee, libraryFee, otherCharges } = req.body;
+    const db = readDb();
+
+    const idx = db.feeStructures.findIndex(fs => fs.id === id);
+    if (idx === -1) return res.status(404).json({ error: 'Fee structure not found.' });
+
+    const admission = Number(admissionFee) || 0;
+    const tuition = Number(tuitionFee) || 0;
+    const exam = Number(examFee) || 0;
+    const transport = Number(transportFee) || 0;
+    const hostel = Number(hostelFee) || 0;
+    const library = Number(libraryFee) || 0;
+    const other = Number(otherCharges) || 0;
+    const totalFee = admission + tuition + exam + transport + hostel + library + other;
+
+    db.feeStructures[idx] = {
+      ...db.feeStructures[idx],
+      studentClass: studentClass || db.feeStructures[idx].studentClass,
+      admissionFee: admission,
+      tuitionFee: tuition,
+      examFee: exam,
+      transportFee: transport,
+      hostelFee: hostel,
+      libraryFee: library,
+      otherCharges: other,
+      totalFee,
+      updatedAt: new Date().toISOString()
+    };
+
+    addActivity(db, 'finance', 'Fee Structure Updated', `Fee structure for Grade ${db.feeStructures[idx].studentClass} updated to ₹${totalFee.toLocaleString()}`, 'rgb(var(--color-success-rgb))', 'rgba(var(--color-success-rgb), 0.1)');
+    writeDb(db);
+
+    res.json(db.feeStructures[idx]);
+  } catch (err) {
+    console.error('Error updating fee structure:', err);
+    res.status(500).json({ error: 'Server error updating fee structure.' });
+  }
+};
+
+export const updateSalaryStructure = (req, res) => {
+  try {
+    const { id } = req.params;
+    const { designation, basicSalary, allowances, deductions, pfDeduction, taxDeduction } = req.body;
+    const db = readDb();
+
+    const idx = db.salaryStructures.findIndex(s => s.id === id);
+    if (idx === -1) return res.status(404).json({ error: 'Salary structure not found.' });
+
+    const basic = Number(basicSalary) || 0;
+    const allow = Number(allowances) || 0;
+    const deduct = Number(deductions) || 0;
+    const pf = Number(pfDeduction) || 0;
+    const tax = Number(taxDeduction) || 0;
+
+    db.salaryStructures[idx] = {
+      ...db.salaryStructures[idx],
+      designation: designation || db.salaryStructures[idx].designation,
+      basicSalary: basic,
+      allowances: allow,
+      deductions: deduct,
+      pfDeduction: pf,
+      taxDeduction: tax,
+      netSalary: basic + allow - deduct - pf - tax,
+      updatedAt: new Date().toISOString()
+    };
+
+    addActivity(db, 'finance', 'Salary Structure Updated', `Salary structure for "${db.salaryStructures[idx].designation}" updated`, 'hsl(var(--color-info))', 'rgba(hsl(var(--color-info)), 0.1)');
+    writeDb(db);
+
+    res.json(db.salaryStructures[idx]);
+  } catch (err) {
+    console.error('Error updating salary structure:', err);
+    res.status(500).json({ error: 'Server error updating salary structure.' });
+  }
+};
+
+export const updateStaffSalaryStructure = (req, res) => {
+  try {
+    const { id } = req.params;
+    const { designation, basicSalary, allowances, bonus, deductions, pfDeduction, taxDeduction } = req.body;
+    const db = readDb();
+
+    const idx = db.staffSalaryStructures.findIndex(s => s.id === id);
+    if (idx === -1) return res.status(404).json({ error: 'Staff salary structure not found.' });
+
+    const basic = Number(basicSalary) || 0;
+    const allow = Number(allowances) || 0;
+    const bon = Number(bonus) || 0;
+    const deduct = Number(deductions) || 0;
+    const pf = Number(pfDeduction) || 0;
+    const tax = Number(taxDeduction) || 0;
+
+    db.staffSalaryStructures[idx] = {
+      ...db.staffSalaryStructures[idx],
+      designation: designation || db.staffSalaryStructures[idx].designation,
+      basicSalary: basic,
+      allowances: allow,
+      bonus: bon,
+      deductions: deduct,
+      pfDeduction: pf,
+      taxDeduction: tax,
+      netSalary: basic + allow + bon - deduct - pf - tax,
+      updatedAt: new Date().toISOString()
+    };
+
+    addActivity(db, 'finance', 'Staff Salary Structure Updated', `Staff salary structure for "${db.staffSalaryStructures[idx].designation}" updated`, 'hsl(var(--color-info))', 'rgba(hsl(var(--color-info)), 0.1)');
+    writeDb(db);
+
+    res.json(db.staffSalaryStructures[idx]);
+  } catch (err) {
+    console.error('Error updating staff salary structure:', err);
+    res.status(500).json({ error: 'Server error updating staff salary structure.' });
+  }
+};

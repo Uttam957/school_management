@@ -12,26 +12,66 @@ export const registerStudent = async (req, res) => {
     // Parse form fields
     let {
       fullName,
+      firstName,
+      middleName,
+      lastName,
       gender,
       dob,
       bloodGroup,
+      nationality,
+      category,
+      religion,
+      aadhaarNumber,
+      
       fatherName,
+      fatherOccupation,
       fatherMobile,
+      fatherEmail,
       motherName,
+      motherOccupation,
       motherMobile,
+      motherEmail,
       guardianName,
       guardianRelation,
       guardianContact,
+
       admissionNumber,
+      admissionDate,
       rollNumber,
       studentClass,
       section,
       academicYear,
-      previousSchool,
-      address,
+      admissionType,
+      previousSchoolName,
+      previousSchoolAddress,
+      previousClassStudied,
+      transferCertificateNumber,
+      status,
+
+      currentAddress,
+      permanentAddress,
       city,
       state,
-      pincode
+      country,
+      postalCode,
+      emergencyContactNumber,
+      isSameAddress,
+
+      medicalConditions,
+      allergies,
+      disabilities,
+      emergencyNotes,
+      doctorName,
+      doctorContact,
+
+      transportRequired,
+      hostelRequired,
+
+      feeStructure,
+      scholarshipDetails,
+      discountType,
+      discountAmount,
+      initialPaymentStatus
     } = req.body;
 
     // Auto-generate academic details if missing
@@ -51,7 +91,11 @@ export const registerStudent = async (req, res) => {
       academicYear = '2026-2027';
     }
 
-    if (!fullName || !admissionNumber || !rollNumber || !studentClass || !section || !adminEmailCheck(req.body)) {
+    const calculatedFullName = fullName || [firstName, middleName, lastName].filter(Boolean).join(' ') || 'Student';
+    const calculatedFirstName = firstName || calculatedFullName.split(' ')[0] || '';
+    const calculatedLastName = lastName || calculatedFullName.split(' ').slice(1).join(' ') || '';
+
+    if (!calculatedFullName || !admissionNumber || !rollNumber || !studentClass || !section || !adminEmailCheck(req.body)) {
       return res.status(400).json({ error: 'Missing required student details.' });
     }
 
@@ -62,50 +106,111 @@ export const registerStudent = async (req, res) => {
     const birthCertPath = files.birthCertificateFile ? `/uploads/${files.birthCertificateFile[0].filename}` : '';
     const marksheetPath = files.marksheetFile ? `/uploads/${files.marksheetFile[0].filename}` : '';
     const tcPath = files.transferCertificateFile ? `/uploads/${files.transferCertificateFile[0].filename}` : '';
+    const addressProofPath = files.addressProofFile ? `/uploads/${files.addressProofFile[0].filename}` : '';
+    const medicalCertPath = files.medicalCertificateFile ? `/uploads/${files.medicalCertificateFile[0].filename}` : '';
+    const additionalPath = files.additionalFile ? `/uploads/${files.additionalFile[0].filename}` : '';
+
+    // Student & Parent account logins creation
+    const studentUsername = admissionNumber;
+    const studentPassword = `stu@${calculatedFirstName.toLowerCase() || 'student'}`;
+    const parentUsername = fatherEmail || motherEmail || `parent_${admissionNumber}`;
+    const parentPassword = 'parent123';
 
     const newStudent = {
       id: `STU-${Math.floor(1000 + Math.random() * 9000)}`,
-      name: fullName,
-      fullName,
+      name: calculatedFullName,
+      fullName: calculatedFullName,
+      firstName: calculatedFirstName,
+      middleName: middleName || '',
+      lastName: calculatedLastName,
       gender,
       dob,
       bloodGroup,
-      fatherName,
-      fatherMobile,
-      motherName,
-      motherMobile,
-      guardianName,
-      guardianRelation,
-      guardianContact,
+      nationality: nationality || 'Indian',
+      category: category || 'General',
+      religion: religion || 'Hinduism',
+      aadhaarNumber: aadhaarNumber || '',
+      
+      fatherName: fatherName || '',
+      fatherOccupation: fatherOccupation || '',
+      fatherMobile: fatherMobile || '',
+      fatherEmail: fatherEmail || '',
+      motherName: motherName || '',
+      motherOccupation: motherOccupation || '',
+      motherMobile: motherMobile || '',
+      motherEmail: motherEmail || '',
+      guardianName: guardianName || '',
+      guardianRelation: guardianRelation || '',
+      guardianContact: guardianContact || '',
+
       admissionNumber,
+      admissionDate: admissionDate || new Date().toISOString().split('T')[0],
       rollNumber,
       roll: rollNumber,
       studentClass,
       section,
       academicYear,
-      previousSchool,
-      address,
-      city,
-      state,
-      pincode,
+      admissionType: admissionType || 'New Admission',
+      previousSchoolName: previousSchoolName || '',
+      previousSchoolAddress: previousSchoolAddress || '',
+      previousClassStudied: previousClassStudied || '',
+      transferCertificateNumber: transferCertificateNumber || '',
+      status: status || 'Active',
+
+      currentAddress: currentAddress || '',
+      permanentAddress: permanentAddress || '',
+      address: currentAddress || '',
+      city: city || '',
+      state: state || '',
+      country: country || 'India',
+      postalCode: postalCode || '',
+      pincode: postalCode || '',
+      emergencyContactNumber: emergencyContactNumber || '',
+      isSameAddress: isSameAddress === 'true' || isSameAddress === true,
+
+      medicalConditions: medicalConditions || '',
+      allergies: allergies || '',
+      disabilities: disabilities || '',
+      emergencyNotes: emergencyNotes || '',
+      doctorName: doctorName || '',
+      doctorContact: doctorContact || '',
+
+      transportRequired: transportRequired || 'No',
+      hostelRequired: hostelRequired || 'No',
+
+      feeStructure: feeStructure || '',
+      scholarshipDetails: scholarshipDetails || '',
+      discountType: discountType || '',
+      discountAmount: parseFloat(discountAmount || 0),
+      feeStatus: initialPaymentStatus || 'Pending',
+      initialPaymentStatus: initialPaymentStatus || 'Pending',
+
+      studentUsername,
+      studentPassword,
+      parentUsername,
+      parentPassword,
+
       // Supporting files
       photo: photoPath,
       aadhaarFile: aadhaarPath,
       birthCertificateFile: birthCertPath,
       marksheetFile: marksheetPath,
       transferCertificateFile: tcPath,
+      addressProofFile: addressProofPath,
+      medicalCertificateFile: medicalCertPath,
+      additionalFile: additionalPath,
+
       // Backward-compatible properties
       grade: `${studentClass}-${section}`,
-       guardian: guardianName || fatherName || motherName,
-      email: guardianContact ? `${admissionNumber}@academy.edu` : 'parent@academy.edu',
+      guardian: guardianName || fatherName || motherName,
+      email: fatherEmail || motherEmail || `${admissionNumber}@academy.edu`,
       phone: guardianContact || fatherMobile || motherMobile,
-      feeStatus: 'Pending',
       rank: 'N/A',
       photoBg: `linear-gradient(135deg, hsl(${Math.random() * 360}, 75%, 60%) 0%, hsl(${Math.random() * 360}, 85%, 50%) 100%)`
     };
 
     db.students.push(newStudent);
-    addActivity(db, 'registration', 'New Student Admitted', `${fullName} registered in Grade ${newStudent.grade}`, 'hsl(var(--color-primary))', 'rgba(hsl(var(--color-primary)), 0.1)');
+    addActivity(db, 'registration', 'New Student Admitted', `${calculatedFullName} registered in Grade ${newStudent.grade}`, 'hsl(var(--color-primary))', 'rgba(hsl(var(--color-primary)), 0.1)');
     writeDb(db);
 
     res.status(201).json(newStudent);
@@ -205,6 +310,9 @@ export const updateStudent = async (req, res) => {
     const birthCertPath = files.birthCertificateFile ? `/uploads/${files.birthCertificateFile[0].filename}` : currentStudent.birthCertificateFile;
     const marksheetPath = files.marksheetFile ? `/uploads/${files.marksheetFile[0].filename}` : currentStudent.marksheetFile;
     const tcPath = files.transferCertificateFile ? `/uploads/${files.transferCertificateFile[0].filename}` : currentStudent.transferCertificateFile;
+    const addressProofPath = files.addressProofFile ? `/uploads/${files.addressProofFile[0].filename}` : currentStudent.addressProofFile;
+    const medicalCertPath = files.medicalCertificateFile ? `/uploads/${files.medicalCertificateFile[0].filename}` : currentStudent.medicalCertificateFile;
+    const additionalPath = files.additionalFile ? `/uploads/${files.additionalFile[0].filename}` : currentStudent.additionalFile;
 
     const updatedStudent = {
       ...currentStudent,
@@ -214,6 +322,9 @@ export const updateStudent = async (req, res) => {
       birthCertificateFile: birthCertPath,
       marksheetFile: marksheetPath,
       transferCertificateFile: tcPath,
+      addressProofFile: addressProofPath,
+      medicalCertificateFile: medicalCertPath,
+      additionalFile: additionalPath,
       name: updateData.fullName || currentStudent.name,
       roll: updateData.rollNumber || currentStudent.roll,
       grade: `${updateData.studentClass || currentStudent.studentClass}-${updateData.section || currentStudent.section}`,

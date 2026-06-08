@@ -31,7 +31,13 @@ export const getAttendanceRoster = (req, res) => {
 
     // Map existing attendance for this date
     const attendanceRecords = db.attendance || [];
-    const dateRecords = attendanceRecords.filter(att => att.attendanceDate === date);
+    let dateRecords = attendanceRecords.filter(att => att.attendanceDate === date);
+
+    // Filter by submitted status if requested
+    if (req.query.submitted !== undefined) {
+      const isSubmitted = req.query.submitted === 'true';
+      dateRecords = dateRecords.filter(att => att.submitted === isSubmitted);
+    }
 
     const roster = filteredStudents.map(stu => {
       const existing = dateRecords.find(att => att.studentId === stu.id);
@@ -46,7 +52,8 @@ export const getAttendanceRoster = (req, res) => {
         section: stu.section || section,
         attendanceStatus: existing ? existing.attendanceStatus : '',
         remarks: existing ? existing.remarks : '',
-        attendanceId: existing ? existing.attendanceId : null
+        attendanceId: existing ? existing.attendanceId : null,
+        submitted: existing ? existing.submitted || false : false
       };
     });
 
@@ -107,6 +114,7 @@ export const saveAttendanceRoster = (req, res) => {
           attendanceStatus: status,
           remarks: remarks || '',
           markedBy: markedBy || 'Teacher',
+          submitted: false,
           createdAt: now,
           updatedAt: now
         };
@@ -316,5 +324,83 @@ export const getMonthlyCalendarData = (req, res) => {
   } catch (err) {
     console.error('Error generating monthly calendar data:', err);
     res.status(500).json({ error: 'Server error loading calendar statistics.' });
+  }
+};
+
+// 6. SUBMIT ATTENDANCE FOR A DATE/CLASS/SECTION
+export const submitAttendanceRoster = (req, res) => {
+  try {
+    const { date, studentClass, section } = req.body;
+
+    if (!date || !studentClass || !section) {
+      return res.status(400).json({ error: 'Date, Class, and Section are required.' });
+    }
+
+    const db = readDb();
+    if (!db.attendance) db.attendance = [];
+
+    let updatedCount = 0;
+    db.attendance.forEach((att, idx) => {
+      if (
+        att.attendanceDate === date &&
+        att.classId === studentClass &&
+        att.sectionId === section &&
+        !att.submitted
+      ) {
+        db.attendance[idx] = {
+          ...att,
+          submitted: true,
+          updatedAt: new Date().toISOString()
+        };
+        updatedCount++;
+      }
+    });
+
+    addActivity(
+      db,
+      'registration',
+      'Attendance Submitted',
+      `Attendance for Grade ${studentClass}-${section} on ${date} submitted (${updatedCount} records)`,
+      'rgb(var(--color-success-rgb))',
+      'rgba(var(--color-success-rgb), 0.1)'
+    );
+
+    writeDb(db);
+    res.json({ success: true, message: `Attendance submitted successfully. ${updatedCount} records finalized.` });
+  } catch (err) {
+    console.error('Error submitting attendance:', err);
+    res.status(500).json({ error: 'Server error submitting attendance.' });
+  }
+};
+
+// 7. GET SUBMITTED ATTENDANCE DATES FOR A CLASS/SECTION
+export const getSubmittedAttendanceDates = (req, res) => {
+  try {
+    const { studentClass, section } = req.query;
+
+    if (!studentClass || !section) {
+      return res.status(400).json({ error: 'Class and Section are required.' });
+    }
+
+    const db = readDb();
+    const attendanceRecords = db.attendance || [];
+
+    // Group by date, count submitted records for this class/section
+    const dateMap = {};
+    attendanceRecords.forEach(att => {
+      if (att.classId === studentClass && att.sectionId === section && att.submitted) {
+        if (!dateMap[att.attendanceDate]) {
+          dateMap[att.attendanceDate] = { date: att.attendanceDate, count: 0 };
+        }
+        dateMap[att.attendanceDate].count++;
+      }
+    });
+
+    const result = Object.values(dateMap).sort((a, b) => b.date.localeCompare(a.date));
+
+    res.json(result);
+  } catch (err) {
+    console.error('Error fetching submitted dates:', err);
+    res.status(500).json({ error: 'Server error fetching submitted dates.' });
   }
 };

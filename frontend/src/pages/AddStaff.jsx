@@ -297,7 +297,7 @@ export default function AddStaff({ setActiveView }) {
   };
 
   return (
-    <div className="animate-slide-up" style={{ display: 'flex', flexDirection: 'column', gap: '24px', paddingBottom: '40px' }}>
+    <div className="animate-slide-up no-card-form" style={{ display: 'flex', flexDirection: 'column', gap: '24px', paddingBottom: '40px' }}>
       
       {successToast && (
         <div className="glass-panel" style={{

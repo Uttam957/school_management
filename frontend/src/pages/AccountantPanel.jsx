@@ -8,6 +8,36 @@ import {
 } from 'lucide-react';
 
 import StudentDirectory from './StudentDirectory';
+
+function ConfirmDialog({ show, message, onConfirm, onCancel }) {
+  if (!show) return null;
+  return (
+    <div className="modal-overlay" onClick={onCancel}>
+      <div onClick={e => e.stopPropagation()} className="animate-scale-up" style={{
+        width: '100%', maxWidth: '400px', background: 'var(--bg-elevated)', borderRadius: '16px',
+        border: '1px solid var(--border-glass)', padding: '28px', boxShadow: 'var(--shadow-lg)',
+        textAlign: 'center'
+      }}>
+        <AlertCircle size={40} style={{ color: '#ef4444', marginBottom: '12px' }} />
+        <p style={{ fontSize: '0.95rem', color: 'var(--text-main)', fontWeight: 600, margin: '0 0 20px 0', lineHeight: '1.5' }}>{message}</p>
+        <div style={{ display: 'flex', gap: '12px', justifyContent: 'center' }}>
+          <button onClick={onCancel} style={{
+            padding: '10px 24px', background: 'var(--bg-card-subtle)', border: '1px solid var(--border-subtle)',
+            borderRadius: '10px', color: 'var(--text-main)', fontWeight: 600, cursor: 'pointer', fontSize: '0.85rem'
+          }}>
+            Cancel
+          </button>
+          <button onClick={onConfirm} style={{
+            padding: '10px 24px', background: '#ef4444', border: 'none',
+            borderRadius: '10px', color: '#fff', fontWeight: 700, cursor: 'pointer', fontSize: '0.85rem'
+          }}>
+            Delete
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+}
 import TeacherList from './TeacherList';
 import StaffDirectory from './StaffDirectory';
 import RegisterStudent from './RegisterStudent';
@@ -100,14 +130,6 @@ export default function AccountantPanel({ setActiveView, onLogout, accountantVie
           }}>
             FY 2026-2027
           </div>
-          <button
-            onClick={onLogout}
-            className="btn-secondary"
-            style={{ padding: '8px 16px', fontSize: '0.85rem', color: 'rgb(var(--color-danger-rgb))', display: 'flex', alignItems: 'center', gap: '6px' }}
-          >
-            <LogOut size={16} />
-            Sign Out
-          </button>
 
         </div>
       </div>
@@ -746,9 +768,11 @@ export function FeeStructureView({ showToast }) {
   const [structures, setStructures] = useState([]);
   const [loading, setLoading] = useState(true);
   const [showForm, setShowForm] = useState(false);
+  const [editingId, setEditingId] = useState(null);
+  const [confirmDelete, setConfirmDelete] = useState(null);
   const [form, setForm] = useState({
-    studentClass: 'I', admissionFee: '5000', tuitionFee: '12000', examFee: '1500',
-    transportFee: '3000', hostelFee: '0', libraryFee: '1000', otherCharges: '500'
+    studentClass: 'I', admissionFee: '0', tuitionFee: '0', examFee: '0',
+    transportFee: '0', hostelFee: '0', libraryFee: '0', otherCharges: '0'
   });
 
   const classes = ['I','II','III','IV','V','VI','VII','VIII','IX','X'];
@@ -765,13 +789,16 @@ export function FeeStructureView({ showToast }) {
   const handleSubmit = async (e) => {
     e.preventDefault();
     try {
-      const res = await fetch('/api/finance/fee-structures', {
-        method: 'POST',
+      const isEdit = !!editingId;
+      const url = isEdit ? `/api/finance/fee-structures/${editingId}` : '/api/finance/fee-structures';
+      const res = await fetch(url, {
+        method: isEdit ? 'PUT' : 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(form)
       });
       if (res.ok) {
         showToast(`Fee structure for Grade ${form.studentClass} saved!`);
+        setEditingId(null);
         setShowForm(false);
         fetchStructures();
       } else {
@@ -782,11 +809,7 @@ export function FeeStructureView({ showToast }) {
   };
 
   const handleDelete = async (id) => {
-    if (!confirm('Are you sure you want to delete this fee structure?')) return;
-    try {
-      const res = await fetch(`/api/finance/fee-structures/${id}`, { method: 'DELETE' });
-      if (res.ok) { showToast('Fee structure deleted'); fetchStructures(); }
-    } catch { showToast('Error deleting', 'error'); }
+    setConfirmDelete(id);
   };
 
   const handleEdit = (s) => {
@@ -800,6 +823,7 @@ export function FeeStructureView({ showToast }) {
       libraryFee: String(s.libraryFee || '0'),
       otherCharges: String(s.otherCharges || '0')
     });
+    setEditingId(s.id);
     setShowForm(true);
   };
 
@@ -817,7 +841,7 @@ export function FeeStructureView({ showToast }) {
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: '24px' }}>
       <div style={{ display: 'flex', gap: '12px', flexWrap: 'wrap' }}>
-        <button onClick={() => setShowForm(true)} style={{
+        <button onClick={() => { setEditingId(null); setShowForm(true); }} style={{
           padding: '10px 20px', background: 'linear-gradient(135deg, #3b82f6, #2563eb)', border: 'none',
           borderRadius: '10px', color: '#fff', fontWeight: 700, cursor: 'pointer', display: 'flex',
           alignItems: 'center', gap: '6px', fontSize: '0.85rem'
@@ -827,7 +851,7 @@ export function FeeStructureView({ showToast }) {
       </div>
 
       {showForm && (
-        <div className="modal-overlay" onClick={() => setShowForm(false)}>
+        <div className="modal-overlay" onClick={() => { setEditingId(null); setShowForm(false); }}>
           <div onClick={e => e.stopPropagation()} className="animate-scale-up" style={{
             width: '100%', maxWidth: '650px', background: 'var(--bg-elevated)', borderRadius: '20px',
             border: '1px solid var(--border-glass)', padding: '32px', boxShadow: 'var(--shadow-lg)',
@@ -866,7 +890,7 @@ export function FeeStructureView({ showToast }) {
                   borderRadius: '10px', color: '#fff', fontWeight: 700, cursor: 'pointer',
                   display: 'flex', alignItems: 'center', gap: '6px', fontSize: '0.85rem'
                 }}><CheckCircle size={16} /> Save Fee Structure</button>
-                <button type="button" onClick={() => setShowForm(false)} style={{
+                <button type="button" onClick={() => { setEditingId(null); setShowForm(false); }} style={{
                   padding: '12px 24px', background: 'var(--bg-card-subtle)', border: '1px solid var(--border-subtle)',
                   borderRadius: '10px', color: 'var(--text-main)', fontWeight: 600, cursor: 'pointer', fontSize: '0.85rem', transition: 'background 0.2s',
                   display: 'flex', alignItems: 'center', gap: '6px'
@@ -898,11 +922,11 @@ export function FeeStructureView({ showToast }) {
               gap: '12px',
               maxWidth: '420px',
               width: '100%',
-              background: 'rgba(20, 20, 35, 0.65)',
-              border: '1px solid rgba(255, 255, 255, 0.12)',
-              boxShadow: '0 8px 30px rgba(0, 0, 0, 0.35)'
+              background: '#ffffff',
+              border: '1px solid rgba(0, 0, 0, 0.08)',
+              boxShadow: '0 4px 20px rgba(0, 0, 0, 0.08)'
             }}>
-              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', borderBottom: '1px solid rgba(255,255,255,0.06)', paddingBottom: '10px' }}>
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', borderBottom: '1px solid rgba(0,0,0,0.06)', paddingBottom: '10px' }}>
                 <h4 style={{ fontSize: '1rem', fontWeight: 800, color: '#3b82f6' }}>Grade {s.studentClass}</h4>
               </div>
               <div style={{ display: 'flex', flexDirection: 'column', gap: '2px' }}>
@@ -915,34 +939,34 @@ export function FeeStructureView({ showToast }) {
                     justifyContent: 'space-between', 
                     fontSize: '0.82rem',
                     padding: '8px 0',
-                    borderBottom: idx === 6 ? 'none' : '1px solid rgba(255,255,255,0.03)'
+                    borderBottom: idx === 6 ? 'none' : '1px solid rgba(0,0,0,0.04)'
                   }}>
                     <span style={{ color: 'var(--text-muted)' }}>{l}</span>
                     <span style={{ color: 'var(--text-main)', fontWeight: 600 }}>₹{(v || 0).toLocaleString()}</span>
                   </div>
                 ))}
               </div>
-              <div style={{ borderTop: '1px solid rgba(255,255,255,0.1)', paddingTop: '12px', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+              <div style={{ borderTop: '1px solid rgba(0,0,0,0.08)', paddingTop: '12px', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                 <div style={{ display: 'flex', flexDirection: 'column' }}>
                   <span style={{ fontWeight: 700, color: 'var(--text-muted)', fontSize: '0.72rem', textTransform: 'uppercase', letterSpacing: '0.02em' }}>Total Fee</span>
                   <span style={{ fontWeight: 800, color: '#10b981', fontSize: '1.15rem' }}>₹{(s.totalFee || 0).toLocaleString()}</span>
                 </div>
                 <div style={{ display: 'flex', gap: '8px' }}>
                   <button onClick={() => handleEdit(s)} style={{
-                    background: 'rgba(255,255,255,0.03)', border: '1px solid rgba(255,255,255,0.08)', color: '#3b82f6', cursor: 'pointer',
+                    background: 'rgba(0,0,0,0.03)', border: '1px solid rgba(0,0,0,0.08)', color: '#3b82f6', cursor: 'pointer',
                     display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '6px', borderRadius: '6px',
                     transition: 'all 0.2s'
                   }} onMouseEnter={e => { e.currentTarget.style.background = 'rgba(59,130,246,0.12)'; }}
-                     onMouseLeave={e => { e.currentTarget.style.background = 'rgba(255,255,255,0.03)'; }}
+                     onMouseLeave={e => { e.currentTarget.style.background = 'rgba(0,0,0,0.03)'; }}
                      title="Edit Structure">
                     <Pencil size={15} />
                   </button>
                   <button onClick={() => handleDelete(s.id)} style={{
-                    background: 'rgba(255,255,255,0.03)', border: '1px solid rgba(255,255,255,0.08)', color: '#ef4444', cursor: 'pointer',
+                    background: 'rgba(0,0,0,0.03)', border: '1px solid rgba(0,0,0,0.08)', color: '#ef4444', cursor: 'pointer',
                     display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '6px', borderRadius: '6px',
                     transition: 'all 0.2s'
                   }} onMouseEnter={e => { e.currentTarget.style.background = 'rgba(239,68,68,0.12)'; }}
-                     onMouseLeave={e => { e.currentTarget.style.background = 'rgba(255,255,255,0.03)'; }}
+                     onMouseLeave={e => { e.currentTarget.style.background = 'rgba(0,0,0,0.03)'; }}
                      title="Delete Structure">
                     <Trash2 size={15} />
                   </button>
@@ -952,6 +976,19 @@ export function FeeStructureView({ showToast }) {
           ))
         )}
       </div>
+
+      <ConfirmDialog
+        show={!!confirmDelete}
+        message="Are you sure you want to delete this fee structure?"
+        onConfirm={async () => {
+          try {
+            const res = await fetch(`/api/finance/fee-structures/${confirmDelete}`, { method: 'DELETE' });
+            if (res.ok) { showToast('Fee structure deleted'); fetchStructures(); }
+          } catch { showToast('Error deleting', 'error'); }
+          setConfirmDelete(null);
+        }}
+        onCancel={() => setConfirmDelete(null)}
+      />
     </div>
   );
 }
@@ -973,6 +1010,8 @@ export function StaffPaymentStructureView({ showToast }) {
   const [designationOptions, setDesignationOptions] = useState(defaultStaffDesignations);
   const [loading, setLoading] = useState(true);
   const [showForm, setShowForm] = useState(false);
+  const [editingId, setEditingId] = useState(null);
+  const [confirmDelete, setConfirmDelete] = useState(null);
   const [form, setForm] = useState({
     designation: '', basicSalary: '', allowances: '', bonus: '0',
     deductions: '0', pfDeduction: '0', taxDeduction: '0'
@@ -1003,13 +1042,16 @@ export function StaffPaymentStructureView({ showToast }) {
   const handleSubmit = async (e) => {
     e.preventDefault();
     try {
-      const res = await fetch('/api/finance/staff-salary-structures', {
-        method: 'POST',
+      const isEdit = !!editingId;
+      const url = isEdit ? `/api/finance/staff-salary-structures/${editingId}` : '/api/finance/staff-salary-structures';
+      const res = await fetch(url, {
+        method: isEdit ? 'PUT' : 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(form)
       });
       if (res.ok) {
         showToast(`Salary structure for ${form.designation} saved!`);
+        setEditingId(null);
         setForm({
           designation: '', basicSalary: '', allowances: '', bonus: '0',
           deductions: '0', pfDeduction: '0', taxDeduction: '0'
@@ -1023,19 +1065,8 @@ export function StaffPaymentStructureView({ showToast }) {
     } catch { showToast('Network error', 'error'); }
   };
 
-  const handleDelete = async (id, name) => {
-    if (!window.confirm(`Are you sure you want to delete the structure for ${name}?`)) return;
-    try {
-      const res = await fetch(`/api/finance/staff-salary-structures/${id}`, {
-        method: 'DELETE'
-      });
-      if (res.ok) {
-        showToast(`Deleted salary structure for ${name}`);
-        fetchStructures();
-      } else {
-        showToast('Failed to delete structure', 'error');
-      }
-    } catch { showToast('Network error', 'error'); }
+  const handleDelete = (id, name) => {
+    setConfirmDelete({ id, name });
   };
 
   const handleEdit = (s) => {
@@ -1048,6 +1079,7 @@ export function StaffPaymentStructureView({ showToast }) {
       pfDeduction: String(s.pfDeduction || '0'),
       taxDeduction: String(s.taxDeduction || '0')
     });
+    setEditingId(s.id);
     setShowForm(true);
   };
 
@@ -1065,7 +1097,7 @@ export function StaffPaymentStructureView({ showToast }) {
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: '24px' }}>
       <div style={{ display: 'flex', gap: '12px', flexWrap: 'wrap' }}>
-        <button onClick={() => setShowForm(true)} style={{
+        <button onClick={() => { setEditingId(null); setShowForm(true); }} style={{
           padding: '10px 20px', background: 'linear-gradient(135deg, #14b8a6, #0d9488)', border: 'none',
           borderRadius: '10px', color: '#fff', fontWeight: 700, cursor: 'pointer', display: 'flex',
           alignItems: 'center', gap: '6px', fontSize: '0.85rem'
@@ -1075,7 +1107,7 @@ export function StaffPaymentStructureView({ showToast }) {
       </div>
 
       {showForm && (
-        <div className="modal-overlay" onClick={() => setShowForm(false)}>
+        <div className="modal-overlay" onClick={() => { setEditingId(null); setShowForm(false); }}>
           <div onClick={e => e.stopPropagation()} className="animate-scale-up" style={{
             width: '100%', maxWidth: '650px', background: 'var(--bg-elevated)', borderRadius: '20px',
             border: '1px solid var(--border-glass)', padding: '32px', boxShadow: 'var(--shadow-lg)',
@@ -1122,7 +1154,7 @@ export function StaffPaymentStructureView({ showToast }) {
                   borderRadius: '10px', color: '#fff', fontWeight: 700, cursor: 'pointer',
                   display: 'flex', alignItems: 'center', gap: '6px', fontSize: '0.85rem'
                 }}><CheckCircle size={16} /> Save Staff Structure</button>
-                <button type="button" onClick={() => setShowForm(false)} style={{
+                <button type="button" onClick={() => { setEditingId(null); setShowForm(false); }} style={{
                   padding: '12px 24px', background: 'var(--bg-card-subtle)', border: '1px solid var(--border-subtle)',
                   borderRadius: '10px', color: 'var(--text-main)', fontWeight: 600, cursor: 'pointer', fontSize: '0.85rem', transition: 'background 0.2s',
                   display: 'flex', alignItems: 'center', gap: '6px'
@@ -1153,11 +1185,11 @@ export function StaffPaymentStructureView({ showToast }) {
                 gap: '12px',
                 maxWidth: '420px',
                 width: '100%',
-                background: 'rgba(20, 20, 35, 0.65)',
-                border: '1px solid rgba(255, 255, 255, 0.12)',
-                boxShadow: '0 8px 30px rgba(0, 0, 0, 0.35)'
+                background: '#ffffff',
+                border: '1px solid rgba(0, 0, 0, 0.08)',
+                boxShadow: '0 4px 20px rgba(0, 0, 0, 0.08)'
               }}>
-                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', borderBottom: '1px solid rgba(255,255,255,0.06)', paddingBottom: '10px' }}>
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', borderBottom: '1px solid rgba(0,0,0,0.06)', paddingBottom: '10px' }}>
                   <h4 style={{ fontSize: '1rem', fontWeight: 800, color: '#14b8a6' }}>{s.designation}</h4>
                 </div>
                 <div style={{ display: 'flex', flexDirection: 'column', gap: '2px' }}>
@@ -1170,34 +1202,34 @@ export function StaffPaymentStructureView({ showToast }) {
                       justifyContent: 'space-between', 
                       fontSize: '0.82rem',
                       padding: '8px 0',
-                      borderBottom: idx === 5 ? 'none' : '1px solid rgba(255,255,255,0.03)'
+                      borderBottom: idx === 5 ? 'none' : '1px solid rgba(0,0,0,0.04)'
                     }}>
                       <span style={{ color: 'var(--text-muted)' }}>{l}</span>
                       <span style={{ color: 'var(--text-main)', fontWeight: 600 }}>₹{(v || 0).toLocaleString()}</span>
                     </div>
                   ))}
                 </div>
-                <div style={{ borderTop: '1px solid rgba(255,255,255,0.1)', paddingTop: '12px', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                <div style={{ borderTop: '1px solid rgba(0,0,0,0.08)', paddingTop: '12px', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                   <div style={{ display: 'flex', flexDirection: 'column' }}>
                     <span style={{ fontWeight: 700, color: 'var(--text-muted)', fontSize: '0.72rem', textTransform: 'uppercase', letterSpacing: '0.02em' }}>Net Salary</span>
                     <span style={{ fontWeight: 800, color: '#14b8a6', fontSize: '1.15rem' }}>₹{(s.netSalary || 0).toLocaleString()}</span>
                   </div>
                   <div style={{ display: 'flex', gap: '8px' }}>
                     <button onClick={() => handleEdit(s)} style={{
-                      background: 'rgba(255,255,255,0.03)', border: '1px solid rgba(255,255,255,0.08)', color: '#3b82f6', cursor: 'pointer',
+                      background: 'rgba(0,0,0,0.03)', border: '1px solid rgba(0,0,0,0.08)', color: '#3b82f6', cursor: 'pointer',
                       display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '6px', borderRadius: '6px',
                       transition: 'all 0.2s'
                     }} onMouseEnter={e => { e.currentTarget.style.background = 'rgba(59,130,246,0.12)'; }}
-                       onMouseLeave={e => { e.currentTarget.style.background = 'rgba(255,255,255,0.03)'; }}
+                       onMouseLeave={e => { e.currentTarget.style.background = 'rgba(0,0,0,0.03)'; }}
                        title="Edit Structure">
                       <Pencil size={15} />
                     </button>
                     <button onClick={() => handleDelete(s.id, s.designation)} style={{
-                      background: 'rgba(255,255,255,0.03)', border: '1px solid rgba(255,255,255,0.08)', color: '#ef4444', cursor: 'pointer',
+                      background: 'rgba(0,0,0,0.03)', border: '1px solid rgba(0,0,0,0.08)', color: '#ef4444', cursor: 'pointer',
                       display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '6px', borderRadius: '6px',
                       transition: 'all 0.2s'
                     }} onMouseEnter={e => { e.currentTarget.style.background = 'rgba(239,68,68,0.12)'; }}
-                       onMouseLeave={e => { e.currentTarget.style.background = 'rgba(255,255,255,0.03)'; }}
+                       onMouseLeave={e => { e.currentTarget.style.background = 'rgba(0,0,0,0.03)'; }}
                        title="Delete Structure">
                       <Trash2 size={15} />
                     </button>
@@ -1207,6 +1239,24 @@ export function StaffPaymentStructureView({ showToast }) {
             ))
           )}
         </div>
+
+        <ConfirmDialog
+          show={!!confirmDelete}
+          message={confirmDelete ? `Are you sure you want to delete the structure for ${confirmDelete.name}?` : ''}
+          onConfirm={async () => {
+            try {
+              const res = await fetch(`/api/finance/staff-salary-structures/${confirmDelete.id}`, { method: 'DELETE' });
+              if (res.ok) {
+                showToast(`Deleted salary structure for ${confirmDelete.name}`);
+                fetchStructures();
+              } else {
+                showToast('Failed to delete structure', 'error');
+              }
+            } catch { showToast('Network error', 'error'); }
+            setConfirmDelete(null);
+          }}
+          onCancel={() => setConfirmDelete(null)}
+        />
     </div>
   );
 }
@@ -2556,6 +2606,8 @@ export function TeacherSalaryStructureView({ showToast }) {
   const [structures, setStructures] = useState([]);
   const [loading, setLoading] = useState(true);
   const [showForm, setShowForm] = useState(false);
+  const [editingId, setEditingId] = useState(null);
+  const [confirmDelete, setConfirmDelete] = useState(null);
   const [form, setForm] = useState({
     designation: '', basicSalary: '', allowances: '',
     deductions: '0', pfDeduction: '0', taxDeduction: '0'
@@ -2575,13 +2627,16 @@ export function TeacherSalaryStructureView({ showToast }) {
   const handleSubmit = async (e) => {
     e.preventDefault();
     try {
-      const res = await fetch('/api/finance/salary-structures', {
-        method: 'POST',
+      const isEdit = !!editingId;
+      const url = isEdit ? `/api/finance/salary-structures/${editingId}` : '/api/finance/salary-structures';
+      const res = await fetch(url, {
+        method: isEdit ? 'PUT' : 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(form)
       });
       if (res.ok) {
         showToast(`Salary structure for ${form.designation} saved!`);
+        setEditingId(null);
         setForm({
           designation: '', basicSalary: '', allowances: '',
           deductions: '0', pfDeduction: '0', taxDeduction: '0'
@@ -2595,19 +2650,8 @@ export function TeacherSalaryStructureView({ showToast }) {
     } catch { showToast('Network error', 'error'); }
   };
 
-  const handleDelete = async (id, name) => {
-    if (!window.confirm(`Are you sure you want to delete the structure for ${name}?`)) return;
-    try {
-      const res = await fetch(`/api/finance/salary-structures/${id}`, {
-        method: 'DELETE'
-      });
-      if (res.ok) {
-        showToast(`Deleted salary structure for ${name}`);
-        fetchStructures();
-      } else {
-        showToast('Failed to delete structure', 'error');
-      }
-    } catch { showToast('Network error', 'error'); }
+  const handleDelete = (id, name) => {
+    setConfirmDelete({ id, name });
   };
 
   const handleEdit = (s) => {
@@ -2619,6 +2663,7 @@ export function TeacherSalaryStructureView({ showToast }) {
       pfDeduction: String(s.pfDeduction || '0'),
       taxDeduction: String(s.taxDeduction || '0')
     });
+    setEditingId(s.id);
     setShowForm(true);
   };
 
@@ -2636,7 +2681,7 @@ export function TeacherSalaryStructureView({ showToast }) {
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: '24px' }}>
       <div style={{ display: 'flex', gap: '12px', flexWrap: 'wrap' }}>
-        <button onClick={() => setShowForm(true)} style={{
+        <button onClick={() => { setEditingId(null); setShowForm(true); }} style={{
           padding: '10px 20px', background: 'linear-gradient(135deg, #10b981, #059669)', border: 'none',
           borderRadius: '10px', color: '#fff', fontWeight: 700, cursor: 'pointer', display: 'flex',
           alignItems: 'center', gap: '6px', fontSize: '0.85rem'
@@ -2646,7 +2691,7 @@ export function TeacherSalaryStructureView({ showToast }) {
       </div>
 
       {showForm && (
-        <div className="modal-overlay" onClick={() => setShowForm(false)}>
+        <div className="modal-overlay" onClick={() => { setEditingId(null); setShowForm(false); }}>
           <div onClick={e => e.stopPropagation()} className="animate-scale-up" style={{
             width: '100%', maxWidth: '650px', background: 'var(--bg-elevated)', borderRadius: '20px',
             border: '1px solid var(--border-glass)', padding: '32px', boxShadow: 'var(--shadow-lg)',
@@ -2696,7 +2741,7 @@ export function TeacherSalaryStructureView({ showToast }) {
                   borderRadius: '10px', color: '#fff', fontWeight: 700, cursor: 'pointer',
                   display: 'flex', alignItems: 'center', gap: '6px', fontSize: '0.85rem'
                 }}><CheckCircle size={16} /> Save Structure</button>
-                <button type="button" onClick={() => setShowForm(false)} style={{
+                <button type="button" onClick={() => { setEditingId(null); setShowForm(false); }} style={{
                   padding: '12px 24px', background: 'var(--bg-card-subtle)', border: '1px solid var(--border-subtle)',
                   borderRadius: '10px', color: 'var(--text-main)', fontWeight: 600, cursor: 'pointer', fontSize: '0.85rem', transition: 'background 0.2s',
                   display: 'flex', alignItems: 'center', gap: '6px'
@@ -2727,11 +2772,11 @@ export function TeacherSalaryStructureView({ showToast }) {
                 gap: '12px',
                 maxWidth: '420px',
                 width: '100%',
-                background: 'rgba(20, 20, 35, 0.65)',
-                border: '1px solid rgba(255, 255, 255, 0.12)',
-                boxShadow: '0 8px 30px rgba(0, 0, 0, 0.35)'
+                background: '#ffffff',
+                border: '1px solid rgba(0, 0, 0, 0.08)',
+                boxShadow: '0 4px 20px rgba(0, 0, 0, 0.08)'
               }}>
-                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', borderBottom: '1px solid rgba(255,255,255,0.06)', paddingBottom: '10px' }}>
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', borderBottom: '1px solid rgba(0,0,0,0.06)', paddingBottom: '10px' }}>
                   <h4 style={{ fontSize: '1rem', fontWeight: 800, color: '#10b981' }}>{s.designation}</h4>
                 </div>
                 <div style={{ display: 'flex', flexDirection: 'column', gap: '2px' }}>
@@ -2744,34 +2789,34 @@ export function TeacherSalaryStructureView({ showToast }) {
                       justifyContent: 'space-between', 
                       fontSize: '0.82rem',
                       padding: '8px 0',
-                      borderBottom: idx === 4 ? 'none' : '1px solid rgba(255,255,255,0.03)'
+                      borderBottom: idx === 4 ? 'none' : '1px solid rgba(0,0,0,0.04)'
                     }}>
                       <span style={{ color: 'var(--text-muted)' }}>{l}</span>
                       <span style={{ color: 'var(--text-main)', fontWeight: 600 }}>₹{(v || 0).toLocaleString()}</span>
                     </div>
                   ))}
                 </div>
-                <div style={{ borderTop: '1px solid rgba(255,255,255,0.1)', paddingTop: '12px', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                <div style={{ borderTop: '1px solid rgba(0,0,0,0.08)', paddingTop: '12px', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                   <div style={{ display: 'flex', flexDirection: 'column' }}>
                     <span style={{ fontWeight: 700, color: 'var(--text-muted)', fontSize: '0.72rem', textTransform: 'uppercase', letterSpacing: '0.02em' }}>Net Salary</span>
                     <span style={{ fontWeight: 800, color: '#10b981', fontSize: '1.15rem' }}>₹{(s.netSalary || 0).toLocaleString()}</span>
                   </div>
                   <div style={{ display: 'flex', gap: '8px' }}>
                     <button onClick={() => handleEdit(s)} style={{
-                      background: 'rgba(255,255,255,0.03)', border: '1px solid rgba(255,255,255,0.08)', color: '#3b82f6', cursor: 'pointer',
+                      background: 'rgba(0,0,0,0.03)', border: '1px solid rgba(0,0,0,0.08)', color: '#3b82f6', cursor: 'pointer',
                       display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '6px', borderRadius: '6px',
                       transition: 'all 0.2s'
                     }} onMouseEnter={e => { e.currentTarget.style.background = 'rgba(59,130,246,0.12)'; }}
-                       onMouseLeave={e => { e.currentTarget.style.background = 'rgba(255,255,255,0.03)'; }}
+                       onMouseLeave={e => { e.currentTarget.style.background = 'rgba(0,0,0,0.03)'; }}
                        title="Edit Structure">
                       <Pencil size={15} />
                     </button>
                     <button onClick={() => handleDelete(s.id, s.designation)} style={{
-                      background: 'rgba(255,255,255,0.03)', border: '1px solid rgba(255,255,255,0.08)', color: '#ef4444', cursor: 'pointer',
+                      background: 'rgba(0,0,0,0.03)', border: '1px solid rgba(0,0,0,0.08)', color: '#ef4444', cursor: 'pointer',
                       display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '6px', borderRadius: '6px',
                       transition: 'all 0.2s'
                     }} onMouseEnter={e => { e.currentTarget.style.background = 'rgba(239,68,68,0.12)'; }}
-                       onMouseLeave={e => { e.currentTarget.style.background = 'rgba(255,255,255,0.03)'; }}
+                       onMouseLeave={e => { e.currentTarget.style.background = 'rgba(0,0,0,0.03)'; }}
                        title="Delete Structure">
                       <Trash2 size={15} />
                     </button>
@@ -2781,6 +2826,24 @@ export function TeacherSalaryStructureView({ showToast }) {
             ))
           )}
         </div>
+
+        <ConfirmDialog
+          show={!!confirmDelete}
+          message={confirmDelete ? `Are you sure you want to delete the structure for ${confirmDelete.name}?` : ''}
+          onConfirm={async () => {
+            try {
+              const res = await fetch(`/api/finance/salary-structures/${confirmDelete.id}`, { method: 'DELETE' });
+              if (res.ok) {
+                showToast(`Deleted salary structure for ${confirmDelete.name}`);
+                fetchStructures();
+              } else {
+                showToast('Failed to delete structure', 'error');
+              }
+            } catch { showToast('Network error', 'error'); }
+            setConfirmDelete(null);
+          }}
+          onCancel={() => setConfirmDelete(null)}
+        />
     </div>
   );
 }

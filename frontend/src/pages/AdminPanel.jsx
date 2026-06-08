@@ -306,15 +306,6 @@ export default function AdminPanel({ setActiveView, onLogout, adminView, setAdmi
           </div>
         </div>
         <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
-          <button
-            onClick={onLogout}
-            className="btn-secondary"
-            style={{ padding: '8px 16px', fontSize: '0.85rem', color: 'rgb(var(--color-danger-rgb))', display: 'flex', alignItems: 'center', gap: '6px' }}
-          >
-            <LogOut size={16} />
-            Sign Out
-          </button>
-
         </div>
       </div>
 

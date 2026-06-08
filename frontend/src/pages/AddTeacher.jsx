@@ -332,7 +332,7 @@ export default function AddTeacher({ setActiveView }) {
   // RENDER COMPONENT
   // ==========================================
   return (
-    <div className="animate-slide-up" style={{ display: 'flex', flexDirection: 'column', gap: '24px', paddingBottom: '40px' }}>
+    <div className="animate-slide-up no-card-form" style={{ display: 'flex', flexDirection: 'column', gap: '24px', paddingBottom: '40px' }}>
       
       {/* Success Toast */}
       {successToast && (

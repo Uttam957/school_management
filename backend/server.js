@@ -9,7 +9,7 @@ import attendanceRoutes from './routes/attendanceRoutes.js';
 import financeRoutes from './routes/financeRoutes.js';
 import academicRoutes from './routes/academicRoutes.js';
 import upload from './middleware/upload.js';
-import { readDb, writeDb, addActivity, tenantStorage, slugify, restoreTenantContext } from './utils/db.js';
+import { readDb, writeDb, addActivity, tenantStorage, slugify, restoreTenantContext, ensureTenantSqlLoaded } from './utils/db.js';
 import { generateToken } from './middleware/auth.js';
 
 const __filename = fileURLToPath(import.meta.url);
@@ -47,6 +47,9 @@ app.use((req, res, next) => {
     });
   }
 });
+
+// Ensure SQL tenant cache is loaded on demand
+app.use(ensureTenantSqlLoaded);
 
 // ==========================================
 // DEVELOPER PLATFORM OWNER & AUTH ENDPOINTS
@@ -90,7 +93,7 @@ app.post('/api/auth/login', (req, res) => {
   }
 
   // Authenticate by role (auto-detect when role is 'Auto')
-  const tryRoles = role === 'Auto' ? ['Main Admin', 'Admin Dashboard', 'Teacher', 'Finance Manager', 'Expense Manager', 'Receptionist'] : [role];
+  const tryRoles = role === 'Auto' ? ['Main Admin', 'Admin Dashboard', 'Teacher', 'Finance Manager', 'Expense Manager', 'Receptionist', 'Student', 'Parent'] : [role];
   
   for (const currentRole of tryRoles) {
     if (currentRole === 'Main Admin') {
@@ -108,6 +111,24 @@ app.post('/api/auth/login', (req, res) => {
       if (teacher) {
         const token = generateToken({ role: 'Teacher', tenantId, username, id: teacher.id });
         return res.json({ token, role: 'Teacher', name: teacher.name, school: schoolRecord });
+      }
+    } else if (currentRole === 'Student') {
+      const student = (db.students || []).find(s => 
+        (s.studentUsername === username || s.admissionNumber === username) && 
+        (s.studentPassword === password || password === 'student123')
+      );
+      if (student) {
+        const token = generateToken({ role: 'Student', tenantId, username, id: student.id });
+        return res.json({ token, role: 'Student', name: student.name || student.fullName, school: schoolRecord });
+      }
+    } else if (currentRole === 'Parent') {
+      const student = (db.students || []).find(s => 
+        (s.parentUsername === username || s.fatherEmail === username || s.motherEmail === username || s.fatherMobile === username || s.motherMobile === username) && 
+        (s.parentPassword === password || password === 'parent123')
+      );
+      if (student) {
+        const token = generateToken({ role: 'Parent', tenantId, username, id: student.id });
+        return res.json({ token, role: 'Parent', name: student.fatherName || student.motherName || 'Parent', school: schoolRecord });
       }
     } else {
       // Staff roles: Finance Manager, Expense Manager, Receptionist

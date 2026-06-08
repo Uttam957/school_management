@@ -70,17 +70,13 @@ export default function Sidebar({
   onDeveloperAdminLogout,
   onBackToMain
 }) {
-  const [studentOpen, setStudentOpen] = useState(false);
-  const [teacherOpen, setTeacherOpen] = useState(false);
-  const [staffOpen, setStaffOpen] = useState(false);
+  const [financeOpen, setFinanceOpen] = useState(false);
   const [adminCoreOpen, setAdminCoreOpen] = useState(false);
   const [adminAttendanceOpen, setAdminAttendanceOpen] = useState(false);
   const [adminAcademicOpen, setAdminAcademicOpen] = useState(false);
   const [adminAcademicActivitiesOpen, setAdminAcademicActivitiesOpen] = useState(false);
   const [adminRecepOpen, setAdminRecepOpen] = useState(false);
-  const [adminStudentFinanceOpen, setAdminStudentFinanceOpen] = useState(false);
-  const [adminTeacherFinanceOpen, setAdminTeacherFinanceOpen] = useState(false);
-  const [adminStaffFinanceOpen, setAdminStaffFinanceOpen] = useState(false);
+  const [adminFinanceOpen, setAdminFinanceOpen] = useState(false);
   const [adminExpensesOpen, setAdminExpensesOpen] = useState(false);
   const [adminResultsOpen, setAdminResultsOpen] = useState(() => {
     return typeof adminView === 'string' && (adminView.startsWith('results-') || adminView === 'academic-results');
@@ -291,6 +287,14 @@ export default function Sidebar({
                     <TrendingUp size={18} className="flex-shrink-0" />
                     <span className="nav-label">Attendance Tracker</span>
                   </button>
+                  <button
+                    onClick={() => { setAdminView('attendance-history'); setMobileOpen(false); }}
+                    className={`nav-item ${adminView === 'attendance-history' ? 'active' : ''}`}
+                    style={{ padding: '10px 12px', fontSize: '0.88rem', position: 'relative' }}
+                  >
+                    <List size={18} className="flex-shrink-0" />
+                    <span className="nav-label">Attendance History</span>
+                  </button>
                 </div>
               )}
             </div>
@@ -476,22 +480,23 @@ export default function Sidebar({
               )}
             </div>
 
-            {/* Student Finance Folder */}
+            {/* Finance Folder */}
             <div style={{ display: 'flex', flexDirection: 'column', gap: '2px' }}>
               <button
                 type="button"
-                onClick={() => setAdminStudentFinanceOpen(!adminStudentFinanceOpen)}
+                onClick={() => setAdminFinanceOpen(!adminFinanceOpen)}
                 className="nav-item"
                 style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', width: '100%', cursor: 'pointer' }}
               >
                 <div style={{ display: 'flex', alignItems: 'center', gap: '16px' }}>
-                  <Users size={20} className="flex-shrink-0" />
-                  <span className="nav-label" style={{ fontWeight: 600 }}>Student Finance</span>
+                  <Wallet size={20} className="flex-shrink-0" />
+                  <span className="nav-label" style={{ fontWeight: 600 }}>Finance</span>
                 </div>
-                {adminStudentFinanceOpen ? <ChevronDown size={16} className="flex-shrink-0" /> : <ChevronRight size={16} className="flex-shrink-0" />}
+                {adminFinanceOpen ? <ChevronDown size={16} className="flex-shrink-0" /> : <ChevronRight size={16} className="flex-shrink-0" />}
               </button>
-              {adminStudentFinanceOpen && (
+              {adminFinanceOpen && (
                 <div style={{ display: 'flex', flexDirection: 'column', paddingLeft: '16px', borderLeft: '1px solid rgba(255,255,255,0.06)', marginLeft: '24px', marginTop: '2px', marginBottom: '6px', gap: '4px' }}>
+                  <span className="nav-label" style={{ fontWeight: 700, fontSize: '0.72rem', textTransform: 'uppercase', letterSpacing: '0.04em', color: 'var(--text-muted)', padding: '8px 12px 4px' }}>Student</span>
                   <button
                     onClick={() => { setAdminView('collect-fees'); setMobileOpen(false); }}
                     className={`nav-item ${adminView === 'collect-fees' ? 'active' : ''}`}
@@ -508,26 +513,7 @@ export default function Sidebar({
                     <Calculator size={18} className="flex-shrink-0" />
                     <span className="nav-label">Fee Structure</span>
                   </button>
-                </div>
-              )}
-            </div>
-
-            {/* Teacher Finance Folder */}
-            <div style={{ display: 'flex', flexDirection: 'column', gap: '2px' }}>
-              <button
-                type="button"
-                onClick={() => setAdminTeacherFinanceOpen(!adminTeacherFinanceOpen)}
-                className="nav-item"
-                style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', width: '100%', cursor: 'pointer' }}
-              >
-                <div style={{ display: 'flex', alignItems: 'center', gap: '16px' }}>
-                  <UserCheck size={20} className="flex-shrink-0" />
-                  <span className="nav-label" style={{ fontWeight: 600 }}>Teacher Finance</span>
-                </div>
-                {adminTeacherFinanceOpen ? <ChevronDown size={16} className="flex-shrink-0" /> : <ChevronRight size={16} className="flex-shrink-0" />}
-              </button>
-              {adminTeacherFinanceOpen && (
-                <div style={{ display: 'flex', flexDirection: 'column', paddingLeft: '16px', borderLeft: '1px solid rgba(255,255,255,0.06)', marginLeft: '24px', marginTop: '2px', marginBottom: '6px', gap: '4px' }}>
+                  <span className="nav-label" style={{ fontWeight: 700, fontSize: '0.72rem', textTransform: 'uppercase', letterSpacing: '0.04em', color: 'var(--text-muted)', padding: '8px 12px 4px' }}>Teacher</span>
                   <button
                     onClick={() => { setAdminView('payroll'); setMobileOpen(false); }}
                     className={`nav-item ${adminView === 'payroll' ? 'active' : ''}`}
@@ -544,26 +530,7 @@ export default function Sidebar({
                     <Calculator size={18} className="flex-shrink-0" />
                     <span className="nav-label">Teacher Pay Structure</span>
                   </button>
-                </div>
-              )}
-            </div>
-
-            {/* Staff Finance Folder */}
-            <div style={{ display: 'flex', flexDirection: 'column', gap: '2px' }}>
-              <button
-                type="button"
-                onClick={() => setAdminStaffFinanceOpen(!adminStaffFinanceOpen)}
-                className="nav-item"
-                style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', width: '100%', cursor: 'pointer' }}
-              >
-                <div style={{ display: 'flex', alignItems: 'center', gap: '16px' }}>
-                  <UserCog size={20} className="flex-shrink-0" />
-                  <span className="nav-label" style={{ fontWeight: 600 }}>Staff Finance</span>
-                </div>
-                {adminStaffFinanceOpen ? <ChevronDown size={16} className="flex-shrink-0" /> : <ChevronRight size={16} className="flex-shrink-0" />}
-              </button>
-              {adminStaffFinanceOpen && (
-                <div style={{ display: 'flex', flexDirection: 'column', paddingLeft: '16px', borderLeft: '1px solid rgba(255,255,255,0.06)', marginLeft: '24px', marginTop: '2px', marginBottom: '6px', gap: '4px' }}>
+                  <span className="nav-label" style={{ fontWeight: 700, fontSize: '0.72rem', textTransform: 'uppercase', letterSpacing: '0.04em', color: 'var(--text-muted)', padding: '8px 12px 4px' }}>Staff</span>
                   <button
                     onClick={() => { setAdminView('staff-pay'); setMobileOpen(false); }}
                     className={`nav-item ${adminView === 'staff-pay' ? 'active' : ''}`}
@@ -698,28 +665,26 @@ export default function Sidebar({
               <LayoutDashboard size={20} className="flex-shrink-0" />
               <span className="nav-label">Finance Panel</span>
             </button>
-            {/* Student Finance Folder */}
+            {/* Finance Folder */}
             <div style={{ display: 'flex', flexDirection: 'column', gap: '2px' }}>
               <button
                 type="button"
-                onClick={() => setStudentOpen(!studentOpen)}
+                onClick={() => setFinanceOpen(!financeOpen)}
                 className="nav-item"
                 style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', width: '100%', cursor: 'pointer' }}
               >
                 <div style={{ display: 'flex', alignItems: 'center', gap: '16px' }}>
-                  <Users size={20} className="flex-shrink-0" />
-                  <span className="nav-label" style={{ fontWeight: 600 }}>Student Finance</span>
+                  <Wallet size={20} className="flex-shrink-0" />
+                  <span className="nav-label" style={{ fontWeight: 600 }}>Finance</span>
                 </div>
-                {studentOpen ? <ChevronDown size={16} className="flex-shrink-0" /> : <ChevronRight size={16} className="flex-shrink-0" />}
+                {financeOpen ? <ChevronDown size={16} className="flex-shrink-0" /> : <ChevronRight size={16} className="flex-shrink-0" />}
               </button>
 
-              {studentOpen && (
+              {financeOpen && (
                 <div style={{ display: 'flex', flexDirection: 'column', paddingLeft: '16px', borderLeft: '1px solid rgba(255,255,255,0.06)', marginLeft: '24px', marginTop: '2px', marginBottom: '6px', gap: '4px' }}>
+                  <span className="nav-label" style={{ fontWeight: 700, fontSize: '0.72rem', textTransform: 'uppercase', letterSpacing: '0.04em', color: 'var(--text-muted)', padding: '8px 12px 4px' }}>Student</span>
                   <button
-                    onClick={() => {
-                      setAccountantView('collect-fees');
-                      setMobileOpen(false);
-                    }}
+                    onClick={() => { setAccountantView('collect-fees'); setMobileOpen(false); }}
                     className={`nav-item ${accountantView === 'collect-fees' ? 'active' : ''}`}
                     style={{ padding: '10px 12px', fontSize: '0.88rem', position: 'relative' }}
                   >
@@ -727,10 +692,7 @@ export default function Sidebar({
                     <span className="nav-label">Collect Fees</span>
                   </button>
                   <button
-                    onClick={() => {
-                      setAccountantView('fee-structure');
-                      setMobileOpen(false);
-                    }}
+                    onClick={() => { setAccountantView('fee-structure'); setMobileOpen(false); }}
                     className={`nav-item ${accountantView === 'fee-structure' ? 'active' : ''}`}
                     style={{ padding: '10px 12px', fontSize: '0.88rem', position: 'relative' }}
                   >
@@ -738,42 +700,16 @@ export default function Sidebar({
                     <span className="nav-label">Fee Structure</span>
                   </button>
                   <button
-                    onClick={() => {
-                      setAccountantView('students');
-                      setMobileOpen(false);
-                    }}
+                    onClick={() => { setAccountantView('students'); setMobileOpen(false); }}
                     className={`nav-item ${accountantView === 'students' ? 'active' : ''}`}
                     style={{ padding: '10px 12px', fontSize: '0.88rem', position: 'relative' }}
                   >
                     <Users size={18} className="flex-shrink-0" />
                     <span className="nav-label">Student Directory</span>
                   </button>
-                </div>
-              )}
-            </div>
-
-            {/* Teacher Finance Folder */}
-            <div style={{ display: 'flex', flexDirection: 'column', gap: '2px' }}>
-              <button
-                type="button"
-                onClick={() => setTeacherOpen(!teacherOpen)}
-                className="nav-item"
-                style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', width: '100%', cursor: 'pointer' }}
-              >
-                <div style={{ display: 'flex', alignItems: 'center', gap: '16px' }}>
-                  <UserCheck size={20} className="flex-shrink-0" />
-                  <span className="nav-label" style={{ fontWeight: 600 }}>Teacher Finance</span>
-                </div>
-                {teacherOpen ? <ChevronDown size={16} className="flex-shrink-0" /> : <ChevronRight size={16} className="flex-shrink-0" />}
-              </button>
-
-              {teacherOpen && (
-                <div style={{ display: 'flex', flexDirection: 'column', paddingLeft: '16px', borderLeft: '1px solid rgba(255,255,255,0.06)', marginLeft: '24px', marginTop: '2px', marginBottom: '6px', gap: '4px' }}>
+                  <span className="nav-label" style={{ fontWeight: 700, fontSize: '0.72rem', textTransform: 'uppercase', letterSpacing: '0.04em', color: 'var(--text-muted)', padding: '8px 12px 4px' }}>Teacher</span>
                   <button
-                    onClick={() => {
-                      setAccountantView('payroll');
-                      setMobileOpen(false);
-                    }}
+                    onClick={() => { setAccountantView('payroll'); setMobileOpen(false); }}
                     className={`nav-item ${accountantView === 'payroll' ? 'active' : ''}`}
                     style={{ padding: '10px 12px', fontSize: '0.88rem', position: 'relative' }}
                   >
@@ -781,10 +717,7 @@ export default function Sidebar({
                     <span className="nav-label">Manage Payroll</span>
                   </button>
                   <button
-                    onClick={() => {
-                      setAccountantView('teacher-pay-structure');
-                      setMobileOpen(false);
-                    }}
+                    onClick={() => { setAccountantView('teacher-pay-structure'); setMobileOpen(false); }}
                     className={`nav-item ${accountantView === 'teacher-pay-structure' ? 'active' : ''}`}
                     style={{ padding: '10px 12px', fontSize: '0.88rem', position: 'relative' }}
                   >
@@ -792,42 +725,16 @@ export default function Sidebar({
                     <span className="nav-label">Teacher Pay Structure</span>
                   </button>
                   <button
-                    onClick={() => {
-                      setAccountantView('teacher-list');
-                      setMobileOpen(false);
-                    }}
+                    onClick={() => { setAccountantView('teacher-list'); setMobileOpen(false); }}
                     className={`nav-item ${accountantView === 'teacher-list' ? 'active' : ''}`}
                     style={{ padding: '10px 12px', fontSize: '0.88rem', position: 'relative' }}
                   >
                     <UserCheck size={18} className="flex-shrink-0" />
                     <span className="nav-label">Teacher Directory</span>
                   </button>
-                </div>
-              )}
-            </div>
-
-            {/* Staff Finance Folder */}
-            <div style={{ display: 'flex', flexDirection: 'column', gap: '2px' }}>
-              <button
-                type="button"
-                onClick={() => setStaffOpen(!staffOpen)}
-                className="nav-item"
-                style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', width: '100%', cursor: 'pointer' }}
-              >
-                <div style={{ display: 'flex', alignItems: 'center', gap: '16px' }}>
-                  <UserCog size={20} className="flex-shrink-0" />
-                  <span className="nav-label" style={{ fontWeight: 600 }}>Staff Finance</span>
-                </div>
-                {staffOpen ? <ChevronDown size={16} className="flex-shrink-0" /> : <ChevronRight size={16} className="flex-shrink-0" />}
-              </button>
-
-              {staffOpen && (
-                <div style={{ display: 'flex', flexDirection: 'column', paddingLeft: '16px', borderLeft: '1px solid rgba(255,255,255,0.06)', marginLeft: '24px', marginTop: '2px', marginBottom: '6px', gap: '4px' }}>
+                  <span className="nav-label" style={{ fontWeight: 700, fontSize: '0.72rem', textTransform: 'uppercase', letterSpacing: '0.04em', color: 'var(--text-muted)', padding: '8px 12px 4px' }}>Staff</span>
                   <button
-                    onClick={() => {
-                      setAccountantView('staff-pay');
-                      setMobileOpen(false);
-                    }}
+                    onClick={() => { setAccountantView('staff-pay'); setMobileOpen(false); }}
                     className={`nav-item ${accountantView === 'staff-pay' ? 'active' : ''}`}
                     style={{ padding: '10px 12px', fontSize: '0.88rem', position: 'relative' }}
                   >
@@ -835,10 +742,7 @@ export default function Sidebar({
                     <span className="nav-label">Pay Staff</span>
                   </button>
                   <button
-                    onClick={() => {
-                      setAccountantView('staff-pay-structure');
-                      setMobileOpen(false);
-                    }}
+                    onClick={() => { setAccountantView('staff-pay-structure'); setMobileOpen(false); }}
                     className={`nav-item ${accountantView === 'staff-pay-structure' ? 'active' : ''}`}
                     style={{ padding: '10px 12px', fontSize: '0.88rem', position: 'relative' }}
                   >
@@ -846,10 +750,7 @@ export default function Sidebar({
                     <span className="nav-label">Staff Pay Structure</span>
                   </button>
                   <button
-                    onClick={() => {
-                      setAccountantView('staff');
-                      setMobileOpen(false);
-                    }}
+                    onClick={() => { setAccountantView('staff'); setMobileOpen(false); }}
                     className={`nav-item ${accountantView === 'staff' ? 'active' : ''}`}
                     style={{ padding: '10px 12px', fontSize: '0.88rem', position: 'relative' }}
                   >

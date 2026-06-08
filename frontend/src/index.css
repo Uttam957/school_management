@@ -113,6 +113,24 @@ body {
   transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
 }
 
+.no-card-form > .glass-panel,
+.no-card-form form > .glass-panel {
+  background: transparent !important;
+  border: none !important;
+  box-shadow: none !important;
+  backdrop-filter: none !important;
+  -webkit-backdrop-filter: none !important;
+  padding-left: 0 !important;
+  padding-right: 0 !important;
+}
+
+.no-card-form > .glass-panel:hover,
+.no-card-form form > .glass-panel:hover {
+  box-shadow: none !important;
+  border-color: transparent !important;
+}
+
+
 .surface-card {
   background: var(--bg-card);
   border: 1px solid var(--border-glass);

@@ -24,6 +24,12 @@ import {
 export default function StudentDirectory({ readOnly = true, onAddClick }) {
   const [students, setStudents] = useState([]);
   const [loading, setLoading] = useState(true);
+  
+  const hasValue = (val) => {
+    if (val === undefined || val === null || val === '') return false;
+    const lower = String(val).trim().toLowerCase();
+    return lower !== 'n/a' && lower !== 'none' && lower !== 'null' && lower !== 'undefined';
+  };
   const [totalCount, setTotalCount] = useState(0);
   
   // Search, Filters & Sorting States
@@ -207,20 +213,6 @@ export default function StudentDirectory({ readOnly = true, onAddClick }) {
               ))}
             </select>
 
-            {/* Section filter */}
-            <select 
-              className="select-custom"
-              value={sectionFilter}
-              onChange={(e) => setSectionFilter(e.target.value)}
-              style={{ padding: '8px 12px', borderRadius: '8px', fontSize: '0.85rem' }}
-            >
-              <option value="All">All Sections</option>
-              <option value="A">Section A</option>
-              <option value="B">Section B</option>
-              <option value="C">Section C</option>
-              <option value="D">Section D</option>
-            </select>
-
             {/* Academic Year Filter */}
             <select 
               className="select-custom"
@@ -289,7 +281,6 @@ export default function StudentDirectory({ readOnly = true, onAddClick }) {
                     <th>Registration ID</th>
                     <th>Student Name</th>
                     <th>Class</th>
-                    <th>Section</th>
                     <th>Parent Contact</th>
                     <th>Admission Number</th>
                     <th>Academic Year</th>
@@ -329,7 +320,6 @@ export default function StudentDirectory({ readOnly = true, onAddClick }) {
                           </div>
                         </td>
                         <td style={{ fontWeight: 500 }}>{stu.studentClass || stu.grade.split('-')[0] || 'Nursery'}</td>
-                        <td style={{ fontWeight: 500 }}>{stu.section || stu.grade.split('-')[1] || 'A'}</td>
                         <td style={{ fontWeight: 500 }}>{stu.phone || stu.guardianContact || 'N/A'}</td>
                         <td style={{ fontWeight: 600, color: 'var(--text-muted)' }}>{stu.admissionNumber || stu.id}</td>
                         <td style={{ fontWeight: 500 }}>{stu.academicYear || '2026-2027'}</td>
@@ -358,7 +348,7 @@ export default function StudentDirectory({ readOnly = true, onAddClick }) {
                     ))
                   ) : (
                     <tr>
-                      <td colSpan="8" style={{ textAlign: 'center', padding: '50px', color: 'var(--text-muted)' }}>
+                      <td colSpan="7" style={{ textAlign: 'center', padding: '50px', color: 'var(--text-muted)' }}>
                         No registered students found matching your filters.
                       </td>
                     </tr>
@@ -458,53 +448,289 @@ export default function StudentDirectory({ readOnly = true, onAddClick }) {
               <div>
                 <h4 style={{ fontSize: '1.25rem', fontWeight: 800, margin: '0 0 4px 0' }}>{selectedStudent.name}</h4>
                 <span className="badge badge-success" style={{ fontSize: '0.8rem', padding: '4px 12px' }}>
-                  {selectedStudent.studentClass || selectedStudent.grade.split('-')[0] || 'Nursery'} Grade (Sec {selectedStudent.section || selectedStudent.grade.split('-')[1] || 'A'})
+                  {selectedStudent.studentClass || selectedStudent.grade.split('-')[0] || 'Nursery'} Grade
                 </span>
               </div>
             </div>
 
             {/* Profile specifications list */}
-            <div style={{ display: 'flex', flexDirection: 'column', gap: '14px', borderTop: '1px solid var(--border-glass)', paddingTop: '16px' }}>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '18px', borderTop: '1px solid var(--border-glass)', paddingTop: '16px' }}>
               
-              <div style={{ display: 'flex', justifyContent: 'space-between', borderBottom: '1px solid rgba(255,255,255,0.02)', paddingBottom: '8px' }}>
-                <span style={{ fontSize: '0.8rem', color: 'var(--text-muted)' }}>Registration ID</span>
-                <strong style={{ fontSize: '0.85rem' }}>{selectedStudent.id}</strong>
-              </div>
+              {/* Section 1: Basic Information */}
+              {(hasValue(selectedStudent.id) || 
+                hasValue(selectedStudent.dob) || 
+                hasValue(selectedStudent.gender) || 
+                hasValue(selectedStudent.bloodGroup) || 
+                hasValue(selectedStudent.nationality) || 
+                hasValue(selectedStudent.category) || 
+                hasValue(selectedStudent.religion) || 
+                hasValue(selectedStudent.aadhaarNumber)) && (
+                <div>
+                  <h5 style={{ fontSize: '0.85rem', fontWeight: 700, textTransform: 'uppercase', color: 'hsl(var(--color-primary))', marginBottom: '10px' }}>Basic Information</h5>
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
+                    {hasValue(selectedStudent.id) && (
+                      <div style={{ display: 'flex', justifyContent: 'space-between', borderBottom: '1px solid rgba(255,255,255,0.02)', paddingBottom: '6px' }}>
+                        <span style={{ fontSize: '0.8rem', color: 'var(--text-muted)' }}>Registration ID</span>
+                        <strong style={{ fontSize: '0.85rem' }}>{selectedStudent.id}</strong>
+                      </div>
+                    )}
+                    {(hasValue(selectedStudent.dob) || hasValue(selectedStudent.gender)) && (
+                      <div style={{ display: 'flex', justifyContent: 'space-between', borderBottom: '1px solid rgba(255,255,255,0.02)', paddingBottom: '6px' }}>
+                        <span style={{ fontSize: '0.8rem', color: 'var(--text-muted)' }}>DOB / Gender</span>
+                        <strong style={{ fontSize: '0.85rem' }}>
+                          {[selectedStudent.dob, selectedStudent.gender].filter(hasValue).join(' / ')}
+                        </strong>
+                      </div>
+                    )}
+                    {(hasValue(selectedStudent.bloodGroup) || hasValue(selectedStudent.nationality)) && (
+                      <div style={{ display: 'flex', justifyContent: 'space-between', borderBottom: '1px solid rgba(255,255,255,0.02)', paddingBottom: '6px' }}>
+                        <span style={{ fontSize: '0.8rem', color: 'var(--text-muted)' }}>Blood Group / Nationality</span>
+                        <strong style={{ fontSize: '0.85rem' }}>
+                          {[selectedStudent.bloodGroup, selectedStudent.nationality].filter(hasValue).join(' / ')}
+                        </strong>
+                      </div>
+                    )}
+                    {(hasValue(selectedStudent.category) || hasValue(selectedStudent.religion)) && (
+                      <div style={{ display: 'flex', justifyContent: 'space-between', borderBottom: '1px solid rgba(255,255,255,0.02)', paddingBottom: '6px' }}>
+                        <span style={{ fontSize: '0.8rem', color: 'var(--text-muted)' }}>Category / Religion</span>
+                        <strong style={{ fontSize: '0.85rem' }}>
+                          {[selectedStudent.category, selectedStudent.religion].filter(hasValue).join(' / ')}
+                        </strong>
+                      </div>
+                    )}
+                    {hasValue(selectedStudent.aadhaarNumber) && (
+                      <div style={{ display: 'flex', justifyContent: 'space-between', borderBottom: '1px solid rgba(255,255,255,0.02)', paddingBottom: '6px' }}>
+                        <span style={{ fontSize: '0.8rem', color: 'var(--text-muted)' }}>Aadhaar Number</span>
+                        <strong style={{ fontSize: '0.85rem' }}>{selectedStudent.aadhaarNumber}</strong>
+                      </div>
+                    )}
+                  </div>
+                </div>
+              )}
 
-              <div style={{ display: 'flex', justifyContent: 'space-between', borderBottom: '1px solid rgba(255,255,255,0.02)', paddingBottom: '8px' }}>
-                <span style={{ fontSize: '0.8rem', color: 'var(--text-muted)' }}>Admission Number</span>
-                <strong style={{ fontSize: '0.85rem' }}>{selectedStudent.admissionNumber || 'N/A'}</strong>
-              </div>
+              {/* Section 2: Academic Details */}
+              {(hasValue(selectedStudent.admissionNumber) || 
+                hasValue(selectedStudent.admissionDate) || 
+                hasValue(selectedStudent.admissionType) || 
+                hasValue(selectedStudent.academicYear) || 
+                hasValue(selectedStudent.status) || 
+                hasValue(selectedStudent.previousSchoolName) || 
+                hasValue(selectedStudent.previousSchoolAddress) || 
+                hasValue(selectedStudent.previousClassStudied) || 
+                hasValue(selectedStudent.transferCertificateNumber)) && (
+                <div>
+                  <h5 style={{ fontSize: '0.85rem', fontWeight: 700, textTransform: 'uppercase', color: 'hsl(var(--color-info))', marginBottom: '10px' }}>Academic Details</h5>
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
+                    {hasValue(selectedStudent.admissionNumber) && (
+                      <div style={{ display: 'flex', justifyContent: 'space-between', borderBottom: '1px solid rgba(255,255,255,0.02)', paddingBottom: '6px' }}>
+                        <span style={{ fontSize: '0.8rem', color: 'var(--text-muted)' }}>Admission Number</span>
+                        <strong style={{ fontSize: '0.85rem' }}>{selectedStudent.admissionNumber}</strong>
+                      </div>
+                    )}
+                    {(hasValue(selectedStudent.admissionDate) || hasValue(selectedStudent.admissionType)) && (
+                      <div style={{ display: 'flex', justifyContent: 'space-between', borderBottom: '1px solid rgba(255,255,255,0.02)', paddingBottom: '6px' }}>
+                        <span style={{ fontSize: '0.8rem', color: 'var(--text-muted)' }}>Admission Date / Type</span>
+                        <strong style={{ fontSize: '0.85rem' }}>
+                          {[selectedStudent.admissionDate, selectedStudent.admissionType].filter(hasValue).join(' / ')}
+                        </strong>
+                      </div>
+                    )}
+                    {(hasValue(selectedStudent.academicYear) || hasValue(selectedStudent.status)) && (
+                      <div style={{ display: 'flex', justifyContent: 'space-between', borderBottom: '1px solid rgba(255,255,255,0.02)', paddingBottom: '6px' }}>
+                        <span style={{ fontSize: '0.8rem', color: 'var(--text-muted)' }}>Academic Year / Status</span>
+                        <strong style={{ fontSize: '0.85rem' }}>
+                          {[selectedStudent.academicYear, selectedStudent.status].filter(hasValue).join(' / ')}
+                        </strong>
+                      </div>
+                    )}
+                    {(hasValue(selectedStudent.previousSchoolName) || hasValue(selectedStudent.previousSchoolAddress)) && (
+                      <div style={{ display: 'flex', justifyContent: 'space-between', borderBottom: '1px solid rgba(255,255,255,0.02)', paddingBottom: '6px' }}>
+                        <span style={{ fontSize: '0.8rem', color: 'var(--text-muted)' }}>Previous School Name / Address</span>
+                        <strong style={{ fontSize: '0.85rem' }}>
+                          {[selectedStudent.previousSchoolName, selectedStudent.previousSchoolAddress].filter(hasValue).join(' - ')}
+                        </strong>
+                      </div>
+                    )}
+                    {(hasValue(selectedStudent.previousClassStudied) || hasValue(selectedStudent.transferCertificateNumber)) && (
+                      <div style={{ display: 'flex', justifyContent: 'space-between', borderBottom: '1px solid rgba(255,255,255,0.02)', paddingBottom: '6px' }}>
+                        <span style={{ fontSize: '0.8rem', color: 'var(--text-muted)' }}>Previous Class / TC Number</span>
+                        <strong style={{ fontSize: '0.85rem' }}>
+                          {[selectedStudent.previousClassStudied, selectedStudent.transferCertificateNumber].filter(hasValue).join(' / ')}
+                        </strong>
+                      </div>
+                    )}
+                  </div>
+                </div>
+              )}
 
-              <div style={{ display: 'flex', justifyContent: 'space-between', borderBottom: '1px solid rgba(255,255,255,0.02)', paddingBottom: '8px' }}>
-                <span style={{ fontSize: '0.8rem', color: 'var(--text-muted)' }}>Academic Year</span>
-                <strong style={{ fontSize: '0.85rem' }}>{selectedStudent.academicYear || '2026-2027'}</strong>
-              </div>
+              {/* Section 3: Parent & Guardian Details */}
+              {(hasValue(selectedStudent.fatherName) || 
+                hasValue(selectedStudent.fatherEmail) || 
+                hasValue(selectedStudent.motherName) || 
+                hasValue(selectedStudent.motherEmail) || 
+                hasValue(selectedStudent.guardianName)) && (
+                <div>
+                  <h5 style={{ fontSize: '0.85rem', fontWeight: 700, textTransform: 'uppercase', color: 'hsl(var(--color-secondary))', marginBottom: '10px' }}>Parent & Guardian Details</h5>
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
+                    {hasValue(selectedStudent.fatherName) && (
+                      <div style={{ display: 'flex', justifyContent: 'space-between', borderBottom: '1px solid rgba(255,255,255,0.02)', paddingBottom: '6px' }}>
+                        <span style={{ fontSize: '0.8rem', color: 'var(--text-muted)' }}>Father Details</span>
+                        <strong style={{ fontSize: '0.85rem' }}>
+                          {selectedStudent.fatherName}
+                          {hasValue(selectedStudent.fatherMobile) && ` (${selectedStudent.fatherMobile})`}
+                          {hasValue(selectedStudent.fatherOccupation) && ` - ${selectedStudent.fatherOccupation}`}
+                        </strong>
+                      </div>
+                    )}
+                    {hasValue(selectedStudent.fatherEmail) && (
+                      <div style={{ display: 'flex', justifyContent: 'space-between', borderBottom: '1px solid rgba(255,255,255,0.02)', paddingBottom: '6px' }}>
+                        <span style={{ fontSize: '0.8rem', color: 'var(--text-muted)' }}>Father Email</span>
+                        <strong style={{ fontSize: '0.85rem' }}>{selectedStudent.fatherEmail}</strong>
+                      </div>
+                    )}
+                    {hasValue(selectedStudent.motherName) && (
+                      <div style={{ display: 'flex', justifyContent: 'space-between', borderBottom: '1px solid rgba(255,255,255,0.02)', paddingBottom: '6px' }}>
+                        <span style={{ fontSize: '0.8rem', color: 'var(--text-muted)' }}>Mother Details</span>
+                        <strong style={{ fontSize: '0.85rem' }}>
+                          {selectedStudent.motherName}
+                          {hasValue(selectedStudent.motherMobile) && ` (${selectedStudent.motherMobile})`}
+                          {hasValue(selectedStudent.motherOccupation) && ` - ${selectedStudent.motherOccupation}`}
+                        </strong>
+                      </div>
+                    )}
+                    {hasValue(selectedStudent.motherEmail) && (
+                      <div style={{ display: 'flex', justifyContent: 'space-between', borderBottom: '1px solid rgba(255,255,255,0.02)', paddingBottom: '6px' }}>
+                        <span style={{ fontSize: '0.8rem', color: 'var(--text-muted)' }}>Mother Email</span>
+                        <strong style={{ fontSize: '0.85rem' }}>{selectedStudent.motherEmail}</strong>
+                      </div>
+                    )}
+                    {hasValue(selectedStudent.guardianName) && (
+                      <div style={{ display: 'flex', justifyContent: 'space-between', borderBottom: '1px solid rgba(255,255,255,0.02)', paddingBottom: '6px' }}>
+                        <span style={{ fontSize: '0.8rem', color: 'var(--text-muted)' }}>Guardian Details</span>
+                        <strong style={{ fontSize: '0.85rem' }}>
+                          {selectedStudent.guardianName}
+                          {hasValue(selectedStudent.guardianRelation) && ` (${selectedStudent.guardianRelation})`}
+                          {hasValue(selectedStudent.guardianContact) && `: ${selectedStudent.guardianContact}`}
+                        </strong>
+                      </div>
+                    )}
+                  </div>
+                </div>
+              )}
 
-              <div style={{ display: 'flex', justifyContent: 'space-between', borderBottom: '1px solid rgba(255,255,255,0.02)', paddingBottom: '8px' }}>
-                <span style={{ fontSize: '0.8rem', color: 'var(--text-muted)' }}>DOB / Gender</span>
-                <strong style={{ fontSize: '0.85rem' }}>{selectedStudent.dob || 'N/A'} / {selectedStudent.gender || 'N/A'}</strong>
-              </div>
+              {/* Section 4: Contact & Address */}
+              {(hasValue(selectedStudent.currentAddress) || 
+                hasValue(selectedStudent.permanentAddress) || 
+                hasValue(selectedStudent.city) || 
+                hasValue(selectedStudent.state) || 
+                hasValue(selectedStudent.postalCode) || 
+                hasValue(selectedStudent.pincode) || 
+                hasValue(selectedStudent.emergencyContactNumber)) && (
+                <div>
+                  <h5 style={{ fontSize: '0.85rem', fontWeight: 700, textTransform: 'uppercase', color: 'rgb(16, 185, 129)', marginBottom: '10px' }}>Contact & Address</h5>
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
+                    {hasValue(selectedStudent.permanentAddress) && (
+                      <div style={{ display: 'flex', flexDirection: 'column', gap: '4px', borderBottom: '1px solid rgba(255,255,255,0.02)', paddingBottom: '6px' }}>
+                        <span style={{ fontSize: '0.8rem', color: 'var(--text-muted)' }}>Permanent Address</span>
+                        <strong style={{ fontSize: '0.85rem', lineHeight: '1.4' }}>{selectedStudent.permanentAddress}</strong>
+                      </div>
+                    )}
+                    {hasValue(selectedStudent.currentAddress) && !selectedStudent.isSameAddress && (
+                      <div style={{ display: 'flex', flexDirection: 'column', gap: '4px', borderBottom: '1px solid rgba(255,255,255,0.02)', paddingBottom: '6px' }}>
+                        <span style={{ fontSize: '0.8rem', color: 'var(--text-muted)' }}>Current Address</span>
+                        <strong style={{ fontSize: '0.85rem', lineHeight: '1.4' }}>{selectedStudent.currentAddress}</strong>
+                      </div>
+                    )}
+                    {selectedStudent.isSameAddress && hasValue(selectedStudent.permanentAddress) && (
+                      <div style={{ display: 'flex', justifyContent: 'space-between', borderBottom: '1px solid rgba(255,255,255,0.02)', paddingBottom: '6px' }}>
+                        <span style={{ fontSize: '0.8rem', color: 'var(--text-muted)' }}>Current Address</span>
+                        <strong style={{ fontSize: '0.85rem' }}>Same as Permanent Address</strong>
+                      </div>
+                    )}
+                    {(hasValue(selectedStudent.city) || hasValue(selectedStudent.state) || hasValue(selectedStudent.postalCode) || hasValue(selectedStudent.pincode)) && (
+                      <div style={{ display: 'flex', justifyContent: 'space-between', borderBottom: '1px solid rgba(255,255,255,0.02)', paddingBottom: '6px' }}>
+                        <span style={{ fontSize: '0.8rem', color: 'var(--text-muted)' }}>City / State / Postal Code</span>
+                        <strong style={{ fontSize: '0.85rem' }}>
+                          {[selectedStudent.city, selectedStudent.state, selectedStudent.postalCode || selectedStudent.pincode].filter(hasValue).join(' / ')}
+                        </strong>
+                      </div>
+                    )}
+                    {hasValue(selectedStudent.emergencyContactNumber) && (
+                      <div style={{ display: 'flex', justifyContent: 'space-between', borderBottom: '1px solid rgba(255,255,255,0.02)', paddingBottom: '6px' }}>
+                        <span style={{ fontSize: '0.8rem', color: 'var(--text-muted)' }}>Emergency Contact Number</span>
+                        <strong style={{ fontSize: '0.85rem' }}>{selectedStudent.emergencyContactNumber}</strong>
+                      </div>
+                    )}
+                  </div>
+                </div>
+              )}
 
-              <div style={{ display: 'flex', justifyContent: 'space-between', borderBottom: '1px solid rgba(255,255,255,0.02)', paddingBottom: '8px' }}>
-                <span style={{ fontSize: '0.8rem', color: 'var(--text-muted)' }}>Father / Mother</span>
-                <strong style={{ fontSize: '0.85rem' }}>{selectedStudent.fatherName || 'N/A'} / {selectedStudent.motherName || 'N/A'}</strong>
-              </div>
+              {/* Section 5: Medical Profile */}
+              {(hasValue(selectedStudent.medicalConditions) || 
+                hasValue(selectedStudent.allergies) || 
+                hasValue(selectedStudent.disabilities) || 
+                hasValue(selectedStudent.emergencyNotes) || 
+                hasValue(selectedStudent.doctorName) || 
+                hasValue(selectedStudent.doctorContact)) && (
+                <div>
+                  <h5 style={{ fontSize: '0.85rem', fontWeight: 700, textTransform: 'uppercase', color: 'hsl(var(--color-danger))', marginBottom: '10px' }}>Medical Profile</h5>
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
+                    {hasValue(selectedStudent.medicalConditions) && (
+                      <div style={{ display: 'flex', justifyContent: 'space-between', borderBottom: '1px solid rgba(255,255,255,0.02)', paddingBottom: '6px' }}>
+                        <span style={{ fontSize: '0.8rem', color: 'var(--text-muted)' }}>Conditions / Chronic Illnesses</span>
+                        <strong style={{ fontSize: '0.85rem' }}>{selectedStudent.medicalConditions}</strong>
+                      </div>
+                    )}
+                    {hasValue(selectedStudent.allergies) && (
+                      <div style={{ display: 'flex', justifyContent: 'space-between', borderBottom: '1px solid rgba(255,255,255,0.02)', paddingBottom: '6px' }}>
+                        <span style={{ fontSize: '0.8rem', color: 'var(--text-muted)' }}>Allergies</span>
+                        <strong style={{ fontSize: '0.85rem' }}>{selectedStudent.allergies}</strong>
+                      </div>
+                    )}
+                    {hasValue(selectedStudent.disabilities) && (
+                      <div style={{ display: 'flex', justifyContent: 'space-between', borderBottom: '1px solid rgba(255,255,255,0.02)', paddingBottom: '6px' }}>
+                        <span style={{ fontSize: '0.8rem', color: 'var(--text-muted)' }}>Disabilities or SEN Needs</span>
+                        <strong style={{ fontSize: '0.85rem' }}>{selectedStudent.disabilities}</strong>
+                      </div>
+                    )}
+                    {hasValue(selectedStudent.emergencyNotes) && (
+                      <div style={{ display: 'flex', justifyContent: 'space-between', borderBottom: '1px solid rgba(255,255,255,0.02)', paddingBottom: '6px' }}>
+                        <span style={{ fontSize: '0.8rem', color: 'var(--text-muted)' }}>Emergency Notes</span>
+                        <strong style={{ fontSize: '0.85rem' }}>{selectedStudent.emergencyNotes}</strong>
+                      </div>
+                    )}
+                    {(hasValue(selectedStudent.doctorName) || hasValue(selectedStudent.doctorContact)) && (
+                      <div style={{ display: 'flex', justifyContent: 'space-between', borderBottom: '1px solid rgba(255,255,255,0.02)', paddingBottom: '6px' }}>
+                        <span style={{ fontSize: '0.8rem', color: 'var(--text-muted)' }}>Family Doctor</span>
+                        <strong style={{ fontSize: '0.85rem' }}>
+                          {[selectedStudent.doctorName, selectedStudent.doctorContact].filter(hasValue).join(' - ')}
+                        </strong>
+                      </div>
+                    )}
+                  </div>
+                </div>
+              )}
 
-              <div style={{ display: 'flex', justifyContent: 'space-between', borderBottom: '1px solid rgba(255,255,255,0.02)', paddingBottom: '8px' }}>
-                <span style={{ fontSize: '0.8rem', color: 'var(--text-muted)' }}>Parent Mobile</span>
-                <strong style={{ fontSize: '0.85rem' }}>{selectedStudent.phone || selectedStudent.guardianContact || 'N/A'}</strong>
-              </div>
-
-              <div style={{ display: 'flex', justifyContent: 'space-between', borderBottom: '1px solid rgba(255,255,255,0.02)', paddingBottom: '8px' }}>
-                <span style={{ fontSize: '0.8rem', color: 'var(--text-muted)' }}>Previous School</span>
-                <strong style={{ fontSize: '0.85rem', maxWidth: '240px', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{selectedStudent.previousSchool || 'N/A'}</strong>
-              </div>
-
-              <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
-                <span style={{ fontSize: '0.8rem', color: 'var(--text-muted)' }}>Residential Address</span>
-                <strong style={{ fontSize: '0.85rem', lineHeight: '1.4' }}>{selectedStudent.address || 'N/A'}, {selectedStudent.city || ''}, {selectedStudent.state || ''} {selectedStudent.pincode || ''}</strong>
-              </div>
+              {/* Section 6: Transport & Hostel */}
+              {(hasValue(selectedStudent.transportRequired) || hasValue(selectedStudent.hostelRequired)) && (
+                <div>
+                  <h5 style={{ fontSize: '0.85rem', fontWeight: 700, textTransform: 'uppercase', color: 'rgb(245, 158, 11)', marginBottom: '10px' }}>Transport & Hostel</h5>
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
+                    {hasValue(selectedStudent.transportRequired) && (
+                      <div style={{ display: 'flex', justifyContent: 'space-between', borderBottom: '1px solid rgba(255,255,255,0.02)', paddingBottom: '6px' }}>
+                        <span style={{ fontSize: '0.8rem', color: 'var(--text-muted)' }}>Require Transport Service</span>
+                        <strong style={{ fontSize: '0.85rem' }}>{selectedStudent.transportRequired}</strong>
+                      </div>
+                    )}
+                    {hasValue(selectedStudent.hostelRequired) && (
+                      <div style={{ display: 'flex', justifyContent: 'space-between', borderBottom: '1px solid rgba(255,255,255,0.02)', paddingBottom: '6px' }}>
+                        <span style={{ fontSize: '0.8rem', color: 'var(--text-muted)' }}>Require Hostel Accommodation</span>
+                        <strong style={{ fontSize: '0.85rem' }}>{selectedStudent.hostelRequired}</strong>
+                      </div>
+                    )}
+                  </div>
+                </div>
+              )}
 
             </div>
 
@@ -512,63 +738,91 @@ export default function StudentDirectory({ readOnly = true, onAddClick }) {
             <div style={{ borderTop: '1px solid var(--border-glass)', paddingTop: '16px', display: 'flex', flexDirection: 'column', gap: '10px' }}>
               <span style={{ fontSize: '0.8rem', color: 'var(--text-muted)', fontWeight: 700, letterSpacing: '0.04em', textTransform: 'uppercase' }}>Verified Documents</span>
               
-              <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(140px, 1fr))', gap: '8px' }}>
                 
                 {/* Aadhaar */}
-                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '8px 12px', background: 'rgba(255,255,255,0.02)', borderRadius: '8px', border: '1px solid var(--border-glass)' }}>
-                  <span style={{ fontSize: '0.8rem', display: 'flex', alignItems: 'center', gap: '6px', fontWeight: 600 }}>
-                    <FileText size={14} style={{ color: 'hsl(var(--color-primary))' }} /> Aadhaar Card
-                  </span>
-                  {selectedStudent.aadhaarFile ? (
-                    <a href={selectedStudent.aadhaarFile} target="_blank" rel="noreferrer" className="btn-secondary" style={{ padding: '4px 8px', fontSize: '0.7rem', borderRadius: '6px', display: 'flex', alignItems: 'center', gap: '4px' }}>
-                      <Download size={10} /> Get Document
+                {hasValue(selectedStudent.aadhaarFile) && (
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: '6px', padding: '10px', background: 'rgba(255,255,255,0.02)', borderRadius: '8px', border: '1px solid var(--border-glass)', justifyContent: 'space-between' }}>
+                    <span style={{ fontSize: '0.75rem', display: 'flex', alignItems: 'center', gap: '4px', fontWeight: 600 }}>
+                      <FileText size={12} style={{ color: 'hsl(var(--color-primary))' }} /> Aadhaar Card
+                    </span>
+                    <a href={selectedStudent.aadhaarFile} target="_blank" rel="noreferrer" className="btn-secondary" style={{ padding: '4px 6px', fontSize: '0.65rem', borderRadius: '6px', textAlign: 'center' }}>
+                      Get Doc
                     </a>
-                  ) : (
-                    <span style={{ fontSize: '0.7rem', color: 'var(--text-muted)' }}>Not Uploaded</span>
-                  )}
-                </div>
+                  </div>
+                )}
 
                 {/* Birth Cert */}
-                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '8px 12px', background: 'rgba(255,255,255,0.02)', borderRadius: '8px', border: '1px solid var(--border-glass)' }}>
-                  <span style={{ fontSize: '0.8rem', display: 'flex', alignItems: 'center', gap: '6px', fontWeight: 600 }}>
-                    <FileText size={14} style={{ color: 'hsl(var(--color-secondary))' }} /> Birth Certificate
-                  </span>
-                  {selectedStudent.birthCertificateFile ? (
-                    <a href={selectedStudent.birthCertificateFile} target="_blank" rel="noreferrer" className="btn-secondary" style={{ padding: '4px 8px', fontSize: '0.7rem', borderRadius: '6px', display: 'flex', alignItems: 'center', gap: '4px' }}>
-                      <Download size={10} /> Get Document
+                {hasValue(selectedStudent.birthCertificateFile) && (
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: '6px', padding: '10px', background: 'rgba(255,255,255,0.02)', borderRadius: '8px', border: '1px solid var(--border-glass)', justifyContent: 'space-between' }}>
+                    <span style={{ fontSize: '0.75rem', display: 'flex', alignItems: 'center', gap: '4px', fontWeight: 600 }}>
+                      <FileText size={12} style={{ color: 'hsl(var(--color-secondary))' }} /> Birth Cert
+                    </span>
+                    <a href={selectedStudent.birthCertificateFile} target="_blank" rel="noreferrer" className="btn-secondary" style={{ padding: '4px 6px', fontSize: '0.65rem', borderRadius: '6px', textAlign: 'center' }}>
+                      Get Doc
                     </a>
-                  ) : (
-                    <span style={{ fontSize: '0.7rem', color: 'var(--text-muted)' }}>Not Uploaded</span>
-                  )}
-                </div>
+                  </div>
+                )}
 
                 {/* Marksheet */}
-                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '8px 12px', background: 'rgba(255,255,255,0.02)', borderRadius: '8px', border: '1px solid var(--border-glass)' }}>
-                  <span style={{ fontSize: '0.8rem', display: 'flex', alignItems: 'center', gap: '6px', fontWeight: 600 }}>
-                    <FileText size={14} style={{ color: 'hsl(var(--color-info))' }} /> Marksheet Card
-                  </span>
-                  {selectedStudent.marksheetFile ? (
-                    <a href={selectedStudent.marksheetFile} target="_blank" rel="noreferrer" className="btn-secondary" style={{ padding: '4px 8px', fontSize: '0.7rem', borderRadius: '6px', display: 'flex', alignItems: 'center', gap: '4px' }}>
-                      <Download size={10} /> Get Document
+                {hasValue(selectedStudent.marksheetFile) && (
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: '6px', padding: '10px', background: 'rgba(255,255,255,0.02)', borderRadius: '8px', border: '1px solid var(--border-glass)', justifyContent: 'space-between' }}>
+                    <span style={{ fontSize: '0.75rem', display: 'flex', alignItems: 'center', gap: '4px', fontWeight: 600 }}>
+                      <FileText size={12} style={{ color: 'hsl(var(--color-info))' }} /> Marksheet
+                    </span>
+                    <a href={selectedStudent.marksheetFile} target="_blank" rel="noreferrer" className="btn-secondary" style={{ padding: '4px 6px', fontSize: '0.65rem', borderRadius: '6px', textAlign: 'center' }}>
+                      Get Doc
                     </a>
-                  ) : (
-                    <span style={{ fontSize: '0.7rem', color: 'var(--text-muted)' }}>Not Uploaded</span>
-                  )}
-                </div>
+                  </div>
+                )}
 
                 {/* TC */}
-                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '8px 12px', background: 'rgba(255,255,255,0.02)', borderRadius: '8px', border: '1px solid var(--border-glass)' }}>
-                  <span style={{ fontSize: '0.8rem', display: 'flex', alignItems: 'center', gap: '6px', fontWeight: 600 }}>
-                    <FileText size={14} style={{ color: 'rgb(var(--color-warning-rgb))' }} /> Transfer Cert (TC)
-                  </span>
-                  {selectedStudent.transferCertificateFile ? (
-                    <a href={selectedStudent.transferCertificateFile} target="_blank" rel="noreferrer" className="btn-secondary" style={{ padding: '4px 8px', fontSize: '0.7rem', borderRadius: '6px', display: 'flex', alignItems: 'center', gap: '4px' }}>
-                      <Download size={10} /> Get Document
+                {hasValue(selectedStudent.transferCertificateFile) && (
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: '6px', padding: '10px', background: 'rgba(255,255,255,0.02)', borderRadius: '8px', border: '1px solid var(--border-glass)', justifyContent: 'space-between' }}>
+                    <span style={{ fontSize: '0.75rem', display: 'flex', alignItems: 'center', gap: '4px', fontWeight: 600 }}>
+                      <FileText size={12} style={{ color: 'rgb(var(--color-warning-rgb))' }} /> Transfer Cert
+                    </span>
+                    <a href={selectedStudent.transferCertificateFile} target="_blank" rel="noreferrer" className="btn-secondary" style={{ padding: '4px 6px', fontSize: '0.65rem', borderRadius: '6px', textAlign: 'center' }}>
+                      Get Doc
                     </a>
-                  ) : (
-                    <span style={{ fontSize: '0.7rem', color: 'var(--text-muted)' }}>Not Uploaded</span>
-                  )}
-                </div>
+                  </div>
+                )}
+
+                {/* Address Proof */}
+                {hasValue(selectedStudent.addressProofFile) && (
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: '6px', padding: '10px', background: 'rgba(255,255,255,0.02)', borderRadius: '8px', border: '1px solid var(--border-glass)', justifyContent: 'space-between' }}>
+                    <span style={{ fontSize: '0.75rem', display: 'flex', alignItems: 'center', gap: '4px', fontWeight: 600 }}>
+                      <FileText size={12} style={{ color: 'rgb(16, 185, 129)' }} /> Address Proof
+                    </span>
+                    <a href={selectedStudent.addressProofFile} target="_blank" rel="noreferrer" className="btn-secondary" style={{ padding: '4px 6px', fontSize: '0.65rem', borderRadius: '6px', textAlign: 'center' }}>
+                      Get Doc
+                    </a>
+                  </div>
+                )}
+
+                {/* Medical Cert */}
+                {hasValue(selectedStudent.medicalCertificateFile) && (
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: '6px', padding: '10px', background: 'rgba(255,255,255,0.02)', borderRadius: '8px', border: '1px solid var(--border-glass)', justifyContent: 'space-between' }}>
+                    <span style={{ fontSize: '0.75rem', display: 'flex', alignItems: 'center', gap: '4px', fontWeight: 600 }}>
+                      <FileText size={12} style={{ color: 'hsl(var(--color-danger))' }} /> Medical Cert
+                    </span>
+                    <a href={selectedStudent.medicalCertificateFile} target="_blank" rel="noreferrer" className="btn-secondary" style={{ padding: '4px 6px', fontSize: '0.65rem', borderRadius: '6px', textAlign: 'center' }}>
+                      Get Doc
+                    </a>
+                  </div>
+                )}
+
+                {/* Additional Docs */}
+                {hasValue(selectedStudent.additionalFile) && (
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: '6px', padding: '10px', background: 'rgba(255,255,255,0.02)', borderRadius: '8px', border: '1px solid var(--border-glass)', justifyContent: 'space-between' }}>
+                    <span style={{ fontSize: '0.75rem', display: 'flex', alignItems: 'center', gap: '4px', fontWeight: 600 }}>
+                      <FileText size={12} style={{ color: 'rgb(245, 158, 11)' }} /> Additional Docs
+                    </span>
+                    <a href={selectedStudent.additionalFile} target="_blank" rel="noreferrer" className="btn-secondary" style={{ padding: '4px 6px', fontSize: '0.65rem', borderRadius: '6px', textAlign: 'center' }}>
+                      Get Doc
+                    </a>
+                  </div>
+                )}
 
               </div>
             </div>

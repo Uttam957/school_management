@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { createPortal } from 'react-dom';
 import { 
   Clock, 
@@ -140,8 +140,11 @@ export default function AcademicPanel({ subView, setAdminView }) {
   const [isManualSchedulerOpen, setIsManualSchedulerOpen] = useState(false);
   const [draggedSlotIndex, setDraggedSlotIndex] = useState(null);
   const [eventForm, setEventForm] = useState({
-    title: '', type: 'Event', date: '', time: '', venue: '', description: '', organizer: 'School Admin', participants: 'All Students', status: 'Scheduled'
+    title: '', type: 'Academic', date: '', time: '', venue: '', description: '', organizer: 'School Admin', participants: 'All Students', status: 'Scheduled'
   });
+  const [eventTypeOpen, setEventTypeOpen] = useState(false);
+  const eventTypeRef = useRef(null);
+  const eventTypes = ['Academic', 'Examination', 'Sports', 'Cultural', 'Competition', 'Workshop', 'Seminar', 'Meeting', 'Orientation', 'Celebration', 'Holiday', 'National Event', 'Educational Tour', 'Exhibition', 'Guest Lecture', 'Health & Wellness', 'Administrative', 'Other'];
   const [noticeForm, setNoticeForm] = useState({
     title: '', content: '', category: 'General', priority: 'Medium', publishDate: new Date().toISOString().split('T')[0], expiryDate: '', visibility: 'All'
   });
@@ -641,6 +644,17 @@ export default function AcademicPanel({ subView, setAdminView }) {
       setActiveExam(exams[0].id);
     }
   }, [exams]);
+
+  // Close event type dropdown on outside click
+  useEffect(() => {
+    const handleClickOutside = (e) => {
+      if (eventTypeRef.current && !eventTypeRef.current.contains(e.target)) {
+        setEventTypeOpen(false);
+      }
+    };
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => document.removeEventListener('mousedown', handleClickOutside);
+  }, []);
 
   if (loading) {
     return (
@@ -2609,7 +2623,7 @@ export default function AcademicPanel({ subView, setAdminView }) {
             <p style={{ fontSize: '0.85rem', color: 'var(--text-muted)' }}>Schedule school functions, PTA meets, competitions, and manage their status.</p>
           </div>
           <button className="btn-primary" onClick={() => {
-            setEventForm({ title: '', type: 'Event', date: '', time: '', venue: '', description: '', organizer: 'School Admin', participants: 'All Students', status: 'Scheduled' });
+            setEventForm({ title: '', type: 'Academic', date: '', time: '', venue: '', description: '', organizer: 'School Admin', participants: 'All Students', status: 'Scheduled' });
             setShowAddModal(true);
           }}>
             <Plus size={16} /> Create New Event
@@ -2623,8 +2637,8 @@ export default function AcademicPanel({ subView, setAdminView }) {
                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
                   <span style={{
                     padding: '3px 8px', borderRadius: '12px', fontSize: '0.65rem', fontWeight: 700,
-                    background: evt.type === 'Exam' ? 'rgba(236,72,153,0.1)' : evt.type === 'Holiday' ? 'rgba(245,158,11,0.1)' : 'rgba(99,102,241,0.1)',
-                    color: evt.type === 'Exam' ? '#ec4899' : evt.type === 'Holiday' ? '#f59e0b' : 'hsl(var(--color-primary))',
+                    background: evt.type === 'Examination' ? 'rgba(236,72,153,0.1)' : evt.type === 'Holiday' ? 'rgba(245,158,11,0.1)' : evt.type === 'Sports' ? 'rgba(34,197,94,0.1)' : evt.type === 'Health & Wellness' ? 'rgba(34,197,94,0.1)' : evt.type === 'Celebration' ? 'rgba(251,146,60,0.1)' : evt.type === 'Cultural' ? 'rgba(168,85,247,0.1)' : 'rgba(99,102,241,0.1)',
+                    color: evt.type === 'Examination' ? '#ec4899' : evt.type === 'Holiday' ? '#f59e0b' : evt.type === 'Sports' ? '#16a34a' : evt.type === 'Health & Wellness' ? '#16a34a' : evt.type === 'Celebration' ? '#ea580c' : evt.type === 'Cultural' ? '#9333ea' : 'hsl(var(--color-primary))',
                   }}>{evt.type}</span>
                   <button className="btn-secondary" onClick={() => deleteEventLog(evt.id)} style={{ padding: '4px', border: 'none', background: 'none', cursor: 'pointer', color: 'rgb(var(--color-danger-rgb))' }}>
                     <Trash2 size={14} />
@@ -2725,45 +2739,34 @@ export default function AcademicPanel({ subView, setAdminView }) {
           </button>
         </div>
 
-        <div className="glass-panel" style={{ padding: '0px', overflowX: 'auto' }}>
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(320px, 1fr))', gap: '20px' }}>
           {holidays.length > 0 ? (
-            <table className="table-custom" style={{ width: '100%' }}>
-              <thead>
-                <tr>
-                  <th>Holiday Designation</th>
-                  <th>Classification</th>
-                  <th>Starts On</th>
-                  <th>Ends On</th>
-                  <th>Notes</th>
-                  <th style={{ width: '80px', textAlign: 'center' }}>Remove</th>
-                </tr>
-              </thead>
-              <tbody>
-                {holidays.map(h => (
-                  <tr key={h.id}>
-                    <td style={{ fontWeight: 700 }}>{h.name}</td>
-                    <td>
-                      <span style={{
-                        padding: '3px 8px', borderRadius: '12px', fontSize: '0.7rem', fontWeight: 700,
-                        background: h.type === 'Emergency' ? 'rgba(239, 68, 68, 0.08)' : 'rgba(245, 158, 11, 0.08)',
-                        color: h.type === 'Emergency' ? '#ef4444' : '#f59e0b',
-                        border: h.type === 'Emergency' ? '1px solid rgba(239, 68, 68, 0.15)' : '1px solid rgba(245, 158, 11, 0.15)'
-                      }}>{h.type}</span>
-                    </td>
-                    <td>{h.startDate}</td>
-                    <td>{h.endDate}</td>
-                    <td style={{ fontSize: '0.8rem', color: 'var(--text-muted)' }}>{h.description || '-'}</td>
-                    <td style={{ textAlign: 'center' }}>
-                      <button className="btn-secondary" onClick={() => deleteHolidaySchedule(h.id)} style={{ padding: '4px', border: 'none', background: 'none', cursor: 'pointer', color: 'rgb(var(--color-danger-rgb))' }}>
-                        <Trash2 size={16} />
-                      </button>
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
+            holidays.map(h => (
+              <div key={h.id} className="glass-panel" style={{ padding: '20px', display: 'flex', flexDirection: 'column', gap: '12px', position: 'relative' }}>
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
+                  <span style={{
+                    padding: '3px 8px', borderRadius: '12px', fontSize: '0.65rem', fontWeight: 700,
+                    background: h.type === 'Emergency' ? 'rgba(239, 68, 68, 0.08)' : 'rgba(245, 158, 11, 0.08)',
+                    color: h.type === 'Emergency' ? '#ef4444' : '#f59e0b',
+                    border: h.type === 'Emergency' ? '1px solid rgba(239, 68, 68, 0.15)' : '1px solid rgba(245, 158, 11, 0.15)'
+                  }}>{h.type}</span>
+                  <button className="btn-secondary" onClick={() => deleteHolidaySchedule(h.id)} style={{ padding: '4px', border: 'none', background: 'none', cursor: 'pointer', color: 'rgb(var(--color-danger-rgb))' }}>
+                    <Trash2 size={14} />
+                  </button>
+                </div>
+                <h4 style={{ fontSize: '1rem', fontWeight: 800, margin: 0, color: 'var(--text-main)' }}>{h.name}</h4>
+                <p style={{ fontSize: '0.8rem', color: 'var(--text-muted)', margin: 0 }}>{h.description || 'No notes provided.'}</p>
+                <div style={{
+                  display: 'flex', flexDirection: 'column', gap: '6px', fontSize: '0.78rem',
+                  borderTop: '1px solid var(--border-glass)', paddingTop: '10px', color: 'var(--text-muted)'
+                }}>
+                  <span>📅 Start Date: <strong>{new Date(h.startDate).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}</strong></span>
+                  <span>📅 End Date: <strong>{new Date(h.endDate).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}</strong></span>
+                </div>
+              </div>
+            ))
           ) : (
-            <div style={{ padding: '40px', textAlign: 'center', color: 'var(--text-muted)' }}>
+            <div className="glass-panel" style={{ padding: '40px', gridColumn: '1 / -1', textAlign: 'center', color: 'var(--text-muted)' }}>
               No holidays currently registered. Click "Declare Holiday".
             </div>
           )}
@@ -3205,23 +3208,30 @@ export default function AcademicPanel({ subView, setAdminView }) {
       case 'academic-events':
         return (
           <form onSubmit={handleEventSubmit}>
-            <div className="modal-body" style={{ display: 'flex', flexDirection: 'column', gap: '14px' }}>
+            <div className="modal-body" style={{ display: 'flex', flexDirection: 'column', gap: '14px', paddingBottom: '200px' }}>
               <div className="form-group">
                 <label>Event Title</label>
                 <input type="text" className="form-control" placeholder="e.g. Sports Carnival" value={eventForm.title} onChange={(e) => setEventForm({ ...eventForm, title: e.target.value })} required />
               </div>
               <div className="form-group">
                 <label>Event Type</label>
-                <select className="form-control" value={eventForm.type} onChange={(e) => setEventForm({ ...eventForm, type: e.target.value })}>
-                  <option value="Event">Cultural Event</option>
-                  <option value="Holiday">School Holiday</option>
-                  <option value="Meeting">PTA Meeting</option>
-                  <option value="Exam">Exam term</option>
-                </select>
+                <div className="form-control" ref={eventTypeRef} style={{ position: 'relative', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '8px 12px', userSelect: 'none' }} onClick={() => setEventTypeOpen(!eventTypeOpen)}>
+                  <span>{eventForm.type}</span>
+                  <ChevronDown size={16} style={{ transform: eventTypeOpen ? 'rotate(180deg)' : 'none', transition: 'transform 0.2s' }} />
+                  {eventTypeOpen && (
+                    <div style={{ position: 'absolute', top: '100%', left: 0, right: 0, zIndex: 1000, background: 'var(--bg-card)', border: '1px solid var(--border-glass)', borderRadius: '8px', maxHeight: '250px', overflowY: 'auto', boxShadow: '0 8px 30px rgba(0,0,0,0.3)' }}>
+                      {eventTypes.map(type => (
+                        <div key={type} style={{ padding: '8px 12px', cursor: 'pointer', background: eventForm.type === type ? 'rgba(99,102,241,0.15)' : 'transparent', color: eventForm.type === type ? 'hsl(var(--color-primary))' : 'inherit' }} onClick={() => { setEventForm({ ...eventForm, type }); setEventTypeOpen(false); }} onMouseEnter={e => e.target.style.background = 'rgba(99,102,241,0.08)'} onMouseLeave={e => e.target.style.background = eventForm.type === type ? 'rgba(99,102,241,0.15)' : 'transparent'}>
+                          {type}
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                </div>
               </div>
               <div className="form-group">
                 <label>Date</label>
-                <input type="date" className="form-control" value={eventForm.date} onChange={(e) => setEventForm({ ...eventForm, date: e.target.value })} required />
+                <input type="date" className="form-control" value={eventForm.date} onChange={(e) => { const val = e.target.value; if (!val || val.split('-')[0].length <= 4) setEventForm({ ...eventForm, date: val }); }} required />
               </div>
               <div className="form-group">
                 <label>Time</label>
@@ -3403,7 +3413,7 @@ export default function AcademicPanel({ subView, setAdminView }) {
       {/* Dynamic Modal Renderer */}
       {showAddModal && createPortal(
         <div className="modal-overlay">
-          <div className="modal-content glass-panel" style={{ maxWidth: '550px', maxHeight: '85vh', overflowY: 'auto', borderRadius: '16px', padding: '24px' }}>
+          <div className="modal-content glass-panel" style={{ maxWidth: '550px', maxHeight: '90vh', overflowY: 'auto', borderRadius: '16px', padding: '24px', alignSelf: 'flex-start', marginTop: '5vh' }}>
             <div className="modal-header">
               <h2 style={{ fontSize: '1.25rem', textTransform: 'capitalize' }}>
                 Add {subView.replace('academic-', '').replace('-', ' ')}
