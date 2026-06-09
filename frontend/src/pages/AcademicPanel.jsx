@@ -76,9 +76,11 @@ export default function AcademicPanel({ subView, setAdminView }) {
   const [timetableSession, setTimetableSession] = useState('2026-2027');
   const [activeSubject, setActiveSubject] = useState('Mathematics');
   const [activeMonth, setActiveMonth] = useState(new Date().getMonth()); // 0-11
+  const [calendarYear, setCalendarYear] = useState(new Date().getFullYear());
   
   // Modal toggles
   const [showAddModal, setShowAddModal] = useState(false);
+  const [editingId, setEditingId] = useState(null);
   const [activeMarksheetStudent, setActiveMarksheetStudent] = useState(null);
   const [showConfirmModal, setShowConfirmModal] = useState(false);
   const [cohortToDelete, setCohortToDelete] = useState(null);
@@ -831,18 +833,21 @@ export default function AcademicPanel({ subView, setAdminView }) {
   const handleEventSubmit = async (e) => {
     e.preventDefault();
     try {
-      const res = await fetch('/api/academics/events', {
-        method: 'POST',
+      const url = editingId ? `/api/academics/events/${editingId}` : '/api/academics/events';
+      const method = editingId ? 'PUT' : 'POST';
+      const res = await fetch(url, {
+        method,
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(eventForm)
       });
       if (res.ok) {
-        showToast('School event scheduled and logged.', 'success');
+        showToast(editingId ? 'School event updated successfully.' : 'School event scheduled and logged.', 'success');
         setShowAddModal(false);
+        setEditingId(null);
         fetchAllData();
       }
     } catch (e) {
-      showToast('Could not record event.', 'error');
+      showToast(editingId ? 'Could not update event.' : 'Could not record event.', 'error');
     }
   };
 
@@ -862,18 +867,21 @@ export default function AcademicPanel({ subView, setAdminView }) {
   const handleNoticeSubmit = async (e) => {
     e.preventDefault();
     try {
-      const res = await fetch('/api/academics/notices', {
-        method: 'POST',
+      const url = editingId ? `/api/academics/notices/${editingId}` : '/api/academics/notices';
+      const method = editingId ? 'PUT' : 'POST';
+      const res = await fetch(url, {
+        method,
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(noticeForm)
       });
       if (res.ok) {
-        showToast('Notice published successfully.', 'success');
+        showToast(editingId ? 'Notice updated successfully.' : 'Notice published successfully.', 'success');
         setShowAddModal(false);
+        setEditingId(null);
         fetchAllData();
       }
     } catch (e) {
-      showToast('Notice publication failed.', 'error');
+      showToast(editingId ? 'Notice update failed.' : 'Notice publication failed.', 'error');
     }
   };
 
@@ -893,18 +901,21 @@ export default function AcademicPanel({ subView, setAdminView }) {
   const handleHolidaySubmit = async (e) => {
     e.preventDefault();
     try {
-      const res = await fetch('/api/academics/holidays', {
-        method: 'POST',
+      const url = editingId ? `/api/academics/holidays/${editingId}` : '/api/academics/holidays';
+      const method = editingId ? 'PUT' : 'POST';
+      const res = await fetch(url, {
+        method,
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(holidayForm)
       });
       if (res.ok) {
-        showToast('Holiday declared.', 'success');
+        showToast(editingId ? 'Holiday updated successfully.' : 'Holiday declared.', 'success');
         setShowAddModal(false);
+        setEditingId(null);
         fetchAllData();
       }
     } catch (e) {
-      showToast('Database update failed.', 'error');
+      showToast(editingId ? 'Holiday update failed.' : 'Database update failed.', 'error');
     }
   };
 
@@ -1064,6 +1075,248 @@ export default function AcademicPanel({ subView, setAdminView }) {
       showToast('Timetable exported as JSON.', 'success');
     } else if (format === 'pdf') {
       handlePrint(`printable-exam-timetable-${cohort}`);
+    }
+  };
+
+  const handleExportEvent = (evt, format) => {
+    if (format === 'pdf') {
+      const WinPrint = window.open('', '', 'left=0,top=0,width=800,height=900,toolbar=0,scrollbars=0,status=0');
+      WinPrint.document.write(`
+        <html>
+          <head>
+            <title>Event Details - ${evt.title}</title>
+            <style>
+              body { font-family: 'Inter', system-ui, sans-serif; padding: 40px; color: #1e293b; background: #ffffff; line-height: 1.6; }
+              .card { border: 1px solid #e2e8f0; padding: 30px; border-radius: 16px; box-shadow: 0 4px 6px -1px rgb(0 0 0 / 0.1); max-width: 600px; margin: 0 auto; }
+              .header { border-bottom: 2px solid #0f172a; padding-bottom: 15px; margin-bottom: 20px; }
+              .header h1 { margin: 0; font-size: 24px; color: #0f172a; }
+              .badge { display: inline-block; padding: 4px 10px; border-radius: 12px; font-size: 12px; font-weight: bold; background: #f1f5f9; color: #475569; margin-top: 8px; text-transform: uppercase; }
+              .description { font-size: 15px; color: #334155; margin-bottom: 20px; }
+              .details { display: grid; grid-template-columns: auto 1fr; gap: 10px; font-size: 14px; border-top: 1px solid #f1f5f9; padding-top: 20px; }
+              .details-label { font-weight: bold; color: #64748b; }
+              .details-value { color: #0f172a; }
+            </style>
+          </head>
+          <body>
+            <div class="card">
+              <div class="header">
+                <h1>${evt.title}</h1>
+                <span class="badge">${evt.type}</span>
+              </div>
+              <div class="description">
+                ${evt.description || 'No description provided.'}
+              </div>
+              <div class="details">
+                <div class="details-label">Date:</div>
+                <div class="details-value">${new Date(evt.date).toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric' })}</div>
+                <div class="details-label">Time:</div>
+                <div class="details-value">${evt.time || 'N/A'}</div>
+                <div class="details-label">Venue:</div>
+                <div class="details-value">${evt.venue || 'N/A'}</div>
+                <div class="details-label">Target Audience:</div>
+                <div class="details-value">${evt.participants || 'All Students'}</div>
+                <div class="details-label">Organizer:</div>
+                <div class="details-value">${evt.organizer || 'School Admin'}</div>
+              </div>
+            </div>
+            <script>window.print(); window.close();</script>
+          </body>
+        </html>
+      `);
+      WinPrint.document.close();
+      WinPrint.focus();
+    } else if (format === 'json') {
+      const jsonStr = JSON.stringify(evt, null, 2);
+      const blob = new Blob([jsonStr], { type: 'application/json;charset=utf-8;' });
+      const url = URL.createObjectURL(blob);
+      const link = document.createElement("a");
+      link.setAttribute("href", url);
+      link.setAttribute("download", `Event_${evt.title.replace(/\s+/g, '_')}.json`);
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+      URL.revokeObjectURL(url);
+      showToast('Event exported as JSON.', 'success');
+    } else if (format === 'csv') {
+      const headers = ['Field', 'Value'];
+      const rows = [
+        ['Title', evt.title],
+        ['Type', evt.type],
+        ['Description', evt.description || ''],
+        ['Date', new Date(evt.date).toLocaleDateString('en-US')],
+        ['Time', evt.time || ''],
+        ['Venue', evt.venue || ''],
+        ['Target Participants', evt.participants || ''],
+        ['Organizer', evt.organizer || '']
+      ];
+      const csvContent = [headers.join(','), ...rows.map(e => e.map(val => `"${String(val).replace(/"/g, '""')}"`).join(','))].join('\n');
+      const blob = new Blob(["\ufeff" + csvContent], { type: 'text/csv;charset=utf-8;' });
+      const url = URL.createObjectURL(blob);
+      const link = document.createElement("a");
+      link.setAttribute("href", url);
+      link.setAttribute("download", `Event_${evt.title.replace(/\s+/g, '_')}.csv`);
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+      URL.revokeObjectURL(url);
+      showToast('Event exported as CSV.', 'success');
+    }
+  };
+
+  const handleExportNotice = (nt, format) => {
+    if (format === 'pdf') {
+      const WinPrint = window.open('', '', 'left=0,top=0,width=800,height=900,toolbar=0,scrollbars=0,status=0');
+      WinPrint.document.write(`
+        <html>
+          <head>
+            <title>Notice - ${nt.title}</title>
+            <style>
+              body { font-family: 'Inter', system-ui, sans-serif; padding: 40px; color: #1e293b; background: #ffffff; line-height: 1.6; }
+              .card { border: 1px solid #e2e8f0; padding: 30px; border-radius: 16px; box-shadow: 0 4px 6px -1px rgb(0 0 0 / 0.1); max-width: 600px; margin: 0 auto; }
+              .header { border-bottom: 2px solid #0f172a; padding-bottom: 15px; margin-bottom: 20px; }
+              .header h1 { margin: 0; font-size: 24px; color: #0f172a; }
+              .badge { display: inline-block; padding: 4px 10px; border-radius: 12px; font-size: 12px; font-weight: bold; background: #f1f5f9; color: #475569; margin-top: 8px; text-transform: uppercase; }
+              .badge-high { background: #fee2e2; color: #991b1b; }
+              .content { font-size: 15px; color: #334155; margin-bottom: 20px; white-space: pre-wrap; }
+              .details { display: grid; grid-template-columns: auto 1fr; gap: 10px; font-size: 14px; border-top: 1px solid #f1f5f9; padding-top: 20px; }
+              .details-label { font-weight: bold; color: #64748b; }
+              .details-value { color: #0f172a; }
+            </style>
+          </head>
+          <body>
+            <div class="card">
+              <div class="header">
+                <h1>${nt.title}</h1>
+                <span class="badge ${nt.priority === 'High' ? 'badge-high' : ''}">${nt.priority} Priority Notice</span>
+              </div>
+              <div class="content">
+                ${nt.content}
+              </div>
+              <div class="details">
+                <div class="details-label">Category:</div>
+                <div class="details-value">${nt.category || 'General'}</div>
+                <div class="details-label">Date Published:</div>
+                <div class="details-value">${nt.publishDate}</div>
+                <div class="details-label">Visibility:</div>
+                <div class="details-value">${nt.visibility || 'All'}</div>
+              </div>
+            </div>
+            <script>window.print(); window.close();</script>
+          </body>
+        </html>
+      `);
+      WinPrint.document.close();
+      WinPrint.focus();
+    } else if (format === 'json') {
+      const jsonStr = JSON.stringify(nt, null, 2);
+      const blob = new Blob([jsonStr], { type: 'application/json;charset=utf-8;' });
+      const url = URL.createObjectURL(blob);
+      const link = document.createElement("a");
+      link.setAttribute("href", url);
+      link.setAttribute("download", `Notice_${nt.title.replace(/\s+/g, '_')}.json`);
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+      URL.revokeObjectURL(url);
+      showToast('Notice exported as JSON.', 'success');
+    } else if (format === 'csv') {
+      const headers = ['Field', 'Value'];
+      const rows = [
+        ['Title', nt.title],
+        ['Content', nt.content],
+        ['Category', nt.category || ''],
+        ['Priority', nt.priority || ''],
+        ['Date Published', nt.publishDate],
+        ['Visibility', nt.visibility || '']
+      ];
+      const csvContent = [headers.join(','), ...rows.map(e => e.map(val => `"${String(val).replace(/"/g, '""')}"`).join(','))].join('\n');
+      const blob = new Blob(["\ufeff" + csvContent], { type: 'text/csv;charset=utf-8;' });
+      const url = URL.createObjectURL(blob);
+      const link = document.createElement("a");
+      link.setAttribute("href", url);
+      link.setAttribute("download", `Notice_${nt.title.replace(/\s+/g, '_')}.csv`);
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+      URL.revokeObjectURL(url);
+      showToast('Notice exported as CSV.', 'success');
+    }
+  };
+
+  const handleExportHoliday = (h, format) => {
+    if (format === 'pdf') {
+      const WinPrint = window.open('', '', 'left=0,top=0,width=800,height=900,toolbar=0,scrollbars=0,status=0');
+      WinPrint.document.write(`
+        <html>
+          <head>
+            <title>Holiday Declaration - ${h.name}</title>
+            <style>
+              body { font-family: 'Inter', system-ui, sans-serif; padding: 40px; color: #1e293b; background: #ffffff; line-height: 1.6; }
+              .card { border: 1px solid #e2e8f0; padding: 30px; border-radius: 16px; box-shadow: 0 4px 6px -1px rgb(0 0 0 / 0.1); max-width: 600px; margin: 0 auto; }
+              .header { border-bottom: 2px solid #0f172a; padding-bottom: 15px; margin-bottom: 20px; }
+              .header h1 { margin: 0; font-size: 24px; color: #0f172a; }
+              .badge { display: inline-block; padding: 4px 10px; border-radius: 12px; font-size: 12px; font-weight: bold; background: #fef3c7; color: #d97706; margin-top: 8px; text-transform: uppercase; }
+              .badge-emergency { background: #fee2e2; color: #ef4444; }
+              .description { font-size: 15px; color: #334155; margin-bottom: 20px; }
+              .details { display: grid; grid-template-columns: auto 1fr; gap: 10px; font-size: 14px; border-top: 1px solid #f1f5f9; padding-top: 20px; }
+              .details-label { font-weight: bold; color: #64748b; }
+              .details-value { color: #0f172a; }
+            </style>
+          </head>
+          <body>
+            <div class="card">
+              <div class="header">
+                <h1>${h.name}</h1>
+                <span class="badge ${h.type === 'Emergency' ? 'badge-emergency' : ''}">${h.type} Holiday</span>
+              </div>
+              <div class="description">
+                ${h.description || 'No description/notes provided.'}
+              </div>
+              <div class="details">
+                <div class="details-label">Start Date:</div>
+                <div class="details-value">${new Date(h.startDate).toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric' })}</div>
+                <div class="details-label">End Date:</div>
+                <div class="details-value">${new Date(h.endDate).toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric' })}</div>
+              </div>
+            </div>
+            <script>window.print(); window.close();</script>
+          </body>
+        </html>
+      `);
+      WinPrint.document.close();
+      WinPrint.focus();
+    } else if (format === 'json') {
+      const jsonStr = JSON.stringify(h, null, 2);
+      const blob = new Blob([jsonStr], { type: 'application/json;charset=utf-8;' });
+      const url = URL.createObjectURL(blob);
+      const link = document.createElement("a");
+      link.setAttribute("href", url);
+      link.setAttribute("download", `Holiday_${h.name.replace(/\s+/g, '_')}.json`);
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+      URL.revokeObjectURL(url);
+      showToast('Holiday exported as JSON.', 'success');
+    } else if (format === 'csv') {
+      const headers = ['Field', 'Value'];
+      const rows = [
+        ['Name', h.name],
+        ['Type', h.type],
+        ['Description', h.description || ''],
+        ['Start Date', new Date(h.startDate).toLocaleDateString('en-US')],
+        ['End Date', new Date(h.endDate).toLocaleDateString('en-US')]
+      ];
+      const csvContent = [headers.join(','), ...rows.map(e => e.map(val => `"${String(val).replace(/"/g, '""')}"`).join(','))].join('\n');
+      const blob = new Blob(["\ufeff" + csvContent], { type: 'text/csv;charset=utf-8;' });
+      const url = URL.createObjectURL(blob);
+      const link = document.createElement("a");
+      link.setAttribute("href", url);
+      link.setAttribute("download", `Holiday_${h.name.replace(/\s+/g, '_')}.csv`);
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+      URL.revokeObjectURL(url);
+      showToast('Holiday exported as CSV.', 'success');
     }
   };
 
@@ -2840,6 +3093,7 @@ export default function AcademicPanel({ subView, setAdminView }) {
           </div>
           <button className="btn-primary" onClick={() => {
             setEventForm({ title: '', type: 'Academic', date: '', time: '', venue: '', description: '', organizer: 'School Admin', participants: 'All Students', status: 'Scheduled' });
+            setEditingId(null);
             setShowAddModal(true);
           }}>
             <Plus size={16} /> Create New Event
@@ -2856,9 +3110,28 @@ export default function AcademicPanel({ subView, setAdminView }) {
                     background: evt.type === 'Examination' ? 'rgba(236,72,153,0.1)' : evt.type === 'Holiday' ? 'rgba(245,158,11,0.1)' : evt.type === 'Sports' ? 'rgba(34,197,94,0.1)' : evt.type === 'Health & Wellness' ? 'rgba(34,197,94,0.1)' : evt.type === 'Celebration' ? 'rgba(251,146,60,0.1)' : evt.type === 'Cultural' ? 'rgba(168,85,247,0.1)' : 'rgba(99,102,241,0.1)',
                     color: evt.type === 'Examination' ? '#ec4899' : evt.type === 'Holiday' ? '#f59e0b' : evt.type === 'Sports' ? '#16a34a' : evt.type === 'Health & Wellness' ? '#16a34a' : evt.type === 'Celebration' ? '#ea580c' : evt.type === 'Cultural' ? '#9333ea' : 'hsl(var(--color-primary))',
                   }}>{evt.type}</span>
-                  <button className="btn-secondary" onClick={() => deleteEventLog(evt.id)} style={{ padding: '4px', border: 'none', background: 'none', cursor: 'pointer', color: 'rgb(var(--color-danger-rgb))' }}>
-                    <Trash2 size={14} />
-                  </button>
+                  <div style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>
+                    <button className="btn-secondary" onClick={() => {
+                      setEventForm({
+                        title: evt.title,
+                        type: evt.type,
+                        date: evt.date,
+                        time: evt.time,
+                        venue: evt.venue,
+                        description: evt.description || '',
+                        organizer: evt.organizer || 'School Admin',
+                        participants: evt.participants || 'All Students',
+                        status: evt.status || 'Scheduled'
+                      });
+                      setEditingId(evt.id);
+                      setShowAddModal(true);
+                    }} style={{ padding: '4px', border: 'none', background: 'none', cursor: 'pointer', color: 'hsl(var(--color-primary))' }}>
+                      <Edit3 size={14} />
+                    </button>
+                    <button className="btn-secondary" onClick={() => deleteEventLog(evt.id)} style={{ padding: '4px', border: 'none', background: 'none', cursor: 'pointer', color: 'rgb(var(--color-danger-rgb))' }}>
+                      <Trash2 size={14} />
+                    </button>
+                  </div>
                 </div>
                 <h4 style={{ fontSize: '1rem', fontWeight: 800, margin: 0, color: 'var(--text-main)' }}>{evt.title}</h4>
                 <p style={{ fontSize: '0.8rem', color: 'var(--text-muted)', margin: 0 }}>{evt.description || 'No description provided.'}</p>
@@ -2870,6 +3143,43 @@ export default function AcademicPanel({ subView, setAdminView }) {
                   <span>⏰ Time: {evt.time}</span>
                   <span>📍 Venue: {evt.venue}</span>
                   <span>👥 Target: {evt.participants}</span>
+                </div>
+                <div style={{ 
+                  display: 'flex', 
+                  justifyContent: 'flex-end', 
+                  gap: '8px', 
+                  borderTop: '1px solid var(--border-glass)', 
+                  paddingTop: '10px', 
+                  marginTop: '4px', 
+                  alignItems: 'center' 
+                }}>
+                  <span style={{ fontSize: '0.75rem', color: 'var(--text-muted)', display: 'flex', alignItems: 'center', gap: '4px' }}>
+                    <Download size={12} /> Export:
+                  </span>
+                  <select 
+                    onChange={(e) => {
+                      if (e.target.value) {
+                        handleExportEvent(evt, e.target.value);
+                        e.target.value = ''; // Reset select
+                      }
+                    }}
+                    className="select-custom"
+                    style={{ 
+                      padding: '2px 8px', 
+                      fontSize: '0.75rem', 
+                      borderRadius: '6px', 
+                      height: '28px', 
+                      background: 'var(--bg-glass-active)', 
+                      border: '1px solid var(--border-glass)', 
+                      color: 'var(--text-main)', 
+                      cursor: 'pointer',
+                      width: 'auto'
+                    }}
+                  >
+                    <option value="">Select format...</option>
+                    <option value="csv">CSV File</option>
+                    <option value="json">JSON File</option>
+                  </select>
                 </div>
               </div>
             ))
@@ -2893,6 +3203,7 @@ export default function AcademicPanel({ subView, setAdminView }) {
           </div>
           <button className="btn-primary" onClick={() => {
             setNoticeForm({ title: '', content: '', category: 'General', priority: 'Medium', publishDate: new Date().toISOString().split('T')[0], expiryDate: '', visibility: 'All' });
+            setEditingId(null);
             setShowAddModal(true);
           }}>
             <Plus size={16} /> Broadcast Notice
@@ -2916,15 +3227,61 @@ export default function AcademicPanel({ subView, setAdminView }) {
                     <h4 style={{ fontSize: '1rem', fontWeight: 800, margin: 0 }}>{nt.title}</h4>
                     <div style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>
                       <span style={{ fontSize: '0.68rem', padding: '3px 8px', borderRadius: '10px', background: 'var(--bg-glass-active)', border: '1px solid var(--border-glass)', fontWeight: 600 }}>Audience: {nt.visibility}</span>
+                      <button className="btn-secondary" onClick={() => {
+                        setNoticeForm({
+                          title: nt.title,
+                          content: nt.content,
+                          category: nt.category,
+                          priority: nt.priority,
+                          publishDate: nt.publishDate,
+                          expiryDate: nt.expiryDate || '',
+                          visibility: nt.visibility
+                        });
+                        setEditingId(nt.id);
+                        setShowAddModal(true);
+                      }} style={{ padding: '4px', border: 'none', background: 'none', cursor: 'pointer', color: 'hsl(var(--color-primary))' }}>
+                        <Edit3 size={14} />
+                      </button>
                       <button className="btn-secondary" onClick={() => deleteNoticeBoard(nt.id)} style={{ padding: '4px', border: 'none', background: 'none', cursor: 'pointer', color: 'rgb(var(--color-danger-rgb))' }}>
                         <Trash2 size={14} />
                       </button>
                     </div>
                   </div>
                   <p style={{ fontSize: '0.85rem', color: 'var(--text-muted)', margin: '4px 0', lineHeight: 1.4 }}>{nt.content}</p>
-                  <div style={{ display: 'flex', gap: '16px', fontSize: '0.75rem', color: 'var(--text-muted)', marginTop: '4px' }}>
-                    <span>Category: <strong>{nt.category}</strong></span>
-                    <span>Date Published: {nt.publishDate}</span>
+                  <div style={{ display: 'flex', gap: '16px', fontSize: '0.75rem', color: 'var(--text-muted)', marginTop: '4px', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap' }}>
+                    <div>
+                      <span>Category: <strong>{nt.category}</strong></span>
+                      <span style={{ marginLeft: '16px' }}>Date Published: {nt.publishDate}</span>
+                    </div>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+                      <span style={{ fontSize: '0.75rem', color: 'var(--text-muted)', display: 'flex', alignItems: 'center', gap: '4px' }}>
+                        <Download size={12} /> Export:
+                      </span>
+                      <select 
+                        onChange={(e) => {
+                          if (e.target.value) {
+                            handleExportNotice(nt, e.target.value);
+                            e.target.value = '';
+                          }
+                        }}
+                        className="select-custom"
+                        style={{ 
+                          padding: '2px 8px', 
+                          fontSize: '0.75rem', 
+                          borderRadius: '6px', 
+                          height: '28px', 
+                          background: 'var(--bg-glass-active)', 
+                          border: '1px solid var(--border-glass)', 
+                          color: 'var(--text-main)', 
+                          cursor: 'pointer',
+                          width: 'auto'
+                        }}
+                      >
+                        <option value="">Select format...</option>
+                        <option value="csv">CSV File</option>
+                        <option value="json">JSON File</option>
+                      </select>
+                    </div>
                   </div>
                 </div>
               </div>
@@ -2949,6 +3306,7 @@ export default function AcademicPanel({ subView, setAdminView }) {
           </div>
           <button className="btn-primary" onClick={() => {
             setHolidayForm({ name: '', type: 'Public', startDate: '', endDate: '', description: '' });
+            setEditingId(null);
             setShowAddModal(true);
           }}>
             <Plus size={16} /> Declare Holiday
@@ -2966,9 +3324,24 @@ export default function AcademicPanel({ subView, setAdminView }) {
                     color: h.type === 'Emergency' ? '#ef4444' : '#f59e0b',
                     border: h.type === 'Emergency' ? '1px solid rgba(239, 68, 68, 0.15)' : '1px solid rgba(245, 158, 11, 0.15)'
                   }}>{h.type}</span>
-                  <button className="btn-secondary" onClick={() => deleteHolidaySchedule(h.id)} style={{ padding: '4px', border: 'none', background: 'none', cursor: 'pointer', color: 'rgb(var(--color-danger-rgb))' }}>
-                    <Trash2 size={14} />
-                  </button>
+                  <div style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>
+                    <button className="btn-secondary" onClick={() => {
+                      setHolidayForm({
+                        name: h.name,
+                        type: h.type,
+                        startDate: h.startDate,
+                        endDate: h.endDate,
+                        description: h.description || ''
+                      });
+                      setEditingId(h.id);
+                      setShowAddModal(true);
+                    }} style={{ padding: '4px', border: 'none', background: 'none', cursor: 'pointer', color: 'hsl(var(--color-primary))' }}>
+                      <Edit3 size={14} />
+                    </button>
+                    <button className="btn-secondary" onClick={() => deleteHolidaySchedule(h.id)} style={{ padding: '4px', border: 'none', background: 'none', cursor: 'pointer', color: 'rgb(var(--color-danger-rgb))' }}>
+                      <Trash2 size={14} />
+                    </button>
+                  </div>
                 </div>
                 <h4 style={{ fontSize: '1rem', fontWeight: 800, margin: 0, color: 'var(--text-main)' }}>{h.name}</h4>
                 <p style={{ fontSize: '0.8rem', color: 'var(--text-muted)', margin: 0 }}>{h.description || 'No notes provided.'}</p>
@@ -2978,6 +3351,43 @@ export default function AcademicPanel({ subView, setAdminView }) {
                 }}>
                   <span>📅 Start Date: <strong>{new Date(h.startDate).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}</strong></span>
                   <span>📅 End Date: <strong>{new Date(h.endDate).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}</strong></span>
+                </div>
+                <div style={{ 
+                  display: 'flex', 
+                  justifyContent: 'flex-end', 
+                  gap: '8px', 
+                  borderTop: '1px solid var(--border-glass)', 
+                  paddingTop: '10px', 
+                  marginTop: '4px', 
+                  alignItems: 'center' 
+                }}>
+                  <span style={{ fontSize: '0.75rem', color: 'var(--text-muted)', display: 'flex', alignItems: 'center', gap: '4px' }}>
+                    <Download size={12} /> Export:
+                  </span>
+                  <select 
+                    onChange={(e) => {
+                      if (e.target.value) {
+                        handleExportHoliday(h, e.target.value);
+                        e.target.value = '';
+                      }
+                    }}
+                    className="select-custom"
+                    style={{ 
+                      padding: '2px 8px', 
+                      fontSize: '0.75rem', 
+                      borderRadius: '6px', 
+                      height: '28px', 
+                      background: 'var(--bg-glass-active)', 
+                      border: '1px solid var(--border-glass)', 
+                      color: 'var(--text-main)', 
+                      cursor: 'pointer',
+                      width: 'auto'
+                    }}
+                  >
+                    <option value="">Select format...</option>
+                    <option value="csv">CSV File</option>
+                    <option value="json">JSON File</option>
+                  </select>
                 </div>
               </div>
             ))
@@ -2995,10 +3405,14 @@ export default function AcademicPanel({ subView, setAdminView }) {
     // Generate monthly calendar views showing exams, events, and holidays
     const now = new Date();
     const currentYear = now.getFullYear();
+    const yearsList = [];
+    for (let y = currentYear - 3; y <= currentYear + 5; y++) {
+      yearsList.push(y);
+    }
     
     // Calculate days in the selected month
-    const firstDayIndex = new Date(currentYear, activeMonth, 1).getDay(); // Sunday=0
-    const totalDays = new Date(currentYear, activeMonth + 1, 0).getDate();
+    const firstDayIndex = new Date(calendarYear, activeMonth, 1).getDay(); // Sunday=0
+    const totalDays = new Date(calendarYear, activeMonth + 1, 0).getDate();
 
     const calendarGrid = [];
     // Pad days from previous month
@@ -3007,7 +3421,7 @@ export default function AcademicPanel({ subView, setAdminView }) {
     }
     // Populate calendar days
     for (let day = 1; day <= totalDays; day++) {
-      const dateStr = `${currentYear}-${String(activeMonth + 1).padStart(2, '0')}-${String(day).padStart(2, '0')}`;
+      const dateStr = `${calendarYear}-${String(activeMonth + 1).padStart(2, '0')}-${String(day).padStart(2, '0')}`;
       
       const dayEvents = events.filter(e => e.date === dateStr);
       const dayHolidays = holidays.filter(h => dateStr >= h.startDate && dateStr <= h.endDate);
@@ -3031,8 +3445,39 @@ export default function AcademicPanel({ subView, setAdminView }) {
             <p style={{ fontSize: '0.85rem', color: 'var(--text-muted)' }}>Aggregated visualization of exam periods, holidays, and school functions.</p>
           </div>
           <div style={{ display: 'flex', gap: '12px' }}>
-            <select className="select-custom" value={activeMonth} onChange={(e) => setActiveMonth(parseInt(e.target.value))}>
-              {monthsList.map((m, idx) => <option key={idx} value={idx}>{m} {currentYear}</option>)}
+            <select 
+              className="select-custom" 
+              value={calendarYear} 
+              onChange={(e) => setCalendarYear(parseInt(e.target.value))}
+              style={{
+                padding: '4px 12px',
+                fontSize: '0.85rem',
+                borderRadius: '8px',
+                background: 'var(--bg-glass-active)',
+                border: '1px solid var(--border-glass)',
+                color: 'var(--text-main)',
+                cursor: 'pointer',
+                height: '36px'
+              }}
+            >
+              {yearsList.map((y) => <option key={y} value={y}>{y}</option>)}
+            </select>
+            <select 
+              className="select-custom" 
+              value={activeMonth} 
+              onChange={(e) => setActiveMonth(parseInt(e.target.value))}
+              style={{
+                padding: '4px 12px',
+                fontSize: '0.85rem',
+                borderRadius: '8px',
+                background: 'var(--bg-glass-active)',
+                border: '1px solid var(--border-glass)',
+                color: 'var(--text-main)',
+                cursor: 'pointer',
+                height: '36px'
+              }}
+            >
+              {monthsList.map((m, idx) => <option key={idx} value={idx}>{m}</option>)}
             </select>
           </div>
         </div>
@@ -3464,7 +3909,7 @@ export default function AcademicPanel({ subView, setAdminView }) {
             </div>
             <div className="modal-footer">
               <button type="button" className="btn-secondary" onClick={() => setShowAddModal(false)}>Cancel</button>
-              <button type="submit" className="btn-primary">Publish Event</button>
+              <button type="submit" className="btn-primary">{editingId ? 'Save Changes' : 'Publish Event'}</button>
             </div>
           </form>
         );
@@ -3510,7 +3955,7 @@ export default function AcademicPanel({ subView, setAdminView }) {
             </div>
             <div className="modal-footer">
               <button type="button" className="btn-secondary" onClick={() => setShowAddModal(false)}>Cancel</button>
-              <button type="submit" className="btn-primary">Broadcast</button>
+              <button type="submit" className="btn-primary">{editingId ? 'Save Changes' : 'Broadcast'}</button>
             </div>
           </form>
         );
@@ -3547,7 +3992,7 @@ export default function AcademicPanel({ subView, setAdminView }) {
             </div>
             <div className="modal-footer">
               <button type="button" className="btn-secondary" onClick={() => setShowAddModal(false)}>Cancel</button>
-              <button type="submit" className="btn-primary">Declare Holiday</button>
+              <button type="submit" className="btn-primary">{editingId ? 'Save Changes' : 'Declare Holiday'}</button>
             </div>
           </form>
         );
@@ -3630,7 +4075,7 @@ export default function AcademicPanel({ subView, setAdminView }) {
           <div className="modal-content glass-panel" style={{ maxWidth: '550px', maxHeight: '90vh', overflowY: 'auto', borderRadius: '16px', padding: '24px', alignSelf: 'flex-start', marginTop: '5vh' }}>
             <div className="modal-header">
               <h2 style={{ fontSize: '1.25rem', textTransform: 'capitalize' }}>
-                Add {subView.replace('academic-', '').replace('-', ' ')}
+                {editingId ? 'Edit' : 'Add'} {subView.replace('academic-', '').replace('-', ' ')}
               </h2>
               <button className="modal-close" onClick={() => setShowAddModal(false)}>×</button>
             </div>
@@ -3681,7 +4126,10 @@ export default function AcademicPanel({ subView, setAdminView }) {
                 <div className="form-group">
                   <label>Academic Session *</label>
                   <select className="form-control" value={wizardForm.academicSession} onChange={e => setWizardForm({ ...wizardForm, academicSession: e.target.value })} style={{ marginTop: '4px' }}>
-                    {['2024-2025', '2025-2026', '2026-2027', '2027-2028', '2028-2029'].map(s => <option key={s} value={s}>{s}</option>)}
+                    {Array.from({ length: 2049 - 2026 + 1 }, (_, i) => {
+  const s = 2026 + i;
+  return `${s}-${s + 1}`;
+}).map(sy => <option key={sy} value={sy}>{sy}</option>)}
                   </select>
                 </div>
                 <div className="form-group">

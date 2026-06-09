@@ -1045,11 +1045,12 @@ export default function RegisterStudent({ setActiveView }) {
                   onChange={handleTextChange}
                   className="form-control"
                 >
-                  <option value="2024-2025">2024-2025</option>
-                  <option value="2025-2026">2025-2026</option>
-                  <option value="2026-2027">2026-2027</option>
-                  <option value="2027-2028">2027-2028</option>
-                  <option value="2028-2029">2028-2029</option>
+                  {Array.from({ length: 2049 - 2026 + 1 }, (_, i) => {
+                    const s = 2026 + i;
+                    return `${s}-${s + 1}`;
+                  }).map(sy => (
+                    <option key={sy} value={sy}>{sy}</option>
+                  ))}
                 </select>
               </div>
 

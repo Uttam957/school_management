@@ -295,14 +295,6 @@ export default function Sidebar({
                     <TrendingUp size={18} className="flex-shrink-0" />
                     <span className="nav-label">Attendance Tracker</span>
                   </button>
-                  <button
-                    onClick={() => { setAdminView('attendance-history'); setMobileOpen(false); }}
-                    className={`nav-item ${adminView === 'attendance-history' ? 'active' : ''}`}
-                    style={{ padding: '10px 12px', fontSize: '0.88rem', position: 'relative' }}
-                  >
-                    <List size={18} className="flex-shrink-0" />
-                    <span className="nav-label">Attendance History</span>
-                  </button>
                 </div>
               )}
             </div>
@@ -912,14 +904,6 @@ export default function Sidebar({
                   >
                     <TrendingUp size={18} className="flex-shrink-0" />
                     <span className="nav-label">Attendance Tracker</span>
-                  </button>
-                  <button
-                    onClick={() => { setTeacherView('attendance-history'); setMobileOpen(false); }}
-                    className={`nav-item ${teacherView === 'attendance-history' ? 'active' : ''}`}
-                    style={{ padding: '10px 12px', fontSize: '0.88rem', position: 'relative' }}
-                  >
-                    <List size={18} className="flex-shrink-0" />
-                    <span className="nav-label">Attendance History</span>
                   </button>
                   <button
                     onClick={() => { setTeacherView('student-reports'); setMobileOpen(false); }}

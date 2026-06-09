@@ -24,6 +24,7 @@ import {
   deleteNotice,
   getHolidays,
   createHoliday,
+  updateHoliday,
   deleteHoliday,
   getResults,
   createResult,
@@ -101,6 +102,7 @@ router.delete('/notices/:id', deleteNotice);
 // Holidays
 router.get('/holidays', getHolidays);
 router.post('/holidays', createHoliday);
+router.put('/holidays/:id', updateHoliday);
 router.delete('/holidays/:id', deleteHoliday);
 
 // Results

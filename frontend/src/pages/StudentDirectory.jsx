@@ -19,7 +19,8 @@ import {
   MapPin,
   Download,
   Info,
-  Edit3
+  Edit3,
+  Plus
 } from 'lucide-react';
 
 
@@ -276,11 +277,12 @@ export default function StudentDirectory({ readOnly = true, onAddClick }) {
               style={{ padding: '8px 12px', borderRadius: '8px', fontSize: '0.85rem' }}
             >
               <option value="All">All Years</option>
-              <option value="2024-2025">2024-2025</option>
-              <option value="2025-2026">2025-2026</option>
-              <option value="2026-2027">2026-2027</option>
-              <option value="2027-2028">2027-2028</option>
-              <option value="2028-2029">2028-2029</option>
+              {Array.from({ length: 2049 - 2026 + 1 }, (_, i) => {
+                const s = 2026 + i;
+                return `${s}-${s + 1}`;
+              }).map(sy => (
+                <option key={sy} value={sy}>{sy}</option>
+              ))}
             </select>
           </div>
 
@@ -967,11 +969,12 @@ export default function StudentDirectory({ readOnly = true, onAddClick }) {
                   <label>Academic Session</label>
                   <select value={editFormData.academicYear || ''} onChange={(e) => setEditFormData({ ...editFormData, academicYear: e.target.value })}
                     className="form-control" style={{ padding: '10px 14px', borderRadius: '10px' }}>
-                    <option value="2024-2025">2024-2025</option>
-                    <option value="2025-2026">2025-2026</option>
-                    <option value="2026-2027">2026-2027</option>
-                    <option value="2027-2028">2027-2028</option>
-                    <option value="2028-2029">2028-2029</option>
+                    {Array.from({ length: 2049 - 2026 + 1 }, (_, i) => {
+                      const s = 2026 + i;
+                      return `${s}-${s + 1}`;
+                    }).map(sy => (
+                      <option key={sy} value={sy}>{sy}</option>
+                    ))}
                   </select>
                 </div>
 

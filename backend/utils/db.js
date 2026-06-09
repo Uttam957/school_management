@@ -1217,6 +1217,7 @@ export const saveMemoryDbToSql = async (tenantId, db) => {
       }
 
       for (const s of db.students) {
+        if (!s.id) continue;
         // Core student
         await sqlDb.query(
           `INSERT INTO students (

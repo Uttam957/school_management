@@ -796,11 +796,12 @@ export default function ResultManagementPanel({ activeTab: propActiveTab = 'anal
                   <div className="form-group" style={{ flex: 1, minWidth: '120px' }}>
                     <label style={{ fontSize: '0.75rem', fontWeight: 600, display: 'block', marginBottom: '4px' }}>Session</label>
                     <select className="select-custom" style={{ width: '100%' }} value={selectedSession} onChange={e => setSelectedSession(e.target.value)}>
-                      <option value="2024-2025">2024-2025</option>
-                      <option value="2025-2026">2025-2026</option>
-                      <option value="2026-2027">2026-2027</option>
-                      <option value="2027-2028">2027-2028</option>
-                      <option value="2028-2029">2028-2029</option>
+                      {Array.from({ length: 2049 - 2026 + 1 }, (_, i) => {
+                        const s = 2026 + i;
+                        return `${s}-${s + 1}`;
+                      }).map(sy => (
+                        <option key={sy} value={sy}>{sy}</option>
+                      ))}
                     </select>
                   </div>
  

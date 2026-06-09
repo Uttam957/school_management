@@ -1,4 +1,72 @@
 {
+  "school": {},
+  "students": [],
+  "teachers": [],
+  "staff": [],
+  "timetables": [],
+  "invoices": [],
+  "fees": [],
+  "expenses": [],
+  "payroll": [],
+  "staffPayments": [],
+  "activities": [
+    {
+      "id": "ACT-1780999230097",
+      "type": "alert",
+      "title": "New School Onboarded",
+      "desc": "School \"Nichole Collins\" registered on the platform.",
+      "time": "Just now",
+      "timestamp": "2026-06-09T10:00:30.097Z",
+      "color": "hsl(var(--color-primary))",
+      "bg": "rgba(hsl(var(--color-primary)), 0.1)"
+    }
+  ],
+  "exams": [],
+  "examTimetables": [],
+  "notices": [],
+  "holidays": [],
+  "events": [],
+  "results": [],
+  "overallResults": [],
+  "subjects": [],
+  "timeslots": [],
+  "feeStructures": [],
+  "salaryStructures": [],
+  "staffSalaryStructures": [],
+  "income": [],
+  "attendance": [],
+  "subscriptionPlans": [
+    {
+      "id": "PLAN-001",
+      "name": "Starter",
+      "price": "$99/mo",
+      "features": [
+        "Up to 100 Students",
+        "Basic Analytics",
+        "Standard Support"
+      ]
+    },
+    {
+      "id": "PLAN-002",
+      "name": "Growth",
+      "price": "$249/mo",
+      "features": [
+        "Up to 500 Students",
+        "Full Reports",
+        "Priority Support"
+      ]
+    },
+    {
+      "id": "PLAN-003",
+      "name": "Premium",
+      "price": "$499/mo",
+      "features": [
+        "Unlimited Students",
+        "Advanced Finance",
+        "24/7 Dedicated Support"
+      ]
+    }
+  ],
   "schools": [
     {
       "id": "SCH-1780484256569",
@@ -23,38 +91,33 @@
       "adminPassword": "uttam@2004",
       "complexAdminUsername": "uttam306115@gmail.com",
       "complexAdminPassword": "uttam@2004",
-      "createdAt": "2026-06-03T10:57:36.569Z"
+      "createdAt": "2026-06-03T10:57:36.569Z",
+      "ratePerStudent": "250.00"
+    },
+    {
+      "id": "SCH-1780999230097",
+      "name": "Nichole Collins",
+      "code": "SCH-192",
+      "subdomain": "explicabo23435",
+      "logo": "Dolor et repudiandae",
+      "principalName": "Britanni Finley",
+      "email": "kyxupoc@mailinator.com",
+      "phone": "+1 (956) 274-8255",
+      "address": "Corrupti anim minus",
+      "city": "Dolore molestiae har",
+      "state": "Voluptatem eligendi",
+      "country": "Culpa sunt et ipsum",
+      "academicSession": "Autem autem non perf",
+      "subscriptionPlan": "Starter",
+      "url": "https://explicabo23435.myschoolerp.com",
+      "status": "Active",
+      "adminName": "uttam",
+      "adminEmail": "ur61849@gmail.com",
+      "adminUsername": "school1_admin",
+      "adminPassword": "uttam@2004",
+      "complexAdminUsername": "uttam306115@gmail.com",
+      "complexAdminPassword": "uttam@2004",
+      "createdAt": "2026-06-09T10:00:30.097Z"
     }
-  ],
-  "activities": [],
-  "students": [],
-  "teachers": [],
-  "staff": [],
-  "timetables": [],
-  "teacherTimetables": [],
-  "invoices": [],
-  "fees": [],
-  "expenses": [],
-  "payroll": [],
-  "staffPayments": [],
-  "exams": [],
-  "examTimetables": [],
-  "notices": [],
-  "holidays": [],
-  "events": [],
-  "results": [],
-  "overallResults": [],
-  "subjects": [],
-  "timeslots": [
-    "09:00 AM - 10:00 AM",
-    "10:00 AM - 11:00 AM",
-    "11:00 AM - 12:00 PM",
-    "01:00 PM - 02:00 PM",
-    "02:00 PM - 03:00 PM"
-  ],
-  "subscriptionPlans": [
-    { "id": "PLAN-001", "name": "Starter", "price": "$99/mo", "features": ["Up to 100 Students", "Basic Analytics", "Standard Support"] },
-    { "id": "PLAN-002", "name": "Growth", "price": "$249/mo", "features": ["Up to 500 Students", "Full Reports", "Priority Support"] },
-    { "id": "PLAN-003", "name": "Premium", "price": "$499/mo", "features": ["Unlimited Students", "Advanced Finance", "24/7 Dedicated Support"] }
   ]
 }

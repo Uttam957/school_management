@@ -16,7 +16,7 @@ export default function StudentManager({ showToast }) {
   const [updatingId, setUpdatingId] = useState(null);
   
   // Dropdown filter states
-  const [sessionFilter, setSessionFilter] = useState('2026-2027');
+  const [sessionFilter, setSessionFilter] = useState('All');
   const [classFilter, setClassFilter] = useState('All');
   const [statusFilter, setStatusFilter] = useState('All');
   
@@ -182,11 +182,13 @@ export default function StudentManager({ showToast }) {
             onChange={(e) => setSessionFilter(e.target.value)}
             style={{ width: '160px', height: '38px', borderRadius: '8px', fontSize: '0.82rem', padding: '0 8px', cursor: 'pointer' }}
           >
-            <option value="2024-2025">2024-2025</option>
-            <option value="2025-2026">2025-2026</option>
-            <option value="2026-2027">2026-2027</option>
-            <option value="2027-2028">2027-2028</option>
-            <option value="2028-2029">2028-2029</option>
+            <option value="All">All Sessions</option>
+            {Array.from({ length: 2049 - 2026 + 1 }, (_, i) => {
+              const s = 2026 + i;
+              return `${s}-${s + 1}`;
+            }).map(sy => (
+              <option key={sy} value={sy}>{sy}</option>
+            ))}
           </select>
         </div>
 
@@ -202,6 +204,20 @@ export default function StudentManager({ showToast }) {
             {gradeOptions.map(g => (
               <option key={g} value={g}>{g}</option>
             ))}
+          </select>
+        </div>
+
+        <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
+          <label style={{ fontSize: '0.78rem', fontWeight: 600, color: 'var(--text-muted)' }}>3. Status</label>
+          <select
+            className="form-control"
+            value={statusFilter}
+            onChange={(e) => setStatusFilter(e.target.value)}
+            style={{ width: '140px', height: '38px', borderRadius: '8px', fontSize: '0.82rem', padding: '0 8px', cursor: 'pointer' }}
+          >
+            <option value="All">All Status</option>
+            <option value="Active">Active</option>
+            <option value="Pending">Pending</option>
           </select>
         </div>
       </div>

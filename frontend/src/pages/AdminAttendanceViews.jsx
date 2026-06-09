@@ -297,83 +297,103 @@ export function MarkAttendanceView({ date, setDate, studentClass, setClass, sect
                     {/* Attendance Buttons */}
                     <td style={{ padding: '14px 20px' }}>
                       <div style={{ display: 'flex', gap: '8px', justifyContent: 'center' }}>
-                        
-                        {/* Present Button */}
-                        <button 
-                          onClick={() => handleStatusToggle(stu.id, 'Present')}
-                          style={{
-                            padding: '6px 12px',
-                            borderRadius: '6px',
-                            border: 'none',
-                            fontSize: '0.75rem',
-                            fontWeight: 700,
-                            cursor: 'pointer',
-                            transition: 'all 0.2s ease',
-                            background: stu.attendanceStatus === 'Present' ? '#10b981' : 'rgba(255,255,255,0.02)',
-                            color: stu.attendanceStatus === 'Present' ? '#ffffff' : 'var(--text-muted)',
-                            border: stu.attendanceStatus === 'Present' ? 'none' : '1px solid var(--border-glass)'
-                          }}
-                        >
-                          Present
-                        </button>
+                        {isSubmitted && stu.attendanceStatus ? (
+                          <button 
+                            onClick={() => handleStatusToggle(stu.id, stu.attendanceStatus)}
+                            style={{
+                              padding: '6px 16px',
+                              borderRadius: '6px',
+                              border: 'none',
+                              fontSize: '0.75rem',
+                              fontWeight: 700,
+                              cursor: 'pointer',
+                              transition: 'all 0.2s ease',
+                              background: stu.attendanceStatus === 'Present' ? '#10b981' : stu.attendanceStatus === 'Absent' ? '#ef4444' : stu.attendanceStatus === 'Leave' ? '#f59e0b' : '#f97316',
+                              color: '#ffffff',
+                              opacity: 0.85
+                            }}
+                          >
+                            {stu.attendanceStatus} ✕
+                          </button>
+                        ) : (
+                          <>
+                            {/* Present Button */}
+                            <button 
+                              onClick={() => handleStatusToggle(stu.id, 'Present')}
+                              style={{
+                                padding: '6px 12px',
+                                borderRadius: '6px',
+                                border: 'none',
+                                fontSize: '0.75rem',
+                                fontWeight: 700,
+                                cursor: 'pointer',
+                                transition: 'all 0.2s ease',
+                                background: stu.attendanceStatus === 'Present' ? '#10b981' : 'rgba(255,255,255,0.02)',
+                                color: stu.attendanceStatus === 'Present' ? '#ffffff' : 'var(--text-muted)',
+                                border: stu.attendanceStatus === 'Present' ? 'none' : '1px solid var(--border-glass)'
+                              }}
+                            >
+                              Present
+                            </button>
 
-                        {/* Absent Button */}
-                        <button 
-                          onClick={() => handleStatusToggle(stu.id, 'Absent')}
-                          style={{
-                            padding: '6px 12px',
-                            borderRadius: '6px',
-                            border: 'none',
-                            fontSize: '0.75rem',
-                            fontWeight: 700,
-                            cursor: 'pointer',
-                            transition: 'all 0.2s ease',
-                            background: stu.attendanceStatus === 'Absent' ? '#ef4444' : 'rgba(255,255,255,0.02)',
-                            color: stu.attendanceStatus === 'Absent' ? '#ffffff' : 'var(--text-muted)',
-                            border: stu.attendanceStatus === 'Absent' ? 'none' : '1px solid var(--border-glass)'
-                          }}
-                        >
-                          Absent
-                        </button>
+                            {/* Absent Button */}
+                            <button 
+                              onClick={() => handleStatusToggle(stu.id, 'Absent')}
+                              style={{
+                                padding: '6px 12px',
+                                borderRadius: '6px',
+                                border: 'none',
+                                fontSize: '0.75rem',
+                                fontWeight: 700,
+                                cursor: 'pointer',
+                                transition: 'all 0.2s ease',
+                                background: stu.attendanceStatus === 'Absent' ? '#ef4444' : 'rgba(255,255,255,0.02)',
+                                color: stu.attendanceStatus === 'Absent' ? '#ffffff' : 'var(--text-muted)',
+                                border: stu.attendanceStatus === 'Absent' ? 'none' : '1px solid var(--border-glass)'
+                              }}
+                            >
+                              Absent
+                            </button>
 
-                        {/* Leave Button */}
-                        <button 
-                          onClick={() => handleStatusToggle(stu.id, 'Leave')}
-                          style={{
-                            padding: '6px 12px',
-                            borderRadius: '6px',
-                            border: 'none',
-                            fontSize: '0.75rem',
-                            fontWeight: 700,
-                            cursor: 'pointer',
-                            transition: 'all 0.2s ease',
-                            background: stu.attendanceStatus === 'Leave' ? '#f59e0b' : 'rgba(255,255,255,0.02)',
-                            color: stu.attendanceStatus === 'Leave' ? '#ffffff' : 'var(--text-muted)',
-                            border: stu.attendanceStatus === 'Leave' ? 'none' : '1px solid var(--border-glass)'
-                          }}
-                        >
-                          Leave
-                        </button>
+                            {/* Leave Button */}
+                            <button 
+                              onClick={() => handleStatusToggle(stu.id, 'Leave')}
+                              style={{
+                                padding: '6px 12px',
+                                borderRadius: '6px',
+                                border: 'none',
+                                fontSize: '0.75rem',
+                                fontWeight: 700,
+                                cursor: 'pointer',
+                                transition: 'all 0.2s ease',
+                                background: stu.attendanceStatus === 'Leave' ? '#f59e0b' : 'rgba(255,255,255,0.02)',
+                                color: stu.attendanceStatus === 'Leave' ? '#ffffff' : 'var(--text-muted)',
+                                border: stu.attendanceStatus === 'Leave' ? 'none' : '1px solid var(--border-glass)'
+                              }}
+                            >
+                              Leave
+                            </button>
 
-                        {/* Late Button */}
-                        <button 
-                          onClick={() => handleStatusToggle(stu.id, 'Late')}
-                          style={{
-                            padding: '6px 12px',
-                            borderRadius: '6px',
-                            border: 'none',
-                            fontSize: '0.75rem',
-                            fontWeight: 700,
-                            cursor: 'pointer',
-                            transition: 'all 0.2s ease',
-                            background: stu.attendanceStatus === 'Late' ? '#f97316' : 'rgba(255,255,255,0.02)',
-                            color: stu.attendanceStatus === 'Late' ? '#ffffff' : 'var(--text-muted)',
-                            border: stu.attendanceStatus === 'Late' ? 'none' : '1px solid var(--border-glass)'
-                          }}
-                        >
-                          Late
-                        </button>
-
+                            {/* Late Button */}
+                            <button 
+                              onClick={() => handleStatusToggle(stu.id, 'Late')}
+                              style={{
+                                padding: '6px 12px',
+                                borderRadius: '6px',
+                                border: 'none',
+                                fontSize: '0.75rem',
+                                fontWeight: 700,
+                                cursor: 'pointer',
+                                transition: 'all 0.2s ease',
+                                background: stu.attendanceStatus === 'Late' ? '#f97316' : 'rgba(255,255,255,0.02)',
+                                color: stu.attendanceStatus === 'Late' ? '#ffffff' : 'var(--text-muted)',
+                                border: stu.attendanceStatus === 'Late' ? 'none' : '1px solid var(--border-glass)'
+                              }}
+                            >
+                              Late
+                            </button>
+                          </>
+                        )}
                       </div>
                     </td>
 
@@ -407,34 +427,34 @@ export function MarkAttendanceView({ date, setDate, studentClass, setClass, sect
           border: '1px solid rgba(255,255,255,0.08)',
           marginTop: '16px'
         }}>
-          {isSubmitted ? (
+          <button 
+            onClick={submitAttendance}
+            disabled={submitting}
+            className="btn-primary"
+            style={{ 
+              background: 'linear-gradient(135deg, #10b981 0%, #059669 100%)', 
+              border: 'none', 
+              boxShadow: '0 4px 14px rgba(16, 185, 129, 0.3)',
+              display: 'flex',
+              alignItems: 'center',
+              gap: '8px',
+              padding: '10px 24px',
+              borderRadius: '8px',
+              fontWeight: 700
+            }}
+          >
+            {submitting ? (
+              <><Loader2 className="animate-spin" size={16} /> Submitting...</>
+            ) : (
+              <><CheckCircle size={18} /> Submit Attendance</>
+            )}
+          </button>
+
+          {isSubmitted && (
             <div style={{ display: 'flex', alignItems: 'center', gap: '8px', color: '#10b981' }}>
               <CheckCircle size={18} />
               <span style={{ fontWeight: 700 }}>Attendance Submitted</span>
             </div>
-          ) : (
-            <button 
-              onClick={submitAttendance}
-              disabled={submitting}
-              className="btn-primary"
-              style={{ 
-                background: 'linear-gradient(135deg, #10b981 0%, #059669 100%)', 
-                border: 'none', 
-                boxShadow: '0 4px 14px rgba(16, 185, 129, 0.3)',
-                display: 'flex',
-                alignItems: 'center',
-                gap: '8px',
-                padding: '10px 24px',
-                borderRadius: '8px',
-                fontWeight: 700
-              }}
-            >
-              {submitting ? (
-                <><Loader2 className="animate-spin" size={16} /> Submitting...</>
-              ) : (
-                <><CheckCircle size={18} /> Submit Attendance</>
-              )}
-            </button>
           )}
         </div>
       )}
@@ -584,11 +604,12 @@ export function AttendanceHistoryView({ showToast }) {
               onChange={(e) => setSession(e.target.value)}
               style={{ height: '38px', borderRadius: '8px' }}
             >
-              <option value="2024-2025">2024-2025</option>
-              <option value="2025-2026">2025-2026</option>
-              <option value="2026-2027">2026-2027</option>
-              <option value="2027-2028">2027-2028</option>
-              <option value="2028-2029">2028-2029</option>
+              {Array.from({ length: 2049 - 2026 + 1 }, (_, i) => {
+                const s = 2026 + i;
+                return `${s}-${s + 1}`;
+              }).map(sy => (
+                <option key={sy} value={sy}>{sy}</option>
+              ))}
             </select>
           </div>
 

@@ -347,7 +347,7 @@ export function MarkAttendanceView({ date, setDate, studentClass, setClass, sect
       });
       if (res.ok) {
         showToast('Attendance submitted successfully!', 'success');
-        fetchRoster();
+        setRoster(prev => prev.map(s => ({ ...s, submitted: true })));
       } else {
         const err = await res.json();
         showToast(err.error || 'Failed to submit attendance.', 'error');
@@ -535,81 +535,99 @@ export function MarkAttendanceView({ date, setDate, studentClass, setClass, sect
                     <td style={{ padding: '14px 20px' }}>
                       <div style={{ display: 'flex', gap: '8px', justifyContent: 'center' }}>
                         
-                        {/* Present Button */}
-                        <button 
-                          onClick={() => handleStatusToggle(stu.id, 'Present')}
-                          style={{
-                            padding: '6px 12px',
-                            borderRadius: '6px',
-                            border: 'none',
-                            fontSize: '0.75rem',
-                            fontWeight: 700,
-                            cursor: 'pointer',
-                            transition: 'all 0.2s ease',
-                            background: stu.attendanceStatus === 'Present' ? '#10b981' : 'rgba(255,255,255,0.02)',
-                            color: stu.attendanceStatus === 'Present' ? '#ffffff' : 'var(--text-muted)',
-                            border: stu.attendanceStatus === 'Present' ? 'none' : '1px solid var(--border-glass)'
-                          }}
-                        >
-                          Present
-                        </button>
+                        {stu.attendanceStatus ? (
+                          <button 
+                            onClick={() => handleStatusToggle(stu.id, stu.attendanceStatus)}
+                            style={{
+                              padding: '6px 16px',
+                              borderRadius: '6px',
+                              border: 'none',
+                              fontSize: '0.75rem',
+                              fontWeight: 700,
+                              cursor: 'pointer',
+                              transition: 'all 0.2s ease',
+                              background: stu.attendanceStatus === 'Present' ? '#10b981' : stu.attendanceStatus === 'Absent' ? '#ef4444' : stu.attendanceStatus === 'Leave' ? '#f59e0b' : '#f97316',
+                              color: '#ffffff',
+                              opacity: 0.85
+                            }}
+                          >
+                            {stu.attendanceStatus} ✕
+                          </button>
+                        ) : (
+                          <>
+                            <button 
+                              onClick={() => handleStatusToggle(stu.id, 'Present')}
+                              style={{
+                                padding: '6px 12px',
+                                borderRadius: '6px',
+                                border: 'none',
+                                fontSize: '0.75rem',
+                                fontWeight: 700,
+                                cursor: 'pointer',
+                                transition: 'all 0.2s ease',
+                                background: 'rgba(255,255,255,0.02)',
+                                color: 'var(--text-muted)',
+                                border: '1px solid var(--border-glass)'
+                              }}
+                            >
+                              Present
+                            </button>
 
-                        {/* Absent Button */}
-                        <button 
-                          onClick={() => handleStatusToggle(stu.id, 'Absent')}
-                          style={{
-                            padding: '6px 12px',
-                            borderRadius: '6px',
-                            border: 'none',
-                            fontSize: '0.75rem',
-                            fontWeight: 700,
-                            cursor: 'pointer',
-                            transition: 'all 0.2s ease',
-                            background: stu.attendanceStatus === 'Absent' ? '#ef4444' : 'rgba(255,255,255,0.02)',
-                            color: stu.attendanceStatus === 'Absent' ? '#ffffff' : 'var(--text-muted)',
-                            border: stu.attendanceStatus === 'Absent' ? 'none' : '1px solid var(--border-glass)'
-                          }}
-                        >
-                          Absent
-                        </button>
+                            <button 
+                              onClick={() => handleStatusToggle(stu.id, 'Absent')}
+                              style={{
+                                padding: '6px 12px',
+                                borderRadius: '6px',
+                                border: 'none',
+                                fontSize: '0.75rem',
+                                fontWeight: 700,
+                                cursor: 'pointer',
+                                transition: 'all 0.2s ease',
+                                background: 'rgba(255,255,255,0.02)',
+                                color: 'var(--text-muted)',
+                                border: '1px solid var(--border-glass)'
+                              }}
+                            >
+                              Absent
+                            </button>
 
-                        {/* Leave Button */}
-                        <button 
-                          onClick={() => handleStatusToggle(stu.id, 'Leave')}
-                          style={{
-                            padding: '6px 12px',
-                            borderRadius: '6px',
-                            border: 'none',
-                            fontSize: '0.75rem',
-                            fontWeight: 700,
-                            cursor: 'pointer',
-                            transition: 'all 0.2s ease',
-                            background: stu.attendanceStatus === 'Leave' ? '#f59e0b' : 'rgba(255,255,255,0.02)',
-                            color: stu.attendanceStatus === 'Leave' ? '#ffffff' : 'var(--text-muted)',
-                            border: stu.attendanceStatus === 'Leave' ? 'none' : '1px solid var(--border-glass)'
-                          }}
-                        >
-                          Leave
-                        </button>
+                            <button 
+                              onClick={() => handleStatusToggle(stu.id, 'Leave')}
+                              style={{
+                                padding: '6px 12px',
+                                borderRadius: '6px',
+                                border: 'none',
+                                fontSize: '0.75rem',
+                                fontWeight: 700,
+                                cursor: 'pointer',
+                                transition: 'all 0.2s ease',
+                                background: 'rgba(255,255,255,0.02)',
+                                color: 'var(--text-muted)',
+                                border: '1px solid var(--border-glass)'
+                              }}
+                            >
+                              Leave
+                            </button>
 
-                        {/* Late Button */}
-                        <button 
-                          onClick={() => handleStatusToggle(stu.id, 'Late')}
-                          style={{
-                            padding: '6px 12px',
-                            borderRadius: '6px',
-                            border: 'none',
-                            fontSize: '0.75rem',
-                            fontWeight: 700,
-                            cursor: 'pointer',
-                            transition: 'all 0.2s ease',
-                            background: stu.attendanceStatus === 'Late' ? '#f97316' : 'rgba(255,255,255,0.02)',
-                            color: stu.attendanceStatus === 'Late' ? '#ffffff' : 'var(--text-muted)',
-                            border: stu.attendanceStatus === 'Late' ? 'none' : '1px solid var(--border-glass)'
-                          }}
-                        >
-                          Late
-                        </button>
+                            <button 
+                              onClick={() => handleStatusToggle(stu.id, 'Late')}
+                              style={{
+                                padding: '6px 12px',
+                                borderRadius: '6px',
+                                border: 'none',
+                                fontSize: '0.75rem',
+                                fontWeight: 700,
+                                cursor: 'pointer',
+                                transition: 'all 0.2s ease',
+                                background: 'rgba(255,255,255,0.02)',
+                                color: 'var(--text-muted)',
+                                border: '1px solid var(--border-glass)'
+                              }}
+                            >
+                              Late
+                            </button>
+                          </>
+                        )}
 
                       </div>
                     </td>
@@ -635,70 +653,62 @@ export function MarkAttendanceView({ date, setDate, studentClass, setClass, sect
       </div>
 
       {/* 4. ACTIONS BOTTOM BAR */}
-      {roster.length > 0 && !loading && (
-        <div className="glass-panel" style={{ 
-          padding: '16px 24px', 
-          display: 'flex', 
-          justifyContent: 'space-between',
-          alignItems: 'center', 
-          border: '1px solid rgba(255,255,255,0.08)',
-          marginTop: '16px'
-        }}>
-          {isSubmitted ? (
-            <div style={{ display: 'flex', alignItems: 'center', gap: '8px', color: '#10b981' }}>
-              <CheckCircle size={18} />
-              <span style={{ fontWeight: 700 }}>Attendance Submitted</span>
-            </div>
-          ) : (
-            <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
-              <button 
-                onClick={saveAttendance}
-                disabled={saving}
-                className="btn-primary"
-                style={{ 
-                  background: '#6366f1', 
-                  border: 'none', 
-                  boxShadow: '0 4px 14px rgba(99, 102, 241, 0.3)',
-                  display: 'flex',
-                  alignItems: 'center',
-                  gap: '8px',
-                  padding: '10px 24px',
-                  borderRadius: '8px',
-                  fontWeight: 700
-                }}
-              >
-                {saving ? (
-                  <><Loader2 className="animate-spin" size={16} /> Saving Attendance...</>
-                ) : (
-                  <><ClipboardCheck size={18} /> Save Attendance</>
-                )}
-              </button>
-              <button 
-                onClick={submitAttendance}
-                disabled={submitting}
-                className="btn-primary"
-                style={{ 
-                  background: '#10b981', 
-                  border: 'none', 
-                  boxShadow: '0 4px 14px rgba(16, 185, 129, 0.3)',
-                  display: 'flex',
-                  alignItems: 'center',
-                  gap: '8px',
-                  padding: '10px 24px',
-                  borderRadius: '8px',
-                  fontWeight: 700
-                }}
-              >
-                {submitting ? (
-                  <><Loader2 className="animate-spin" size={16} /> Submitting...</>
-                ) : (
-                  <><CheckCircle size={18} /> Submit Attendance</>
-                )}
-              </button>
-            </div>
-          )}
+      <div className="glass-panel" style={{ 
+        padding: '16px 24px', 
+        display: 'flex', 
+        justifyContent: 'space-between',
+        alignItems: 'center', 
+        border: '1px solid rgba(255,255,255,0.08)',
+        marginTop: '16px'
+      }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+          <button 
+            onClick={saveAttendance}
+            disabled={saving || roster.length === 0}
+            className="btn-primary"
+            style={{ 
+              background: '#6366f1', 
+              border: 'none', 
+              boxShadow: '0 4px 14px rgba(99, 102, 241, 0.3)',
+              display: 'flex',
+              alignItems: 'center',
+              gap: '8px',
+              padding: '10px 24px',
+              borderRadius: '8px',
+              fontWeight: 700
+            }}
+          >
+            {saving ? (
+              <><Loader2 className="animate-spin" size={16} /> Saving Attendance...</>
+            ) : (
+              <><ClipboardCheck size={18} /> Save Attendance</>
+            )}
+          </button>
+          <button 
+            onClick={submitAttendance}
+            disabled={submitting}
+            className="btn-primary"
+            style={{ 
+              background: '#10b981', 
+              border: 'none', 
+              boxShadow: '0 4px 14px rgba(16, 185, 129, 0.3)',
+              display: 'flex',
+              alignItems: 'center',
+              gap: '8px',
+              padding: '10px 24px',
+              borderRadius: '8px',
+              fontWeight: 700,
+              cursor: 'pointer'
+            }}
+          >
+            {submitting ? (
+              <><Loader2 className="animate-spin" size={16} /> Submitting...</>
+            ) : (
+              <><CheckCircle size={18} /> Submit Attendance</>
+            )}
+          </button>
         </div>
-      )}
+      </div>
 
     </div>
   );
@@ -823,6 +833,31 @@ export function AttendanceHistoryView({ showToast }) {
     } finally {
       setSaving(false);
     }
+  };
+
+  // Export attendance report as CSV
+  const exportAttendanceCSV = () => {
+    const headers = ['Roll No', 'Admission No', 'Student Name', 'Grade', 'Section', 'Attendance Status', 'Remarks'];
+    const rows = roster.map(stu => [
+      stu.rollNumber,
+      stu.admissionNumber,
+      stu.fullName,
+      studentClass,
+      section,
+      stu.attendanceStatus || 'Unmarked',
+      stu.remarks || ''
+    ]);
+    const csvContent = [headers.join(','), ...rows.map(r => r.join(','))].join('\n');
+    const blob = new Blob([csvContent], { type: 'text/csv' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `Attendance_Report_Grade${studentClass}_Section${section}_${date}.csv`;
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    URL.revokeObjectURL(url);
+    showToast('Attendance report exported successfully!', 'success');
   };
 
   // Find percentage
@@ -1065,7 +1100,17 @@ export function AttendanceHistoryView({ showToast }) {
       </div>
 
       {roster.length > 0 && !loading && (
-        <div className="glass-panel" style={{ padding: '16px 24px', display: 'flex', justifyContent: 'flex-end', alignItems: 'center', marginTop: '16px' }}>
+        <div className="glass-panel" style={{ padding: '16px 24px', display: 'flex', justifyContent: 'flex-end', alignItems: 'center', marginTop: '16px', gap: '12px' }}>
+          <button 
+            onClick={exportAttendanceCSV}
+            className="btn-secondary"
+            style={{ 
+              display: 'flex', alignItems: 'center', gap: '8px', padding: '10px 24px', borderRadius: '8px', fontWeight: 700,
+              border: '1px solid var(--border-glass)', background: 'rgba(255,255,255,0.03)', color: 'var(--text-main)', cursor: 'pointer'
+            }}
+          >
+            <Download size={18} /> Export CSV
+          </button>
           <button 
             onClick={saveAttendanceUpdates}
             disabled={saving}
@@ -1377,22 +1422,31 @@ export function ClassReportsView({ showToast }) {
 export function MonthlyCalendarView({ showToast }) {
   const [studentsList, setStudentsList] = useState([]);
   const [selectedStudent, setSelectedStudent] = useState('');
+  const [selectedGrade, setSelectedGrade] = useState('I');
+  const [selectedSection, setSelectedSection] = useState('A');
+  const [searchName, setSearchName] = useState('');
   const [selectedMonth, setSelectedMonth] = useState(new Date().getMonth() + 1); // 1-12
   const [selectedYear, setSelectedYear] = useState(new Date().getFullYear());
   const [calendarLogs, setCalendarLogs] = useState({});
   const [loading, setLoading] = useState(false);
   const [activeTooltip, setActiveTooltip] = useState(null);
 
-  // Load all students
-  const loadStudents = async () => {
+  const grades = ['I', 'II', 'III', 'IV', 'V', 'VI', 'VII', 'VIII', 'IX', 'X'];
+  const sections = ['A', 'B', 'C', 'D'];
+
+  // Load filtered students
+  const loadFilteredStudents = async () => {
     try {
-      const res = await fetch('/api/students?limit=100');
+      const queryParams = new URLSearchParams({
+        class: selectedGrade,
+        section: selectedSection,
+        search: searchName,
+        limit: 100
+      }).toString();
+      const res = await fetch(`/api/students?${queryParams}`);
       if (res.ok) {
         const data = await res.json();
         setStudentsList(data.students || []);
-        if (data.students && data.students.length > 0) {
-          setSelectedStudent(data.students[0].id);
-        }
       }
     } catch (err) {
       console.error(err);
@@ -1400,8 +1454,19 @@ export function MonthlyCalendarView({ showToast }) {
   };
 
   useEffect(() => {
-    loadStudents();
-  }, []);
+    loadFilteredStudents();
+  }, [selectedGrade, selectedSection, searchName]);
+
+  useEffect(() => {
+    if (studentsList.length > 0) {
+      const stillExists = studentsList.some(s => s.id === selectedStudent);
+      if (!stillExists) {
+        setSelectedStudent(studentsList[0].id);
+      }
+    } else {
+      setSelectedStudent('');
+    }
+  }, [studentsList]);
 
   // Fetch calendar logs
   const fetchCalendarLogs = async () => {
@@ -1466,10 +1531,44 @@ export function MonthlyCalendarView({ showToast }) {
       <div className="glass-panel" style={{ padding: '20px 24px' }}>
         <div style={{ display: 'flex', gap: '16px', flexWrap: 'wrap', alignItems: 'center' }}>
           
-          {/* Student Selector */}
+          {/* Grade Class Filter */}
+          <div className="form-group" style={{ margin: 0, minWidth: '110px' }}>
+            <label style={{ fontSize: '0.75rem', fontWeight: 700, textTransform: 'uppercase', color: 'var(--text-muted)' }}>Grade</label>
+            <select className="select-custom" value={selectedGrade} onChange={(e) => setSelectedGrade(e.target.value)} style={{ height: '38px', borderRadius: '8px' }}>
+              {grades.map(g => (
+                <option key={g} value={g}>Grade {g}</option>
+              ))}
+            </select>
+          </div>
+
+          {/* Section Filter */}
+          <div className="form-group" style={{ margin: 0, minWidth: '100px' }}>
+            <label style={{ fontSize: '0.75rem', fontWeight: 700, textTransform: 'uppercase', color: 'var(--text-muted)' }}>Section</label>
+            <select className="select-custom" value={selectedSection} onChange={(e) => setSelectedSection(e.target.value)} style={{ height: '38px', borderRadius: '8px' }}>
+              {sections.map(s => (
+                <option key={s} value={s}>Section {s}</option>
+              ))}
+            </select>
+          </div>
+
+          {/* Search by Name */}
+          <div className="form-group" style={{ margin: 0, minWidth: '180px' }}>
+            <label style={{ fontSize: '0.75rem', fontWeight: 700, textTransform: 'uppercase', color: 'var(--text-muted)' }}>Search Name</label>
+            <input
+              type="text"
+              placeholder="Type student name..."
+              value={searchName}
+              onChange={(e) => setSearchName(e.target.value)}
+              className="form-control"
+              style={{ height: '38px', borderRadius: '8px', padding: '8px 12px' }}
+            />
+          </div>
+
+          {/* Student Selector (filtered) */}
           <div className="form-group" style={{ margin: 0, minWidth: '220px' }}>
             <label style={{ fontSize: '0.75rem', fontWeight: 700, textTransform: 'uppercase', color: 'var(--text-muted)' }}>Select Student</label>
             <select className="select-custom" value={selectedStudent} onChange={(e) => setSelectedStudent(e.target.value)} style={{ height: '38px', borderRadius: '8px' }}>
+              {studentsList.length === 0 && <option value="">No students found</option>}
               {studentsList.map(s => (
                 <option key={s.id} value={s.id}>{s.fullName || s.name} ({s.admissionNumber})</option>
               ))}
@@ -1490,9 +1589,9 @@ export function MonthlyCalendarView({ showToast }) {
           <div className="form-group" style={{ margin: 0, minWidth: '100px' }}>
             <label style={{ fontSize: '0.75rem', fontWeight: 700, textTransform: 'uppercase', color: 'var(--text-muted)' }}>Year</label>
             <select className="select-custom" value={selectedYear} onChange={(e) => setSelectedYear(parseInt(e.target.value))} style={{ height: '38px', borderRadius: '8px' }}>
-              <option value="2026">2026</option>
-              <option value="2025">2025</option>
-              <option value="2024">2024</option>
+              {Array.from({ length: 2050 - 2026 + 1 }, (_, i) => 2026 + i).map(y => (
+                <option key={y} value={y}>{y}</option>
+              ))}
             </select>
           </div>
 

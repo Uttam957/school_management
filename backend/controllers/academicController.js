@@ -700,6 +700,30 @@ export const deleteHoliday = (req, res) => {
   res.json({ message: 'Holiday schedule removed successfully.' });
 };
 
+export const updateHoliday = (req, res) => {
+  const { id } = req.params;
+  const { name, type, startDate, endDate, description } = req.body;
+
+  const db = readDb();
+  const index = db.holidays.findIndex(h => h.id === id);
+
+  if (index === -1) {
+    return res.status(404).json({ error: 'Holiday not found.' });
+  }
+
+  db.holidays[index] = {
+    ...db.holidays[index],
+    name: name || db.holidays[index].name,
+    type: type || db.holidays[index].type,
+    startDate: startDate || db.holidays[index].startDate,
+    endDate: endDate || db.holidays[index].endDate,
+    description: description !== undefined ? description : db.holidays[index].description
+  };
+
+  writeDb(db);
+  res.json(db.holidays[index]);
+};
+
 // =============================================
 // 7. RESULTS CONTROLLER (GRADES, GPA, MARKSHEETS & RANKS)
 // =============================================

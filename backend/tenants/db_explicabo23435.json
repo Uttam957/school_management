@@ -1,0 +1,31 @@
+{
+  "school": {
+    "name": "Nichole Collins",
+    "subdomain": "explicabo23435",
+    "address": "Corrupti anim minus",
+    "city": "Dolore molestiae har",
+    "state": "Voluptatem eligendi",
+    "phone": "+1 (956) 274-8255",
+    "email": "kyxupoc@mailinator.com",
+    "ratePerStudent": "250.00",
+    "adminName": "uttam",
+    "adminEmail": "ur61849@gmail.com",
+    "adminPassword": "uttam@2004",
+    "principal": "Britanni Finley"
+  },
+  "students": [],
+  "teachers": [],
+  "staff": [],
+  "timetables": [],
+  "invoices": [],
+  "fees": [],
+  "expenses": [],
+  "payroll": [],
+  "staffPayments": [],
+  "activities": [],
+  "exams": [],
+  "examTimetables": [],
+  "notices": [],
+  "holidays": [],
+  "results": []
+}

@@ -1366,7 +1366,7 @@ function TrackerView({ expenses, showToast }) {
     { value: '12', label: 'December' }
   ];
 
-  const years = ['2024', '2025', '2026', '2027'];
+  const years = Array.from({ length: 2050 - 2026 + 1 }, (_, i) => `${2026 + i}`);
 
   // Filter expenses based on selected mode and value
   const filteredExpenses = expenses.filter(e => {
