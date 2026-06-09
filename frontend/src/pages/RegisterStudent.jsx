@@ -234,14 +234,14 @@ export default function RegisterStudent({ setActiveView }) {
     academicYear: '2026-2027',
     admissionType: 'New Admission',
     studentClass: '',
-    section: 'A',
+    section: '',
     rollNumber: '',
     autoRollNumber: true,
     previousSchoolName: '',
     previousSchoolAddress: '',
     previousClassStudied: '',
     transferCertificateNumber: '',
-    status: 'Active',
+    status: 'Pending',
 
     // Step 3: Parent Info
     fatherName: '',
@@ -536,14 +536,14 @@ export default function RegisterStudent({ setActiveView }) {
         academicYear: '2026-2027',
         admissionType: 'New Admission',
         studentClass: '',
-        section: 'A',
+        section: '',
         rollNumber: '',
         autoRollNumber: true,
         previousSchoolName: '',
         previousSchoolAddress: '',
         previousClassStudied: '',
         transferCertificateNumber: '',
-        status: 'Active',
+        status: 'Pending',
         fatherName: '',
         fatherOccupation: '',
         fatherMobile: '',
@@ -1045,6 +1045,8 @@ export default function RegisterStudent({ setActiveView }) {
                   onChange={handleTextChange}
                   className="form-control"
                 >
+                  <option value="2024-2025">2024-2025</option>
+                  <option value="2025-2026">2025-2026</option>
                   <option value="2026-2027">2026-2027</option>
                   <option value="2027-2028">2027-2028</option>
                   <option value="2028-2029">2028-2029</option>
@@ -1077,20 +1079,6 @@ export default function RegisterStudent({ setActiveView }) {
                 {formErrors.studentClass && <span style={{ color: '#ef4444', fontSize: '0.75rem', marginTop: '4px', display: 'block' }}>{formErrors.studentClass}</span>}
               </div>
 
-
-              <div className="form-group">
-                <label>Student Current Status *</label>
-                <select 
-                  name="status"
-                  value={formData.status}
-                  onChange={handleTextChange}
-                  className="form-control"
-                >
-                  <option value="Active">Active</option>
-                  <option value="Inactive">Inactive</option>
-                  <option value="Alumni">Alumni</option>
-                </select>
-              </div>
 
               <div className="form-group">
                 <label>Previous School Name (if Transfer)</label>

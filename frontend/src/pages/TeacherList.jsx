@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import { createPortal } from 'react-dom';
 import { 
   Search, 
   X, 
@@ -27,6 +28,14 @@ import {
 } from 'lucide-react';
 
 export default function TeacherList({ setActiveView, readOnly = true, onAddClick }) {
+  const renderQualificationText = (q) => {
+    if (!q) return 'N/A';
+    if (Array.isArray(q)) {
+      return q.map(item => item.degree).filter(Boolean).join(', ') || 'N/A';
+    }
+    return q;
+  };
+
   const [teachers, setTeachers] = useState([]);
   const [loading, setLoading] = useState(true);
   const [totalCount, setTotalCount] = useState(0);
@@ -142,7 +151,7 @@ export default function TeacherList({ setActiveView, readOnly = true, onAddClick
       email: teacher.email || '',
       department: teacher.department || '',
       subjectSpecialization: teacher.subjectSpecialization || teacher.subject || '',
-      qualification: teacher.qualification || '',
+      qualification: Array.isArray(teacher.qualification) ? teacher.qualification.map(q => q.degree).filter(Boolean).join(', ') : (teacher.qualification || ''),
       experience: teacher.experience || '',
       salary: teacher.salary || '',
       employmentType: teacher.employmentType || '',
@@ -406,8 +415,8 @@ export default function TeacherList({ setActiveView, readOnly = true, onAddClick
                         <td style={{ fontWeight: 500 }}>{t.department || 'N/A'}</td>
                         <td style={{ fontWeight: 500 }}>{t.subjectSpecialization || t.subject || 'N/A'}</td>
                         <td style={{ fontWeight: 500 }}>{t.mobile || t.phone || 'N/A'}</td>
-                        <td style={{ fontWeight: 500, maxWidth: '120px', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{t.qualification || 'N/A'}</td>
-                        <td style={{ fontWeight: 500 }}>{t.experience ? `${t.experience} Yrs` : 'N/A'}</td>
+                        <td style={{ fontWeight: 500, maxWidth: '120px', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{renderQualificationText(t.qualification)}</td>
+                        <td style={{ fontWeight: 500 }}>{t.experience ? `${t.experience}` : 'N/A'}</td>
                         <td style={{ fontWeight: 500 }}>{t.joiningDate || 'N/A'}</td>
                         <td>
                           {getStatusBadge(t.status || 'Active')}
@@ -472,14 +481,14 @@ export default function TeacherList({ setActiveView, readOnly = true, onAddClick
       {/* ==========================================
           INSPECT TEACHER PROFILE DRAWER
           ========================================== */}
-      {selectedTeacher && (
+      {selectedTeacher && createPortal(
         <div onClick={() => setSelectedTeacher(null)}
-          className="drawer-overlay">
-          <div onClick={(e) => e.stopPropagation()} className="drawer-panel"
+          style={{ position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, background: 'rgba(0,0,0,0.6)', backdropFilter: 'blur(8px)', WebkitBackdropFilter: 'blur(8px)', isolation: 'isolate', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 10000, padding: '20px' }}>
+          <div onClick={(e) => e.stopPropagation()} className="glass-panel animate-scale-up"
             style={{
-              borderRadius: '24px 0 0 24px',
+              width: '100%', maxWidth: '600px', maxHeight: '75vh',
               background: 'var(--bg-elevated)', padding: '30px', display: 'flex', flexDirection: 'column',
-              gap: '20px', overflowY: 'auto'
+              gap: '20px', overflowY: 'auto', borderRadius: '16px', minHeight: 0
             }}>
             
             {/* Drawer Header */}
@@ -518,34 +527,26 @@ export default function TeacherList({ setActiveView, readOnly = true, onAddClick
               </div>
             </div>
 
-            {/* Status Change Controls */}
-            <div style={{ display: 'flex', gap: '8px', justifyContent: 'center', borderBottom: '1px solid var(--border-glass)', paddingBottom: '16px' }}>
-              {['Active', 'Inactive', 'On Leave'].map(st => (
-                <button key={st} onClick={() => handleStatusChange(selectedTeacher.employeeId || selectedTeacher.id, st)}
-                  className={selectedTeacher.status === st ? 'btn-primary' : 'btn-secondary'}
-                  style={{ padding: '6px 14px', fontSize: '0.75rem', borderRadius: '8px', fontWeight: 600 }}>
-                  {st}
-                </button>
-              ))}
-            </div>
-
             {/* Profile Details */}
             <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
               {[
                 { label: 'Employee ID', value: selectedTeacher.employeeId || selectedTeacher.id },
                 { label: 'Teacher ID', value: selectedTeacher.teacherId || 'N/A' },
                 { label: 'Department', value: selectedTeacher.department || 'N/A' },
-                { label: 'Subject', value: selectedTeacher.subjectSpecialization || selectedTeacher.subject || 'N/A' },
-                { label: 'Qualification', value: selectedTeacher.qualification || 'N/A' },
-                { label: 'Experience', value: selectedTeacher.experience ? `${selectedTeacher.experience} Years` : 'N/A' },
+                { label: 'Designation', value: selectedTeacher.designation || 'N/A' },
+                { label: 'Primary Subject', value: selectedTeacher.primarySubject || selectedTeacher.subjectSpecialization || selectedTeacher.subject || 'N/A' },
+                { label: 'Secondary Subject', value: selectedTeacher.secondarySubject || 'N/A' },
+                { label: 'Total Experience', value: selectedTeacher.experience ? `${selectedTeacher.experience}` : 'N/A' },
                 { label: 'Joining Date', value: selectedTeacher.joiningDate || 'N/A' },
-                { label: 'Salary (₹/Month)', value: selectedTeacher.salary ? `₹${parseInt(selectedTeacher.salary).toLocaleString()}` : 'N/A' },
                 { label: 'Email', value: selectedTeacher.email || 'N/A' },
                 { label: 'Mobile', value: selectedTeacher.mobile || selectedTeacher.phone || 'N/A' },
                 { label: 'Alternate Mobile', value: selectedTeacher.alternateMobile || 'N/A' },
+                { label: 'Emergency Contact', value: selectedTeacher.emergencyContactNumber || selectedTeacher.emergencyPhone || 'N/A' },
                 { label: 'Gender / DOB', value: `${selectedTeacher.gender || 'N/A'} / ${selectedTeacher.dob || 'N/A'}` },
                 { label: 'Blood Group', value: selectedTeacher.bloodGroup || 'N/A' },
                 { label: 'Marital Status', value: selectedTeacher.maritalStatus || 'N/A' },
+                { label: 'Nationality', value: selectedTeacher.nationality || 'N/A' },
+                { label: 'Aadhaar / PAN ID', value: `${selectedTeacher.aadhaarNumber || 'N/A'} / ${selectedTeacher.panNumber || 'N/A'}` }
               ].map((item, idx) => (
                 <div key={idx} style={{ display: 'flex', justifyContent: 'space-between', borderBottom: '1px solid rgba(255,255,255,0.02)', paddingBottom: '8px' }}>
                   <span style={{ fontSize: '0.8rem', color: 'var(--text-muted)' }}>{item.label}</span>
@@ -553,13 +554,47 @@ export default function TeacherList({ setActiveView, readOnly = true, onAddClick
                 </div>
               ))}
 
-              {/* Address */}
-              <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
-                <span style={{ fontSize: '0.8rem', color: 'var(--text-muted)' }}>Residential Address</span>
-                <strong style={{ fontSize: '0.85rem', lineHeight: '1.4' }}>
-                  {selectedTeacher.address || 'N/A'}{selectedTeacher.city ? `, ${selectedTeacher.city}` : ''}{selectedTeacher.state ? `, ${selectedTeacher.state}` : ''} {selectedTeacher.pincode || ''}
-                </strong>
+              {/* Address Details */}
+              <div style={{ borderTop: '1px solid var(--border-glass)', paddingTop: '12px', display: 'flex', flexDirection: 'column', gap: '8px' }}>
+                <span style={{ fontSize: '0.8rem', color: 'var(--text-muted)', fontWeight: 700 }}>Address Information</span>
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '4px', fontSize: '0.85rem' }}>
+                  <div><strong>Permanent Address:</strong> {selectedTeacher.permanentAddress || selectedTeacher.address || 'N/A'} {selectedTeacher.permanentCity || selectedTeacher.city ? `, ${selectedTeacher.permanentCity || selectedTeacher.city}` : ''} {selectedTeacher.permanentState || selectedTeacher.state ? `, ${selectedTeacher.permanentState || selectedTeacher.state}` : ''} {selectedTeacher.permanentPostalCode || selectedTeacher.pincode ? `- ${selectedTeacher.permanentPostalCode || selectedTeacher.pincode}` : ''}</div>
+                  <div><strong>Current Address:</strong> {selectedTeacher.sameAsPermanent ? 'Same as Permanent Address' : `${selectedTeacher.currentAddress || 'N/A'} ${selectedTeacher.currentCity ? `, ${selectedTeacher.currentCity}` : ''} ${selectedTeacher.currentState ? `, ${selectedTeacher.currentState}` : ''} ${selectedTeacher.currentPostalCode ? `- ${selectedTeacher.currentPostalCode}` : ''}`}</div>
+                </div>
               </div>
+
+              {/* Qualifications Details */}
+              {Array.isArray(selectedTeacher.qualification) && selectedTeacher.qualification.filter(q => q.degree).length > 0 && (
+                <div style={{ borderTop: '1px solid var(--border-glass)', paddingTop: '12px', display: 'flex', flexDirection: 'column', gap: '8px' }}>
+                  <span style={{ fontSize: '0.8rem', color: 'var(--text-muted)', fontWeight: 700 }}>Academic Qualifications</span>
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
+                    {selectedTeacher.qualification.filter(q => q.degree).map((q, idx) => (
+                      <div key={idx} style={{ padding: '8px 12px', background: 'rgba(255,255,255,0.02)', borderRadius: '8px', border: '1px solid var(--border-glass)', fontSize: '0.8rem', lineHeight: '1.4' }}>
+                        <div style={{ fontWeight: 700, color: 'hsl(var(--color-primary))' }}>{q.degree}</div>
+                        <div><strong>Institution:</strong> {q.institution || 'N/A'} ({q.board || 'N/A'})</div>
+                        <div><strong>Year / Score:</strong> {q.year || 'N/A'} — {q.percentage || 'N/A'}</div>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
+
+              {/* Experience Details */}
+              {Array.isArray(selectedTeacher.experiences) && selectedTeacher.experiences.filter(e => e.schoolName).length > 0 && (
+                <div style={{ borderTop: '1px solid var(--border-glass)', paddingTop: '12px', display: 'flex', flexDirection: 'column', gap: '8px' }}>
+                  <span style={{ fontSize: '0.8rem', color: 'var(--text-muted)', fontWeight: 700 }}>Previous School History</span>
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
+                    {selectedTeacher.experiences.filter(e => e.schoolName).map((exp, idx) => (
+                      <div key={idx} style={{ padding: '8px 12px', background: 'rgba(255,255,255,0.02)', borderRadius: '8px', border: '1px solid var(--border-glass)', fontSize: '0.8rem', lineHeight: '1.4' }}>
+                        <div style={{ fontWeight: 700, color: 'hsl(var(--color-secondary))' }}>{exp.schoolName}</div>
+                        <div><strong>Role:</strong> {exp.designation || 'N/A'}</div>
+                        <div><strong>Duration:</strong> {exp.duration || 'N/A'}</div>
+                        <div><strong>Reason for Leaving:</strong> {exp.reason || 'N/A'}</div>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
             </div>
 
             {/* Verified Documents */}
@@ -569,9 +604,12 @@ export default function TeacherList({ setActiveView, readOnly = true, onAddClick
               <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
                 {[
                   { label: 'Aadhaar Card', field: 'aadhaarFile', icon: 'hsl(var(--color-primary))' },
+                  { label: 'PAN Card', field: 'panFile', icon: 'rgb(var(--color-warning-rgb))' },
                   { label: 'Resume / CV', field: 'resumeFile', icon: 'hsl(var(--color-secondary))' },
                   { label: 'Qualification Certificate', field: 'qualificationFile', icon: 'hsl(var(--color-info))' },
-                  { label: 'Experience Certificate', field: 'experienceFile', icon: 'rgb(var(--color-warning-rgb))' },
+                  { label: 'Experience Certificate', field: 'experienceFile', icon: '#10b981' },
+                  { label: 'Joining Letter', field: 'joiningLetterFile', icon: '#8b5cf6' },
+                  { label: 'Other Document', field: 'otherFile', icon: '#6b7280' },
                 ].map((doc, idx) => (
                   <div key={idx} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '8px 12px', background: 'rgba(255,255,255,0.02)', borderRadius: '8px', border: '1px solid var(--border-glass)' }}>
                     <span style={{ fontSize: '0.8rem', display: 'flex', alignItems: 'center', gap: '6px', fontWeight: 600 }}>
@@ -591,8 +629,7 @@ export default function TeacherList({ setActiveView, readOnly = true, onAddClick
             </div>
 
           </div>
-        </div>
-      )}
+        </div>, document.body)}
 
       {/* ==========================================
           EDIT TEACHER MODAL

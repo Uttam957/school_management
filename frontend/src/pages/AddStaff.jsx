@@ -1,815 +1,840 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { 
-  UserCog, 
-  Mail, 
+  User, 
+  Briefcase, 
   Phone, 
-  Building2,
+  MapPin, 
+  Award, 
+  Clock, 
   Upload, 
-  X, 
   CheckCircle, 
   AlertCircle, 
   RotateCcw, 
   Save, 
   Loader2,
-  Briefcase,
-  MapPin,
-  FileText
+  FileText,
+  ChevronRight,
+  ChevronLeft,
+  Trash2,
+  Plus,
+  X
 } from 'lucide-react';
 
+// ============================================================
+// STAFF CATEGORIES & OPTION LISTS
+// ============================================================
+const STAFF_CATEGORIES = [
+  'Accountant', 'Receptionist', 'Librarian', 'Lab Assistant', 'Transport Manager',
+  'Driver', 'Nurse', 'Security Guard', 'IT Support', 'Maintenance Staff',
+  'Housekeeping Staff', 'Office Assistant', 'Peon', 'Counselor', 'Other'
+];
+
+const DEPARTMENTS = [
+  'Administration', 'Accounts & Finance', 'Library', 'IT & Technology',
+  'Transport', 'Security', 'Housekeeping', 'Maintenance', 'Health & Wellness',
+  'Front Office', 'Laboratory', 'Counseling', 'Store & Inventory', 'Other'
+];
+
+const DESIGNATIONS = [
+  'Senior Staff', 'Junior Staff', 'Head of Department', 'Supervisor',
+  'Assistant', 'Coordinator', 'Manager', 'Executive', 'Attendant', 'Helper', 'Other'
+];
+
+const EMPLOYMENT_TYPES = ['Full-Time', 'Part-Time', 'Contract', 'Temporary'];
+const EMPLOYEE_STATUSES = ['Active', 'Inactive', 'On Leave'];
+const BLOOD_GROUPS = ['A+', 'A-', 'B+', 'B-', 'AB+', 'AB-', 'O+', 'O-'];
+
+// ============================================================
+// STEP DEFINITIONS
+// ============================================================
+const STEPS = [
+  { id: 1, label: 'Basic Information', icon: User, color: 'hsl(var(--color-primary))' },
+  { id: 2, label: 'Employment Info', icon: Briefcase, color: 'hsl(var(--color-secondary))' },
+  { id: 3, label: 'Contact Details', icon: Phone, color: 'hsl(210, 90%, 55%)' },
+  { id: 4, label: 'Address', icon: MapPin, color: 'rgb(var(--color-success-rgb))' },
+  { id: 5, label: 'Qualifications', icon: Award, color: 'hsl(280, 80%, 55%)' },
+  { id: 6, label: 'Experience', icon: Clock, color: 'rgb(var(--color-warning-rgb))' },
+  { id: 7, label: 'Documents & Review', icon: FileText, color: 'hsl(0, 80%, 55%)' }
+];
+
+// ============================================================
+// CUSTOM SELECT COMPONENT (always opens below)
+// ============================================================
+function CustomSelect({ options, value, onChange, placeholder, name, className, style }) {
+  const [isOpen, setIsOpen] = useState(false);
+  const ref = useRef(null);
+
+  useEffect(() => {
+    const handleClickOutside = (e) => {
+      if (ref.current && !ref.current.contains(e.target)) setIsOpen(false);
+    };
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => document.removeEventListener('mousedown', handleClickOutside);
+  }, []);
+
+  const selectedLabel = options.find(o => o === value) || null;
+
+  return (
+    <div ref={ref} style={{ position: 'relative', width: '100%', ...style }} onClick={(e) => e.stopPropagation()}>
+      <div
+        onClick={() => setIsOpen(!isOpen)}
+        className={className}
+        style={{
+          padding: '12px 16px', borderRadius: '10px', width: '100%', boxSizing: 'border-box',
+          cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'space-between',
+          background: 'var(--bg-form)', border: '1.5px solid #cbd5e1',
+          color: value ? 'var(--text-main)' : '#94a3b8',
+          fontSize: '0.95rem', fontFamily: 'var(--font-primary)',
+          transition: 'all 0.3s ease'
+        }}
+      >
+        <span style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+          {selectedLabel || placeholder || 'Select...'}
+        </span>
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"
+          style={{ flexShrink: 0, transform: isOpen ? 'rotate(180deg)' : 'rotate(0)', transition: 'transform 0.2s', marginLeft: '8px', opacity: 0.6 }}>
+          <polyline points="6 9 12 15 18 9" />
+        </svg>
+      </div>
+      {isOpen && (
+        <div style={{
+          position: 'absolute', top: '100%', left: 0, right: 0, zIndex: 1000,
+          marginTop: '6px', maxHeight: '220px', overflowY: 'auto',
+          background: 'var(--bg-card)', border: '1px solid var(--border-glass)',
+          borderRadius: '12px', boxShadow: '0 12px 40px rgba(0,0,0,0.25)',
+          padding: '6px'
+        }}>
+          {options.length === 0 ? (
+            <div style={{ padding: '12px 14px', color: 'var(--text-muted)', fontSize: '0.9rem', textAlign: 'center' }}>
+              No options
+            </div>
+          ) : options.map((opt, i) => (
+            <div key={i}
+              onClick={() => {
+                onChange({ target: { name, value: opt } });
+                setIsOpen(false);
+              }}
+              style={{
+                padding: '10px 14px', cursor: 'pointer', fontSize: '0.9rem',
+                borderRadius: '8px',
+                background: opt === value ? 'rgba(hsl(var(--color-primary)), 0.12)' : 'transparent',
+                color: opt === value ? 'hsl(var(--color-primary))' : 'var(--text-main)',
+                fontWeight: opt === value ? 600 : 400,
+                transition: 'background 0.15s ease'
+              }}
+              onMouseEnter={(e) => { if (opt !== value) e.currentTarget.style.background = 'var(--bg-glass-active)'; }}
+              onMouseLeave={(e) => { if (opt !== value) e.currentTarget.style.background = 'transparent'; }}
+            >
+              {opt}
+            </div>
+          ))}
+        </div>
+      )}
+    </div>
+  );
+}
+
 export default function AddStaff({ setActiveView }) {
+  const [currentStep, setCurrentStep] = useState(1);
   const [loading, setLoading] = useState(false);
   const [successToast, setSuccessToast] = useState(false);
-  const [formSubmitted, setFormSubmitted] = useState(false);
+  const [staffId, setStaffId] = useState('');
 
-  // Form Fields State
+  // Generate Staff ID on mount
+  useEffect(() => {
+    const rand = Math.floor(1000 + Math.random() * 9000);
+    setStaffId(`STF-${new Date().getFullYear()}-${rand}`);
+  }, []);
+
+  // ============================================================
+  // FORM STATE
+  // ============================================================
   const [formData, setFormData] = useState({
-    fullName: '',
-    gender: '',
-    email: '',
-    phone: '',
-    department: '',
-    position: '',
-    designation: '',
-    qualification: '',
-    experience: '',
-    dateOfJoining: '',
-    salaryGrade: '',
-    reportingTo: '',
-    address: '',
-    city: '',
-    state: '',
-    pincode: '',
-    emergencyContact: '',
-    emergencyPhone: ''
+    // Step 1: Basic
+    firstName: '', middleName: '', lastName: '', gender: '',
+    dob: '', bloodGroup: '', nationality: 'Indian', maritalStatus: '',
+    aadhaarNumber: '', panNumber: '',
+    // Step 2: Employment
+    joiningDate: '', staffCategory: '', designation: '', department: '',
+    employmentType: '', employeeStatus: 'Active',
+    // Step 3: Contact
+    mobile: '', alternateMobile: '', email: '', emergencyContactNumber: '',
+    // Step 4: Address
+    currentAddress: '', currentCity: '', currentState: '', currentCountry: 'India', currentPostalCode: '',
+    permanentAddress: '', permanentCity: '', permanentState: '', permanentCountry: 'India', permanentPostalCode: '',
+    sameAsPermanent: false,
+    // Step 5: Qualifications (dynamic array)
+    // Step 6: Experiences (dynamic array)
   });
 
-  // File Upload State
+  const [qualifications, setQualifications] = useState([
+    { degree: '', institution: '', boardUniversity: '', year: '', percentage: '' }
+  ]);
+
+  const [experiences, setExperiences] = useState([
+    { organization: '', designation: '', fromDate: '', toDate: '', responsibilities: '' }
+  ]);
+
+  // File uploads
   const [files, setFiles] = useState({
-    photo: null,
-    aadharFile: null,
-    certificateFile: null
+    photo: null, aadhaarFile: null, panFile: null,
+    resumeFile: null, qualificationFile: null, experienceFile: null, otherFile: null
   });
+  const [filePreviews, setFilePreviews] = useState({ photo: '' });
 
-  const [filePreviews, setFilePreviews] = useState({
-    photo: '',
-    aadharFile: '',
-    certificateFile: ''
-  });
+  // ============================================================
+  // HANDLERS
+  // ============================================================
+  const handleChange = (e) => {
+    const { name, value, type, checked } = e.target;
+    if (type === 'checkbox') {
+      setFormData(prev => {
+        const updated = { ...prev, [name]: checked };
+        if (name === 'sameAsPermanent' && checked) {
+          updated.permanentAddress = prev.currentAddress;
+          updated.permanentCity = prev.currentCity;
+          updated.permanentState = prev.currentState;
+          updated.permanentCountry = prev.currentCountry;
+          updated.permanentPostalCode = prev.currentPostalCode;
+        }
+        return updated;
+      });
+    } else {
+      setFormData(prev => ({ ...prev, [name]: value }));
+    }
+  };
 
-  const [formErrors, setFormErrors] = useState({});
-
-  // Strict Numeric real-time filters
-  const handlePhoneChange = (e) => {
+  const handleNumericChange = (e, maxLen = 10) => {
     const { name, value } = e.target;
-    const cleanNum = value.replace(/[^0-9]/g, '').slice(0, 10);
-    setFormData({
-      ...formData,
-      [name]: cleanNum
-    });
+    const cleaned = value.replace(/[^0-9]/g, '').slice(0, maxLen);
+    setFormData(prev => ({ ...prev, [name]: cleaned }));
   };
 
-  const handleExperienceChange = (e) => {
-    const { value } = e.target;
-    const cleanNum = value.replace(/[^0-9]/g, '').slice(0, 2);
-    setFormData({
-      ...formData,
-      experience: cleanNum
-    });
-  };
-
-  const handlePincodeChange = (e) => {
-    const { value } = e.target;
-    const cleanPin = value.replace(/[^0-9]/g, '').slice(0, 6);
-    setFormData({
-      ...formData,
-      pincode: cleanPin
-    });
-  };
-
-  const handleTextChange = (e) => {
-    setFormData({
-      ...formData,
-      [e.target.name]: e.target.value
-    });
-  };
-
-  // Safe file loader & previewer with validation checks
   const handleFileChange = (e, fieldName) => {
     const file = e.target.files[0];
     if (!file) return;
-
-    // Check size limit (5MB)
-    if (file.size > 5 * 1024 * 1024) {
-      alert(`File size exceeds 5MB limit. Please upload a smaller document.`);
-      return;
-    }
-
-    // Check allowed types
-    const allowedExtensions = ['pdf', 'png', 'jpg', 'jpeg'];
-    const fileExt = file.name.split('.').pop().toLowerCase();
-    if (!allowedExtensions.includes(fileExt)) {
-      alert(`Invalid file format. Standard images (JPG, PNG) and PDFs only.`);
-      return;
-    }
-
-    setFiles({
-      ...files,
-      [fieldName]: file
-    });
-
-    // Create dynamic previews
-    if (file.type.startsWith('image/')) {
+    if (file.size > 5 * 1024 * 1024) { alert('File too large. Max 5MB.'); return; }
+    const ext = file.name.split('.').pop().toLowerCase();
+    if (!['pdf', 'png', 'jpg', 'jpeg'].includes(ext)) { alert('Invalid format. Use JPG, PNG or PDF.'); return; }
+    setFiles(prev => ({ ...prev, [fieldName]: file }));
+    if (fieldName === 'photo' && file.type.startsWith('image/')) {
       const reader = new FileReader();
-      reader.onloadend = () => {
-        setFilePreviews(prev => ({
-          ...prev,
-          [fieldName]: reader.result
-        }));
-      };
+      reader.onloadend = () => setFilePreviews(prev => ({ ...prev, photo: reader.result }));
       reader.readAsDataURL(file);
-    } else {
-      setFilePreviews(prev => ({
-        ...prev,
-        [fieldName]: 'pdf_icon'
-      }));
     }
   };
 
   const removeFile = (fieldName) => {
-    setFiles({
-      ...files,
-      [fieldName]: null
-    });
-    setFilePreviews({
-      ...filePreviews,
-      [fieldName]: ''
-    });
-    const inputEl = document.getElementById(fieldName);
-    if (inputEl) inputEl.value = '';
+    setFiles(prev => ({ ...prev, [fieldName]: null }));
+    if (fieldName === 'photo') setFilePreviews(prev => ({ ...prev, photo: '' }));
+    const el = document.getElementById(fieldName);
+    if (el) el.value = '';
+  };
+
+  // Qualification handlers
+  const addQualification = () => setQualifications(prev => [...prev, { degree: '', institution: '', boardUniversity: '', year: '', percentage: '' }]);
+  const removeQualification = (i) => setQualifications(prev => prev.filter((_, idx) => idx !== i));
+  const updateQualification = (i, field, value) => {
+    setQualifications(prev => prev.map((q, idx) => idx === i ? { ...q, [field]: value } : q));
+  };
+
+  // Experience handlers
+  const addExperience = () => setExperiences(prev => [...prev, { organization: '', designation: '', fromDate: '', toDate: '', responsibilities: '' }]);
+  const removeExperience = (i) => setExperiences(prev => prev.filter((_, idx) => idx !== i));
+  const updateExperience = (i, field, value) => {
+    setExperiences(prev => prev.map((exp, idx) => idx === i ? { ...exp, [field]: value } : exp));
   };
 
   const resetForm = () => {
     setFormData({
-      fullName: '',
-      gender: '',
-      email: '',
-      phone: '',
-      department: '',
-      position: '',
-      designation: '',
-      qualification: '',
-      experience: '',
-      dateOfJoining: '',
-      salaryGrade: '',
-      reportingTo: '',
-      address: '',
-      city: '',
-      state: '',
-      pincode: '',
-      emergencyContact: '',
-      emergencyPhone: ''
+      firstName: '', middleName: '', lastName: '', gender: '',
+      dob: '', bloodGroup: '', nationality: 'Indian', maritalStatus: '',
+      aadhaarNumber: '', panNumber: '',
+      joiningDate: '', staffCategory: '', designation: '', department: '',
+      employmentType: '', employeeStatus: 'Active',
+      mobile: '', alternateMobile: '', email: '', emergencyContactNumber: '',
+      currentAddress: '', currentCity: '', currentState: '', currentCountry: 'India', currentPostalCode: '',
+      permanentAddress: '', permanentCity: '', permanentState: '', permanentCountry: 'India', permanentPostalCode: '',
+      sameAsPermanent: false
     });
-    setFiles({
-      photo: null,
-      aadharFile: null,
-      certificateFile: null
-    });
-    setFilePreviews({
-      photo: '',
-      aadharFile: '',
-      certificateFile: ''
-    });
-    setFormErrors({});
-    setFormSubmitted(false);
+    setQualifications([{ degree: '', institution: '', boardUniversity: '', year: '', percentage: '' }]);
+    setExperiences([{ organization: '', designation: '', fromDate: '', toDate: '', responsibilities: '' }]);
+    setFiles({ photo: null, aadhaarFile: null, panFile: null, resumeFile: null, qualificationFile: null, experienceFile: null, otherFile: null });
+    setFilePreviews({ photo: '' });
+    setCurrentStep(1);
+    const rand = Math.floor(1000 + Math.random() * 9000);
+    setStaffId(`STF-${new Date().getFullYear()}-${rand}`);
   };
 
-  const validateForm = () => {
-    const errors = {};
-    
-    // Required fields check
-    const requiredFields = {
-      fullName: 'Staff Full Name',
-      gender: 'Gender',
-      email: 'Email Address',
-      phone: 'Phone Number',
-      department: 'Department',
-      position: 'Position',
-      designation: 'Designation',
-      qualification: 'Qualification',
-      experience: 'Years of Experience',
-      dateOfJoining: 'Date of Joining',
-      address: 'Full Address',
-      city: 'City',
-      state: 'State',
-      pincode: 'Pincode',
-      emergencyContact: 'Emergency Contact Name',
-      emergencyPhone: 'Emergency Phone Number'
-    };
-
-    Object.keys(requiredFields).forEach(field => {
-      if (!formData[field].toString().trim()) {
-        errors[field] = `${requiredFields[field]} is required.`;
-      }
-    });
-
-    // Email validation
-    if (formData.email && !/\S+@\S+\.\S+/.test(formData.email)) {
-      errors.email = 'Please enter a valid email address.';
-    }
-
-    // Length check validations
-    if (formData.phone && formData.phone.length !== 10) {
-      errors.phone = 'Phone must be exactly 10 digits.';
-    }
-    if (formData.emergencyPhone && formData.emergencyPhone.length !== 10) {
-      errors.emergencyPhone = 'Emergency phone must be exactly 10 digits.';
-    }
-    if (formData.pincode && formData.pincode.length !== 6) {
-      errors.pincode = 'Pincode must be exactly 6 digits.';
-    }
-
-    setFormErrors(errors);
-    return Object.keys(errors).length === 0;
-  };
-
-  const handleSubmit = async (e) => {
-    e.preventDefault();
-    setFormSubmitted(true);
-
-    if (!validateForm()) {
-      const firstErrorEl = document.querySelector('.input-invalid');
-      if (firstErrorEl) {
-        firstErrorEl.scrollIntoView({ behavior: 'smooth', block: 'center' });
-      }
-      return;
-    }
-
+  // ============================================================
+  // SUBMIT
+  // ============================================================
+  const handleSubmit = async () => {
     setLoading(true);
-
     try {
-      const dataObj = new FormData();
-      Object.keys(formData).forEach(key => {
-        dataObj.append(key, formData[key]);
-      });
+      const fullName = [formData.firstName, formData.middleName, formData.lastName].filter(Boolean).join(' ');
+      const fd = new FormData();
 
-      if (files.photo) dataObj.append('photo', files.photo);
-      if (files.aadharFile) dataObj.append('aadharFile', files.aadharFile);
-      if (files.certificateFile) dataObj.append('certificateFile', files.certificateFile);
+      // Append all form data
+      Object.keys(formData).forEach(k => fd.append(k, formData[k]));
+      fd.append('fullName', fullName);
+      fd.append('staffId', staffId);
+      fd.append('qualification', JSON.stringify(qualifications));
+      fd.append('experiences', JSON.stringify(experiences));
 
-      const res = await fetch('/api/staff', {
-        method: 'POST',
-        body: dataObj
-      });
+      // Append files
+      Object.keys(files).forEach(k => { if (files[k]) fd.append(k, files[k]); });
 
+      const res = await fetch('/api/staff', { method: 'POST', body: fd });
       if (res.ok) {
         setSuccessToast(true);
-        resetForm();
         setTimeout(() => setSuccessToast(false), 5000);
         setTimeout(() => setActiveView('staff'), 1500);
+        resetForm();
       } else {
-        const errData = await res.json();
-        alert(errData.error || 'Server error occurred during staff registration.');
+        const err = await res.json();
+        alert(err.error || 'Failed to register staff.');
       }
     } catch (err) {
-      console.error('Error submitting staff details:', err);
-      alert('Internal Server error connecting to the API registry.');
+      console.error('Staff registration error:', err);
+      alert('Server connection error.');
     } finally {
       setLoading(false);
     }
   };
 
-  // Helper validation color toggles
-  const getInputClass = (fieldName) => {
-    if (!formSubmitted) return 'form-control';
-    return formErrors[fieldName] ? 'form-control input-invalid' : 'form-control input-valid';
+  const nextStep = () => setCurrentStep(prev => Math.min(prev + 1, STEPS.length));
+  const prevStep = () => setCurrentStep(prev => Math.max(prev - 1, 1));
+
+  // ============================================================
+  // SHARED STYLES
+  // ============================================================
+  const inputStyle = { padding: '12px 16px', borderRadius: '10px', width: '100%', boxSizing: 'border-box' };
+  const gridStyle = { display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(240px, 1fr))', gap: '20px' };
+  const sectionHeaderStyle = (color) => ({
+    fontSize: '1.1rem', fontWeight: 700, display: 'flex', alignItems: 'center', gap: '10px',
+    color: 'var(--text-main)', borderBottom: '1px solid var(--border-glass)', paddingBottom: '10px', margin: 0
+  });
+
+  // ============================================================
+  // RENDER STEPS
+  // ============================================================
+
+  const renderStep1 = () => (
+    <div className="glass-panel" style={{ padding: '28px', display: 'flex', flexDirection: 'column', gap: '20px' }}>
+      <h3 style={sectionHeaderStyle()}>
+        <User size={18} style={{ color: 'hsl(var(--color-primary))' }} />
+        Step 1: Basic Information
+      </h3>
+
+      {/* Staff ID Display */}
+      <div style={{ display: 'flex', alignItems: 'center', gap: '12px', padding: '12px 16px', borderRadius: '10px', background: 'rgba(hsl(var(--color-primary)), 0.08)', border: '1px solid rgba(hsl(var(--color-primary)), 0.2)' }}>
+        <span style={{ fontWeight: 700, color: 'hsl(var(--color-primary))', fontSize: '0.85rem' }}>STAFF ID:</span>
+        <span style={{ fontWeight: 800, color: 'var(--text-main)', letterSpacing: '0.5px' }}>{staffId}</span>
+        <span style={{ fontSize: '0.75rem', color: 'var(--text-muted)', marginLeft: 'auto' }}>Auto Generated</span>
+      </div>
+
+      {/* Photo Upload */}
+      <div className="form-group" style={{ marginTop: '4px' }}>
+        <label style={{ fontWeight: 600, marginBottom: '8px', display: 'block' }}>Staff Photo</label>
+        <div style={{ display: 'flex', alignItems: 'center', gap: '20px', flexWrap: 'wrap' }}>
+          <div style={{
+            width: '90px', height: '90px', borderRadius: '12px',
+            border: '2px dashed var(--border-glass)', display: 'flex',
+            alignItems: 'center', justifyContent: 'center',
+            background: 'rgba(255,255,255,0.02)', position: 'relative',
+            overflow: 'hidden', flexShrink: 0
+          }}>
+            {filePreviews.photo ? (
+              <img src={filePreviews.photo} alt="Staff" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+            ) : (
+              <User size={36} style={{ color: 'var(--text-muted)' }} />
+            )}
+          </div>
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+            <div style={{ display: 'flex', gap: '10px' }}>
+              <label htmlFor="photo" className="btn-secondary" style={{ display: 'flex', alignItems: 'center', gap: '6px', cursor: 'pointer', fontSize: '0.85rem', padding: '10px 16px', borderRadius: '8px' }}>
+                <Upload size={14} /> Upload Photo
+              </label>
+              <input type="file" id="photo" accept="image/*" onChange={(e) => handleFileChange(e, 'photo')} style={{ display: 'none' }} />
+              {files.photo && (
+                <button type="button" onClick={() => removeFile('photo')} className="btn-danger" style={{ display: 'flex', alignItems: 'center', padding: '8px 12px', borderRadius: '8px', fontSize: '0.85rem' }}>
+                  <X size={14} /> Remove
+                </button>
+              )}
+            </div>
+            <span style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>PNG, JPG only. Max 5MB.</span>
+          </div>
+        </div>
+      </div>
+
+      <div style={gridStyle}>
+        <div className="form-group">
+          <label>First Name</label>
+          <input type="text" name="firstName" value={formData.firstName} onChange={handleChange} className="form-control" style={inputStyle} placeholder="First name" />
+        </div>
+        <div className="form-group">
+          <label>Middle Name <span style={{ color: 'var(--text-muted)', fontSize: '0.75rem' }}>(Optional)</span></label>
+          <input type="text" name="middleName" value={formData.middleName} onChange={handleChange} className="form-control" style={inputStyle} placeholder="Middle name" />
+        </div>
+        <div className="form-group">
+          <label>Last Name</label>
+          <input type="text" name="lastName" value={formData.lastName} onChange={handleChange} className="form-control" style={inputStyle} placeholder="Last name" />
+        </div>
+        <div className="form-group">
+          <label>Gender</label>
+          <CustomSelect name="gender" value={formData.gender} onChange={handleChange} options={['Male', 'Female', 'Other']} placeholder="Select Gender" className="form-control" style={inputStyle} />
+        </div>
+        <div className="form-group">
+          <label>Date of Birth</label>
+          <input type="date" name="dob" value={formData.dob} onChange={handleChange} className="form-control" style={inputStyle} />
+        </div>
+        <div className="form-group">
+          <label>Blood Group</label>
+          <CustomSelect name="bloodGroup" value={formData.bloodGroup} onChange={handleChange} options={BLOOD_GROUPS} placeholder="Select Blood Group" className="form-control" style={inputStyle} />
+        </div>
+        <div className="form-group">
+          <label>Nationality</label>
+          <input type="text" name="nationality" value={formData.nationality} onChange={handleChange} className="form-control" style={inputStyle} placeholder="Nationality" />
+        </div>
+        <div className="form-group">
+          <label>Marital Status</label>
+          <CustomSelect name="maritalStatus" value={formData.maritalStatus} onChange={handleChange} options={['Single', 'Married', 'Divorced', 'Widowed']} placeholder="Select Status" className="form-control" style={inputStyle} />
+        </div>
+        <div className="form-group">
+          <label>Aadhaar Number <span style={{ color: 'var(--text-muted)', fontSize: '0.75rem' }}>(Optional)</span></label>
+          <input type="text" name="aadhaarNumber" value={formData.aadhaarNumber} onChange={(e) => handleNumericChange(e, 12)} className="form-control" style={inputStyle} placeholder="12-digit Aadhaar" />
+        </div>
+        <div className="form-group">
+          <label>PAN Number <span style={{ color: 'var(--text-muted)', fontSize: '0.75rem' }}>(Optional)</span></label>
+          <input type="text" name="panNumber" value={formData.panNumber} onChange={handleChange} className="form-control" style={inputStyle} placeholder="e.g. ABCDE1234F" maxLength={10} />
+        </div>
+      </div>
+    </div>
+  );
+
+  const renderStep2 = () => (
+    <div className="glass-panel" style={{ padding: '28px', display: 'flex', flexDirection: 'column', gap: '20px' }}>
+      <h3 style={sectionHeaderStyle()}>
+        <Briefcase size={18} style={{ color: 'hsl(var(--color-secondary))' }} />
+        Step 2: Employment Information
+      </h3>
+      <div style={gridStyle}>
+        <div className="form-group">
+          <label>Joining Date</label>
+          <input type="date" name="joiningDate" value={formData.joiningDate} onChange={handleChange} className="form-control" style={inputStyle} />
+        </div>
+        <div className="form-group">
+          <label>Staff Category</label>
+          <CustomSelect name="staffCategory" value={formData.staffCategory} onChange={handleChange} options={STAFF_CATEGORIES} placeholder="Select Category" className="form-control" style={inputStyle} />
+        </div>
+        <div className="form-group">
+          <label>Designation</label>
+          <CustomSelect name="designation" value={formData.designation} onChange={handleChange} options={DESIGNATIONS} placeholder="Select Designation" className="form-control" style={inputStyle} />
+        </div>
+        <div className="form-group">
+          <label>Department</label>
+          <CustomSelect name="department" value={formData.department} onChange={handleChange} options={DEPARTMENTS} placeholder="Select Department" className="form-control" style={inputStyle} />
+        </div>
+        <div className="form-group">
+          <label>Employment Type</label>
+          <CustomSelect name="employmentType" value={formData.employmentType} onChange={handleChange} options={EMPLOYMENT_TYPES} placeholder="Select Type" className="form-control" style={inputStyle} />
+        </div>
+        <div className="form-group">
+          <label>Employee Status</label>
+          <CustomSelect name="employeeStatus" value={formData.employeeStatus} onChange={handleChange} options={EMPLOYEE_STATUSES} placeholder="Select Status" className="form-control" style={inputStyle} />
+        </div>
+      </div>
+    </div>
+  );
+
+  const renderStep3 = () => (
+    <div className="glass-panel" style={{ padding: '28px', display: 'flex', flexDirection: 'column', gap: '20px' }}>
+      <h3 style={sectionHeaderStyle()}>
+        <Phone size={18} style={{ color: 'hsl(210, 90%, 55%)' }} />
+        Step 3: Contact Information
+      </h3>
+      <div style={gridStyle}>
+        <div className="form-group">
+          <label>Mobile Number</label>
+          <input type="text" name="mobile" value={formData.mobile} onChange={(e) => handleNumericChange(e, 10)} className="form-control" style={inputStyle} placeholder="10-digit mobile" />
+        </div>
+        <div className="form-group">
+          <label>Alternate Mobile <span style={{ color: 'var(--text-muted)', fontSize: '0.75rem' }}>(Optional)</span></label>
+          <input type="text" name="alternateMobile" value={formData.alternateMobile} onChange={(e) => handleNumericChange(e, 10)} className="form-control" style={inputStyle} placeholder="Alternate number" />
+        </div>
+        <div className="form-group">
+          <label>Email Address</label>
+          <input type="email" name="email" value={formData.email} onChange={handleChange} className="form-control" style={inputStyle} placeholder="staff@school.com" />
+        </div>
+        <div className="form-group">
+          <label>Emergency Contact Number</label>
+          <input type="text" name="emergencyContactNumber" value={formData.emergencyContactNumber} onChange={(e) => handleNumericChange(e, 10)} className="form-control" style={inputStyle} placeholder="Emergency number" />
+        </div>
+      </div>
+    </div>
+  );
+
+  const renderStep4 = () => (
+    <div className="glass-panel" style={{ padding: '28px', display: 'flex', flexDirection: 'column', gap: '20px' }}>
+      <h3 style={sectionHeaderStyle()}>
+        <MapPin size={18} style={{ color: 'rgb(var(--color-success-rgb))' }} />
+        Step 4: Address Information
+      </h3>
+
+      {/* Current Address */}
+      <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
+        <h4 style={{ fontWeight: 600, fontSize: '0.95rem', color: 'var(--text-main)', margin: 0, display: 'flex', alignItems: 'center', gap: '8px' }}>
+          <MapPin size={14} /> Current Address
+        </h4>
+        <div style={gridStyle}>
+          <div className="form-group" style={{ gridColumn: '1 / -1' }}>
+            <label>Address Line</label>
+            <input type="text" name="currentAddress" value={formData.currentAddress} onChange={handleChange} className="form-control" style={inputStyle} placeholder="House/flat no, street, area" />
+          </div>
+          <div className="form-group">
+            <label>City</label>
+            <input type="text" name="currentCity" value={formData.currentCity} onChange={handleChange} className="form-control" style={inputStyle} placeholder="City" />
+          </div>
+          <div className="form-group">
+            <label>State</label>
+            <input type="text" name="currentState" value={formData.currentState} onChange={handleChange} className="form-control" style={inputStyle} placeholder="State" />
+          </div>
+          <div className="form-group">
+            <label>Country</label>
+            <input type="text" name="currentCountry" value={formData.currentCountry} onChange={handleChange} className="form-control" style={inputStyle} placeholder="Country" />
+          </div>
+          <div className="form-group">
+            <label>Postal Code</label>
+            <input type="text" name="currentPostalCode" value={formData.currentPostalCode} onChange={(e) => handleNumericChange(e, 6)} className="form-control" style={inputStyle} placeholder="6-digit code" />
+          </div>
+        </div>
+      </div>
+
+      {/* Same as checkbox */}
+      <label style={{ display: 'flex', alignItems: 'center', gap: '10px', cursor: 'pointer', padding: '12px 16px', borderRadius: '10px', background: formData.sameAsPermanent ? 'rgba(var(--color-success-rgb), 0.08)' : 'transparent', border: '1px solid var(--border-glass)', transition: 'all 0.2s ease' }}>
+        <input type="checkbox" name="sameAsPermanent" checked={formData.sameAsPermanent} onChange={handleChange} style={{ width: '18px', height: '18px', accentColor: 'rgb(var(--color-success-rgb))' }} />
+        <span style={{ fontWeight: 600, fontSize: '0.9rem' }}>Same as Current Address</span>
+      </label>
+
+      {/* Permanent Address */}
+      <div style={{ display: 'flex', flexDirection: 'column', gap: '16px', opacity: formData.sameAsPermanent ? 0.5 : 1, pointerEvents: formData.sameAsPermanent ? 'none' : 'auto' }}>
+        <h4 style={{ fontWeight: 600, fontSize: '0.95rem', color: 'var(--text-main)', margin: 0, display: 'flex', alignItems: 'center', gap: '8px' }}>
+          <MapPin size={14} /> Permanent Address
+        </h4>
+        <div style={gridStyle}>
+          <div className="form-group" style={{ gridColumn: '1 / -1' }}>
+            <label>Address Line</label>
+            <input type="text" name="permanentAddress" value={formData.permanentAddress} onChange={handleChange} className="form-control" style={inputStyle} placeholder="House/flat no, street, area" />
+          </div>
+          <div className="form-group">
+            <label>City</label>
+            <input type="text" name="permanentCity" value={formData.permanentCity} onChange={handleChange} className="form-control" style={inputStyle} placeholder="City" />
+          </div>
+          <div className="form-group">
+            <label>State</label>
+            <input type="text" name="permanentState" value={formData.permanentState} onChange={handleChange} className="form-control" style={inputStyle} placeholder="State" />
+          </div>
+          <div className="form-group">
+            <label>Country</label>
+            <input type="text" name="permanentCountry" value={formData.permanentCountry} onChange={handleChange} className="form-control" style={inputStyle} placeholder="Country" />
+          </div>
+          <div className="form-group">
+            <label>Postal Code</label>
+            <input type="text" name="permanentPostalCode" value={formData.permanentPostalCode} onChange={(e) => handleNumericChange(e, 6)} className="form-control" style={inputStyle} placeholder="6-digit code" />
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+
+  const renderStep5 = () => (
+    <div className="glass-panel" style={{ padding: '28px', display: 'flex', flexDirection: 'column', gap: '20px' }}>
+      <h3 style={sectionHeaderStyle()}>
+        <Award size={18} style={{ color: 'hsl(280, 80%, 55%)' }} />
+        Step 5: Qualification Information
+      </h3>
+      <p style={{ fontSize: '0.85rem', color: 'var(--text-muted)', margin: 0 }}>Add multiple qualifications as needed. All fields are optional.</p>
+
+      {qualifications.map((q, i) => (
+        <div key={i} className="glass-panel" style={{ padding: '20px', borderRadius: '12px', display: 'flex', flexDirection: 'column', gap: '14px', background: 'rgba(255,255,255,0.01)' }}>
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+            <span style={{ fontWeight: 700, fontSize: '0.85rem', color: 'hsl(280, 80%, 55%)' }}>Qualification #{i + 1}</span>
+            {qualifications.length > 1 && (
+              <button type="button" onClick={() => removeQualification(i)} style={{ background: 'none', border: 'none', color: '#ef4444', cursor: 'pointer', padding: '4px', display: 'flex', alignItems: 'center', gap: '4px', fontSize: '0.8rem' }}>
+                <Trash2 size={14} /> Remove
+              </button>
+            )}
+          </div>
+          <div style={gridStyle}>
+            <div className="form-group">
+              <label>Degree</label>
+              <input type="text" value={q.degree} onChange={(e) => updateQualification(i, 'degree', e.target.value)} className="form-control" style={inputStyle} placeholder="e.g. B.Com, MBA" />
+            </div>
+            <div className="form-group">
+              <label>Institution</label>
+              <input type="text" value={q.institution} onChange={(e) => updateQualification(i, 'institution', e.target.value)} className="form-control" style={inputStyle} placeholder="Institution name" />
+            </div>
+            <div className="form-group">
+              <label>Board/University</label>
+              <input type="text" value={q.boardUniversity} onChange={(e) => updateQualification(i, 'boardUniversity', e.target.value)} className="form-control" style={inputStyle} placeholder="Board / University" />
+            </div>
+            <div className="form-group">
+              <label>Year of Passing</label>
+              <input type="text" value={q.year} onChange={(e) => updateQualification(i, 'year', e.target.value.replace(/[^0-9]/g, '').slice(0, 4))} className="form-control" style={inputStyle} placeholder="e.g. 2020" />
+            </div>
+            <div className="form-group">
+              <label>Percentage/CGPA</label>
+              <input type="text" value={q.percentage} onChange={(e) => updateQualification(i, 'percentage', e.target.value)} className="form-control" style={inputStyle} placeholder="e.g. 85% or 8.5" />
+            </div>
+          </div>
+        </div>
+      ))}
+
+      <button type="button" onClick={addQualification} className="btn-secondary" style={{ display: 'flex', alignItems: 'center', gap: '8px', padding: '10px 20px', borderRadius: '10px', alignSelf: 'flex-start', fontWeight: 600, cursor: 'pointer' }}>
+        <Plus size={16} /> Add Another Qualification
+      </button>
+    </div>
+  );
+
+  const renderStep6 = () => (
+    <div className="glass-panel" style={{ padding: '28px', display: 'flex', flexDirection: 'column', gap: '20px' }}>
+      <h3 style={sectionHeaderStyle()}>
+        <Clock size={18} style={{ color: 'rgb(var(--color-warning-rgb))' }} />
+        Step 6: Experience Information
+      </h3>
+      <p style={{ fontSize: '0.85rem', color: 'var(--text-muted)', margin: 0 }}>Add previous work experience. All fields are optional.</p>
+
+      {experiences.map((exp, i) => (
+        <div key={i} className="glass-panel" style={{ padding: '20px', borderRadius: '12px', display: 'flex', flexDirection: 'column', gap: '14px', background: 'rgba(255,255,255,0.01)' }}>
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+            <span style={{ fontWeight: 700, fontSize: '0.85rem', color: 'rgb(var(--color-warning-rgb))' }}>Experience #{i + 1}</span>
+            {experiences.length > 1 && (
+              <button type="button" onClick={() => removeExperience(i)} style={{ background: 'none', border: 'none', color: '#ef4444', cursor: 'pointer', padding: '4px', display: 'flex', alignItems: 'center', gap: '4px', fontSize: '0.8rem' }}>
+                <Trash2 size={14} /> Remove
+              </button>
+            )}
+          </div>
+          <div style={gridStyle}>
+            <div className="form-group">
+              <label>Organization</label>
+              <input type="text" value={exp.organization} onChange={(e) => updateExperience(i, 'organization', e.target.value)} className="form-control" style={inputStyle} placeholder="Company / school name" />
+            </div>
+            <div className="form-group">
+              <label>Designation</label>
+              <input type="text" value={exp.designation} onChange={(e) => updateExperience(i, 'designation', e.target.value)} className="form-control" style={inputStyle} placeholder="Job title" />
+            </div>
+            <div className="form-group">
+              <label>From Date</label>
+              <input type="date" value={exp.fromDate} onChange={(e) => updateExperience(i, 'fromDate', e.target.value)} className="form-control" style={inputStyle} />
+            </div>
+            <div className="form-group">
+              <label>To Date</label>
+              <input type="date" value={exp.toDate} onChange={(e) => updateExperience(i, 'toDate', e.target.value)} className="form-control" style={inputStyle} />
+            </div>
+            <div className="form-group" style={{ gridColumn: '1 / -1' }}>
+              <label>Key Responsibilities</label>
+              <input type="text" value={exp.responsibilities} onChange={(e) => updateExperience(i, 'responsibilities', e.target.value)} className="form-control" style={inputStyle} placeholder="Brief description of responsibilities" />
+            </div>
+          </div>
+        </div>
+      ))}
+
+      <button type="button" onClick={addExperience} className="btn-secondary" style={{ display: 'flex', alignItems: 'center', gap: '8px', padding: '10px 20px', borderRadius: '10px', alignSelf: 'flex-start', fontWeight: 600, cursor: 'pointer' }}>
+        <Plus size={16} /> Add Another Experience
+      </button>
+    </div>
+  );
+
+  const renderStep7 = () => {
+    const fullName = [formData.firstName, formData.middleName, formData.lastName].filter(Boolean).join(' ') || '—';
+    const docUploads = [
+      { key: 'aadhaarFile', label: 'Aadhaar Card' },
+      { key: 'panFile', label: 'PAN Card' },
+      { key: 'resumeFile', label: 'Resume / CV' },
+      { key: 'qualificationFile', label: 'Qualification Certificate' },
+      { key: 'experienceFile', label: 'Experience Letter' },
+      { key: 'otherFile', label: 'Other Document' }
+    ];
+
+    return (
+      <div style={{ display: 'flex', flexDirection: 'column', gap: '24px' }}>
+        {/* Document Uploads */}
+        <div className="glass-panel" style={{ padding: '28px', display: 'flex', flexDirection: 'column', gap: '20px' }}>
+          <h3 style={sectionHeaderStyle()}>
+            <Upload size={18} style={{ color: 'hsl(0, 80%, 55%)' }} />
+            Document Uploads (Optional)
+          </h3>
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))', gap: '16px' }}>
+            {docUploads.map(doc => (
+              <div key={doc.key} className="glass-panel" style={{ padding: '16px', borderRadius: '12px', display: 'flex', flexDirection: 'column', gap: '10px', background: 'rgba(255,255,255,0.01)' }}>
+                <span style={{ fontSize: '0.85rem', fontWeight: 700, color: 'var(--text-main)' }}>{doc.label}</span>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+                  <label htmlFor={doc.key} className="btn-secondary" style={{ display: 'flex', alignItems: 'center', gap: '6px', cursor: 'pointer', fontSize: '0.8rem', padding: '8px 12px', borderRadius: '8px' }}>
+                    <Upload size={14} /> Upload
+                  </label>
+                  <input type="file" id={doc.key} accept="image/*,application/pdf" onChange={(e) => handleFileChange(e, doc.key)} style={{ display: 'none' }} />
+                </div>
+                {files[doc.key] && (
+                  <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '6px 10px', background: 'rgba(255,255,255,0.03)', borderRadius: '8px', border: '1px solid var(--border-glass)' }}>
+                    <span style={{ fontSize: '0.75rem', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', maxWidth: '160px', display: 'flex', alignItems: 'center', gap: '4px' }}>
+                      <FileText size={12} /> {files[doc.key].name}
+                    </span>
+                    <button type="button" onClick={() => removeFile(doc.key)} style={{ background: 'none', border: 'none', color: '#ef4444', cursor: 'pointer', padding: '2px' }}>
+                      <X size={14} />
+                    </button>
+                  </div>
+                )}
+              </div>
+            ))}
+          </div>
+        </div>
+
+        {/* Final Review */}
+        <div className="glass-panel" style={{ padding: '28px', display: 'flex', flexDirection: 'column', gap: '20px' }}>
+          <h3 style={sectionHeaderStyle()}>
+            <CheckCircle size={18} style={{ color: 'rgb(var(--color-success-rgb))' }} />
+            Final Review
+          </h3>
+
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))', gap: '16px' }}>
+            {/* Basic Info Card */}
+            <div className="glass-panel" style={{ padding: '16px', borderRadius: '12px', borderLeft: '4px solid hsl(var(--color-primary))' }}>
+              <h4 style={{ fontSize: '0.85rem', fontWeight: 700, margin: '0 0 10px 0', color: 'hsl(var(--color-primary))' }}>Basic Information</h4>
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '4px', fontSize: '0.82rem' }}>
+                <div><strong>Name:</strong> {fullName}</div>
+                <div><strong>Staff ID:</strong> {staffId}</div>
+                <div><strong>Gender:</strong> {formData.gender || '—'}</div>
+                <div><strong>DOB:</strong> {formData.dob || '—'}</div>
+                <div><strong>Blood Group:</strong> {formData.bloodGroup || '—'}</div>
+                <div><strong>Nationality:</strong> {formData.nationality || '—'}</div>
+              </div>
+            </div>
+
+            {/* Employment Card */}
+            <div className="glass-panel" style={{ padding: '16px', borderRadius: '12px', borderLeft: '4px solid hsl(var(--color-secondary))' }}>
+              <h4 style={{ fontSize: '0.85rem', fontWeight: 700, margin: '0 0 10px 0', color: 'hsl(var(--color-secondary))' }}>Employment</h4>
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '4px', fontSize: '0.82rem' }}>
+                <div><strong>Category:</strong> {formData.staffCategory || '—'}</div>
+                <div><strong>Designation:</strong> {formData.designation || '—'}</div>
+                <div><strong>Department:</strong> {formData.department || '—'}</div>
+                <div><strong>Type:</strong> {formData.employmentType || '—'}</div>
+                <div><strong>Joining:</strong> {formData.joiningDate || '—'}</div>
+                <div><strong>Status:</strong> {formData.employeeStatus}</div>
+              </div>
+            </div>
+
+            {/* Contact Card */}
+            <div className="glass-panel" style={{ padding: '16px', borderRadius: '12px', borderLeft: '4px solid hsl(210, 90%, 55%)' }}>
+              <h4 style={{ fontSize: '0.85rem', fontWeight: 700, margin: '0 0 10px 0', color: 'hsl(210, 90%, 55%)' }}>Contact</h4>
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '4px', fontSize: '0.82rem' }}>
+                <div><strong>Mobile:</strong> {formData.mobile || '—'}</div>
+                <div><strong>Email:</strong> {formData.email || '—'}</div>
+                <div><strong>Emergency:</strong> {formData.emergencyContactNumber || '—'}</div>
+              </div>
+            </div>
+
+            {/* Address Card */}
+            <div className="glass-panel" style={{ padding: '16px', borderRadius: '12px', borderLeft: '4px solid rgb(var(--color-success-rgb))' }}>
+              <h4 style={{ fontSize: '0.85rem', fontWeight: 700, margin: '0 0 10px 0', color: 'rgb(var(--color-success-rgb))' }}>Address</h4>
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '4px', fontSize: '0.82rem' }}>
+                <div><strong>Current:</strong> {[formData.currentAddress, formData.currentCity, formData.currentState].filter(Boolean).join(', ') || '—'}</div>
+                <div><strong>Permanent:</strong> {formData.sameAsPermanent ? 'Same as current' : ([formData.permanentAddress, formData.permanentCity, formData.permanentState].filter(Boolean).join(', ') || '—')}</div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    );
   };
 
-  const getInputStyle = (fieldName) => {
-    const isError = formErrors[fieldName];
-    if (!formSubmitted) return { padding: '12px 16px', borderRadius: '10px' };
-    
-    return {
-      padding: '12px 16px',
-      borderRadius: '10px',
-      borderColor: isError ? 'rgb(var(--color-danger-rgb))' : 'rgb(var(--color-success-rgb))',
-      boxShadow: isError ? '0 0 0 3px rgba(var(--color-danger-rgb), 0.15)' : '0 0 0 3px rgba(var(--color-success-rgb), 0.15)'
-    };
-  };
-
+  // ============================================================
+  // MAIN RENDER
+  // ============================================================
   return (
     <div className="animate-slide-up no-card-form" style={{ display: 'flex', flexDirection: 'column', gap: '24px', paddingBottom: '40px' }}>
       
+      {/* Success Toast */}
       {successToast && (
         <div className="glass-panel" style={{
-          position: 'fixed',
-          top: '20px',
-          right: '20px',
-          zIndex: 99999,
-          background: 'rgba(var(--color-success-rgb), 0.95)',
-          color: 'white',
-          padding: '16px 24px',
-          borderRadius: '12px',
-          display: 'flex',
-          alignItems: 'center',
-          gap: '12px',
-          boxShadow: '0 8px 30px rgba(0,0,0,0.2)',
+          position: 'fixed', top: '20px', right: '20px', zIndex: 99999,
+          background: 'rgba(var(--color-success-rgb), 0.95)', color: 'white',
+          padding: '16px 24px', borderRadius: '12px', display: 'flex',
+          alignItems: 'center', gap: '12px', boxShadow: '0 8px 30px rgba(0,0,0,0.2)',
           animation: 'slide-up 0.3s ease'
         }}>
           <CheckCircle size={24} />
           <div>
-            <strong style={{ display: 'block' }}>Staff Added!</strong>
-            <span style={{ fontSize: '0.8rem' }}>Staff member registered and added to directory.</span>
+            <strong style={{ display: 'block' }}>Staff Registered!</strong>
+            <span style={{ fontSize: '0.8rem' }}>Staff member added to the directory.</span>
           </div>
         </div>
       )}
 
-      <form onSubmit={handleSubmit} style={{ display: 'flex', flexDirection: 'column', gap: '24px' }}>
-        
-        {/* ========================================================
-            SECTION 1: PERSONAL INFORMATION
-            ======================================================== */}
-        <div className="glass-panel" style={{ padding: '28px', display: 'flex', flexDirection: 'column', gap: '20px' }}>
-          <h3 style={{ fontSize: '1.1rem', fontWeight: 700, display: 'flex', alignItems: 'center', gap: '10px', color: 'var(--text-main)', borderBottom: '1px solid var(--border-glass)', paddingBottom: '10px', margin: 0 }}>
-            <UserCog size={18} style={{ color: 'hsl(var(--color-primary))' }} />
-            Section 1: Personal Information
-          </h3>
-
-          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(240px, 1fr))', gap: '20px' }}>
-            
-            <div className="form-group">
-              <label>Full Name *</label>
-              <input 
-                type="text"
-                name="fullName"
-                value={formData.fullName}
-                onChange={handleTextChange}
-                className={getInputClass('fullName')}
-                style={getInputStyle('fullName')}
-                placeholder="Enter full name"
-              />
-              {formErrors.fullName && <span style={{ color: 'rgb(var(--color-danger-rgb))', fontSize: '0.75rem', marginTop: '4px', display: 'block' }}>{formErrors.fullName}</span>}
-            </div>
-
-            <div className="form-group">
-              <label>Gender *</label>
-              <select
-                name="gender"
-                value={formData.gender}
-                onChange={handleTextChange}
-                className={getInputClass('gender')}
-                style={getInputStyle('gender')}
+      {/* Step Navigation Bar */}
+      <div className="glass-panel" style={{ padding: '16px 24px', display: 'flex', alignItems: 'center', gap: '8px', overflowX: 'auto' }}>
+        {STEPS.map((step, i) => {
+          const StepIcon = step.icon;
+          const isActive = currentStep === step.id;
+          const isCompleted = currentStep > step.id;
+          return (
+            <React.Fragment key={step.id}>
+              <button
+                type="button"
+                onClick={() => setCurrentStep(step.id)}
+                style={{
+                  display: 'flex', alignItems: 'center', gap: '8px',
+                  padding: '8px 14px', borderRadius: '10px', border: 'none',
+                  cursor: 'pointer', fontSize: '0.82rem', fontWeight: isActive ? 700 : 500,
+                  background: isActive ? `rgba(${step.color === 'hsl(var(--color-primary))' ? 'var(--color-primary-rgb)' : '120, 120, 200'}, 0.12)` : 'transparent',
+                  color: isActive ? step.color : isCompleted ? 'rgb(var(--color-success-rgb))' : 'var(--text-muted)',
+                  whiteSpace: 'nowrap', transition: 'all 0.2s ease',
+                  flexShrink: 0
+                }}
               >
-                <option value="">Select Gender</option>
-                <option value="Male">Male</option>
-                <option value="Female">Female</option>
-                <option value="Other">Other</option>
-              </select>
-              {formErrors.gender && <span style={{ color: 'rgb(var(--color-danger-rgb))', fontSize: '0.75rem', marginTop: '4px', display: 'block' }}>{formErrors.gender}</span>}
-            </div>
+                {isCompleted ? <CheckCircle size={16} /> : <StepIcon size={16} />}
+                <span className="nav-label">{step.label}</span>
+              </button>
+              {i < STEPS.length - 1 && <ChevronRight size={14} style={{ color: 'var(--text-muted)', flexShrink: 0, opacity: 0.4 }} />}
+            </React.Fragment>
+          );
+        })}
+      </div>
 
-            <div className="form-group">
-              <label>Email Address *</label>
-              <input 
-                type="email"
-                name="email"
-                value={formData.email}
-                onChange={handleTextChange}
-                className={getInputClass('email')}
-                style={getInputStyle('email')}
-                placeholder="staff@school.com"
-              />
-              {formErrors.email && <span style={{ color: 'rgb(var(--color-danger-rgb))', fontSize: '0.75rem', marginTop: '4px', display: 'block' }}>{formErrors.email}</span>}
-            </div>
+      {/* Current Step Content */}
+      <form onSubmit={(e) => e.preventDefault()} style={{ display: 'flex', flexDirection: 'column', gap: '24px' }}>
+        {currentStep === 1 && renderStep1()}
+        {currentStep === 2 && renderStep2()}
+        {currentStep === 3 && renderStep3()}
+        {currentStep === 4 && renderStep4()}
+        {currentStep === 5 && renderStep5()}
+        {currentStep === 6 && renderStep6()}
+        {currentStep === 7 && renderStep7()}
 
-            <div className="form-group">
-              <label>Phone Number * (Numeric Only)</label>
-              <input 
-                type="text"
-                name="phone"
-                value={formData.phone}
-                onChange={handlePhoneChange}
-                className={getInputClass('phone')}
-                style={getInputStyle('phone')}
-                placeholder="10-digit number"
-              />
-              {formErrors.phone && <span style={{ color: 'rgb(var(--color-danger-rgb))', fontSize: '0.75rem', marginTop: '4px', display: 'block' }}>{formErrors.phone}</span>}
-            </div>
-          </div>
-
-          {/* Staff Photo Upload Card */}
-          <div className="form-group" style={{ marginTop: '10px' }}>
-            <label>Staff Photo Upload</label>
-            <div style={{ display: 'flex', alignItems: 'center', gap: '20px', flexWrap: 'wrap' }}>
-              <div style={{
-                width: '90px',
-                height: '90px',
-                borderRadius: '12px',
-                border: '2px dashed var(--border-glass)',
-                display: 'flex',
-                alignItems: 'center',
-                justifyContent: 'center',
-                background: 'rgba(255,255,255,0.02)',
-                position: 'relative',
-                overflow: 'hidden',
-                flexShrink: 0
-              }}>
-                {filePreviews.photo ? (
-                  <img src={filePreviews.photo} alt="Staff Preview" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
-                ) : (
-                  <UserCog size={36} style={{ color: 'var(--text-muted)' }} />
-                )}
-              </div>
-
-              <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
-                <div style={{ display: 'flex', gap: '10px' }}>
-                  <label htmlFor="photo" className="btn-secondary" style={{ display: 'flex', alignItems: 'center', gap: '6px', cursor: 'pointer', fontSize: '0.85rem', padding: '10px 16px', borderRadius: '8px' }}>
-                    <Upload size={14} /> Upload Photo
-                  </label>
-                  <input 
-                    type="file" 
-                    id="photo" 
-                    accept="image/*"
-                    onChange={(e) => handleFileChange(e, 'photo')}
-                    style={{ display: 'none' }}
-                  />
-                  {files.photo && (
-                    <button type="button" onClick={() => removeFile('photo')} className="btn-danger" style={{ display: 'flex', alignItems: 'center', padding: '8px 12px', borderRadius: '8px', fontSize: '0.85rem' }}>
-                      <X size={14} /> Remove
-                    </button>
-                  )}
-                </div>
-                <span style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>Images (PNG, JPG) only. Max size 5MB.</span>
-              </div>
-            </div>
-          </div>
-        </div>
-
-        {/* ========================================================
-            SECTION 2: PROFESSIONAL DETAILS
-            ======================================================== */}
-        <div className="glass-panel" style={{ padding: '28px', display: 'flex', flexDirection: 'column', gap: '20px' }}>
-          <h3 style={{ fontSize: '1.1rem', fontWeight: 700, display: 'flex', alignItems: 'center', gap: '10px', color: 'var(--text-main)', borderBottom: '1px solid var(--border-glass)', paddingBottom: '10px', margin: 0 }}>
-            <Briefcase size={18} style={{ color: 'hsl(var(--color-secondary))' }} />
-            Section 2: Professional Details
-          </h3>
-
-          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(240px, 1fr))', gap: '20px' }}>
-            
-            <div className="form-group">
-              <label>Department *</label>
-              <select
-                name="department"
-                value={formData.department}
-                onChange={handleTextChange}
-                className={getInputClass('department')}
-                style={getInputStyle('department')}
-              >
-                <option value="">Select Department</option>
-                <option value="Administration">Administration</option>
-                <option value="Registrar Office">Registrar Office</option>
-                <option value="Library">Library</option>
-                <option value="IT Support">IT Support</option>
-                <option value="Security Operations">Security Operations</option>
-                <option value="Facilities">Facilities</option>
-                <option value="Maintenance">Maintenance</option>
-              </select>
-              {formErrors.department && <span style={{ color: 'rgb(var(--color-danger-rgb))', fontSize: '0.75rem', marginTop: '4px', display: 'block' }}>{formErrors.department}</span>}
-            </div>
-
-            <div className="form-group">
-              <label>Position *</label>
-              <input 
-                type="text"
-                name="position"
-                value={formData.position}
-                onChange={handleTextChange}
-                className={getInputClass('position')}
-                style={getInputStyle('position')}
-                placeholder="e.g. Administrative Officer"
-              />
-              {formErrors.position && <span style={{ color: 'rgb(var(--color-danger-rgb))', fontSize: '0.75rem', marginTop: '4px', display: 'block' }}>{formErrors.position}</span>}
-            </div>
-
-            <div className="form-group">
-              <label>Designation *</label>
-              <input 
-                type="text"
-                name="designation"
-                value={formData.designation}
-                onChange={handleTextChange}
-                className={getInputClass('designation')}
-                style={getInputStyle('designation')}
-                placeholder="e.g. Senior Officer"
-              />
-              {formErrors.designation && <span style={{ color: 'rgb(var(--color-danger-rgb))', fontSize: '0.75rem', marginTop: '4px', display: 'block' }}>{formErrors.designation}</span>}
-            </div>
-
-            <div className="form-group">
-              <label>Highest Qualification *</label>
-              <input 
-                type="text"
-                name="qualification"
-                value={formData.qualification}
-                onChange={handleTextChange}
-                className={getInputClass('qualification')}
-                style={getInputStyle('qualification')}
-                placeholder="e.g. B.Tech, B.A, M.Sc"
-              />
-              {formErrors.qualification && <span style={{ color: 'rgb(var(--color-danger-rgb))', fontSize: '0.75rem', marginTop: '4px', display: 'block' }}>{formErrors.qualification}</span>}
-            </div>
-
-            <div className="form-group">
-              <label>Years of Experience * (Numeric Only)</label>
-              <input 
-                type="text"
-                name="experience"
-                value={formData.experience}
-                onChange={handleExperienceChange}
-                className={getInputClass('experience')}
-                style={getInputStyle('experience')}
-                placeholder="e.g. 5"
-              />
-              {formErrors.experience && <span style={{ color: 'rgb(var(--color-danger-rgb))', fontSize: '0.75rem', marginTop: '4px', display: 'block' }}>{formErrors.experience}</span>}
-            </div>
-
-            <div className="form-group">
-              <label>Date of Joining *</label>
-              <input 
-                type="date"
-                name="dateOfJoining"
-                value={formData.dateOfJoining}
-                onChange={handleTextChange}
-                className={getInputClass('dateOfJoining')}
-                style={getInputStyle('dateOfJoining')}
-              />
-              {formErrors.dateOfJoining && <span style={{ color: 'rgb(var(--color-danger-rgb))', fontSize: '0.75rem', marginTop: '4px', display: 'block' }}>{formErrors.dateOfJoining}</span>}
-            </div>
-
-            <div className="form-group">
-              <label>Salary Grade</label>
-              <select
-                name="salaryGrade"
-                value={formData.salaryGrade}
-                onChange={handleTextChange}
-                className="form-control"
-                style={{ padding: '12px 16px', borderRadius: '10px' }}
-              >
-                <option value="">Select Grade</option>
-                <option value="Grade A">Grade A</option>
-                <option value="Grade B">Grade B</option>
-                <option value="Grade C">Grade C</option>
-                <option value="Grade D">Grade D</option>
-              </select>
-            </div>
-
-            <div className="form-group">
-              <label>Reporting To</label>
-              <input 
-                type="text"
-                name="reportingTo"
-                value={formData.reportingTo}
-                onChange={handleTextChange}
-                className="form-control"
-                style={{ padding: '12px 16px', borderRadius: '10px' }}
-                placeholder="e.g. Principal/HOD"
-              />
-            </div>
-          </div>
-        </div>
-
-        {/* ========================================================
-            SECTION 3: ADDRESS INFORMATION
-            ======================================================== */}
-        <div className="glass-panel" style={{ padding: '28px', display: 'flex', flexDirection: 'column', gap: '20px' }}>
-          <h3 style={{ fontSize: '1.1rem', fontWeight: 700, display: 'flex', alignItems: 'center', gap: '10px', color: 'var(--text-main)', borderBottom: '1px solid var(--border-glass)', paddingBottom: '10px', margin: 0 }}>
-            <MapPin size={18} style={{ color: 'rgb(var(--color-success-rgb))' }} />
-            Section 3: Address Details
-          </h3>
-
-          <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
-            <div className="form-group">
-              <label>Full Address *</label>
-              <input 
-                type="text"
-                name="address"
-                value={formData.address}
-                onChange={handleTextChange}
-                className={getInputClass('address')}
-                style={getInputStyle('address')}
-                placeholder="House no, block, street, locality"
-              />
-              {formErrors.address && <span style={{ color: 'rgb(var(--color-danger-rgb))', fontSize: '0.75rem', marginTop: '4px', display: 'block' }}>{formErrors.address}</span>}
-            </div>
-
-            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: '20px' }}>
-              <div className="form-group">
-                <label>City *</label>
-                <input 
-                  type="text"
-                  name="city"
-                  value={formData.city}
-                  onChange={handleTextChange}
-                  className={getInputClass('city')}
-                  style={getInputStyle('city')}
-                  placeholder="Enter city"
-                />
-                {formErrors.city && <span style={{ color: 'rgb(var(--color-danger-rgb))', fontSize: '0.75rem', marginTop: '4px', display: 'block' }}>{formErrors.city}</span>}
-              </div>
-
-              <div className="form-group">
-                <label>State *</label>
-                <input 
-                  type="text"
-                  name="state"
-                  value={formData.state}
-                  onChange={handleTextChange}
-                  className={getInputClass('state')}
-                  style={getInputStyle('state')}
-                  placeholder="Enter state"
-                />
-                {formErrors.state && <span style={{ color: 'rgb(var(--color-danger-rgb))', fontSize: '0.75rem', marginTop: '4px', display: 'block' }}>{formErrors.state}</span>}
-              </div>
-
-              <div className="form-group">
-                <label>Pincode * (Numeric Only)</label>
-                <input 
-                  type="text"
-                  name="pincode"
-                  value={formData.pincode}
-                  onChange={handlePincodeChange}
-                  className={getInputClass('pincode')}
-                  style={getInputStyle('pincode')}
-                  placeholder="6-digit pincode"
-                />
-                {formErrors.pincode && <span style={{ color: 'rgb(var(--color-danger-rgb))', fontSize: '0.75rem', marginTop: '4px', display: 'block' }}>{formErrors.pincode}</span>}
-              </div>
-            </div>
-          </div>
-        </div>
-
-        {/* ========================================================
-            SECTION 4: EMERGENCY CONTACT INFORMATION
-            ======================================================== */}
-        <div className="glass-panel" style={{ padding: '28px', display: 'flex', flexDirection: 'column', gap: '20px' }}>
-          <h3 style={{ fontSize: '1.1rem', fontWeight: 700, display: 'flex', alignItems: 'center', gap: '10px', color: 'var(--text-main)', borderBottom: '1px solid var(--border-glass)', paddingBottom: '10px', margin: 0 }}>
-            <AlertCircle size={18} style={{ color: 'rgb(var(--color-warning-rgb))' }} />
-            Section 4: Emergency Contact Details
-          </h3>
-
-          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(240px, 1fr))', gap: '20px' }}>
-            
-            <div className="form-group">
-              <label>Emergency Contact Name *</label>
-              <input 
-                type="text"
-                name="emergencyContact"
-                value={formData.emergencyContact}
-                onChange={handleTextChange}
-                className={getInputClass('emergencyContact')}
-                style={getInputStyle('emergencyContact')}
-                placeholder="Full name of emergency contact"
-              />
-              {formErrors.emergencyContact && <span style={{ color: 'rgb(var(--color-danger-rgb))', fontSize: '0.75rem', marginTop: '4px', display: 'block' }}>{formErrors.emergencyContact}</span>}
-            </div>
-
-            <div className="form-group">
-              <label>Emergency Contact Phone * (Numeric Only)</label>
-              <input 
-                type="text"
-                name="emergencyPhone"
-                value={formData.emergencyPhone}
-                onChange={handlePhoneChange}
-                className={getInputClass('emergencyPhone')}
-                style={getInputStyle('emergencyPhone')}
-                placeholder="10-digit number"
-              />
-              {formErrors.emergencyPhone && <span style={{ color: 'rgb(var(--color-danger-rgb))', fontSize: '0.75rem', marginTop: '4px', display: 'block' }}>{formErrors.emergencyPhone}</span>}
-            </div>
-          </div>
-        </div>
-
-        {/* ========================================================
-            SECTION 5: DOCUMENT UPLOADS
-            ======================================================== */}
-        <div className="glass-panel" style={{ padding: '28px', display: 'flex', flexDirection: 'column', gap: '20px' }}>
-          <h3 style={{ fontSize: '1.1rem', fontWeight: 700, display: 'flex', alignItems: 'center', gap: '10px', color: 'var(--text-main)', borderBottom: '1px solid var(--border-glass)', paddingBottom: '10px', margin: 0 }}>
-            <Upload size={18} style={{ color: 'rgb(var(--color-warning-rgb))' }} />
-            Section 5: Document Uploads (PDF & Images Only)
-          </h3>
-
-          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))', gap: '20px' }}>
-            
-            {/* 1. Aadhar Card Upload */}
-            <div className="glass-panel" style={{ padding: '20px', borderRadius: '12px', display: 'flex', flexDirection: 'column', gap: '12px', background: 'rgba(255,255,255,0.01)' }}>
-              <span style={{ fontSize: '0.85rem', fontWeight: 700, color: 'var(--text-main)' }}>Aadhar Card</span>
-              <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
-                <label htmlFor="aadharFile" className="btn-secondary" style={{ display: 'flex', alignItems: 'center', gap: '6px', cursor: 'pointer', fontSize: '0.8rem', padding: '8px 12px', borderRadius: '8px' }}>
-                  <Upload size={14} /> Upload PDF/Image
-                </label>
-                <input 
-                  type="file" 
-                  id="aadharFile" 
-                  accept="image/*,application/pdf"
-                  onChange={(e) => handleFileChange(e, 'aadharFile')}
-                  style={{ display: 'none' }}
-                />
-              </div>
-
-              {files.aadharFile && (
-                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '8px 12px', background: 'rgba(255,255,255,0.03)', borderRadius: '8px', border: '1px solid var(--border-glass)' }}>
-                  <span style={{ fontSize: '0.75rem', textOverflow: 'ellipsis', overflow: 'hidden', whiteSpace: 'nowrap', maxWidth: '160px', color: 'var(--text-main)' }} className="flex items-center gap-1">
-                    <FileText size={12} className="text-blue-400" /> {files.aadharFile.name}
-                  </span>
-                  <button type="button" onClick={() => removeFile('aadharFile')} style={{ background: 'none', border: 'none', color: '#ef4444', cursor: 'pointer', padding: '2px' }}>
-                    <X size={16} />
-                  </button>
-                </div>
-              )}
-            </div>
-
-            {/* 2. Qualification Certificate */}
-            <div className="glass-panel" style={{ padding: '20px', borderRadius: '12px', display: 'flex', flexDirection: 'column', gap: '12px', background: 'rgba(255,255,255,0.01)' }}>
-              <span style={{ fontSize: '0.85rem', fontWeight: 700, color: 'var(--text-main)' }}>Qualification Certificate</span>
-              <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
-                <label htmlFor="certificateFile" className="btn-secondary" style={{ display: 'flex', alignItems: 'center', gap: '6px', cursor: 'pointer', fontSize: '0.85rem', padding: '8px 12px', borderRadius: '8px' }}>
-                  <Upload size={14} /> Upload PDF/Image
-                </label>
-                <input 
-                  type="file" 
-                  id="certificateFile" 
-                  accept="image/*,application/pdf"
-                  onChange={(e) => handleFileChange(e, 'certificateFile')}
-                  style={{ display: 'none' }}
-                />
-              </div>
-
-              {files.certificateFile && (
-                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '8px 12px', background: 'rgba(255,255,255,0.03)', borderRadius: '8px', border: '1px solid var(--border-glass)' }}>
-                  <span style={{ fontSize: '0.75rem', textOverflow: 'ellipsis', overflow: 'hidden', whiteSpace: 'nowrap', maxWidth: '160px', color: 'var(--text-main)' }} className="flex items-center gap-1">
-                    <FileText size={12} className="text-blue-400" /> {files.certificateFile.name}
-                  </span>
-                  <button type="button" onClick={() => removeFile('certificateFile')} style={{ background: 'none', border: 'none', color: '#ef4444', cursor: 'pointer', padding: '2px' }}>
-                    <X size={16} />
-                  </button>
-                </div>
-              )}
-            </div>
-
-          </div>
-        </div>
-
-        {/* Modal Actions Footer */}
-        <div style={{ 
-          display: 'flex', 
-          gap: '16px', 
-          justifyContent: 'flex-end', 
-          marginTop: '10px' 
-        }}>
-          <button 
-            type="button" 
-            onClick={resetForm} 
-            className="btn-secondary"
-            style={{ 
-              padding: '12px 24px', 
-              borderRadius: '10px', 
-              display: 'flex',
-              alignItems: 'center',
-              gap: '8px',
-              fontWeight: 600,
-              cursor: 'pointer' 
-            }}
-          >
-            <RotateCcw size={16} /> Reset Form
-          </button>
-          
-          <button 
-            type="submit" 
-            className="btn-primary"
-            disabled={loading}
-            style={{ 
-              padding: '12px 28px', 
-              borderRadius: '10px', 
-              display: 'flex', 
-              alignItems: 'center', 
-              gap: '8px', 
-              fontWeight: 600,
-              cursor: 'pointer',
-              minWidth: '170px',
-              justifyContent: 'center'
-            }}
-          >
-            {loading ? (
-              <>
-                <Loader2 size={16} className="animate-spin" /> Adding Staff...
-              </>
-            ) : (
-              <>
-                <Save size={16} /> Add Staff
-              </>
+        {/* Navigation Footer */}
+        <div style={{ display: 'flex', gap: '16px', justifyContent: 'space-between', marginTop: '10px' }}>
+          <div style={{ display: 'flex', gap: '12px' }}>
+            {currentStep > 1 && (
+              <button type="button" onClick={prevStep} className="btn-secondary" style={{ padding: '12px 24px', borderRadius: '10px', display: 'flex', alignItems: 'center', gap: '8px', fontWeight: 600, cursor: 'pointer' }}>
+                <ChevronLeft size={16} /> Back
+              </button>
             )}
-          </button>
+            <button type="button" onClick={resetForm} className="btn-secondary" style={{ padding: '12px 24px', borderRadius: '10px', display: 'flex', alignItems: 'center', gap: '8px', fontWeight: 600, cursor: 'pointer' }}>
+              <RotateCcw size={16} /> Reset
+            </button>
+          </div>
+          <div>
+            {currentStep < STEPS.length ? (
+              <button type="button" onClick={nextStep} className="btn-primary" style={{ padding: '12px 28px', borderRadius: '10px', display: 'flex', alignItems: 'center', gap: '8px', fontWeight: 600, cursor: 'pointer' }}>
+                Next <ChevronRight size={16} />
+              </button>
+            ) : (
+              <button type="button" onClick={handleSubmit} className="btn-primary" disabled={loading} style={{ padding: '12px 28px', borderRadius: '10px', display: 'flex', alignItems: 'center', gap: '8px', fontWeight: 600, cursor: 'pointer', minWidth: '180px', justifyContent: 'center' }}>
+                {loading ? (<><Loader2 size={16} className="animate-spin" /> Registering...</>) : (<><Save size={16} /> Register Staff</>)}
+              </button>
+            )}
+          </div>
         </div>
-
       </form>
     </div>
   );

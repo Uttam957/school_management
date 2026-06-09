@@ -82,10 +82,10 @@ export const registerStudent = async (req, res) => {
       rollNumber = `${Math.floor(10 + Math.random() * 90)}`;
     }
     if (!studentClass) {
-      studentClass = '1st';
+      studentClass = 'I';
     }
     if (!section) {
-      section = 'A';
+      section = '';
     }
     if (!academicYear) {
       academicYear = '2026-2027';
@@ -95,7 +95,7 @@ export const registerStudent = async (req, res) => {
     const calculatedFirstName = firstName || calculatedFullName.split(' ')[0] || '';
     const calculatedLastName = lastName || calculatedFullName.split(' ').slice(1).join(' ') || '';
 
-    if (!calculatedFullName || !admissionNumber || !rollNumber || !studentClass || !section || !adminEmailCheck(req.body)) {
+    if (!calculatedFullName || !admissionNumber || !rollNumber || !studentClass || !adminEmailCheck(req.body)) {
       return res.status(400).json({ error: 'Missing required student details.' });
     }
 
@@ -155,7 +155,7 @@ export const registerStudent = async (req, res) => {
       previousSchoolAddress: previousSchoolAddress || '',
       previousClassStudied: previousClassStudied || '',
       transferCertificateNumber: transferCertificateNumber || '',
-      status: status || 'Active',
+      status: status || 'Pending',
 
       currentAddress: currentAddress || '',
       permanentAddress: permanentAddress || '',
@@ -201,7 +201,7 @@ export const registerStudent = async (req, res) => {
       additionalFile: additionalPath,
 
       // Backward-compatible properties
-      grade: `${studentClass}-${section}`,
+      grade: section ? `${studentClass}-${section}` : studentClass,
       guardian: guardianName || fatherName || motherName,
       email: fatherEmail || motherEmail || `${admissionNumber}@academy.edu`,
       phone: guardianContact || fatherMobile || motherMobile,
@@ -226,6 +226,12 @@ export const getStudents = async (req, res) => {
     const db = readDb();
     let result = [...db.students];
 
+    // 0. Status Filter (Default to 'Active')
+    const statusFilter = req.query.status || 'Active';
+    if (statusFilter !== 'All') {
+      result = result.filter(s => s.status === statusFilter);
+    }
+
     // 1. Search Query
     const search = req.query.search || '';
     if (search.trim() !== '') {
@@ -240,7 +246,7 @@ export const getStudents = async (req, res) => {
     // 2. Class Filter
     const classFilter = req.query.class || 'All';
     if (classFilter !== 'All') {
-      result = result.filter(s => s.studentClass === classFilter || s.grade.startsWith(classFilter));
+      result = result.filter(s => s.studentClass === classFilter || (s.grade && s.grade.split('-')[0] === classFilter));
     }
 
     // 3. Section Filter
@@ -326,8 +332,11 @@ export const updateStudent = async (req, res) => {
       medicalCertificateFile: medicalCertPath,
       additionalFile: additionalPath,
       name: updateData.fullName || currentStudent.name,
-      roll: updateData.rollNumber || currentStudent.roll,
-      grade: `${updateData.studentClass || currentStudent.studentClass}-${updateData.section || currentStudent.section}`,
+      roll: updateData.rollNumber !== undefined ? updateData.rollNumber : currentStudent.roll,
+      rollNumber: updateData.rollNumber !== undefined ? updateData.rollNumber : currentStudent.rollNumber,
+      grade: (updateData.section !== undefined ? updateData.section : currentStudent.section)
+        ? `${updateData.studentClass || currentStudent.studentClass}-${updateData.section !== undefined ? updateData.section : currentStudent.section}`
+        : (updateData.studentClass || currentStudent.studentClass),
       guardian: updateData.guardianName || updateData.fatherName || currentStudent.guardian,
       phone: updateData.guardianContact || updateData.fatherMobile || currentStudent.phone
     };

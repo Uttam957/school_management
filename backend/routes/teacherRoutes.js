@@ -16,9 +16,12 @@ const router = express.Router();
 const uploadFields = upload.fields([
   { name: 'photo', maxCount: 1 },
   { name: 'aadhaarFile', maxCount: 1 },
+  { name: 'panFile', maxCount: 1 },
   { name: 'resumeFile', maxCount: 1 },
   { name: 'qualificationFile', maxCount: 1 },
-  { name: 'experienceFile', maxCount: 1 }
+  { name: 'experienceFile', maxCount: 1 },
+  { name: 'joiningLetterFile', maxCount: 1 },
+  { name: 'otherFile', maxCount: 1 }
 ]);
 
 // 1. GET ALL TEACHERS (Supports search query, sorting, filtering, and pagination)

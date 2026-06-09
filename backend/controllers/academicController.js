@@ -382,6 +382,7 @@ export const getGradesSections = (req, res) => {
 
   // From students
   (db.students || []).forEach(s => {
+    if (s.status !== 'Active') return;
     if (s.studentClass) gradeSet.add(s.studentClass);
     if (s.section) sectionSet.add(s.section);
     if (s.studentClass && s.section) pairs.add(`${s.studentClass}-${s.section}`);
@@ -482,6 +483,21 @@ export const deleteExamTimetable = (req, res) => {
 
   writeDb(db);
   res.json({ message: 'Exam slot deleted successfully.' });
+};
+
+export const deleteCohortExamTimetable = (req, res) => {
+  const { examId, cohort } = req.params;
+  const db = readDb();
+
+  const initialCount = db.examTimetables.length;
+  db.examTimetables = db.examTimetables.filter(et => !(et.examId === examId && et.cohort === cohort));
+
+  if (db.examTimetables.length === initialCount) {
+    return res.status(404).json({ error: 'No schedules found for this exam and cohort.' });
+  }
+
+  writeDb(db);
+  res.json({ message: 'Exam timetable for cohort deleted successfully.' });
 };
 
 // =============================================
@@ -765,7 +781,7 @@ export const createResult = (req, res) => {
   if (targetClass) {
     // 1. Get all students in targetClass
     const classStudentIds = (db.students || [])
-      .filter(s => s.studentClass === targetClass)
+      .filter(s => s.studentClass === targetClass && s.status === 'Active')
       .map(s => s.id);
 
     // 2. Get all results for this subject and exam for these students
@@ -1136,7 +1152,7 @@ export const createResultBulk = (req, res) => {
     const firstStudent = (db.students || []).find(s => s.id === marksList[0].studentId);
     const targetClass = firstStudent ? firstStudent.studentClass : null;
     if (targetClass) {
-      const classStudentIds = (db.students || []).filter(s => s.studentClass === targetClass).map(s => s.id);
+      const classStudentIds = (db.students || []).filter(s => s.studentClass === targetClass && s.status === 'Active').map(s => s.id);
       const cohortResults = db.results.filter(r => r.examId === examId && r.subject.toLowerCase() === subject.toLowerCase() && classStudentIds.includes(r.studentId));
       cohortResults.sort((a, b) => b.percentage - a.percentage);
       cohortResults.forEach((resItem, index) => {
@@ -1152,137 +1168,6 @@ export const createResultBulk = (req, res) => {
   res.json({ message: 'Bulk marks saved successfully.', count: added.length });
 };
 
-export const recalculateResults = (req, res) => {
-  const { examId, cohort } = req.body;
-  if (!examId || !cohort) {
-    return res.status(400).json({ error: 'Exam ID and Cohort are required.' });
-  }
-
-  const db = readDb();
-  const [grade, section] = cohort.split('-');
-
-  const cohortStudents = (db.students || []).filter(s => s.studentClass === grade && (!section || s.section === section));
-  const studentIds = cohortStudents.map(s => s.id);
-
-  const studentTotals = studentIds.map(studentId => {
-    const studentResults = (db.results || []).filter(r => r.studentId === studentId && r.examId === examId);
-    if (studentResults.length === 0) return { studentId, totalObtained: 0, totalMax: 0, percentage: 0, gpa: 0, subjectsCount: 0 };
-
-    const totalObtained = studentResults.reduce((sum, r) => sum + r.obtainedMarks, 0);
-    const totalMax = studentResults.reduce((sum, r) => sum + r.totalMarks, 0);
-    const percentage = totalMax > 0 ? Math.round((totalObtained / totalMax) * 100) : 0;
-    const avgGpa = studentResults.reduce((sum, r) => sum + r.gpa, 0) / studentResults.length;
-
-    return {
-      studentId,
-      totalObtained,
-      totalMax,
-      percentage,
-      gpa: avgGpa,
-      subjectsCount: studentResults.length
-    };
-  });
-
-  studentTotals.sort((a, b) => b.percentage - a.percentage);
-
-  if (!db.overallResults) db.overallResults = [];
-
-  studentTotals.forEach((item, index) => {
-    const overallRank = index + 1;
-    let overallGrade = 'F';
-    if (item.percentage >= 90) overallGrade = 'A+';
-    else if (item.percentage >= 80) overallGrade = 'A';
-    else if (item.percentage >= 70) overallGrade = 'B+';
-    else if (item.percentage >= 60) overallGrade = 'B';
-    else if (item.percentage >= 50) overallGrade = 'C';
-    else if (item.percentage >= 40) overallGrade = 'D';
-    else overallGrade = 'F';
-
-    const overallEntry = {
-      id: `OVR-${examId}-${item.studentId}`,
-      examId,
-      cohort,
-      studentId: item.studentId,
-      totalObtained: item.totalObtained,
-      totalMax: item.totalMax,
-      percentage: item.percentage,
-      gpa: item.gpa,
-      grade: overallGrade,
-      rank: overallRank,
-      subjectsCount: item.subjectsCount,
-      passStatus: item.percentage >= 40 ? 'Pass' : 'Fail',
-      updatedAt: new Date().toISOString()
-    };
-
-    const idx = db.overallResults.findIndex(o => o.examId === examId && o.studentId === item.studentId);
-    if (idx !== -1) {
-      db.overallResults[idx] = { ...db.overallResults[idx], ...overallEntry };
-    } else {
-      db.overallResults.push(overallEntry);
-    }
-  });
-
-  writeDb(db);
-  res.json({ message: 'Ranks and overall scores calculated successfully.', count: studentTotals.length });
-};
-
-export const lockResults = (req, res) => {
-  const { examId, cohort, locked } = req.body;
-  if (!examId || !cohort) {
-    return res.status(400).json({ error: 'Exam ID and Cohort are required.' });
-  }
-
-  const db = readDb();
-  const [grade, section] = cohort.split('-');
-  const studentIds = (db.students || []).filter(s => s.studentClass === grade && (!section || s.section === section)).map(s => s.id);
-
-  db.results = db.results.map(r => {
-    if (r.examId === examId && studentIds.includes(r.studentId)) {
-      return { ...r, locked: locked !== false };
-    }
-    return r;
-  });
-
-  if (!db.overallResults) db.overallResults = [];
-  db.overallResults = db.overallResults.map(o => {
-    if (o.examId === examId && o.cohort === cohort) {
-      return { ...o, locked: locked !== false };
-    }
-    return o;
-  });
-
-  writeDb(db);
-  res.json({ message: `Results successfully ${locked !== false ? 'locked' : 'unlocked'}.` });
-};
-
-export const publishResults = (req, res) => {
-  const { examId, cohort, published } = req.body;
-  if (!examId || !cohort) {
-    return res.status(400).json({ error: 'Exam ID and Cohort are required.' });
-  }
-
-  const db = readDb();
-
-  if (!db.overallResults) db.overallResults = [];
-  db.overallResults = db.overallResults.map(o => {
-    if (o.examId === examId && o.cohort === cohort) {
-      return { ...o, published: published !== false };
-    }
-    return o;
-  });
-
-  const [grade, section] = cohort.split('-');
-  const studentIds = (db.students || []).filter(s => s.studentClass === grade && (!section || s.section === section)).map(s => s.id);
-  db.results = db.results.map(r => {
-    if (r.examId === examId && studentIds.includes(r.studentId)) {
-      return { ...r, published: published !== false };
-    }
-    return r;
-  });
-
-  writeDb(db);
-  res.json({ message: `Results successfully ${published !== false ? 'published' : 'unpublished'}.` });
-};
 
 export const getOverallResults = (req, res) => {
   const db = readDb();
@@ -1363,7 +1248,7 @@ export const createResultStudentBulk = (req, res) => {
     
     // Recalculate class ranks for this subject
     if (targetClass) {
-      const classStudentIds = (db.students || []).filter(s => s.studentClass === targetClass).map(s => s.id);
+      const classStudentIds = (db.students || []).filter(s => s.studentClass === targetClass && s.status === 'Active').map(s => s.id);
       const cohortResults = db.results.filter(r => 
         r.examId === examId && 
         r.subject.toLowerCase() === subject.toLowerCase() && 
@@ -1421,7 +1306,7 @@ export const createResultStudentBulk = (req, res) => {
     }
 
     // Recalculate ranks for the cohort
-    const cohortStudentIds = (db.students || []).filter(s => s.studentClass === targetClass).map(s => s.id);
+    const cohortStudentIds = (db.students || []).filter(s => s.studentClass === targetClass && s.status === 'Active').map(s => s.id);
     const cohortOverallResults = db.overallResults.filter(o => o.examId === examId && cohortStudentIds.includes(o.studentId));
     cohortOverallResults.sort((a, b) => b.percentage - a.percentage);
     cohortOverallResults.forEach((ovItem, idx) => {
@@ -1458,7 +1343,7 @@ export const deleteStudentExamResults = (req, res) => {
   const student = (db.students || []).find(s => s.id === studentId);
   const targetClass = student ? student.studentClass : null;
   if (targetClass && db.overallResults) {
-    const cohortStudentIds = (db.students || []).filter(s => s.studentClass === targetClass).map(s => s.id);
+    const cohortStudentIds = (db.students || []).filter(s => s.studentClass === targetClass && s.status === 'Active').map(s => s.id);
     const cohortOverallResults = db.overallResults.filter(o => o.examId === examId && cohortStudentIds.includes(o.studentId));
     cohortOverallResults.sort((a, b) => b.percentage - a.percentage);
     cohortOverallResults.forEach((ovItem, idx) => {

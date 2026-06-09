@@ -33,7 +33,11 @@ export const query = async (sql, params) => {
   if (!pool) {
     throw new Error('MySQL pool is not initialized');
   }
-  const [results] = await pool.execute(sql, params);
+  let safeParams = params;
+  if (Array.isArray(params)) {
+    safeParams = params.map(v => v === undefined ? null : v);
+  }
+  const [results] = await pool.execute(sql, safeParams);
   return results;
 };
 

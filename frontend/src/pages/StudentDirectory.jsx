@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
+import { createPortal } from 'react-dom';
 import { 
   Search, 
-  Plus, 
   X, 
   User, 
   Mail, 
@@ -18,12 +18,16 @@ import {
   FileText,
   MapPin,
   Download,
-  Info
+  Info,
+  Edit3
 } from 'lucide-react';
+
+
 
 export default function StudentDirectory({ readOnly = true, onAddClick }) {
   const [students, setStudents] = useState([]);
   const [loading, setLoading] = useState(true);
+
   
   const hasValue = (val) => {
     if (val === undefined || val === null || val === '') return false;
@@ -48,6 +52,54 @@ export default function StudentDirectory({ readOnly = true, onAddClick }) {
   // Inspector States
   const [selectedStudent, setSelectedStudent] = useState(null);
 
+  // Edit Modal States
+  const [editingStudent, setEditingStudent] = useState(null);
+  const [editFormData, setEditFormData] = useState({});
+  const [editLoading, setEditLoading] = useState(false);
+
+  const openEditModal = (student) => {
+    setEditingStudent(student);
+    setEditFormData({
+      fullName: student.fullName || student.name || '',
+      studentClass: student.studentClass || (student.grade ? student.grade.split('-')[0] : 'I'),
+      section: student.section || '',
+      rollNumber: student.rollNumber || student.roll || '',
+      phone: student.phone || student.guardianContact || '',
+      fatherName: student.fatherName || '',
+      fatherMobile: student.fatherMobile || '',
+      motherName: student.motherName || '',
+      emergencyContactNumber: student.emergencyContactNumber || '',
+      academicYear: student.academicYear || '2026-2027',
+      status: student.status || 'Active'
+    });
+  };
+
+  const handleEditSubmit = async (e) => {
+    e.preventDefault();
+    setEditLoading(true);
+    try {
+      const studentId = editingStudent.id;
+      const res = await fetch(`/api/students/${studentId}`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(editFormData)
+      });
+      if (res.ok) {
+        setEditingStudent(null);
+        fetchStudents();
+        setSelectedStudent(null);
+      } else {
+        const errData = await res.json();
+        alert(errData.error || 'Server error occurred while updating student.');
+      }
+    } catch (err) {
+      console.error('Error updating student:', err);
+      alert('Network error updating student profile.');
+    } finally {
+      setEditLoading(false);
+    }
+  };
+
   const fetchStudents = async () => {
     try {
       setLoading(true);
@@ -56,6 +108,7 @@ export default function StudentDirectory({ readOnly = true, onAddClick }) {
         class: classFilter,
         section: sectionFilter,
         academicYear: yearFilter,
+        status: 'All',
         sortBy,
         sortOrder,
         page,
@@ -75,6 +128,8 @@ export default function StudentDirectory({ readOnly = true, onAddClick }) {
       setLoading(false);
     }
   };
+
+
 
   // Reload students on search/filter/pagination triggers
   useEffect(() => {
@@ -204,11 +259,11 @@ export default function StudentDirectory({ readOnly = true, onAddClick }) {
               style={{ padding: '8px 12px', borderRadius: '8px', fontSize: '0.85rem' }}
             >
               <option value="All">All Classes</option>
-              <option value="Nursery">Nursery</option>
-              <option value="KG">KG</option>
-              {Array.from({ length: 10 }, (_, i) => `${i + 1}`).map(num => (
-                <option key={num} value={num === '1' ? '1st' : (num === '2' ? '2nd' : (num === '3' ? '3rd' : `${num}th`))}>
-                  Grade {num === '1' ? '1st' : (num === '2' ? '2nd' : (num === '3' ? '3rd' : `${num}th`))}
+              <option value="LKG">LKG</option>
+              <option value="UKG">UKG</option>
+              {['I', 'II', 'III', 'IV', 'V', 'VI', 'VII', 'VIII', 'IX', 'X'].map(grade => (
+                <option key={grade} value={grade}>
+                  Grade {grade}
                 </option>
               ))}
             </select>
@@ -221,9 +276,11 @@ export default function StudentDirectory({ readOnly = true, onAddClick }) {
               style={{ padding: '8px 12px', borderRadius: '8px', fontSize: '0.85rem' }}
             >
               <option value="All">All Years</option>
-              <option value="2026-2027">2026-2027</option>
-              <option value="2025-2026">2025-2026</option>
               <option value="2024-2025">2024-2025</option>
+              <option value="2025-2026">2025-2026</option>
+              <option value="2026-2027">2026-2027</option>
+              <option value="2027-2028">2027-2028</option>
+              <option value="2028-2029">2028-2029</option>
             </select>
           </div>
 
@@ -257,9 +314,12 @@ export default function StudentDirectory({ readOnly = true, onAddClick }) {
             </button>
           </div>
 
-          <span style={{ fontSize: '0.8rem', color: 'var(--text-muted)', fontWeight: 500 }}>
-            Total Registrations: <strong style={{ color: 'var(--text-main)' }}>{totalCount}</strong>
-          </span>
+          <div style={{ display: 'flex', gap: '12px', alignItems: 'center' }}>
+            <span style={{ fontSize: '0.8rem', color: 'var(--text-muted)', fontWeight: 500 }}>
+              Total Registrations: <strong style={{ color: 'var(--text-main)' }}>{totalCount}</strong>
+            </span>
+
+          </div>
 
         </div>
 
@@ -281,6 +341,7 @@ export default function StudentDirectory({ readOnly = true, onAddClick }) {
                     <th>Registration ID</th>
                     <th>Student Name</th>
                     <th>Class</th>
+                    <th>Section</th>
                     <th>Parent Contact</th>
                     <th>Admission Number</th>
                     <th>Academic Year</th>
@@ -319,7 +380,8 @@ export default function StudentDirectory({ readOnly = true, onAddClick }) {
                             <span style={{ fontWeight: 600 }}>{stu.name}</span>
                           </div>
                         </td>
-                        <td style={{ fontWeight: 500 }}>{stu.studentClass || stu.grade.split('-')[0] || 'Nursery'}</td>
+                        <td style={{ fontWeight: 500 }}>{stu.studentClass || (stu.grade && stu.grade.split('-')[0]) || 'Nursery'}</td>
+                        <td style={{ fontWeight: 500 }}>{stu.section || '-'}</td>
                         <td style={{ fontWeight: 500 }}>{stu.phone || stu.guardianContact || 'N/A'}</td>
                         <td style={{ fontWeight: 600, color: 'var(--text-muted)' }}>{stu.admissionNumber || stu.id}</td>
                         <td style={{ fontWeight: 500 }}>{stu.academicYear || '2026-2027'}</td>
@@ -333,14 +395,23 @@ export default function StudentDirectory({ readOnly = true, onAddClick }) {
                               <Info size={12} /> Inspect
                             </button>
                             {!readOnly && (
-                              <button 
-                                onClick={() => handleDeleteStudent(stu.id, stu.name)}
-                                className="btn-danger" 
-                                style={{ padding: '6px 8px', borderRadius: '8px', background: 'rgba(var(--color-danger-rgb), 0.1)', border: '1px solid rgba(var(--color-danger-rgb), 0.2)', color: 'rgb(var(--color-danger-rgb))' }}
-                                title="Delete profile"
-                              >
-                                <Trash2 size={14} />
-                              </button>
+                              <>
+                                <button 
+                                  onClick={() => openEditModal(stu)}
+                                  className="btn-secondary" 
+                                  style={{ padding: '6px 12px', fontSize: '0.8rem', borderRadius: '8px', display: 'flex', alignItems: 'center', gap: '4px' }}
+                                >
+                                  <Edit3 size={12} /> Edit
+                                </button>
+                                <button 
+                                  onClick={() => handleDeleteStudent(stu.id, stu.name)}
+                                  className="btn-danger" 
+                                  style={{ padding: '6px 8px', borderRadius: '8px', background: 'rgba(var(--color-danger-rgb), 0.1)', border: '1px solid rgba(var(--color-danger-rgb), 0.2)', color: 'rgb(var(--color-danger-rgb))' }}
+                                  title="Delete profile"
+                                >
+                                  <Trash2 size={14} />
+                                </button>
+                              </>
                             )}
                           </div>
                         </td>
@@ -390,22 +461,24 @@ export default function StudentDirectory({ readOnly = true, onAddClick }) {
       </div>
 
       {/* Inspect Student Profile Drawer */}
-      {selectedStudent && (
+      {selectedStudent && createPortal(
         <div 
           onClick={() => setSelectedStudent(null)}
-          className="drawer-overlay"
+          style={{ position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, background: 'rgba(0,0,0,0.6)', backdropFilter: 'blur(8px)', WebkitBackdropFilter: 'blur(8px)', isolation: 'isolate', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 10000, padding: '20px' }}
         >
           <div 
             onClick={(e) => e.stopPropagation()}
-            className="drawer-panel"
+            className="glass-panel animate-scale-up"
             style={{
-              borderRadius: '24px 0 0 24px',
+              width: '100%', maxWidth: '600px', maxHeight: '75vh',
               background: 'var(--bg-elevated)',
               padding: '30px',
               display: 'flex',
               flexDirection: 'column',
               gap: '24px',
-              overflowY: 'auto'
+              overflowY: 'auto',
+              borderRadius: '16px',
+              minHeight: 0
             }}
           >
             
@@ -827,6 +900,128 @@ export default function StudentDirectory({ readOnly = true, onAddClick }) {
               </div>
             </div>
 
+          </div>
+        </div>, document.body)}
+
+      {/* Edit Student Modal */}
+      {editingStudent && (
+        <div onClick={() => setEditingStudent(null)} className="modal-overlay">
+          <div onClick={(e) => e.stopPropagation()} className="glass-panel animate-scale-up"
+            style={{
+              width: '100%', maxWidth: '600px', maxHeight: '85vh', overflowY: 'auto',
+              padding: '30px', borderRadius: '20px', background: 'var(--bg-elevated)',
+              boxShadow: 'var(--shadow-lg)', display: 'flex', flexDirection: 'column', gap: '20px'
+            }}>
+            
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', borderBottom: '1px solid var(--border-glass)', paddingBottom: '14px' }}>
+              <h3 style={{ fontSize: '1.15rem', fontWeight: 800, margin: 0, display: 'flex', alignItems: 'center', gap: '8px' }}>
+                <Edit3 size={18} style={{ color: 'hsl(var(--color-primary))' }} /> Edit Student Profile
+              </h3>
+              <button onClick={() => setEditingStudent(null)}
+                style={{ background: 'none', border: 'none', color: 'var(--text-muted)', cursor: 'pointer' }}>
+                <X size={20} />
+              </button>
+            </div>
+
+            <form onSubmit={handleEditSubmit} style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
+              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))', gap: '16px' }}>
+                
+                <div className="form-group">
+                  <label>Full Name</label>
+                  <input type="text" value={editFormData.fullName || ''} onChange={(e) => setEditFormData({ ...editFormData, fullName: e.target.value })}
+                    className="form-control" style={{ padding: '10px 14px', borderRadius: '10px' }} required />
+                </div>
+
+                <div className="form-group">
+                  <label>Roll Number</label>
+                  <input type="text" value={editFormData.rollNumber || ''} onChange={(e) => setEditFormData({ ...editFormData, rollNumber: e.target.value })}
+                    className="form-control" style={{ padding: '10px 14px', borderRadius: '10px' }} />
+                </div>
+
+                <div className="form-group">
+                  <label>Class/Grade</label>
+                  <select value={editFormData.studentClass || ''} onChange={(e) => setEditFormData({ ...editFormData, studentClass: e.target.value })}
+                    className="form-control" style={{ padding: '10px 14px', borderRadius: '10px' }}>
+                    <option value="LKG">LKG</option>
+                    <option value="UKG">UKG</option>
+                    {['I', 'II', 'III', 'IV', 'V', 'VI', 'VII', 'VIII', 'IX', 'X'].map(grade => (
+                      <option key={grade} value={grade}>Class {grade}</option>
+                    ))}
+                  </select>
+                </div>
+
+                <div className="form-group">
+                  <label>Section</label>
+                  <select value={editFormData.section || ''} onChange={(e) => setEditFormData({ ...editFormData, section: e.target.value })}
+                    className="form-control" style={{ padding: '10px 14px', borderRadius: '10px' }}>
+                    <option value="">-</option>
+                    <option value="A">A</option>
+                    <option value="B">B</option>
+                    <option value="C">C</option>
+                    <option value="D">D</option>
+                    <option value="E">E</option>
+                  </select>
+                </div>
+
+                <div className="form-group">
+                  <label>Academic Session</label>
+                  <select value={editFormData.academicYear || ''} onChange={(e) => setEditFormData({ ...editFormData, academicYear: e.target.value })}
+                    className="form-control" style={{ padding: '10px 14px', borderRadius: '10px' }}>
+                    <option value="2024-2025">2024-2025</option>
+                    <option value="2025-2026">2025-2026</option>
+                    <option value="2026-2027">2026-2027</option>
+                    <option value="2027-2028">2027-2028</option>
+                    <option value="2028-2029">2028-2029</option>
+                  </select>
+                </div>
+
+                <div className="form-group">
+                  <label>Status</label>
+                  <select value={editFormData.status || ''} onChange={(e) => setEditFormData({ ...editFormData, status: e.target.value })}
+                    className="form-control" style={{ padding: '10px 14px', borderRadius: '10px' }}>
+                    <option value="Active">Active</option>
+                    <option value="Inactive">Inactive</option>
+                    <option value="Suspended">Suspended</option>
+                  </select>
+                </div>
+
+                <div className="form-group">
+                  <label>Father's Name</label>
+                  <input type="text" value={editFormData.fatherName || ''} onChange={(e) => setEditFormData({ ...editFormData, fatherName: e.target.value })}
+                    className="form-control" style={{ padding: '10px 14px', borderRadius: '10px' }} />
+                </div>
+
+                <div className="form-group">
+                  <label>Father's Mobile</label>
+                  <input type="text" value={editFormData.fatherMobile || ''} onChange={(e) => setEditFormData({ ...editFormData, fatherMobile: e.target.value })}
+                    className="form-control" style={{ padding: '10px 14px', borderRadius: '10px' }} />
+                </div>
+
+                <div className="form-group">
+                  <label>Mother's Name</label>
+                  <input type="text" value={editFormData.motherName || ''} onChange={(e) => setEditFormData({ ...editFormData, motherName: e.target.value })}
+                    className="form-control" style={{ padding: '10px 14px', borderRadius: '10px' }} />
+                </div>
+
+                <div className="form-group">
+                  <label>Primary Phone</label>
+                  <input type="text" value={editFormData.phone || ''} onChange={(e) => setEditFormData({ ...editFormData, phone: e.target.value })}
+                    className="form-control" style={{ padding: '10px 14px', borderRadius: '10px' }} />
+                </div>
+
+              </div>
+
+              <div style={{ display: 'flex', gap: '12px', justifyContent: 'flex-end', marginTop: '10px' }}>
+                <button type="button" onClick={() => setEditingStudent(null)} className="btn-secondary"
+                  style={{ padding: '10px 20px', borderRadius: '10px', fontWeight: 600, cursor: 'pointer' }}>
+                  Cancel
+                </button>
+                <button type="submit" className="btn-primary" disabled={editLoading}
+                  style={{ padding: '10px 24px', borderRadius: '10px', fontWeight: 600, cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '6px' }}>
+                  {editLoading ? <><Loader2 size={14} className="animate-spin" /> Saving...</> : 'Save Changes'}
+                </button>
+              </div>
+            </form>
           </div>
         </div>
       )}

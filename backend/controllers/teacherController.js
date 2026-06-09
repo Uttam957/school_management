@@ -11,39 +11,52 @@ export const registerTeacher = async (req, res) => {
     
     // Parse form parameters
     const {
+      firstName,
+      middleName,
+      lastName,
       fullName,
       gender,
       dob,
       bloodGroup,
+      nationality,
       maritalStatus,
+      aadhaarNumber,
+      panNumber,
+      joiningDate,
+      employmentType,
+      designation,
+      department,
+      primarySubject,
+      secondarySubject,
       mobile,
       alternateMobile,
       email,
-      address,
-      city,
-      state,
-      pincode,
-      teacherId,
-      department,
-      subjectSpecialization,
+      emergencyContactNumber,
+      currentAddress,
+      currentCity,
+      currentState,
+      currentCountry,
+      currentPostalCode,
+      permanentAddress,
+      permanentCity,
+      permanentState,
+      permanentCountry,
+      permanentPostalCode,
+      sameAsPermanent,
       qualification,
       experience,
-      joiningDate,
+      experiences,
       salary,
-      employmentType,
       username,
       password
     } = req.body;
 
-    // Validate required fields
-    if (!fullName || !email || !mobile || !teacherId || !department || !subjectSpecialization || !username || !password) {
-      return res.status(400).json({ error: 'Missing required teacher registration details.' });
-    }
+    // Fallback to construct full name if missing
+    const derivedFullName = fullName || [firstName, middleName, lastName].filter(Boolean).join(' ');
 
-    // Check username uniqueness
-    const usernameExists = db.teachers.some(t => t.username === username);
-    if (usernameExists) {
-      return res.status(400).json({ error: 'Username already exists. Please choose a different one.' });
+    // Validate required fields (bare minimums)
+    if (!derivedFullName) {
+      return res.status(400).json({ error: 'Missing required teacher registration details (Full Name).' });
     }
 
     // Generate unique employee ID (Format: EMP-2026-XXXX)
@@ -55,56 +68,109 @@ export const registerTeacher = async (req, res) => {
       isUnique = !db.teachers.some(t => t.employeeId === employeeId);
     }
 
+    // Auto-generate username and password if not provided
+    const generatedUsername = username || `teacher_${employeeId.toLowerCase().replace(/-/g, '_')}`;
+    const generatedPassword = password || 'teacher123';
+
+    // Check username uniqueness
+    const usernameExists = db.teachers.some(t => t.username === generatedUsername);
+    if (usernameExists) {
+      return res.status(400).json({ error: 'Generated username already exists. Please try again or specify a username.' });
+    }
+
     // Map uploaded file routes
     const files = req.files || {};
     const photoPath = files.photo ? `/uploads/${files.photo[0].filename}` : '';
     const aadhaarPath = files.aadhaarFile ? `/uploads/${files.aadhaarFile[0].filename}` : '';
+    const panPath = files.panFile ? `/uploads/${files.panFile[0].filename}` : '';
     const resumePath = files.resumeFile ? `/uploads/${files.resumeFile[0].filename}` : '';
     const qualificationPath = files.qualificationFile ? `/uploads/${files.qualificationFile[0].filename}` : '';
     const experiencePath = files.experienceFile ? `/uploads/${files.experienceFile[0].filename}` : '';
+    const joiningLetterPath = files.joiningLetterFile ? `/uploads/${files.joiningLetterFile[0].filename}` : '';
+    const otherPath = files.otherFile ? `/uploads/${files.otherFile[0].filename}` : '';
+
+    // Parse qualification & experience arrays if they came as stringified JSON
+    let parsedQualifications = qualification;
+    if (typeof qualification === 'string') {
+      try {
+        parsedQualifications = JSON.parse(qualification);
+      } catch (e) {
+        parsedQualifications = [];
+      }
+    }
+    let parsedExperiences = experiences;
+    if (typeof experiences === 'string') {
+      try {
+        parsedExperiences = JSON.parse(experiences);
+      } catch (e) {
+        parsedExperiences = [];
+      }
+    }
 
     const newTeacher = {
       id: employeeId, // Direct backward compatibility index
       employeeId,
-      teacherId,
-      name: fullName, // Legacy compatibility
-      fullName,
-      gender,
-      dob,
-      bloodGroup,
-      maritalStatus,
-      mobile,
-      alternateMobile,
-      email,
-      address,
-      city,
-      state,
-      pincode,
-      department,
-      subjectSpecialization,
-      qualification,
+      teacherId: req.body.teacherId || `TCH-${Date.now().toString().slice(-6)}`,
+      name: derivedFullName, // Legacy compatibility
+      fullName: derivedFullName,
+      firstName: firstName || derivedFullName.split(' ')[0],
+      middleName: middleName || '',
+      lastName: lastName || derivedFullName.split(' ').slice(1).join(' '),
+      gender: gender || '',
+      dob: dob || '',
+      bloodGroup: bloodGroup || '',
+      nationality: nationality || 'Indian',
+      maritalStatus: maritalStatus || '',
+      aadhaarNumber: aadhaarNumber || '',
+      panNumber: panNumber || '',
+      joiningDate: joiningDate || '',
+      employmentType: employmentType || '',
+      designation: designation || '',
+      department: department || '',
+      primarySubject: primarySubject || '',
+      secondarySubject: secondarySubject || '',
+      mobile: mobile || '',
+      phone: mobile || '', // Legacy compatibility
+      alternateMobile: alternateMobile || '',
+      email: email || '',
+      emergencyContactNumber: emergencyContactNumber || '',
+      currentAddress: currentAddress || '',
+      currentCity: currentCity || '',
+      currentState: currentState || '',
+      currentCountry: currentCountry || 'India',
+      currentPostalCode: currentPostalCode || '',
+      permanentAddress: permanentAddress || '',
+      permanentCity: permanentCity || '',
+      permanentState: permanentState || '',
+      permanentCountry: permanentCountry || 'India',
+      permanentPostalCode: permanentPostalCode || '',
+      sameAsPermanent: sameAsPermanent === 'true' || sameAsPermanent === true || sameAsPermanent === 'Yes',
+      
+      qualification: parsedQualifications,
       experience: experience || '0',
-      joiningDate,
+      experiences: parsedExperiences,
       salary: salary || '0',
-      employmentType,
       status: 'Active', // Default status: "Active", "Inactive", "On Leave"
-      username,
-      password, // Plain text or hash depending on system architecture
+      username: generatedUsername,
+      password: generatedPassword, // Plain text or hash depending on system architecture
       
       // Uploaded documents
       photo: photoPath,
       aadhaarFile: aadhaarPath,
+      panFile: panPath,
       resumeFile: resumePath,
       qualificationFile: qualificationPath,
       experienceFile: experiencePath,
+      joiningLetterFile: joiningLetterPath,
+      otherFile: otherPath,
       
       // Timestamps
       createdAt: new Date().toISOString(),
       updatedAt: new Date().toISOString(),
       
       // Legacy compatibility mappings
-      subject: subjectSpecialization,
-      phone: mobile,
+      subject: primarySubject || req.body.subjectSpecialization || '',
+      subjectSpecialization: primarySubject || req.body.subjectSpecialization || '',
       classes: 0,
       hours: 0,
       badge: 'Faculty',
@@ -112,7 +178,7 @@ export const registerTeacher = async (req, res) => {
     };
 
     db.teachers.push(newTeacher);
-    addActivity(db, 'registration', 'New Faculty Registered', `${fullName} joined ${department} Department as ${employmentType}`, 'hsl(var(--color-secondary))', 'rgba(hsl(var(--color-secondary)), 0.1)');
+    addActivity(db, 'registration', 'New Faculty Registered', `${fullName} joined ${department || 'School'} Department as ${employmentType || 'Faculty'}`, 'hsl(var(--color-secondary))', 'rgba(hsl(var(--color-secondary)), 0.1)');
     writeDb(db);
 
     res.status(201).json(newTeacher);
@@ -237,26 +303,48 @@ export const updateTeacher = async (req, res) => {
     const files = req.files || {};
     const photoPath = files.photo ? `/uploads/${files.photo[0].filename}` : currentTeacher.photo;
     const aadhaarPath = files.aadhaarFile ? `/uploads/${files.aadhaarFile[0].filename}` : currentTeacher.aadhaarFile;
+    const panPath = files.panFile ? `/uploads/${files.panFile[0].filename}` : currentTeacher.panFile;
     const resumePath = files.resumeFile ? `/uploads/${files.resumeFile[0].filename}` : currentTeacher.resumeFile;
     const qualificationPath = files.qualificationFile ? `/uploads/${files.qualificationFile[0].filename}` : currentTeacher.qualificationFile;
     const experiencePath = files.experienceFile ? `/uploads/${files.experienceFile[0].filename}` : currentTeacher.experienceFile;
+    const joiningLetterPath = files.joiningLetterFile ? `/uploads/${files.joiningLetterFile[0].filename}` : currentTeacher.joiningLetterFile;
+    const otherPath = files.otherFile ? `/uploads/${files.otherFile[0].filename}` : currentTeacher.otherFile;
+
+    // Parse qualification & experience arrays if they came as stringified JSON
+    let parsedQualifications = updateData.qualification || currentTeacher.qualification;
+    if (typeof updateData.qualification === 'string') {
+      try {
+        parsedQualifications = JSON.parse(updateData.qualification);
+      } catch (e) {}
+    }
+    let parsedExperiences = updateData.experiences || currentTeacher.experiences;
+    if (typeof updateData.experiences === 'string') {
+      try {
+        parsedExperiences = JSON.parse(updateData.experiences);
+      } catch (e) {}
+    }
 
     const updatedTeacher = {
       ...currentTeacher,
       ...updateData,
       photo: photoPath,
       aadhaarFile: aadhaarPath,
+      panFile: panPath,
       resumeFile: resumePath,
       qualificationFile: qualificationPath,
       experienceFile: experiencePath,
-      name: updateData.fullName || currentTeacher.name, // Compatibility
+      joiningLetterFile: joiningLetterPath,
+      otherFile: otherPath,
+      qualification: parsedQualifications,
+      experiences: parsedExperiences,
+      name: updateData.fullName || currentTeacher.fullName || currentTeacher.name, // Compatibility
       phone: updateData.mobile || currentTeacher.phone, // Compatibility
-      subject: updateData.subjectSpecialization || currentTeacher.subject, // Compatibility
+      subject: updateData.primarySubject || updateData.subjectSpecialization || currentTeacher.subject, // Compatibility
       updatedAt: new Date().toISOString()
     };
 
     db.teachers[teacherIndex] = updatedTeacher;
-    addActivity(db, 'alert', 'Teacher Profile Modified', `${updatedTeacher.name}'s professional records were updated.`, 'hsl(var(--color-secondary))', 'rgba(hsl(var(--color-secondary)), 0.1)');
+    addActivity(db, 'alert', 'Teacher Profile Modified', `${updatedTeacher.name || updatedTeacher.fullName}'s professional records were updated.`, 'hsl(var(--color-secondary))', 'rgba(hsl(var(--color-secondary)), 0.1)');
     writeDb(db);
 
     res.json(updatedTeacher);

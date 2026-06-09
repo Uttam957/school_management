@@ -153,7 +153,7 @@ export const getFinanceOverview = (req, res) => {
       totalPayrollPaid,
       totalPayrollPending,
       netProfit,
-      totalStudents: db.students?.length || 0,
+      totalStudents: (db.students || []).filter(s => s.status === 'Active').length,
       totalTeachers: db.teachers?.length || 0,
       totalFeeRecords: db.fees?.length || 0,
       totalPayrollRecords: db.payroll?.length || 0,

@@ -13,6 +13,7 @@ import {
   getExamTimetables,
   createExamTimetable,
   deleteExamTimetable,
+  deleteCohortExamTimetable,
   getEvents,
   createEvent,
   updateEvent,
@@ -28,9 +29,6 @@ import {
   createResult,
   deleteResult,
   createResultBulk,
-  recalculateResults,
-  lockResults,
-  publishResults,
   getOverallResults,
   getTimeslots,
   createTimeslot,
@@ -85,6 +83,7 @@ router.get('/exam-timetables', getExamTimetables);
 router.post('/exam-timetables', createExamTimetable);
 router.post('/exam-timetables/bulk', createExamTimetableBulk);
 router.delete('/exam-timetables/:id', deleteExamTimetable);
+router.delete('/exam-timetables/exam/:examId/cohort/:cohort', deleteCohortExamTimetable);
 
 
 // Events
@@ -109,9 +108,6 @@ router.get('/results', getResults);
 router.post('/results', createResult);
 router.delete('/results/:id', deleteResult);
 router.post('/results/bulk', createResultBulk);
-router.post('/results/recalculate', recalculateResults);
-router.post('/results/lock', lockResults);
-router.post('/results/publish', publishResults);
 router.get('/results/overall', getOverallResults);
 router.post('/results/student-bulk', createResultStudentBulk);
 router.delete('/results/student/:studentId/exam/:examId', deleteStudentExamResults);

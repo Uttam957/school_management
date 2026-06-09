@@ -114,6 +114,7 @@ app.post('/api/auth/login', (req, res) => {
       }
     } else if (currentRole === 'Student') {
       const student = (db.students || []).find(s => 
+        s.status === 'Active' &&
         (s.studentUsername === username || s.admissionNumber === username) && 
         (s.studentPassword === password || password === 'student123')
       );
@@ -123,6 +124,7 @@ app.post('/api/auth/login', (req, res) => {
       }
     } else if (currentRole === 'Parent') {
       const student = (db.students || []).find(s => 
+        s.status === 'Active' &&
         (s.parentUsername === username || s.fatherEmail === username || s.motherEmail === username || s.fatherMobile === username || s.motherMobile === username) && 
         (s.parentPassword === password || password === 'parent123')
       );
@@ -519,90 +521,194 @@ app.use('/api/finance', financeRoutes);
 app.use('/api/academics', academicRoutes);
 
 // ==========================================
-// 2B. STAFF ENDPOINTS
+// 2B. STAFF ENDPOINTS (Complete Module)
 // ==========================================
 app.get('/api/staff', (req, res) => {
   const db = readDb();
   res.json(db.staff || []);
 });
 
+// Get single staff by ID
+app.get('/api/staff/:id', (req, res) => {
+  const db = readDb();
+  if (!db.staff) db.staff = [];
+  const staff = db.staff.find(s => s.id === req.params.id);
+  if (!staff) return res.status(404).json({ error: 'Staff not found.' });
+  res.json(staff);
+});
+
 const staffUploadFields = upload.fields([
   { name: 'photo', maxCount: 1 },
   { name: 'aadharFile', maxCount: 1 },
-  { name: 'certificateFile', maxCount: 1 }
+  { name: 'aadhaarFile', maxCount: 1 },
+  { name: 'panFile', maxCount: 1 },
+  { name: 'resumeFile', maxCount: 1 },
+  { name: 'qualificationFile', maxCount: 1 },
+  { name: 'experienceFile', maxCount: 1 },
+  { name: 'certificateFile', maxCount: 1 },
+  { name: 'otherFile', maxCount: 1 }
 ]);
 
 app.post('/api/staff', staffUploadFields, restoreTenantContext, (req, res) => {
-  const { 
-    fullName, 
-    name, 
-    position, 
-    designation, 
-    role, 
-    department, 
-    email, 
-    phone, 
-    status,
-    gender,
-    qualification,
-    experience,
-    dateOfJoining,
-    salaryGrade,
-    reportingTo,
-    address,
-    city,
-    state,
-    pincode,
-    emergencyContact,
-    emergencyPhone
-  } = req.body;
+  try {
+    const body = req.body;
 
-  const staffName = fullName || name;
-  const staffRole = position || designation || role;
+    // Build full name from first/middle/last or fallback to fullName/name
+    const derivedFullName = body.fullName || [body.firstName, body.middleName, body.lastName].filter(Boolean).join(' ') || body.name;
+    const staffRole = body.staffCategory || body.position || body.designation || body.role || '';
 
-  if (!staffName || !staffRole || !department || !email || !phone) {
-    return res.status(400).json({ error: 'Missing required staff details.' });
+    // Minimal validation - only require a name
+    if (!derivedFullName) {
+      return res.status(400).json({ error: 'Staff name is required.' });
+    }
+
+    // Process file uploads
+    const files = req.files || {};
+    const getFilePath = (key) => files[key] ? `/uploads/${files[key][0].filename}` : '';
+
+    // Parse qualification & experience arrays
+    let parsedQualifications = body.qualification;
+    if (typeof body.qualification === 'string') {
+      try { parsedQualifications = JSON.parse(body.qualification); } catch { parsedQualifications = []; }
+    }
+    let parsedExperiences = body.experiences;
+    if (typeof body.experiences === 'string') {
+      try { parsedExperiences = JSON.parse(body.experiences); } catch { parsedExperiences = []; }
+    }
+
+    // Generate unique staff ID
+    const staffIdFromForm = body.staffId;
+    let staffId = staffIdFromForm || `STF-${new Date().getFullYear()}-${Math.floor(1000 + Math.random() * 9000)}`;
+
+    const db = readDb();
+    if (!db.staff) db.staff = [];
+
+    // Ensure unique ID
+    while (db.staff.some(s => s.id === staffId)) {
+      staffId = `STF-${new Date().getFullYear()}-${Math.floor(1000 + Math.random() * 9000)}`;
+    }
+
+    const newStaff = {
+      id: staffId,
+      // Basic Info
+      name: derivedFullName,
+      fullName: derivedFullName,
+      firstName: body.firstName || derivedFullName.split(' ')[0] || '',
+      middleName: body.middleName || '',
+      lastName: body.lastName || derivedFullName.split(' ').slice(1).join(' ') || '',
+      gender: body.gender || '',
+      dob: body.dob || '',
+      bloodGroup: body.bloodGroup || '',
+      nationality: body.nationality || 'Indian',
+      maritalStatus: body.maritalStatus || '',
+      aadhaarNumber: body.aadhaarNumber || '',
+      panNumber: body.panNumber || '',
+      // Employment Info
+      joiningDate: body.joiningDate || body.dateOfJoining || '',
+      dateOfJoining: body.joiningDate || body.dateOfJoining || '',
+      staffCategory: staffRole,
+      role: staffRole,
+      designation: body.designation || '',
+      department: body.department || '',
+      employmentType: body.employmentType || '',
+      employeeStatus: body.employeeStatus || body.status || 'Active',
+      status: body.employeeStatus || body.status || 'Active',
+      // Contact
+      mobile: body.mobile || body.phone || '',
+      phone: body.mobile || body.phone || '',
+      alternateMobile: body.alternateMobile || '',
+      email: body.email || '',
+      emergencyContactNumber: body.emergencyContactNumber || body.emergencyPhone || '',
+      emergencyContact: body.emergencyContact || '',
+      emergencyPhone: body.emergencyContactNumber || body.emergencyPhone || '',
+      // Current Address
+      currentAddress: body.currentAddress || body.address || '',
+      address: body.currentAddress || body.address || '',
+      currentCity: body.currentCity || body.city || '',
+      city: body.currentCity || body.city || '',
+      currentState: body.currentState || body.state || '',
+      state: body.currentState || body.state || '',
+      currentCountry: body.currentCountry || 'India',
+      currentPostalCode: body.currentPostalCode || body.pincode || '',
+      pincode: body.currentPostalCode || body.pincode || '',
+      // Permanent Address
+      permanentAddress: body.permanentAddress || '',
+      permanentCity: body.permanentCity || '',
+      permanentState: body.permanentState || '',
+      permanentCountry: body.permanentCountry || 'India',
+      permanentPostalCode: body.permanentPostalCode || '',
+      sameAsPermanent: body.sameAsPermanent === 'true' || body.sameAsPermanent === true,
+      // Qualifications & Experience
+      qualification: parsedQualifications || [],
+      experience: body.experience || '0',
+      experiences: parsedExperiences || [],
+      // Legacy fields
+      salaryGrade: body.salaryGrade || '',
+      reportingTo: body.reportingTo || '',
+      position: body.position || staffRole,
+      // Document uploads
+      photo: getFilePath('photo'),
+      aadhaarFile: getFilePath('aadhaarFile') || getFilePath('aadharFile'),
+      aadharFile: getFilePath('aadhaarFile') || getFilePath('aadharFile'),
+      panFile: getFilePath('panFile'),
+      resumeFile: getFilePath('resumeFile'),
+      qualificationFile: getFilePath('qualificationFile'),
+      experienceFile: getFilePath('experienceFile'),
+      certificateFile: getFilePath('certificateFile'),
+      otherFile: getFilePath('otherFile'),
+      // Meta
+      createdAt: new Date().toISOString(),
+      updatedAt: new Date().toISOString(),
+      password: '',
+      avatarBg: `linear-gradient(135deg, hsl(${Math.random() * 360}, 75%, 60%) 0%, hsl(${Math.random() * 360}, 85%, 50%) 100%)`
+    };
+
+    db.staff.push(newStaff);
+    addActivity(db, 'registration', 'New Staff Recruited', `${derivedFullName} joined as ${staffRole || 'Staff'}`, 'hsl(var(--color-info))', 'rgba(hsl(var(--color-info)), 0.1)');
+    writeDb(db);
+
+    res.status(201).json(newStaff);
+  } catch (error) {
+    console.error('Error registering staff:', error);
+    res.status(500).json({ error: 'Internal server error during staff registration.' });
   }
+});
 
-  const files = req.files || {};
-  const photoPath = files.photo ? `/uploads/${files.photo[0].filename}` : '';
-  const aadharPath = files.aadharFile ? `/uploads/${files.aadharFile[0].filename}` : '';
-  const certificatePath = files.certificateFile ? `/uploads/${files.certificateFile[0].filename}` : '';
+// UPDATE STAFF
+app.put('/api/staff/:id', (req, res) => {
+  try {
+    const db = readDb();
+    if (!db.staff) db.staff = [];
+    const staffIndex = db.staff.findIndex(s => s.id === req.params.id);
 
-  const db = readDb();
-  const newStaff = {
-    id: `STF-${Math.floor(100 + Math.random() * 900)}`,
-    name: staffName,
-    fullName: staffName,
-    role: staffRole,
-    department,
-    email,
-    phone,
-    gender,
-    qualification,
-    experience,
-    dateOfJoining,
-    salaryGrade,
-    reportingTo,
-    address,
-    city,
-    state,
-    pincode,
-    emergencyContact,
-    emergencyPhone,
-    photo: photoPath,
-    aadharFile: aadharPath,
-    certificateFile: certificatePath,
-    status: status || 'Active',
-    avatarBg: `linear-gradient(135deg, hsl(${Math.random() * 360}, 75%, 60%) 0%, hsl(${Math.random() * 360}, 85%, 50%) 100%)`
-  };
+    if (staffIndex === -1) {
+      return res.status(404).json({ error: 'Staff profile not found.' });
+    }
 
-  if (!db.staff) db.staff = [];
-  db.staff.push(newStaff);
-  addActivity(db, 'registration', 'New Staff Recruited', `${staffName} joined as ${staffRole}`, 'hsl(var(--color-info))', 'rgba(hsl(var(--color-info)), 0.1)');
-  writeDb(db);
+    const currentStaff = db.staff[staffIndex];
+    const updateData = req.body;
 
-  res.status(201).json(newStaff);
+    const updatedStaff = {
+      ...currentStaff,
+      ...updateData,
+      name: updateData.fullName || updateData.name || currentStaff.name,
+      fullName: updateData.fullName || updateData.name || currentStaff.fullName,
+      phone: updateData.mobile || updateData.phone || currentStaff.phone,
+      mobile: updateData.mobile || updateData.phone || currentStaff.mobile,
+      role: updateData.staffCategory || updateData.role || currentStaff.role,
+      staffCategory: updateData.staffCategory || updateData.role || currentStaff.staffCategory,
+      updatedAt: new Date().toISOString()
+    };
+
+    db.staff[staffIndex] = updatedStaff;
+    addActivity(db, 'alert', 'Staff Profile Updated', `${updatedStaff.name}'s profile was updated.`, 'hsl(var(--color-info))', 'rgba(hsl(var(--color-info)), 0.1)');
+    writeDb(db);
+
+    res.json(updatedStaff);
+  } catch (error) {
+    console.error('Error updating staff:', error);
+    res.status(500).json({ error: 'Internal server error updating staff.' });
+  }
 });
 
 app.delete('/api/staff/:id', (req, res) => {
@@ -627,7 +733,54 @@ app.delete('/api/staff/:id', (req, res) => {
 // ==========================================
 app.get('/api/timetables', (req, res) => {
   const db = readDb();
-  res.json(db.timetables);
+  if (!db.timetables || !Array.isArray(db.timetables)) {
+    return res.json([]);
+  }
+
+  const weekRows = {};
+  const dayKeyMap = {
+    monday: 'mon', mon: 'mon',
+    tuesday: 'tue', tue: 'tue',
+    wednesday: 'wed', wed: 'wed',
+    thursday: 'thu', thu: 'thu',
+    friday: 'fri', fri: 'fri'
+  };
+
+  for (const t of db.timetables) {
+    if (!t.cohort || !t.time) continue;
+    const key = `${t.cohort}_${t.time}`;
+    if (!weekRows[key]) {
+      weekRows[key] = {
+        cohort: t.cohort,
+        time: t.time,
+        mon: null,
+        tue: null,
+        wed: null,
+        thu: null,
+        fri: null
+      };
+    }
+
+    if (t.day) {
+      const dKey = dayKeyMap[t.day.toLowerCase()];
+      if (dKey) {
+        weekRows[key][dKey] = {
+          subject: t.subject || '',
+          teacher: t.teacher || '',
+          room: t.room || ''
+        };
+      }
+    } else {
+      const days = ['mon', 'tue', 'wed', 'thu', 'fri'];
+      for (const d of days) {
+        if (t[d]) {
+          weekRows[key][d] = t[d];
+        }
+      }
+    }
+  }
+
+  res.json(Object.values(weekRows));
 });
 
 app.post('/api/timetables', (req, res) => {
@@ -638,22 +791,53 @@ app.post('/api/timetables', (req, res) => {
   }
 
   const db = readDb();
-  
-  // Find or create timetable slot
-  const newSlot = {
+  if (!db.timetables || !Array.isArray(db.timetables)) {
+    db.timetables = [];
+  }
+
+  const dayMap = {
+    mon: 'Monday',
+    tue: 'Tuesday',
+    wed: 'Wednesday',
+    thu: 'Thursday',
+    fri: 'Friday'
+  };
+
+  const days = ['mon', 'tue', 'wed', 'thu', 'fri'];
+  for (const d of days) {
+    if (req.body[d]) {
+      const slot = req.body[d];
+      const dayName = dayMap[d];
+      
+      // Remove any existing slot for this cohort, time, and day
+      db.timetables = db.timetables.filter(t => 
+        !(t.cohort === cohort && t.time === time && t.day === dayName)
+      );
+
+      // Add the new slot
+      db.timetables.push({
+        id: `TT-${cohort}-${time}-${d}`.replace(/\s+/g, '-'),
+        cohort,
+        day: dayName,
+        time,
+        subject: slot.subject || 'Free Study',
+        teacher: slot.teacher || 'N/A',
+        room: slot.room || 'Library',
+        session: '2026-2027'
+      });
+    }
+  }
+
+  writeDb(db);
+
+  res.status(201).json({
     time,
     mon: mon || { subject: 'Free Study', teacher: 'N/A', room: 'Library' },
     tue: tue || { subject: 'Free Study', teacher: 'N/A', room: 'Library' },
     wed: wed || { subject: 'Free Study', teacher: 'N/A', room: 'Library' },
     thu: thu || { subject: 'Free Study', teacher: 'N/A', room: 'Library' },
     fri: fri || { subject: 'Free Study', teacher: 'N/A', room: 'Library' }
-  };
-
-  // Find if slot exists, else append
-  db.timetables.push({ cohort, ...newSlot });
-  writeDb(db);
-
-  res.status(201).json(newSlot);
+  });
 });
 
 // ==========================================
@@ -764,7 +948,7 @@ app.get('/api/overview', (req, res) => {
   const db = readDb();
 
   // Defensive array extractions
-  const studentsList = db.students || [];
+  const studentsList = (db.students || []).filter(s => s.status === 'Active');
   const teachersList = db.teachers || [];
   const staffList = db.staff || [];
   const attendance = db.attendance || [];

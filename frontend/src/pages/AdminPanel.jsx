@@ -20,13 +20,15 @@ import TeacherList from './TeacherList';
 import StaffDirectory from './StaffDirectory';
 import AcademicPanel from './AcademicPanel';
 import { 
-  MarkAttendanceView, 
   AttendanceTrackerView,
-  AttendanceHistoryView, 
   StudentReportsView, 
   ClassReportsView, 
   MonthlyCalendarView 
 } from './TeacherPanel';
+import {
+  MarkAttendanceView,
+  AttendanceHistoryView
+} from './AdminAttendanceViews';
 import {
   CollectFeesView,
   FeeStructureView,
@@ -39,11 +41,13 @@ import {
   StaffPaymentStructureView
 } from './AccountantPanel';
 import RegisterStudent from './RegisterStudent';
+import StudentManager from './StudentManager';
 import AddTeacher from './AddTeacher';
 import AddStaff from './AddStaff';
 import ExpensePanel from './ExpensePanel';
 
 export default function AdminPanel({ setActiveView, onLogout, adminView, setAdminView, onBackToMain }) {
+  const [directoryKey, setDirectoryKey] = useState(0);
   // Roster/Filter States for Admin Attendance Panel
   const [selectedDate, setSelectedDate] = useState(new Date().toISOString().split('T')[0]);
   const [selectedClass, setSelectedClass] = useState('IX');
@@ -94,16 +98,15 @@ export default function AdminPanel({ setActiveView, onLogout, adminView, setAdmi
       case 'academic-grade-subjects':
       case 'results-analytics':
       case 'results-marks-entry':
-      case 'results-generation':
       case 'results-report-cards':
       case 'results-history':
         return <AcademicPanel subView={adminView} setAdminView={setAdminView} />;
       case 'students':
-        return <StudentDirectory readOnly={false} onAddClick={() => setAdminView('register-student')} />;
+        return <StudentDirectory key={`students-${directoryKey}`} readOnly={false} onAddClick={() => setAdminView('register-student')} />;
       case 'teachers':
-        return <TeacherList setActiveView={setActiveView} readOnly={false} onAddClick={() => setAdminView('add-teacher')} />;
+        return <TeacherList key={`teachers-${directoryKey}`} setActiveView={setActiveView} readOnly={false} onAddClick={() => setAdminView('add-teacher')} />;
       case 'staff':
-        return <StaffDirectory readOnly={false} onAddClick={() => setAdminView('add-staff')} />;
+        return <StaffDirectory key={directoryKey} readOnly={false} onAddClick={() => setAdminView('add-staff')} />;
 
       case 'collect-fees':
         return <CollectFeesView showToast={showToast} />;
@@ -124,11 +127,13 @@ export default function AdminPanel({ setActiveView, onLogout, adminView, setAdmi
       case 'reports':
         return <ReportsView showToast={showToast} />;
       case 'register-student':
-        return <RegisterStudent setActiveView={(view) => { if (view === 'students') setAdminView('students'); else setActiveView(view); }} />;
+        return <RegisterStudent setActiveView={(view) => { if (view === 'students') { setDirectoryKey(k => k + 1); setAdminView('students'); } else setActiveView(view); }} />;
+      case 'student-manager':
+        return <StudentManager showToast={showToast} />;
       case 'add-teacher':
-        return <AddTeacher setActiveView={(view) => { if (view === 'teachers') setAdminView('teachers'); else setActiveView(view); }} />;
+        return <AddTeacher setActiveView={(view) => { if (view === 'teachers') { setDirectoryKey(k => k + 1); setAdminView('teachers'); } else setActiveView(view); }} />;
       case 'add-staff':
-        return <AddStaff setActiveView={(view) => { if (view === 'staff') setAdminView('staff'); else setActiveView(view); }} />;
+        return <AddStaff setActiveView={(view) => { if (view === 'staff') { setDirectoryKey(k => k + 1); setAdminView('staff'); } else setActiveView(view); }} />;
       case 'attendance-tracker':
         return (
           <AttendanceTrackerView 
@@ -300,6 +305,7 @@ export default function AdminPanel({ setActiveView, onLogout, adminView, setAdmi
                adminView === 'income' ? 'Tracking School Other Revenue Sources' :
                adminView === 'reports' ? 'Viewing Visual Financial Statements' :
                adminView === 'register-student' ? 'Admitting a New Student' :
+               adminView === 'student-manager' ? 'Allocating Grade/Class & Section for Pending Students' :
                adminView === 'add-teacher' ? 'Registering a New Teacher' :
                adminView === 'add-staff' ? 'Registering a New Staff Member' : `Managing ${adminView}`}
             </p>

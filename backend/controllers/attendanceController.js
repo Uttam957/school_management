@@ -11,8 +11,9 @@ export const getAttendanceRoster = (req, res) => {
 
     const db = readDb();
     
-    // Filter students by class & section
+    // Filter students by class & section (only Active students)
     let filteredStudents = db.students.filter(stu => {
+      if (stu.status !== 'Active') return false;
       const matchClass = stu.studentClass === studentClass || stu.grade?.split('-')[0] === studentClass;
       const matchSec = stu.section === section || stu.grade?.split('-')[1] === section;
       return matchClass && matchSec;
@@ -151,11 +152,11 @@ export const getStudentAttendanceReport = (req, res) => {
     const { studentClass, section, search } = req.query;
 
     const db = readDb();
-    let filteredStudents = db.students;
+    let filteredStudents = (db.students || []).filter(stu => stu.status === 'Active');
 
     // Filters
     if (studentClass && studentClass !== 'All') {
-      filteredStudents = filteredStudents.filter(stu => stu.studentClass === studentClass || stu.grade?.startsWith(studentClass));
+      filteredStudents = filteredStudents.filter(stu => stu.studentClass === studentClass || (stu.grade && stu.grade.split('-')[0] === studentClass));
     }
     if (section && section !== 'All') {
       filteredStudents = filteredStudents.filter(stu => stu.section === section || stu.grade?.endsWith(section));
@@ -216,7 +217,7 @@ export const getClassAttendanceReport = (req, res) => {
     const todayStr = date || new Date().toLocaleDateString('en-CA'); // 'en-CA' outputs YYYY-MM-DD in local time
     
     const db = readDb();
-    const students = db.students || [];
+    const students = (db.students || []).filter(stu => stu.status === 'Active');
     const attendanceRecords = db.attendance || [];
 
     // Group students by Class & Section

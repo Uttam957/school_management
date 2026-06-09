@@ -27,7 +27,8 @@ import {
   Send,
   Zap,
   ChevronDown,
-  GripVertical
+  GripVertical,
+  Download
 } from 'lucide-react';
 import ResultManagementPanel from './ResultManagementPanel';
 import EXAM_TYPES from '../utils/examTypes';
@@ -81,6 +82,7 @@ export default function AcademicPanel({ subView, setAdminView }) {
   const [activeMarksheetStudent, setActiveMarksheetStudent] = useState(null);
   const [showConfirmModal, setShowConfirmModal] = useState(false);
   const [cohortToDelete, setCohortToDelete] = useState(null);
+  const [exportFormats, setExportFormats] = useState({});
 
   // Form states
   const [timetableForm, setTimetableForm] = useState({
@@ -94,6 +96,7 @@ export default function AcademicPanel({ subView, setAdminView }) {
   const [wizardForm, setWizardForm] = useState({
     examName: '',
     examType: EXAM_TYPES[0],
+    customExamName: '',
     academicSession: '2026-2027',
     description: '',
     totalMarks: 100,
@@ -109,6 +112,7 @@ export default function AcademicPanel({ subView, setAdminView }) {
     setWizardForm({
       examName: '',
       examType: EXAM_TYPES[0],
+      customExamName: '',
       academicSession: '2026-2027',
       description: '',
       totalMarks: 100,
@@ -128,6 +132,7 @@ export default function AcademicPanel({ subView, setAdminView }) {
   const [examSessionFilter, setExamSessionFilter] = useState('2026-2027');
   const [examStatusFilter, setExamStatusFilter] = useState('All');
   const [examTypeFilter, setExamTypeFilter] = useState('All');
+  const [selectedCustomExamFilter, setSelectedCustomExamFilter] = useState('All');
   const [examGradeFilter, setExamGradeFilter] = useState('All');
   const [examSectionFilter, setExamSectionFilter] = useState('All');
   const [viewScheduleExam, setViewScheduleExam] = useState(null);
@@ -391,6 +396,7 @@ export default function AcademicPanel({ subView, setAdminView }) {
         showToast(msg, 'success');
         setNewSubjectsList(Array(10).fill(''));
         setEditingSubjects([]);
+        setShowSubjectsModal(false);
         fetchAllData();
       } else {
         showToast(data.error || 'Failed to save subjects.', 'error');
@@ -721,11 +727,17 @@ export default function AcademicPanel({ subView, setAdminView }) {
         showToast(`Class ${cohortToDelete} timetable cleared successfully.`, 'success');
         fetchAllData();
       } else {
-        const data = await res.json();
-        showToast(data.error || 'Failed to clear timetable.', 'error');
+        let errMsg = 'Failed to clear timetable.';
+        try {
+          const data = await res.json();
+          errMsg = data.error || errMsg;
+        } catch (parseErr) {
+          errMsg = `Server Error (${res.status}): ${res.statusText || 'Unable to process request'}`;
+        }
+        showToast(errMsg, 'error');
       }
     } catch (e) {
-      showToast('Network error during operation.', 'error');
+      showToast(`Network error: ${e.message || 'Connection failed'}`, 'error');
     } finally {
       setShowConfirmModal(false);
       setCohortToDelete(null);
@@ -984,6 +996,102 @@ export default function AcademicPanel({ subView, setAdminView }) {
     `);
     WinPrint.document.close();
     WinPrint.focus();
+  };
+
+  const handleExportTimetable = (cohort, format, schedules, examName) => {
+    const cohortSchedules = schedules.filter(s => s.cohort === cohort);
+    if (cohortSchedules.length === 0) {
+      showToast('No timetable data to export.', 'error');
+      return;
+    }
+    
+    if (format === 'csv') {
+      const headers = ['Subject', 'Exam Date', 'Start Time', 'End Time', 'Duration', 'Room', 'Invigilator'];
+      const rows = cohortSchedules.map(s => [
+        s.subject || '',
+        s.examDate || '',
+        s.startTime || '',
+        s.endTime || '',
+        s.duration || '',
+        s.roomAllocation || s.room || '',
+        s.invigilator || ''
+      ]);
+      
+      const csvContent = [headers.join(','), ...rows.map(e => e.map(val => `"${val.replace(/"/g, '""')}"`).join(','))].join('\n');
+      const blob = new Blob(["\ufeff" + csvContent], { type: 'text/csv;charset=utf-8;' });
+      const url = URL.createObjectURL(blob);
+      const link = document.createElement("a");
+      link.setAttribute("href", url);
+      link.setAttribute("download", `Exam_Timetable_${examName.replace(/\s+/g, '_')}_${cohort}.csv`);
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+      URL.revokeObjectURL(url);
+      showToast('Timetable exported as CSV.', 'success');
+    } else if (format === 'excel') {
+      const headers = ['Subject', 'Exam Date', 'Start Time', 'End Time', 'Duration', 'Room', 'Invigilator'];
+      const rows = cohortSchedules.map(s => [
+        s.subject || '',
+        s.examDate || '',
+        s.startTime || '',
+        s.endTime || '',
+        s.duration || '',
+        s.roomAllocation || s.room || '',
+        s.invigilator || ''
+      ]);
+      const tsvContent = [headers.join('\t'), ...rows.map(e => e.map(val => val.replace(/\t/g, ' ')).join('\t'))].join('\n');
+      const blob = new Blob(["\ufeff" + tsvContent], { type: 'application/vnd.ms-excel;charset=utf-8;' });
+      const url = URL.createObjectURL(blob);
+      const link = document.createElement("a");
+      link.setAttribute("href", url);
+      link.setAttribute("download", `Exam_Timetable_${examName.replace(/\s+/g, '_')}_${cohort}.xls`);
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+      URL.revokeObjectURL(url);
+      showToast('Timetable exported as Excel.', 'success');
+    } else if (format === 'json') {
+      const jsonStr = JSON.stringify(cohortSchedules, null, 2);
+      const blob = new Blob([jsonStr], { type: 'application/json;charset=utf-8;' });
+      const url = URL.createObjectURL(blob);
+      const link = document.createElement("a");
+      link.setAttribute("href", url);
+      link.setAttribute("download", `Exam_Timetable_${examName.replace(/\s+/g, '_')}_${cohort}.json`);
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+      URL.revokeObjectURL(url);
+      showToast('Timetable exported as JSON.', 'success');
+    } else if (format === 'pdf') {
+      handlePrint(`printable-exam-timetable-${cohort}`);
+    }
+  };
+
+  const handleDeleteCohortTimetable = async (examId, cohort) => {
+    if (!window.confirm(`Are you sure you want to delete the exam timetable for ${cohort}? This action cannot be undone.`)) {
+      return;
+    }
+    
+    try {
+      const res = await fetch(`/api/academics/exam-timetables/exam/${examId}/cohort/${cohort}`, {
+        method: 'DELETE'
+      });
+      if (res.ok) {
+        showToast('Exam timetable deleted successfully.', 'success');
+        fetchAllData();
+      } else {
+        let errMsg = 'Failed to delete exam timetable.';
+        try {
+          const errData = await res.json();
+          errMsg = errData.error || errMsg;
+        } catch (parseErr) {
+          errMsg = `Server Error (${res.status}): ${res.statusText || 'Unable to process request'}`;
+        }
+        showToast(errMsg, 'error');
+      }
+    } catch (err) {
+      showToast(`Network error: ${err.message || 'Connection failed'}`, 'error');
+    }
   };
 
   // Filter students based on active grade/section
@@ -1280,7 +1388,7 @@ export default function AcademicPanel({ subView, setAdminView }) {
                     }}
                     style={{ width: '100%', marginTop: '4px', background: 'var(--bg-glass-active)', border: '1px solid var(--border-glass)' }}
                   >
-                    {['A', 'B', 'C', 'D'].map(s => (
+                    {['A', 'B', 'C', 'D', 'E'].map(s => (
                       <option key={s} value={s}>Section {s}</option>
                     ))}
                   </select>
@@ -1340,7 +1448,7 @@ export default function AcademicPanel({ subView, setAdminView }) {
               style={{ padding: '6px 12px', borderRadius: '8px', fontSize: '0.82rem', background: 'var(--bg-glass-active)', border: '1px solid var(--border-glass)', color: 'var(--text-main)' }}
             >
               <option value="All">All Sections</option>
-              {['A', 'B', 'C', 'D'].map(s => (
+              {['A', 'B', 'C', 'D', 'E'].map(s => (
                 <option key={s} value={s}>Section {s}</option>
               ))}
             </select>
@@ -1697,9 +1805,10 @@ export default function AcademicPanel({ subView, setAdminView }) {
       const matchSearch = examSearch === '' || ex.examName.toLowerCase().includes(examSearch.toLowerCase());
       const matchSession = examSessionFilter === 'All' || ex.academicSession === examSessionFilter;
       const matchType = examTypeFilter === 'All' || ex.examType === examTypeFilter;
+      const matchCustomName = examTypeFilter !== 'Custom Exam' || selectedCustomExamFilter === 'All' || ex.examName === selectedCustomExamFilter;
       const matchGrade = examGradeFilter === 'All' || (ex.gradeSections || []).some(gs => gs.grade === examGradeFilter);
       const matchSection = examSectionFilter === 'All' || (ex.gradeSections || []).some(gs => gs.section === examSectionFilter);
-      return matchSearch && matchSession && matchType && matchGrade && matchSection;
+      return matchSearch && matchSession && matchType && matchCustomName && matchGrade && matchSection;
     });
 
     const handlePublishExam = async (examId) => {
@@ -1763,10 +1872,18 @@ export default function AcademicPanel({ subView, setAdminView }) {
               <option value="All">All Sessions</option>
               {sessions.map(s => <option key={s} value={s}>{s}</option>)}
             </select>
-            <select className="select-custom" value={examTypeFilter} onChange={e => setExamTypeFilter(e.target.value)} style={{ padding: '6px 12px', borderRadius: '8px', fontSize: '0.82rem', background: 'var(--bg-glass-active)', border: '1px solid var(--border-glass)' }}>
+            <select className="select-custom" value={examTypeFilter} onChange={e => { setExamTypeFilter(e.target.value); setSelectedCustomExamFilter('All'); }} style={{ padding: '6px 12px', borderRadius: '8px', fontSize: '0.82rem', background: 'var(--bg-glass-active)', border: '1px solid var(--border-glass)' }}>
               <option value="All">All Types</option>
               {EXAM_TYPES.map(t => <option key={t} value={t}>{t}</option>)}
             </select>
+            {examTypeFilter === 'Custom Exam' && (
+              <select className="select-custom animate-slide-down" value={selectedCustomExamFilter} onChange={e => setSelectedCustomExamFilter(e.target.value)} style={{ padding: '6px 12px', borderRadius: '8px', fontSize: '0.82rem', background: 'var(--bg-glass-active)', border: '1px solid var(--border-glass)' }}>
+                <option value="All">All Custom Exams</option>
+                {[...new Set(exams.filter(ex => ex.examType === 'Custom Exam').map(ex => ex.examName).filter(Boolean))].sort().map(name => (
+                  <option key={name} value={name}>{name}</option>
+                ))}
+              </select>
+            )}
             <select className="select-custom" value={examGradeFilter} onChange={e => setExamGradeFilter(e.target.value)} style={{ padding: '6px 12px', borderRadius: '8px', fontSize: '0.82rem', background: 'var(--bg-glass-active)', border: '1px solid var(--border-glass)' }}>
               <option value="All">All Grades</option>
               {getGradesWithSubjects(subjects).map(g => <option key={g} value={g}>Grade {g}</option>)}
@@ -1797,6 +1914,7 @@ export default function AcademicPanel({ subView, setAdminView }) {
                   id: examObj.id,
                   examName: examObj.examName,
                   examType: examObj.examType,
+                  customExamName: examObj.examType === 'Custom Exam' ? examObj.examName : '',
                   academicSession: examObj.academicSession,
                   description: examObj.description || '',
                   totalMarks: examObj.totalMarks || 100,
@@ -1968,6 +2086,11 @@ export default function AcademicPanel({ subView, setAdminView }) {
       ? matchingExams
       : exams.filter(ex => ex.status !== 'Completed' && (timetableSession === 'All' || ex.academicSession === timetableSession));
 
+    const examsWithSchedules = visibleExams.filter(ex => {
+      const examSchedules = examTimetables.filter(et => et.examId === ex.id);
+      return examSchedules.length > 0;
+    });
+
 
     const examGradeSections = selectedExamObj ? (selectedExamObj.gradeSections || []) : [];
     const earliestStart = examGradeSections.length > 0 ? examGradeSections.map(g => g.startDate).filter(Boolean).sort()[0] : '';
@@ -2053,13 +2176,17 @@ export default function AcademicPanel({ subView, setAdminView }) {
       if (existingCohortSlots.length > 0) {
         initialSlots = existingCohortSlots.map(s => ({
           subject: s.subject,
-          examDate: s.examDate
+          examDate: s.examDate,
+          startTime: s.startTime || '09:00 AM',
+          endTime: s.endTime || '12:00 PM'
         }));
       } else {
         const dates = getConsecutiveExamDates(startStr, gradeSubjects.length);
         initialSlots = gradeSubjects.map((sub, idx) => ({
           subject: sub.subjectName,
-          examDate: dates[idx] || startStr
+          examDate: dates[idx] || startStr,
+          startTime: '09:00 AM',
+          endTime: '12:00 PM'
         }));
       }
       
@@ -2110,6 +2237,44 @@ export default function AcademicPanel({ subView, setAdminView }) {
       const updated = [...manualSlots];
       updated[index].examDate = newDate;
       setManualSlots(updated);
+    };
+
+    const handleStartTimeChange = (index, newTime) => {
+      const updated = [...manualSlots];
+      updated[index].startTime = newTime;
+      setManualSlots(updated);
+    };
+
+    const handleEndTimeChange = (index, newTime) => {
+      const updated = [...manualSlots];
+      updated[index].endTime = newTime;
+      setManualSlots(updated);
+    };
+
+    const convertTo24HourFormat = (time12) => {
+      if (!time12) return '09:00';
+      const match = time12.trim().match(/^(\d+):(\d+)\s*(am|pm)$/i);
+      if (!match) return '09:00';
+      let hrs = parseInt(match[1]);
+      const mins = parseInt(match[2]);
+      const ampm = match[3].toLowerCase();
+      
+      if (ampm === 'pm' && hrs < 12) hrs += 12;
+      if (ampm === 'am' && hrs === 12) hrs = 0;
+      
+      return `${String(hrs).padStart(2, '0')}:${String(mins).padStart(2, '0')}`;
+    };
+
+    const convertTo12HourFormat = (time24) => {
+      if (!time24) return '09:00 AM';
+      const [hrsStr, minsStr] = time24.split(':');
+      let hrs = parseInt(hrsStr);
+      const mins = parseInt(minsStr);
+      if (isNaN(hrs) || isNaN(mins)) return '09:00 AM';
+      const ampm = hrs >= 12 ? 'PM' : 'AM';
+      hrs = hrs % 12;
+      if (hrs === 0) hrs = 12;
+      return `${String(hrs).padStart(2, '0')}:${String(mins).padStart(2, '0')} ${ampm}`;
     };
 
     const handleSaveCustomTimetable = async () => {
@@ -2207,7 +2372,7 @@ export default function AcademicPanel({ subView, setAdminView }) {
                       </div>
                     </div>
 
-                    <div style={{ width: '200px' }}>
+                    <div style={{ width: '180px' }}>
                       <input
                         type="date"
                         className="form-control"
@@ -2215,6 +2380,40 @@ export default function AcademicPanel({ subView, setAdminView }) {
                         onChange={(e) => handleDateChange(index, e.target.value)}
                         style={{
                           width: '100%',
+                          padding: '8px 12px',
+                          borderRadius: '8px',
+                          fontSize: '0.85rem',
+                          background: 'rgba(255,255,255,0.05)',
+                          border: '1px solid var(--border-glass)',
+                          color: 'var(--text-main)'
+                        }}
+                      />
+                    </div>
+
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                      <input
+                        type="time"
+                        className="form-control"
+                        value={convertTo24HourFormat(slot.startTime || '09:00 AM')}
+                        onChange={(e) => handleStartTimeChange(index, convertTo12HourFormat(e.target.value))}
+                        style={{
+                          width: '110px',
+                          padding: '8px 12px',
+                          borderRadius: '8px',
+                          fontSize: '0.85rem',
+                          background: 'rgba(255,255,255,0.05)',
+                          border: '1px solid var(--border-glass)',
+                          color: 'var(--text-main)'
+                        }}
+                      />
+                      <span style={{ color: 'var(--text-muted)', fontSize: '0.85rem' }}>to</span>
+                      <input
+                        type="time"
+                        className="form-control"
+                        value={convertTo24HourFormat(slot.endTime || '12:00 PM')}
+                        onChange={(e) => handleEndTimeChange(index, convertTo12HourFormat(e.target.value))}
+                        style={{
+                          width: '110px',
                           padding: '8px 12px',
                           borderRadius: '8px',
                           fontSize: '0.85rem',
@@ -2329,15 +2528,12 @@ export default function AcademicPanel({ subView, setAdminView }) {
           </div>
         </div>
 
-        {visibleExams.length > 0 ? (
-          visibleExams.map(ex => {
+        {examsWithSchedules.length > 0 ? (
+          examsWithSchedules.map(ex => {
             const examSchedules = examTimetables.filter(et => et.examId === ex.id);
             const examGradeSections = ex.gradeSections || [];
             const earliestStart = examGradeSections.length > 0 ? examGradeSections.map(g => g.startDate).filter(Boolean).sort()[0] : '';
             const examCohorts = [...new Set(examSchedules.map(s => s.cohort).filter(Boolean))].sort();
-
-            const isExplicitlySelected = ex.id === activeExam;
-            if (examSchedules.length === 0 && !isExplicitlySelected) return null;
 
             return (
               <div key={ex.id} className="glass-panel" style={{ padding: '24px', marginBottom: '24px' }}>
@@ -2364,7 +2560,7 @@ export default function AcademicPanel({ subView, setAdminView }) {
                               <h4 style={{ fontSize: '0.95rem', fontWeight: 700, margin: 0, color: 'hsl(var(--color-primary))' }}>
                                 Grade {grade}{section ? ` - Section ${section}` : ''}
                               </h4>
-                              <div style={{ display: 'flex', gap: '8px' }} className="no-print">
+                              <div style={{ display: 'flex', gap: '8px', alignItems: 'center' }} className="no-print">
                                 <button 
                                   className="btn-secondary" 
                                   onClick={() => handleOpenManualScheduler(grade, section, ex.id)} 
@@ -2374,10 +2570,17 @@ export default function AcademicPanel({ subView, setAdminView }) {
                                 </button>
                                 <button 
                                   className="btn-secondary" 
-                                  onClick={() => handlePrint(`printable-exam-timetable-${cohort}`)} 
+                                  onClick={() => handleDeleteCohortTimetable(ex.id, cohort)} 
+                                  style={{ padding: '4px 10px', fontSize: '0.75rem', borderRadius: '6px', display: 'flex', alignItems: 'center', gap: '4px', border: '1px solid var(--border-glass)', borderColor: 'rgb(var(--color-danger-rgb))', color: 'rgb(var(--color-danger-rgb))' }}
+                                >
+                                  <Trash2 size={12} /> Delete
+                                </button>
+                                <button 
+                                  className="btn-secondary" 
+                                  onClick={() => handleExportTimetable(cohort, 'pdf', examSchedules, ex.examName)} 
                                   style={{ padding: '4px 10px', fontSize: '0.75rem', borderRadius: '6px', display: 'flex', alignItems: 'center', gap: '4px', border: '1px solid var(--border-glass)' }}
                                 >
-                                  <Printer size={12} /> Print
+                                  <Download size={12} /> Export PDF
                                 </button>
                               </div>
                             </div>
@@ -2386,6 +2589,7 @@ export default function AcademicPanel({ subView, setAdminView }) {
                                 <tr>
                                   <th style={{ textAlign: 'left', padding: '12px 16px' }}>Subject</th>
                                   <th style={{ textAlign: 'left', padding: '12px 16px' }}>Exam Date</th>
+                                  <th style={{ textAlign: 'left', padding: '12px 16px' }}>Time Slot</th>
                                 </tr>
                               </thead>
                               <tbody>
@@ -2393,6 +2597,9 @@ export default function AcademicPanel({ subView, setAdminView }) {
                                   <tr key={slot.id} style={{ borderBottom: '1px solid var(--border-glass)' }}>
                                     <td style={{ fontWeight: 700, textAlign: 'left', padding: '12px 16px' }}>{slot.subject}</td>
                                     <td style={{ textAlign: 'left', padding: '12px 16px' }}>{formatDate(slot.examDate)}</td>
+                                    <td style={{ textAlign: 'left', padding: '12px 16px' }}>
+                                      {slot.startTime && slot.endTime ? `${slot.startTime} - ${slot.endTime}` : (slot.timeSlot || slot.duration || '-')}
+                                    </td>
                                   </tr>
                                 ))}
                               </tbody>
@@ -2430,9 +2637,10 @@ export default function AcademicPanel({ subView, setAdminView }) {
       const matchSearch = examSearch === '' || ex.examName.toLowerCase().includes(examSearch.toLowerCase());
       const matchSession = examSessionFilter === 'All' || ex.academicSession === examSessionFilter;
       const matchType = examTypeFilter === 'All' || ex.examType === examTypeFilter;
+      const matchCustomName = examTypeFilter !== 'Custom Exam' || selectedCustomExamFilter === 'All' || ex.examName === selectedCustomExamFilter;
       const matchGrade = examGradeFilter === 'All' || (ex.gradeSections || []).some(gs => gs.grade === examGradeFilter);
       const matchSection = examSectionFilter === 'All' || (ex.gradeSections || []).some(gs => gs.section === examSectionFilter);
-      return matchSearch && matchSession && matchType && matchGrade && matchSection;
+      return matchSearch && matchSession && matchType && matchCustomName && matchGrade && matchSection;
     });
 
     const handleViewSchedule = (examId) => {
@@ -2483,10 +2691,18 @@ export default function AcademicPanel({ subView, setAdminView }) {
           </div>
           <div style={{ display: 'flex', gap: '12px', flexWrap: 'wrap', alignItems: 'center' }}>
             <input type="text" className="form-control" placeholder="Search exam name..." value={examSearch} onChange={e => setExamSearch(e.target.value)} style={{ width: '200px', padding: '6px 12px', borderRadius: '8px', fontSize: '0.82rem', background: 'var(--bg-glass-active)', border: '1px solid var(--border-glass)', color: 'var(--text-main)' }} />
-            <select className="select-custom" value={examTypeFilter} onChange={e => setExamTypeFilter(e.target.value)} style={{ padding: '6px 12px', borderRadius: '8px', fontSize: '0.82rem', background: 'var(--bg-glass-active)', border: '1px solid var(--border-glass)' }}>
+            <select className="select-custom" value={examTypeFilter} onChange={e => { setExamTypeFilter(e.target.value); setSelectedCustomExamFilter('All'); }} style={{ padding: '6px 12px', borderRadius: '8px', fontSize: '0.82rem', background: 'var(--bg-glass-active)', border: '1px solid var(--border-glass)' }}>
               <option value="All">All Types</option>
               {EXAM_TYPES.map(t => <option key={t} value={t}>{t}</option>)}
             </select>
+            {examTypeFilter === 'Custom Exam' && (
+              <select className="select-custom animate-slide-down" value={selectedCustomExamFilter} onChange={e => setSelectedCustomExamFilter(e.target.value)} style={{ padding: '6px 12px', borderRadius: '8px', fontSize: '0.82rem', background: 'var(--bg-glass-active)', border: '1px solid var(--border-glass)' }}>
+                <option value="All">All Custom Exams</option>
+                {[...new Set(exams.filter(ex => ex.examType === 'Custom Exam').map(ex => ex.examName).filter(Boolean))].sort().map(name => (
+                  <option key={name} value={name}>{name}</option>
+                ))}
+              </select>
+            )}
             <select className="select-custom" value={examGradeFilter} onChange={e => setExamGradeFilter(e.target.value)} style={{ padding: '6px 12px', borderRadius: '8px', fontSize: '0.82rem', background: 'var(--bg-glass-active)', border: '1px solid var(--border-glass)' }}>
               <option value="All">All Grades</option>
               {getGradesWithSubjects(subjects).map(g => <option key={g} value={g}>Grade {g}</option>)}
@@ -3369,8 +3585,6 @@ export default function AcademicPanel({ subView, setAdminView }) {
         return <ResultManagementPanel activeTab="analytics" setAdminView={setAdminView} />;
       case 'results-marks-entry':
         return <ResultManagementPanel activeTab="marks-entry" setAdminView={setAdminView} />;
-      case 'results-generation':
-        return <ResultManagementPanel activeTab="generation" setAdminView={setAdminView} />;
       case 'results-report-cards':
         return <ResultManagementPanel activeTab="report-cards" setAdminView={setAdminView} />;
       case 'results-history':
@@ -3467,7 +3681,7 @@ export default function AcademicPanel({ subView, setAdminView }) {
                 <div className="form-group">
                   <label>Academic Session *</label>
                   <select className="form-control" value={wizardForm.academicSession} onChange={e => setWizardForm({ ...wizardForm, academicSession: e.target.value })} style={{ marginTop: '4px' }}>
-                    {['2024-2025', '2025-2026', '2026-2027', '2027-2028'].map(s => <option key={s} value={s}>{s}</option>)}
+                    {['2024-2025', '2025-2026', '2026-2027', '2027-2028', '2028-2029'].map(s => <option key={s} value={s}>{s}</option>)}
                   </select>
                 </div>
                 <div className="form-group">
@@ -3476,6 +3690,20 @@ export default function AcademicPanel({ subView, setAdminView }) {
                     {EXAM_TYPES.map(t => <option key={t} value={t}>{t}</option>)}
                   </select>
                 </div>
+                {wizardForm.examType === 'Custom Exam' && (
+                  <div className="form-group animate-slide-down">
+                    <label>Name of Custom Exam *</label>
+                    <input 
+                      type="text" 
+                      className="form-control" 
+                      placeholder="e.g. Monthly Test October" 
+                      value={wizardForm.customExamName || ''} 
+                      onChange={e => setWizardForm({ ...wizardForm, customExamName: e.target.value })} 
+                      style={{ marginTop: '4px' }} 
+                      required
+                    />
+                  </div>
+                )}
                 <div className="form-group">
                   <label>Description</label>
                   <textarea className="form-control" placeholder="Optional description..." value={wizardForm.description} onChange={e => setWizardForm({ ...wizardForm, description: e.target.value })} rows={3} style={{ marginTop: '4px', resize: 'vertical' }} />
@@ -3696,6 +3924,7 @@ export default function AcademicPanel({ subView, setAdminView }) {
                 {examWizardStep < 4 ? (
                   <button className="btn-primary" onClick={() => {
                     if (examWizardStep === 1 && !wizardForm.examType.trim()) { showToast('Please select an exam type.', 'error'); return; }
+                    if (examWizardStep === 1 && wizardForm.examType === 'Custom Exam' && !(wizardForm.customExamName || '').trim()) { showToast('Please enter the custom exam name.', 'error'); return; }
                     if (examWizardStep === 2 && wizardForm.selectedGrades.length === 0) { showToast('Please select at least one grade-section.', 'error'); return; }
                     setExamWizardStep(examWizardStep + 1);
                   }} style={{ padding: '10px 20px', borderRadius: '8px', fontWeight: 700 }}>
@@ -3704,11 +3933,11 @@ export default function AcademicPanel({ subView, setAdminView }) {
                 ) : (
                   <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
                     <span style={{ fontSize: '0.9rem', fontWeight: 600, color: 'hsl(var(--color-primary))', background: 'rgba(99,102,241,0.1)', padding: '6px 12px', borderRadius: '6px' }}>
-                      {wizardForm.examType}
+                      {wizardForm.examType === 'Custom Exam' ? wizardForm.customExamName : wizardForm.examType}
                     </span>
                     <button className="btn-primary" onClick={async () => {
-                      // Auto-generate examName from examType
-                      const examName = wizardForm.examType;
+                      // Auto-generate examName from examType / customExamName
+                      const examName = wizardForm.examType === 'Custom Exam' ? wizardForm.customExamName : wizardForm.examType;
                       // Validate: all start and end dates required
                       const missingDates = wizardForm.selectedGrades.filter(gs => {
                         const key = `${gs.grade}-${gs.section}`;
@@ -3748,7 +3977,7 @@ export default function AcademicPanel({ subView, setAdminView }) {
                         method: method,
                         headers: { 'Content-Type': 'application/json' },
                         body: JSON.stringify({
-                          examName: wizardForm.examType,
+                          examName: examName,
                           examType: wizardForm.examType,
                           academicSession: wizardForm.academicSession,
                           description: wizardForm.description,
@@ -3825,6 +4054,7 @@ export default function AcademicPanel({ subView, setAdminView }) {
                         <tr>
                           <th style={{ textAlign: 'left', padding: '10px 0', borderBottom: '2px solid var(--border-glass)', color: 'var(--text-muted)', fontWeight: 700 }}>Subject</th>
                           <th style={{ textAlign: 'center', padding: '10px 0', borderBottom: '2px solid var(--border-glass)', color: 'var(--text-muted)', fontWeight: 700 }}>Marks</th>
+                          <th style={{ textAlign: 'center', padding: '10px 0', borderBottom: '2px solid var(--border-glass)', color: 'var(--text-muted)', fontWeight: 700 }}>Time Slot</th>
                           <th style={{ textAlign: 'right', padding: '10px 0', borderBottom: '2px solid var(--border-glass)', color: 'var(--text-muted)', fontWeight: 700 }}>Date</th>
                         </tr>
                       </thead>
@@ -3838,6 +4068,9 @@ export default function AcademicPanel({ subView, setAdminView }) {
                             <tr key={s.id}>
                               <td style={{ fontWeight: 600, padding: '12px 0', borderBottom: '1px solid var(--border-glass)' }}>{s.subject}</td>
                               <td style={{ textAlign: 'center', padding: '12px 0', borderBottom: '1px solid var(--border-glass)', fontWeight: 600, color: 'hsl(var(--color-primary))' }}>{subMarks}</td>
+                              <td style={{ textAlign: 'center', padding: '12px 0', borderBottom: '1px solid var(--border-glass)', color: 'var(--text-main)' }}>
+                                {s.startTime && s.endTime ? `${s.startTime} - ${s.endTime}` : (s.timeSlot || s.duration || '-')}
+                              </td>
                               <td style={{ textAlign: 'right', padding: '12px 0', borderBottom: '1px solid var(--border-glass)' }}>{formatDate(s.examDate)}</td>
                             </tr>
                           );
@@ -4271,7 +4504,7 @@ export default function AcademicPanel({ subView, setAdminView }) {
                           const key = `${day}_${slot}`;
                           const cell = teacherBulkGrid[key] || { cohort: '', subject: '' };
                           const grades = getGradesWithSubjects(subjects);
-                          const sections = ['A', 'B', 'C', 'D'];
+                          const sections = ['A', 'B', 'C', 'D', 'E'];
                           const allCohortsSet = new Set();
                           grades.forEach(g => {
                             sections.forEach(sec => {

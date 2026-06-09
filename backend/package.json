@@ -10,7 +10,9 @@
     "predev": "npx kill-port 5000",
     "dev": "nodemon server.js",
     "seed": "node seed.js",
-    "seed:sql": "node seedSql.js"
+    "seed:sql": "node seedSql.js",
+    "seed:20": "node seed20.js",
+    "test-mysql": "node test_mysql.js"
   },
   "dependencies": {
     "cors": "^2.8.6",

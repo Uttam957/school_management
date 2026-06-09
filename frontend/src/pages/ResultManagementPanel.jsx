@@ -74,13 +74,19 @@ export default function ResultManagementPanel({ activeTab: propActiveTab = 'anal
   const [formMarks, setFormMarks] = useState({}); // subject -> obtainedMarks
   const [formRemarks, setFormRemarks] = useState({}); // subject -> remarks
 
-  // Sub-Tab: Result Generation Form State
-  const [genExam, setGenExam] = useState('');
-  const [genCohort, setGenCohort] = useState('');
 
   // Sub-Tab: Report Card Preview State
   const [reportStudentId, setReportStudentId] = useState('');
   const [reportExamId, setReportExamId] = useState('');
+  const [reportClass, setReportClass] = useState('');
+  const [reportSection, setReportSection] = useState('A');
+
+  const reportFilteredStudents = useMemo(() => {
+    if (!reportClass) return [];
+    return students.filter(
+      s => s.studentClass === reportClass && (!reportSection || s.section === reportSection)
+    );
+  }, [students, reportClass, reportSection]);
 
   // Sub-Tab: Academic Records / Search State
   const [historySearch, setHistorySearch] = useState('');
@@ -445,103 +451,6 @@ export default function ResultManagementPanel({ activeTab: propActiveTab = 'anal
     showToast(`Successfully parsed and loaded ${importCount} students' marks! Review scores below before saving.`, 'success');
   };
 
-  // Trigger Rank & Averages generation in Backend
-  const handleGenerateResults = async () => {
-    if (!genExam || !genCohort) {
-      showToast('Please select Exam and Grade to calculate.', 'error');
-      return;
-    }
-
-    setLoading(true);
-    try {
-      const res = await fetch('/api/academics/results/recalculate', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          examId: genExam,
-          cohort: genCohort
-        })
-      });
-
-      if (res.ok) {
-        showToast('Academic ranks and cumulative statistics calculated successfully!', 'success');
-        await fetchAllData();
-      } else {
-        const error = await res.json();
-        showToast(error.error || 'Failed to generate results.', 'error');
-      }
-    } catch (e) {
-      showToast('Network error while processing generation.', 'error');
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  // Lock/Unlock results
-  const handleLockResults = async (locked) => {
-    if (!genExam || !genCohort) {
-      showToast('Please select Exam and Grade first.', 'error');
-      return;
-    }
-
-    setLoading(true);
-    try {
-      const res = await fetch('/api/academics/results/lock', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          examId: genExam,
-          cohort: genCohort,
-          locked
-        })
-      });
-
-      if (res.ok) {
-        showToast(`Results successfully ${locked ? 'locked' : 'unlocked'}!`, 'success');
-        await fetchAllData();
-      } else {
-        const error = await res.json();
-        showToast(error.error || 'Failed to toggle lock.', 'error');
-      }
-    } catch (e) {
-      showToast('Network error.', 'error');
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  // Publish / Unpublish results
-  const handlePublishResults = async (published) => {
-    if (!genExam || !genCohort) {
-      showToast('Please select Exam and Grade first.', 'error');
-      return;
-    }
-
-    setLoading(true);
-    try {
-      const res = await fetch('/api/academics/results/publish', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          examId: genExam,
-          cohort: genCohort,
-          published
-        })
-      });
-
-      if (res.ok) {
-        showToast(`Results successfully ${published ? 'published to student/parent portals' : 'unpublished'}!`, 'success');
-        await fetchAllData();
-      } else {
-        const error = await res.json();
-        showToast(error.error || 'Failed to publish results.', 'error');
-      }
-    } catch (e) {
-      showToast('Network error.', 'error');
-    } finally {
-      setLoading(false);
-    }
-  };
 
   // Print report card helper
   const handlePrint = (divId) => {
@@ -668,7 +577,7 @@ export default function ResultManagementPanel({ activeTab: propActiveTab = 'anal
       const totalObtained = studentExamResults.reduce((sum, sr) => sum + (sr.obtainedMarks || 0), 0);
       const totalMax = studentExamResults.reduce((sum, sr) => sum + (sr.totalMarks || 0), 0);
       const percentage = totalMax > 0 ? Math.round((totalObtained / totalMax) * 100) : 0;
-      const gpa = percentage >= 90 ? 4.0 : percentage >= 80 ? 3.5 : percentage >= 70 ? 3.0 : percentage >= 60 ? 2.5 : percentage >= 50 ? 2.0 : percentage >= 40 ? 1.0 : 0;
+
       const grade = percentage >= 90 ? 'A+' : percentage >= 80 ? 'A' : percentage >= 70 ? 'B+' : percentage >= 60 ? 'B' : percentage >= 50 ? 'C' : percentage >= 40 ? 'D' : 'F';
       const passStatus = percentage >= 40 ? 'Pass' : 'Fail';
       
@@ -680,7 +589,7 @@ export default function ResultManagementPanel({ activeTab: propActiveTab = 'anal
         totalObtained,
         totalMax,
         percentage,
-        gpa,
+
         grade,
         passStatus,
         roll: student?.rollNumber || student?.roll || 'N/A',
@@ -731,7 +640,7 @@ export default function ResultManagementPanel({ activeTab: propActiveTab = 'anal
         examName: entry.examName,
         percentage: entry.percentage,
         grade: entry.grade,
-        gpa: entry.gpa,
+
         passStatus: entry.passStatus,
         examObj: entry.examObj
       });
@@ -757,26 +666,6 @@ export default function ResultManagementPanel({ activeTab: propActiveTab = 'anal
           <span>{notification.message}</span>
         </div>
       )}
-
-      {/* Role-Based Panel Header */}
-      <div className="glass-panel" style={{ padding: '24px', background: 'linear-gradient(135deg, rgba(99, 102, 241, 0.08) 0%, rgba(165, 55, 253, 0.05) 100%)', display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '16px', borderRadius: '16px' }}>
-        <div>
-          <h2 style={{ fontSize: '1.4rem', fontWeight: 800, margin: 0, display: 'flex', alignItems: 'center', gap: '8px' }}>
-            <Award size={24} style={{ color: 'hsl(var(--color-primary))' }} /> Result Management Platform
-          </h2>
-          <p style={{ fontSize: '0.85rem', color: 'var(--text-muted)', margin: '4px 0 0 0' }}>
-            Enterprise module for marks entering, grade policy evaluation, report card creation, and publishing analytics.
-          </p>
-        </div>
-        <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
-          <span style={{ fontSize: '0.8rem', padding: '6px 12px', background: 'rgba(99, 102, 241, 0.12)', border: '1px solid rgba(99, 102, 241, 0.2)', borderRadius: '99px', fontWeight: 700 }}>
-            Role: {userRole}
-          </span>
-          <button onClick={fetchAllData} className="btn-secondary" style={{ padding: '8px 12px', display: 'flex', alignItems: 'center', gap: '6px' }}>
-            <RefreshCw size={14} className={loading ? 'animate-spin' : ''} /> Sync Records
-          </button>
-        </div>
-      </div>
 
 
 
@@ -828,9 +717,9 @@ export default function ResultManagementPanel({ activeTab: propActiveTab = 'anal
                     <BarChart3 size={24} />
                   </div>
                   <div>
-                    <span style={{ fontSize: '0.75rem', color: 'var(--text-muted)', display: 'block' }}>Overall GPA Average</span>
+                    <span style={{ fontSize: '0.75rem', color: 'var(--text-muted)', display: 'block' }}>Overall Percentage Average</span>
                     <strong style={{ fontSize: '1.5rem', fontWeight: 800 }}>
-                      {overallResults.length > 0 ? (overallResults.reduce((sum, o) => sum + o.gpa, 0) / overallResults.length).toFixed(2) : '0.00'}
+                      {overallResults.length > 0 ? (overallResults.reduce((sum, o) => sum + o.percentage, 0) / overallResults.length).toFixed(1) : '0.0'}%
                     </strong>
                   </div>
                 </div>
@@ -883,7 +772,7 @@ export default function ResultManagementPanel({ activeTab: propActiveTab = 'anal
                           </div>
                           <div style={{ textAlign: 'right' }}>
                             <strong style={{ color: 'hsl(var(--color-primary))', fontSize: '0.9rem', display: 'block' }}>{p.percentage}%</strong>
-                            <span style={{ fontSize: '0.7rem', color: 'var(--text-muted)' }}>GPA: {p.gpa.toFixed(2)}</span>
+                            <span style={{ fontSize: '0.7rem', color: 'var(--text-muted)' }}>Grade: {p.grade}</span>
                           </div>
                         </div>
                       ))}
@@ -907,8 +796,11 @@ export default function ResultManagementPanel({ activeTab: propActiveTab = 'anal
                   <div className="form-group" style={{ flex: 1, minWidth: '120px' }}>
                     <label style={{ fontSize: '0.75rem', fontWeight: 600, display: 'block', marginBottom: '4px' }}>Session</label>
                     <select className="select-custom" style={{ width: '100%' }} value={selectedSession} onChange={e => setSelectedSession(e.target.value)}>
+                      <option value="2024-2025">2024-2025</option>
+                      <option value="2025-2026">2025-2026</option>
                       <option value="2026-2027">2026-2027</option>
                       <option value="2027-2028">2027-2028</option>
+                      <option value="2028-2029">2028-2029</option>
                     </select>
                   </div>
  
@@ -925,7 +817,7 @@ export default function ResultManagementPanel({ activeTab: propActiveTab = 'anal
                   <div className="form-group" style={{ flex: 1, minWidth: '150px' }}>
                     <label style={{ fontSize: '0.75rem', fontWeight: 600, display: 'block', marginBottom: '4px' }}>Section</label>
                     <select className="select-custom" style={{ width: '100%' }} value={selectedSection} onChange={e => { setSelectedSection(e.target.value); setStudentExamSelections({}); setStudentExamCategories({}); setRosterSearch(''); }}>
-                      {['A', 'B', 'C', 'D'].map(s => (
+                      {['A', 'B', 'C', 'D', 'E'].map(s => (
                         <option key={s} value={s}>{s}</option>
                       ))}
                     </select>
@@ -1108,134 +1000,6 @@ export default function ResultManagementPanel({ activeTab: propActiveTab = 'anal
             </div>
           )}
 
-          {/* TAB 3: RESULT GENERATION */}
-          {activeTab === 'generation' && (
-            <div style={{ display: 'flex', flexDirection: 'column', gap: '24px' }}>
-              <div className="glass-panel" style={{ padding: '20px', display: 'flex', flexWrap: 'wrap', gap: '16px', alignItems: 'center' }}>
-                <div style={{ display: 'flex', flex: 1, gap: '12px' }}>
-                  <div className="form-group" style={{ flex: 1 }}>
-                    <label style={{ fontSize: '0.75rem', fontWeight: 600, display: 'block', marginBottom: '4px' }}>Select Exam Set</label>
-                    <select className="select-custom" style={{ width: '100%' }} value={genExam} onChange={e => setGenExam(e.target.value)}>
-                      <option value="">Select Exam</option>
-                      {exams.map(ex => (
-                        <option key={ex.id} value={ex.id}>{ex.examName}</option>
-                      ))}
-                    </select>
-                  </div>
-                  <div className="form-group" style={{ flex: 1 }}>
-                    <label style={{ fontSize: '0.75rem', fontWeight: 600, display: 'block', marginBottom: '4px' }}>Grade</label>
-                    <select className="select-custom" style={{ width: '100%' }} value={genCohort} onChange={e => setGenCohort(e.target.value)}>
-                      <option value="">Select Grade</option>
-                      {['I', 'II', 'III', 'IV', 'V', 'VI', 'VII', 'VIII', 'IX', 'X'].map((grade, idx) => (
-                        <option key={idx} value={grade}>Grade {grade}</option>
-                      ))}
-                    </select>
-                  </div>
-                </div>
-                <div style={{ display: 'flex', gap: '8px', paddingTop: '16px' }}>
-                  <button onClick={handleGenerateResults} disabled={!genExam || !genCohort} className="btn-primary" style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
-                    <RefreshCw size={16} /> Calculate Ranks & GPA
-                  </button>
-                  <button onClick={() => handleLockResults(true)} disabled={!genExam || !genCohort} className="btn-secondary" style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
-                    <Lock size={16} /> Lock Scores
-                  </button>
-                  <button onClick={() => handleLockResults(false)} disabled={!genExam || !genCohort} className="btn-secondary" style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
-                    <Unlock size={16} /> Unlock
-                  </button>
-                  <button onClick={() => handlePublishResults(true)} disabled={!genExam || !genCohort} className="btn-secondary" style={{ display: 'flex', alignItems: 'center', gap: '6px', color: '#10b981' }}>
-                    <Share2 size={16} /> Publish
-                  </button>
-                  <button onClick={() => handlePublishResults(false)} disabled={!genExam || !genCohort} className="btn-secondary" style={{ display: 'flex', alignItems: 'center', gap: '6px', color: '#ef4444' }}>
-                    <Share2 size={16} /> Unpublish
-                  </button>
-                </div>
-              </div>
-
-              {genExam && genCohort ? (
-                <div className="glass-panel" style={{ padding: '24px' }}>
-                  <h3 style={{ fontSize: '1rem', fontWeight: 700, marginBottom: '16px' }}>
-                    Calculated Overall Ranks & Results List
-                  </h3>
-                  {overallResults.filter(o => o.examId === genExam && o.cohort === genCohort).length > 0 ? (
-                    <div style={{ overflowX: 'auto' }}>
-                      <table className="table-custom" style={{ width: '100%' }}>
-                        <thead>
-                          <tr>
-                            <th>Rank</th>
-                            <th>Roll</th>
-                            <th>Student Name</th>
-                            <th>Grade</th>
-                            <th>Section</th>
-                            <th>Obtained Marks</th>
-                            <th>Pass %</th>
-                            <th>Grade Letter</th>
-                            <th>Calculated GPA</th>
-                            <th>Pass/Fail Status</th>
-                            <th>Lock Status</th>
-                            <th>Publish Status</th>
-                          </tr>
-                        </thead>
-                        <tbody>
-                          {overallResults
-                            .filter(o => o.examId === genExam && o.cohort === genCohort)
-                            .sort((a, b) => a.rank - b.rank)
-                            .map(o => {
-                              const s = students.find(student => student.id === o.studentId);
-                              return (
-                                <tr key={o.id}>
-                                  <td style={{ fontWeight: 800 }}>Rank {o.rank}</td>
-                                  <td>{s?.rollNumber || s?.roll || '-'}</td>
-                                  <td style={{ fontWeight: 700 }}>{s?.name || 'Unknown Student'}</td>
-                                  <td>Grade {s?.studentClass || '-'}</td>
-                                  <td>Section {s?.section || '-'}</td>
-                                  <td>{o.totalObtained} / {o.totalMax}</td>
-                                  <td>{o.percentage}%</td>
-                                  <td>
-                                    <span style={{
-                                      padding: '3px 8px', borderRadius: '10px', fontSize: '0.75rem', fontWeight: 700,
-                                      background: o.grade === 'F' ? 'rgba(239, 68, 68, 0.08)' : 'rgba(16, 185, 129, 0.08)',
-                                      color: o.grade === 'F' ? '#ef4444' : '#10b981'
-                                    }}>{o.grade}</span>
-                                  </td>
-                                  <td>{o.gpa.toFixed(2)}</td>
-                                  <td>
-                                    <span style={{ color: o.passStatus === 'Pass' ? '#10b981' : '#ef4444', fontWeight: 700 }}>
-                                      {o.passStatus}
-                                    </span>
-                                  </td>
-                                  <td>
-                                    {o.locked ? (
-                                      <span style={{ color: '#ef4444', fontSize: '0.75rem', display: 'flex', alignItems: 'center', gap: '3px' }}><Lock size={12} /> Locked</span>
-                                    ) : (
-                                      <span style={{ color: '#10b981', fontSize: '0.75rem', display: 'flex', alignItems: 'center', gap: '3px' }}><Unlock size={12} /> Open</span>
-                                    )}
-                                  </td>
-                                  <td>
-                                    {o.published ? (
-                                      <span style={{ color: '#10b981', fontSize: '0.75rem', fontWeight: 700 }}>Published</span>
-                                    ) : (
-                                      <span style={{ color: 'var(--text-muted)', fontSize: '0.75rem', fontStyle: 'italic' }}>Hidden</span>
-                                    )}
-                                  </td>
-                                </tr>
-                              );
-                            })}
-                        </tbody>
-                      </table>
-                    </div>
-                  ) : (
-                    <div style={{ padding: '40px', textAlign: 'center', color: 'var(--text-muted)' }}>
-                      No generated results found for this grade. Click "Calculate Ranks & GPA" above to generate.
-                    </div>
-                  )}
-                </div>
-              ) : (
-                <div className="glass-panel" style={{ padding: '80px', textAlign: 'center', color: 'var(--text-muted)' }}>
-                  Please select an Exam and Grade to verify or lock calculated results.
-                </div>
-              )}
-            </div>
-          )}
 
           {/* TAB 4: REPORT CARDS */}
           {activeTab === 'report-cards' && (
@@ -1250,12 +1014,29 @@ export default function ResultManagementPanel({ activeTab: propActiveTab = 'anal
                     ))}
                   </select>
                 </div>
+                <div className="form-group" style={{ flex: 1, minWidth: '130px' }}>
+                  <label style={{ fontSize: '0.75rem', fontWeight: 600, display: 'block', marginBottom: '4px' }}>Grade</label>
+                  <select className="select-custom" style={{ width: '100%' }} value={reportClass} onChange={e => { setReportClass(e.target.value); setReportStudentId(''); }}>
+                    <option value="">Select Grade</option>
+                    {['I', 'II', 'III', 'IV', 'V', 'VI', 'VII', 'VIII', 'IX', 'X'].map(g => (
+                      <option key={g} value={g}>Grade {g}</option>
+                    ))}
+                  </select>
+                </div>
+                <div className="form-group" style={{ flex: 1, minWidth: '100px' }}>
+                  <label style={{ fontSize: '0.75rem', fontWeight: 600, display: 'block', marginBottom: '4px' }}>Section</label>
+                  <select className="select-custom" style={{ width: '100%' }} value={reportSection} onChange={e => { setReportSection(e.target.value); setReportStudentId(''); }}>
+                    {['A', 'B', 'C', 'D', 'E'].map(sec => (
+                      <option key={sec} value={sec}>{sec}</option>
+                    ))}
+                  </select>
+                </div>
                 <div className="form-group" style={{ flex: 2, minWidth: '200px' }}>
                   <label style={{ fontSize: '0.75rem', fontWeight: 600, display: 'block', marginBottom: '4px' }}>Select Student</label>
-                  <select className="select-custom" style={{ width: '100%' }} value={reportStudentId} onChange={e => setReportStudentId(e.target.value)}>
+                  <select className="select-custom" style={{ width: '100%' }} value={reportStudentId} onChange={e => setReportStudentId(e.target.value)} disabled={!reportClass}>
                     <option value="">Select Student</option>
-                    {students.map(s => (
-                      <option key={s.id} value={s.id}>Roll {s.rollNumber || s.roll} - {s.name} (Class {s.studentClass}-{s.section})</option>
+                    {reportFilteredStudents.map(s => (
+                      <option key={s.id} value={s.id}>Roll {s.rollNumber || s.roll} - {s.name}</option>
                     ))}
                   </select>
                 </div>
@@ -1355,12 +1136,7 @@ export default function ResultManagementPanel({ activeTab: propActiveTab = 'anal
                           {activeReportCardData.overall?.percentage || '0'}%
                         </strong>
                       </div>
-                      <div>
-                        <span style={{ fontSize: '0.75rem', color: '#64748b', display: 'block' }}>GPA SCORING</span>
-                        <strong style={{ fontSize: '1.2rem', color: '#0284c7' }}>
-                          {activeReportCardData.overall?.gpa.toFixed(2) || '0.00'}
-                        </strong>
-                      </div>
+
                       <div>
                         <span style={{ fontSize: '0.75rem', color: '#64748b', display: 'block' }}>CLASS RANKING</span>
                         <strong style={{ fontSize: '1.2rem', color: '#16a34a' }}>
@@ -1428,7 +1204,7 @@ export default function ResultManagementPanel({ activeTab: propActiveTab = 'anal
                     onChange={e => setHistorySectionFilter(e.target.value)}
                   >
                     <option value="">All Sections</option>
-                    {['A', 'B', 'C', 'D'].map(sec => (
+                    {['A', 'B', 'C', 'D', 'E'].map(sec => (
                       <option key={sec} value={sec}>Section {sec}</option>
                     ))}
                   </select>
@@ -1459,7 +1235,7 @@ export default function ResultManagementPanel({ activeTab: propActiveTab = 'anal
                           {student.studentName}
                         </strong>
                         <span style={{ fontSize: '0.78rem', color: 'var(--text-muted)' }}>
-                          Roll {student.roll} · Grade {student.studentClass}-{student.section}
+                          Roll No {student.roll} · Grade {student.studentClass}-{student.section}
                         </span>
                       </div>
 
@@ -1542,7 +1318,7 @@ export default function ResultManagementPanel({ activeTab: propActiveTab = 'anal
                   {historySearch || historyClassFilter || historySectionFilter ? (
                     <span>No submitted result records found matching search filters.</span>
                   ) : (
-                    <span>No submitted result records on file. Ranks & GPA must be calculated first.</span>
+                    <span>No submitted result records on file. Ranks must be calculated first.</span>
                   )}
                 </div>
               )}

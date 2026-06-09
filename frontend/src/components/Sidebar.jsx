@@ -255,6 +255,14 @@ export default function Sidebar({
               )}
             </div>
 
+            <button
+              onClick={() => { setAdminView('student-manager'); setMobileOpen(false); }}
+              className={`nav-item ${adminView === 'student-manager' ? 'active' : ''}`}
+            >
+              <UserPlus2 size={20} className="flex-shrink-0" />
+              <span className="nav-label">Student Manager</span>
+            </button>
+
             {/* Attendance Manager Folder */}
             <div style={{ display: 'flex', flexDirection: 'column', gap: '2px' }}>
               <button
@@ -452,14 +460,7 @@ export default function Sidebar({
                     <FileSpreadsheet size={18} className="flex-shrink-0" />
                     <span className="nav-label">Marks Entry</span>
                   </button>
-                  <button
-                    onClick={() => { setAdminView('results-generation'); setMobileOpen(false); }}
-                    className={`nav-item ${adminView === 'results-generation' ? 'active' : ''}`}
-                    style={{ padding: '10px 12px', fontSize: '0.88rem', position: 'relative' }}
-                  >
-                    <RefreshCw size={18} className="flex-shrink-0" />
-                    <span className="nav-label">Result Generation</span>
-                  </button>
+
                   <button
                     onClick={() => { setAdminView('results-report-cards'); setMobileOpen(false); }}
                     className={`nav-item ${adminView === 'results-report-cards' ? 'active' : ''}`}
