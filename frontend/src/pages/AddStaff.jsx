@@ -23,25 +23,63 @@ import {
 // ============================================================
 // STAFF CATEGORIES & OPTION LISTS
 // ============================================================
-const STAFF_CATEGORIES = [
-  'Accountant', 'Receptionist', 'Librarian', 'Lab Assistant', 'Transport Manager',
-  'Driver', 'Nurse', 'Security Guard', 'IT Support', 'Maintenance Staff',
-  'Housekeeping Staff', 'Office Assistant', 'Peon', 'Counselor', 'Other'
-];
+const STAFF_CATEGORY_MAPPING = {
+  'Administration': {
+    department: 'Administration',
+    designations: ['Administrative Officer', 'Administrative Assistant', 'Office Assistant', 'Data Entry Operator', 'Record Keeper', 'Clerk', 'Front Desk Executive']
+  },
+  'Accounts & Finance': {
+    department: 'Accounts & Finance',
+    designations: ['Accountant', 'Accounts Manager', 'Cashier', 'Finance Officer', 'Fee Collection Officer']
+  },
+  'IT Department': {
+    department: 'Information Technology',
+    designations: ['IT Administrator', 'ERP Administrator', 'System Administrator', 'Network Administrator', 'Computer Operator', 'Technical Support Executive']
+  },
+  'Transport': {
+    department: 'Transport',
+    designations: ['Transport Manager', 'Transport Coordinator', 'Driver', 'Assistant Driver', 'Bus Attendant', 'Vehicle Supervisor']
+  },
+  'Hostel': {
+    department: 'Hostel',
+    designations: ['Hostel Warden', 'Assistant Warden', 'Hostel Supervisor', 'Hostel Caretaker']
+  },
+  'Security': {
+    department: 'Security',
+    designations: ['Security Supervisor', 'Security Guard', 'Gate Keeper']
+  },
+  'Maintenance': {
+    department: 'Maintenance',
+    designations: ['Maintenance Manager', 'Maintenance Staff', 'Electrician', 'Plumber', 'Carpenter', 'Technician']
+  },
+  'Housekeeping': {
+    department: 'Housekeeping',
+    designations: ['Housekeeping Supervisor', 'Housekeeping Staff', 'Cleaner', 'Janitor', 'Sweeper']
+  },
+  'Health & Medical': {
+    department: 'Medical Services',
+    designations: ['School Nurse', 'Medical Officer', 'Health Assistant', 'First Aid Assistant']
+  },
+  'Store & Inventory': {
+    department: 'Store & Inventory',
+    designations: ['Store Keeper', 'Inventory Manager', 'Stock Assistant']
+  },
+  'Campus Support': {
+    department: 'Campus Operations',
+    designations: ['Gardener', 'Groundskeeper', 'Attendant', 'Peon', 'Office Boy', 'Messenger']
+  }
+};
+
+const STAFF_CATEGORIES = Object.keys(STAFF_CATEGORY_MAPPING);
 
 const DEPARTMENTS = [
-  'Administration', 'Accounts & Finance', 'Library', 'IT & Technology',
-  'Transport', 'Security', 'Housekeeping', 'Maintenance', 'Health & Wellness',
-  'Front Office', 'Laboratory', 'Counseling', 'Store & Inventory', 'Other'
-];
-
-const DESIGNATIONS = [
-  'Senior Staff', 'Junior Staff', 'Head of Department', 'Supervisor',
-  'Assistant', 'Coordinator', 'Manager', 'Executive', 'Attendant', 'Helper', 'Other'
+  'Administration', 'Accounts & Finance', 'Information Technology', 'Transport',
+  'Hostel', 'Security', 'Maintenance', 'Housekeeping', 'Medical Services',
+  'Store & Inventory', 'Campus Operations'
 ];
 
 const EMPLOYMENT_TYPES = ['Full-Time', 'Part-Time', 'Contract', 'Temporary'];
-const EMPLOYEE_STATUSES = ['Active', 'Inactive', 'On Leave'];
+const EMPLOYEE_STATUSES = ['Active', 'Inactive'];
 const BLOOD_GROUPS = ['A+', 'A-', 'B+', 'B-', 'AB+', 'AB-', 'O+', 'O-'];
 
 // ============================================================
@@ -139,6 +177,8 @@ export default function AddStaff({ setActiveView }) {
   const [loading, setLoading] = useState(false);
   const [successToast, setSuccessToast] = useState(false);
   const [staffId, setStaffId] = useState('');
+  const [validationErrors, setValidationErrors] = useState({});
+  const isSubmitting = React.useRef(false);
 
   // Generate Staff ID on mount
   useEffect(() => {
@@ -201,7 +241,46 @@ export default function AddStaff({ setActiveView }) {
       });
     } else {
       setFormData(prev => ({ ...prev, [name]: value }));
+      if (validationErrors[name]) {
+        setValidationErrors(prev => ({ ...prev, [name]: '' }));
+      }
     }
+  };
+
+  const handleCategoryChange = (e) => {
+    const { name, value } = e.target;
+    setFormData(prev => {
+      const updated = {
+        ...prev,
+        [name]: value,
+        designation: '', // Clear previous designation on category change
+      };
+      
+      // Auto-select department according to the chosen category
+      if (STAFF_CATEGORY_MAPPING[value]) {
+        updated.department = STAFF_CATEGORY_MAPPING[value].department;
+      }
+      return updated;
+    });
+    
+    // Clear validation errors for these fields
+    setValidationErrors(prev => ({
+      ...prev,
+      staffCategory: '',
+      designation: '',
+      department: ''
+    }));
+  };
+
+  const validateStep = (step) => {
+    const errors = {};
+    if (step === 2) {
+      if (!formData.staffCategory) errors.staffCategory = 'Staff Category is required';
+      if (!formData.designation) errors.designation = 'Designation is required';
+      if (!formData.department) errors.department = 'Department is required';
+    }
+    setValidationErrors(errors);
+    return Object.keys(errors).length === 0;
   };
 
   const handleNumericChange = (e, maxLen = 10) => {
@@ -270,6 +349,13 @@ export default function AddStaff({ setActiveView }) {
   // SUBMIT
   // ============================================================
   const handleSubmit = async () => {
+    if (isSubmitting.current) return;
+    if (!validateStep(2)) {
+      setCurrentStep(2);
+      alert('Please fill in all mandatory fields on Step 2 (Staff Category, Designation, and Department).');
+      return;
+    }
+    isSubmitting.current = true;
     setLoading(true);
     try {
       const fullName = [formData.firstName, formData.middleName, formData.lastName].filter(Boolean).join(' ');
@@ -291,19 +377,26 @@ export default function AddStaff({ setActiveView }) {
         setTimeout(() => setSuccessToast(false), 5000);
         setTimeout(() => setActiveView('staff'), 1500);
         resetForm();
+        // Keep loading=true and isSubmitting=true so the button remains disabled during the 1.5s redirect delay
       } else {
         const err = await res.json();
         alert(err.error || 'Failed to register staff.');
+        setLoading(false);
+        isSubmitting.current = false;
       }
     } catch (err) {
       console.error('Staff registration error:', err);
       alert('Server connection error.');
-    } finally {
       setLoading(false);
+      isSubmitting.current = false;
     }
   };
 
-  const nextStep = () => setCurrentStep(prev => Math.min(prev + 1, STEPS.length));
+  const nextStep = () => {
+    if (validateStep(currentStep)) {
+      setCurrentStep(prev => Math.min(prev + 1, STEPS.length));
+    }
+  };
   const prevStep = () => setCurrentStep(prev => Math.max(prev - 1, 1));
 
   // ============================================================
@@ -425,16 +518,19 @@ export default function AddStaff({ setActiveView }) {
           <input type="date" name="joiningDate" value={formData.joiningDate} onChange={handleChange} className="form-control" style={inputStyle} />
         </div>
         <div className="form-group">
-          <label>Staff Category</label>
-          <CustomSelect name="staffCategory" value={formData.staffCategory} onChange={handleChange} options={STAFF_CATEGORIES} placeholder="Select Category" className="form-control" style={inputStyle} />
+          <label>Staff Category *</label>
+          <CustomSelect name="staffCategory" value={formData.staffCategory} onChange={handleCategoryChange} options={STAFF_CATEGORIES} placeholder="Select Category" className="form-control" style={{...inputStyle, border: validationErrors.staffCategory ? '1.5px solid #ef4444' : '1.5px solid #cbd5e1'}} />
+          {validationErrors.staffCategory && <span style={{ color: '#ef4444', fontSize: '0.75rem', marginTop: '4px', display: 'block' }}>{validationErrors.staffCategory}</span>}
         </div>
         <div className="form-group">
-          <label>Designation</label>
-          <CustomSelect name="designation" value={formData.designation} onChange={handleChange} options={DESIGNATIONS} placeholder="Select Designation" className="form-control" style={inputStyle} />
+          <label>Designation *</label>
+          <CustomSelect name="designation" value={formData.designation} onChange={handleChange} options={formData.staffCategory ? (STAFF_CATEGORY_MAPPING[formData.staffCategory]?.designations || []) : []} placeholder={formData.staffCategory ? "Select Designation" : "Select Category First"} className="form-control" style={{...inputStyle, border: validationErrors.designation ? '1.5px solid #ef4444' : '1.5px solid #cbd5e1'}} />
+          {validationErrors.designation && <span style={{ color: '#ef4444', fontSize: '0.75rem', marginTop: '4px', display: 'block' }}>{validationErrors.designation}</span>}
         </div>
         <div className="form-group">
-          <label>Department</label>
-          <CustomSelect name="department" value={formData.department} onChange={handleChange} options={DEPARTMENTS} placeholder="Select Department" className="form-control" style={inputStyle} />
+          <label>Department *</label>
+          <CustomSelect name="department" value={formData.department} onChange={handleChange} options={DEPARTMENTS} placeholder="Select Department" className="form-control" style={{...inputStyle, border: validationErrors.department ? '1.5px solid #ef4444' : '1.5px solid #cbd5e1'}} />
+          {validationErrors.department && <span style={{ color: '#ef4444', fontSize: '0.75rem', marginTop: '4px', display: 'block' }}>{validationErrors.department}</span>}
         </div>
         <div className="form-group">
           <label>Employment Type</label>
@@ -781,7 +877,15 @@ export default function AddStaff({ setActiveView }) {
             <React.Fragment key={step.id}>
               <button
                 type="button"
-                onClick={() => setCurrentStep(step.id)}
+                onClick={() => {
+                  if (step.id > currentStep) {
+                    if (validateStep(currentStep)) {
+                      setCurrentStep(step.id);
+                    }
+                  } else {
+                    setCurrentStep(step.id);
+                  }
+                }}
                 style={{
                   display: 'flex', alignItems: 'center', gap: '8px',
                   padding: '8px 14px', borderRadius: '10px', border: 'none',

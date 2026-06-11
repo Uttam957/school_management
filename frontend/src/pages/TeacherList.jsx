@@ -26,6 +26,7 @@ import {
   UserCheck,
   UserPlus
 } from 'lucide-react';
+import { hasPermission } from '../utils/permissions';
 
 export default function TeacherList({ setActiveView, readOnly = true, onAddClick }) {
   const renderQualificationText = (q) => {
@@ -55,6 +56,123 @@ export default function TeacherList({ setActiveView, readOnly = true, onAddClick
 
   // Inspector Drawer
   const [selectedTeacher, setSelectedTeacher] = useState(null);
+  const [qrLoading, setQrLoading] = useState(false);
+
+  const handleRegenerateQR = async (empId) => {
+    try {
+      setQrLoading(true);
+      const res = await fetch('/api/employee-attendance/regenerate-qr', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ employeeId: empId, employeeType: 'Teacher' })
+      });
+      if (res.ok) {
+        const data = await res.json();
+        setSelectedTeacher(prev => ({ ...prev, qrCodePath: data.qrPath }));
+        setTeachers(prev => prev.map(t => (t.employeeId === empId || t.id === empId) ? { ...t, qrCodePath: data.qrPath } : t));
+      } else {
+        alert('Failed to regenerate QR code.');
+      }
+    } catch (err) {
+      console.error('Error regenerating QR:', err);
+    } finally {
+      setQrLoading(false);
+    }
+  };
+
+  const handlePrintQR = (teacher) => {
+    const printWindow = window.open('', '_blank', 'width=600,height=600');
+    const qrUrl = window.location.origin + (teacher.qrCodePath || '');
+    printWindow.document.write(`
+      <html>
+        <head>
+          <title>Print ID Badge - ${teacher.fullName || teacher.name}</title>
+          <style>
+            body {
+              font-family: 'Inter', system-ui, sans-serif;
+              text-align: center;
+              padding: 40px;
+              color: #1e1b4b;
+              background: #ffffff;
+            }
+            .badge-card {
+              border: 2px solid #e2e8f0;
+              border-radius: 20px;
+              padding: 30px;
+              display: inline-block;
+              box-shadow: 0 10px 15px -3px rgba(0,0,0,0.05);
+              max-width: 350px;
+            }
+            .avatar {
+              width: 100px;
+              height: 100px;
+              border-radius: 50%;
+              object-fit: cover;
+              margin-bottom: 15px;
+              border: 3px solid #6366f1;
+            }
+            .avatar-placeholder {
+              width: 100px;
+              height: 100px;
+              border-radius: 50%;
+              margin: 0 auto 15px;
+              display: flex;
+              align-items: center;
+              justify-content: center;
+              color: #ffffff;
+              font-size: 2rem;
+              font-weight: bold;
+              background: ${teacher.avatarBg || 'linear-gradient(135deg, #6366f1, #a855f7)'};
+            }
+            .name {
+              font-size: 1.5rem;
+              font-weight: 800;
+              margin: 0 0 5px 0;
+            }
+            .id {
+              font-size: 1rem;
+              font-weight: 700;
+              color: #6366f1;
+              margin: 0 0 20px 0;
+            }
+            .qr-image {
+              width: 200px;
+              height: 200px;
+              margin-bottom: 20px;
+            }
+            .footer {
+              font-size: 0.8rem;
+              color: #64748b;
+              font-weight: 500;
+              margin-top: 15px;
+            }
+          </style>
+        </head>
+        <body>
+          <div class="badge-card">
+            ${teacher.photo ? `<img class="avatar" src="${teacher.photo}" />` : `
+              <div class="avatar-placeholder">
+                ${(teacher.fullName || teacher.name || 'T').split(' ').map(n => n[0]).join('').substring(0, 2).toUpperCase()}
+              </div>
+            `}
+            <div class="name">${teacher.fullName || teacher.name}</div>
+            <div class="id">${teacher.employeeId || teacher.id}</div>
+            <div><img class="qr-image" src="${qrUrl}" /></div>
+            <div style="font-weight: 600; font-size: 0.9rem;">${teacher.designation || 'Faculty'}</div>
+            <div style="font-size: 0.85rem; color: #475569; margin-top: 2px;">${teacher.department || 'Aether Academy'}</div>
+            <div class="footer">Scan to record Attendance</div>
+          </div>
+          <script>
+            window.onload = function() {
+              window.print();
+              setTimeout(function() { window.close(); }, 500);
+            };
+          </script>
+        </body>
+      </html>
+    `);
+    printWindow.document.close();
+  };
 
   // Edit Modal States
   const [editingTeacher, setEditingTeacher] = useState(null);
@@ -65,6 +183,14 @@ export default function TeacherList({ setActiveView, readOnly = true, onAddClick
   // DATA FETCHING
   // ==========================================
   const fetchTeachers = async () => {
+    const isSearchOrFilterActive = searchQuery !== '' || departmentFilter !== 'All' || typeFilter !== 'All' || statusFilter !== 'All';
+    if (!isSearchOrFilterActive) {
+      setTeachers([]);
+      setTotalCount(0);
+      setTotalPages(1);
+      setLoading(false);
+      return;
+    }
     try {
       setLoading(true);
       const queryParams = new URLSearchParams({
@@ -209,69 +335,6 @@ export default function TeacherList({ setActiveView, readOnly = true, onAddClick
 
   const isSearchOrFilterActive = searchQuery !== '' || departmentFilter !== 'All' || typeFilter !== 'All' || statusFilter !== 'All';
 
-  if (!loading && totalCount === 0 && !isSearchOrFilterActive) {
-    return (
-      <div className="animate-slide-up" style={{ 
-        display: 'flex', 
-        flexDirection: 'column', 
-        alignItems: 'center', 
-        justifyContent: 'center', 
-        padding: '80px 24px', 
-        textAlign: 'center',
-        gap: '24px',
-        width: '100%'
-      }}>
-        <div className="glass-panel" style={{
-          padding: '48px 32px',
-          maxWidth: '500px',
-          width: '100%',
-          display: 'flex',
-          flexDirection: 'column',
-          alignItems: 'center',
-          gap: '20px',
-          borderRadius: '24px',
-          boxShadow: 'var(--shadow-lg)'
-        }}>
-          <div style={{
-            padding: '20px',
-            borderRadius: '50%',
-            background: 'rgba(hsl(var(--color-primary)), 0.1)',
-            color: 'hsl(var(--color-primary))',
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'center'
-          }}>
-            <UserCheck size={48} />
-          </div>
-          <div>
-            <h3 style={{ fontSize: '1.5rem', fontWeight: 800, margin: '0 0 8px 0', color: 'var(--text-main)' }}>No teachers found</h3>
-            <p style={{ fontSize: '0.95rem', color: 'var(--text-muted)', margin: 0, lineHeight: 1.5 }}>
-              Add your first teacher to get started with the School Management System.
-            </p>
-          </div>
-          {!readOnly && onAddClick && (
-            <button 
-              onClick={onAddClick}
-              className="btn-primary"
-              style={{ 
-                padding: '12px 24px', 
-                borderRadius: '12px', 
-                fontWeight: 600, 
-                display: 'flex', 
-                alignItems: 'center', 
-                gap: '8px',
-                fontSize: '0.9rem',
-                cursor: 'pointer'
-              }}
-            >
-              <Plus size={16} /> Register Teacher
-            </button>
-          )}
-        </div>
-      </div>
-    );
-  }
-
   // ==========================================
   // RENDER
   // ==========================================
@@ -369,7 +432,28 @@ export default function TeacherList({ setActiveView, readOnly = true, onAddClick
           ========================================== */}
       <div className="glass-panel" style={{ padding: '24px', position: 'relative' }}>
         
-        {loading ? (
+        {!isSearchOrFilterActive ? (
+          <div style={{
+            display: 'flex',
+            flexDirection: 'column',
+            alignItems: 'center',
+            justifyContent: 'center',
+            padding: '100px 24px',
+            textAlign: 'center',
+            gap: '12px'
+          }}>
+            <span style={{
+              fontSize: '1.5rem',
+              fontWeight: 600,
+              color: 'var(--text-muted)',
+              opacity: 0.5,
+              filter: 'blur(0.8px)',
+              letterSpacing: '0.05em'
+            }}>
+              Please search or select a filter to view faculty records
+            </span>
+          </div>
+        ) : loading ? (
           <div style={{ textAlign: 'center', padding: '60px', color: 'var(--text-muted)', fontSize: '0.9rem' }}>
             Loading teachers directory...
           </div>
@@ -429,15 +513,19 @@ export default function TeacherList({ setActiveView, readOnly = true, onAddClick
                             </button>
                             {!readOnly && (
                               <>
-                                <button onClick={() => openEditModal(t)} className="btn-secondary" 
-                                  style={{ padding: '6px 10px', fontSize: '0.75rem', borderRadius: '8px', display: 'flex', alignItems: 'center', gap: '4px' }}>
-                                  <Edit3 size={12} /> Edit
-                                </button>
-                                <button onClick={() => handleDeleteTeacher(t.employeeId || t.id, t.fullName || t.name)} className="btn-danger"
-                                  style={{ padding: '6px 8px', borderRadius: '8px', background: 'rgba(var(--color-danger-rgb), 0.1)', border: '1px solid rgba(var(--color-danger-rgb), 0.2)', color: 'rgb(var(--color-danger-rgb))' }}
-                                  title="Delete profile">
-                                  <Trash2 size={14} />
-                                </button>
+                                {hasPermission('teacher-directory', 'edit') && (
+                                  <button onClick={() => openEditModal(t)} className="btn-secondary" 
+                                    style={{ padding: '6px 10px', fontSize: '0.75rem', borderRadius: '8px', display: 'flex', alignItems: 'center', gap: '4px' }}>
+                                    <Edit3 size={12} /> Edit
+                                  </button>
+                                )}
+                                {hasPermission('teacher-directory', 'delete') && (
+                                  <button onClick={() => handleDeleteTeacher(t.employeeId || t.id, t.fullName || t.name)} className="btn-danger"
+                                    style={{ padding: '6px 8px', borderRadius: '8px', background: 'rgba(var(--color-danger-rgb), 0.1)', border: '1px solid rgba(var(--color-danger-rgb), 0.2)', color: 'rgb(var(--color-danger-rgb))' }}
+                                    title="Delete profile">
+                                    <Trash2 size={14} />
+                                  </button>
+                                )}
                               </>
                             )}
                           </div>
@@ -533,7 +621,7 @@ export default function TeacherList({ setActiveView, readOnly = true, onAddClick
                 { label: 'Employee ID', value: selectedTeacher.employeeId || selectedTeacher.id },
                 { label: 'Teacher ID', value: selectedTeacher.teacherId || 'N/A' },
                 { label: 'Department', value: selectedTeacher.department || 'N/A' },
-                { label: 'Designation', value: selectedTeacher.designation || 'N/A' },
+                { label: 'Role', value: selectedTeacher.designation || 'N/A' },
                 { label: 'Primary Subject', value: selectedTeacher.primarySubject || selectedTeacher.subjectSpecialization || selectedTeacher.subject || 'N/A' },
                 { label: 'Secondary Subject', value: selectedTeacher.secondarySubject || 'N/A' },
                 { label: 'Total Experience', value: selectedTeacher.experience ? `${selectedTeacher.experience}` : 'N/A' },
@@ -625,6 +713,44 @@ export default function TeacherList({ setActiveView, readOnly = true, onAddClick
                     )}
                   </div>
                 ))}
+              </div>
+            </div>
+
+            {/* QR Code Section */}
+            <div style={{ borderTop: '1px solid var(--border-glass)', paddingTop: '16px', display: 'flex', flexDirection: 'column', gap: '10px' }}>
+              <span style={{ fontSize: '0.8rem', color: 'var(--text-muted)', fontWeight: 700, letterSpacing: '0.04em', textTransform: 'uppercase' }}>Employee QR Code</span>
+              <div className="glass-panel" style={{ padding: '16px', borderRadius: '12px', background: 'rgba(255,255,255,0.02)', display: 'flex', alignItems: 'center', gap: '20px', flexWrap: 'wrap' }}>
+                <div style={{ background: '#ffffff', padding: '8px', borderRadius: '12px', display: 'flex', justifyContent: 'center', alignItems: 'center', border: '1px solid rgba(255,255,255,0.1)', width: '120px', height: '120px', flexShrink: 0 }}>
+                  {selectedTeacher.qrCodePath ? (
+                    <img src={selectedTeacher.qrCodePath} alt="QR Code" style={{ width: '100%', height: '100%', objectFit: 'contain' }} />
+                  ) : (
+                    <div style={{ fontSize: '0.75rem', color: '#64748b', textAlign: 'center', fontWeight: 600 }}>No QR Code Generated</div>
+                  )}
+                </div>
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '8px', flex: 1, minWidth: '180px' }}>
+                  <div style={{ fontSize: '0.82rem', fontWeight: 600 }}>ID Badge Access QR</div>
+                  <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)', lineHeight: '1.4' }}>
+                    Contains unique Employee ID & Type. Use the camera scanner in the Attendance Manager to record daily check-ins and check-outs.
+                  </div>
+                  <div style={{ display: 'flex', gap: '6px', flexWrap: 'wrap', marginTop: '4px' }}>
+                    {selectedTeacher.qrCodePath ? (
+                      <>
+                        <a href={selectedTeacher.qrCodePath} download={`QR_${selectedTeacher.employeeId || selectedTeacher.id}.${selectedTeacher.qrCodePath.split('.').pop() || 'png'}`} className="btn-secondary"
+                          style={{ padding: '6px 12px', fontSize: '0.75rem', borderRadius: '8px', textDecoration: 'none', display: 'inline-flex', alignItems: 'center', gap: '4px' }}>
+                          <Download size={12} /> Download
+                        </a>
+                        <button onClick={() => handlePrintQR(selectedTeacher)} className="btn-secondary"
+                          style={{ padding: '6px 12px', fontSize: '0.75rem', borderRadius: '8px', display: 'flex', alignItems: 'center', gap: '4px' }}>
+                          Print Badge
+                        </button>
+                      </>
+                    ) : null}
+                    <button onClick={() => handleRegenerateQR(selectedTeacher.employeeId || selectedTeacher.id)} className="btn-secondary" disabled={qrLoading}
+                      style={{ padding: '6px 12px', fontSize: '0.75rem', borderRadius: '8px', display: 'flex', alignItems: 'center', gap: '4px', borderColor: 'rgba(hsl(var(--color-primary)), 0.2)', color: 'hsl(var(--color-primary))' }}>
+                      {qrLoading ? 'Generating...' : selectedTeacher.qrCodePath ? 'Regenerate' : 'Generate QR Code'}
+                    </button>
+                  </div>
+                </div>
               </div>
             </div>
 

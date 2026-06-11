@@ -25,8 +25,6 @@ CREATE TABLE IF NOT EXISTS schools (
   adminEmail VARCHAR(255),
   adminUsername VARCHAR(255),
   adminPassword VARCHAR(255),
-  complexAdminUsername VARCHAR(255),
-  complexAdminPassword VARCHAR(255),
   ratePerStudent VARCHAR(50) DEFAULT '250.00',
   createdAt VARCHAR(100)
 );
@@ -276,7 +274,8 @@ CREATE TABLE IF NOT EXISTS staff (
   status VARCHAR(50) DEFAULT 'Active',
   avatarBg TEXT,
   password VARCHAR(255),
-  tenantId VARCHAR(100)
+  tenantId VARCHAR(100),
+  designation VARCHAR(100)
 );
 
 -- 13. Timetables Table
@@ -390,6 +389,7 @@ CREATE TABLE IF NOT EXISTS exams (
   startDate VARCHAR(50),
   endDate VARCHAR(50),
   status VARCHAR(50) DEFAULT 'Draft',
+  timetablePublished TINYINT(1) DEFAULT 0,
   tenantId VARCHAR(100)
 );
 
@@ -550,5 +550,113 @@ CREATE TABLE IF NOT EXISTS subscription_plans (
   features JSON
 );
 
+-- 35. Roles Table
+CREATE TABLE IF NOT EXISTS roles (
+  id VARCHAR(50) PRIMARY KEY,
+  name VARCHAR(255) NOT NULL,
+  description TEXT,
+  active BOOLEAN DEFAULT TRUE,
+  isSystem BOOLEAN DEFAULT FALSE,
+  permissions JSON,
+  createdAt VARCHAR(100),
+  tenantId VARCHAR(100)
+);
+
+-- 36. User Access Table
+CREATE TABLE IF NOT EXISTS user_access (
+  id VARCHAR(50) PRIMARY KEY,
+  userId VARCHAR(50) NOT NULL,
+  userName VARCHAR(255) NOT NULL,
+  userType VARCHAR(50) NOT NULL,
+  roleId VARCHAR(50),
+  status VARCHAR(50) DEFAULT 'Active',
+  overrides JSON,
+  updatedAt VARCHAR(100),
+  tenantId VARCHAR(100)
+);
+
+-- 37. Audit Logs Table
+CREATE TABLE IF NOT EXISTS audit_logs (
+  id VARCHAR(50) PRIMARY KEY,
+  userId VARCHAR(50),
+  userName VARCHAR(255),
+  userRole VARCHAR(100),
+  action VARCHAR(255) NOT NULL,
+  details TEXT,
+  ipAddress VARCHAR(100),
+  timestamp VARCHAR(100) NOT NULL,
+  tenantId VARCHAR(100)
+);
+
+-- 38. Employee QR Codes Table
+CREATE TABLE IF NOT EXISTS employee_qr_codes (
+  id VARCHAR(50) PRIMARY KEY,
+  employeeId VARCHAR(50) NOT NULL,
+  employeeType VARCHAR(50) NOT NULL,
+  qrPath TEXT NOT NULL,
+  createdAt VARCHAR(100),
+  tenantId VARCHAR(100),
+  teacherId VARCHAR(50) NULL,
+  staffId VARCHAR(50) NULL,
+  FOREIGN KEY (teacherId) REFERENCES teachers(id) ON DELETE CASCADE,
+  FOREIGN KEY (staffId) REFERENCES staff(id) ON DELETE CASCADE,
+  UNIQUE KEY unique_employee_qr (employeeId, tenantId)
+);
+
+-- 39. Attendance Records Table
+CREATE TABLE IF NOT EXISTS attendance_records (
+  id VARCHAR(50) PRIMARY KEY,
+  employeeId VARCHAR(50) NOT NULL,
+  employeeType VARCHAR(50) NOT NULL,
+  name VARCHAR(255) NOT NULL,
+  department VARCHAR(100),
+  designation VARCHAR(100),
+  date VARCHAR(50) NOT NULL,
+  checkIn VARCHAR(50),
+  checkOut VARCHAR(50),
+  workingHours DECIMAL(5,2) DEFAULT 0.00,
+  status VARCHAR(50) DEFAULT 'Present',
+  createdAt VARCHAR(100),
+  tenantId VARCHAR(100),
+  teacherId VARCHAR(50) NULL,
+  staffId VARCHAR(50) NULL,
+  FOREIGN KEY (teacherId) REFERENCES teachers(id) ON DELETE CASCADE,
+  FOREIGN KEY (staffId) REFERENCES staff(id) ON DELETE CASCADE,
+  INDEX idx_att_emp (employeeId),
+  INDEX idx_att_date (date),
+  INDEX idx_att_tenant (tenantId),
+  INDEX idx_att_status (status)
+);
+
+-- 40. Attendance Logs Table
+CREATE TABLE IF NOT EXISTS attendance_logs (
+  id VARCHAR(50) PRIMARY KEY,
+  employeeId VARCHAR(50) NOT NULL,
+  employeeType VARCHAR(50) NOT NULL,
+  scanTime VARCHAR(100) NOT NULL,
+  scanType VARCHAR(50) NOT NULL,
+  status VARCHAR(50) NOT NULL,
+  tenantId VARCHAR(100),
+  teacherId VARCHAR(50) NULL,
+  staffId VARCHAR(50) NULL,
+  FOREIGN KEY (teacherId) REFERENCES teachers(id) ON DELETE CASCADE,
+  FOREIGN KEY (staffId) REFERENCES staff(id) ON DELETE CASCADE,
+  INDEX idx_log_emp (employeeId),
+  INDEX idx_log_tenant (tenantId)
+);
+
+-- 41. Attendance Reports Table
+CREATE TABLE IF NOT EXISTS attendance_reports (
+  id VARCHAR(50) PRIMARY KEY,
+  reportName VARCHAR(255) NOT NULL,
+  reportType VARCHAR(50) NOT NULL,
+  generatedAt VARCHAR(100) NOT NULL,
+  filters JSON,
+  filePath TEXT,
+  tenantId VARCHAR(100),
+  INDEX idx_rep_tenant (tenantId)
+);
+
 -- Re-enable foreign key checks
 SET FOREIGN_KEY_CHECKS = 1;
+

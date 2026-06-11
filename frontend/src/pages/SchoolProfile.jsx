@@ -36,7 +36,8 @@ import {
   Settings,
   CreditCard,
   Building,
-  KeyRound
+  KeyRound,
+  Copy
 } from 'lucide-react';
 
 export default function SchoolProfile({ schoolDetails, fetchSchoolDetails, isDeveloperAdmin }) {
@@ -198,9 +199,7 @@ export default function SchoolProfile({ schoolDetails, fetchSchoolDetails, isDev
     adminName: '',
     adminEmail: '',
     adminUsername: '',
-    adminPassword: '',
-    complexAdminUsername: '',
-    complexAdminPassword: ''
+    adminPassword: ''
   });
   const [formErrors, setFormErrors] = useState({});
 
@@ -262,9 +261,7 @@ export default function SchoolProfile({ schoolDetails, fetchSchoolDetails, isDev
       adminName: '',
       adminEmail: '',
       adminUsername: '',
-      adminPassword: '',
-      complexAdminUsername: '',
-      complexAdminPassword: ''
+      adminPassword: ''
     });
     setFormErrors({});
     setShowAddModal(true);
@@ -289,9 +286,7 @@ export default function SchoolProfile({ schoolDetails, fetchSchoolDetails, isDev
       adminName: school.adminName || '',
       adminEmail: school.adminEmail || '',
       adminUsername: school.adminUsername || '',
-      adminPassword: '', // keep password blank during edits
-      complexAdminUsername: school.complexAdminUsername || '',
-      complexAdminPassword: ''
+      adminPassword: '' // keep password blank during edits
     });
     setFormErrors({});
     setShowAddModal(true);
@@ -311,8 +306,6 @@ export default function SchoolProfile({ schoolDetails, fetchSchoolDetails, isDev
       if (!formData.adminEmail.trim()) errors.adminEmail = 'Admin Email is required.';
       if (!formData.adminUsername.trim()) errors.adminUsername = 'Admin Username is required.';
       if (!formData.adminPassword.trim()) errors.adminPassword = 'Admin Password is required.';
-      if (!formData.complexAdminUsername.trim()) errors.complexAdminUsername = 'Admin Dashboard Username is required.';
-      if (!formData.complexAdminPassword.trim()) errors.complexAdminPassword = 'Admin Dashboard Password is required.';
     }
     
     setFormErrors(errors);
@@ -845,23 +838,70 @@ export default function SchoolProfile({ schoolDetails, fetchSchoolDetails, isDev
                     <span style={{ color: 'var(--text-muted)' }}>Staff: <strong>{school.staffCount || 0}</strong></span>
                   </div>
 
+                  {/* Credentials Utility */}
+                  <div style={{ 
+                    display: 'flex', 
+                    flexDirection: 'column', 
+                    gap: '4px', 
+                    padding: '8px 12px', 
+                    background: 'var(--bg-glass-active)', 
+                    borderRadius: '8px',
+                    border: '1px solid var(--border-glass)',
+                    fontSize: '0.74rem'
+                  }}>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', fontWeight: 600 }}>
+                      <span style={{ display: 'flex', alignItems: 'center', gap: '4px', color: 'var(--text-muted)' }}>
+                        <KeyRound size={12} style={{ color: 'hsl(var(--color-primary))' }} /> School Admin Account:
+                      </span>
+                      <button 
+                        type="button"
+                        onClick={() => {
+                          navigator.clipboard.writeText(`Username: ${school.adminUsername}\nPassword: ${school.adminPassword}`);
+                          showToast('School Admin credentials copied!', 'success');
+                        }}
+                        title="Copy Credentials"
+                        style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'var(--text-muted)', padding: 0 }}
+                      >
+                        <Copy size={11} />
+                      </button>
+                    </div>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', marginTop: '2px', background: 'rgba(0,0,0,0.02)', padding: '2px 6px', borderRadius: '4px' }}>
+                      <span>U: <strong style={{ color: 'var(--text-main)' }}>{school.adminUsername}</strong></span>
+                      <span>P: <strong style={{ color: 'var(--text-main)' }}>{school.adminPassword}</strong></span>
+                    </div>
+                  </div>
+
                   {/* Subdomain + Actions */}
                   <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '8px' }}>
-                    <a 
-                      href={`/?tenant=${school.subdomain}`}
-                      onClick={(e) => { e.preventDefault(); handleLaunchPortal(school); }}
-                      style={{ 
-                        fontSize: '0.75rem', color: 'hsl(var(--color-primary))', 
-                        display: 'flex', alignItems: 'center', gap: '5px', 
-                        textDecoration: 'none', fontWeight: 600, cursor: 'pointer',
-                        padding: '5px 10px', borderRadius: '8px',
-                        background: 'rgba(99, 102, 241, 0.06)',
-                        border: '1px solid rgba(99, 102, 241, 0.12)',
-                        transition: 'all 0.2s ease'
-                      }}
-                    >
-                      <ExternalLink size={11} /> Open Login
-                    </a>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '4px', flex: 1, minWidth: 0 }}>
+                      <a 
+                        href={`/?tenant=${school.subdomain}`}
+                        onClick={(e) => { e.preventDefault(); handleLaunchPortal(school); }}
+                        title="Open Login Portal"
+                        style={{ 
+                          fontSize: '0.72rem', color: 'hsl(var(--color-primary))', 
+                          display: 'block', 
+                          textDecoration: 'underline', fontWeight: 600, cursor: 'pointer',
+                          whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis',
+                          transition: 'all 0.2s ease',
+                          flex: 1
+                        }}
+                      >
+                        {`${window.location.origin}/?tenant=${school.subdomain}`}
+                      </a>
+                      <button 
+                        type="button"
+                        onClick={() => {
+                          navigator.clipboard.writeText(`${window.location.origin}/?tenant=${school.subdomain}`);
+                          showToast('Login URL copied to clipboard!', 'success');
+                        }}
+                        className="btn-secondary" 
+                        title="Copy URL" 
+                        style={{ padding: '3px 6px', border: 'none', background: 'none', cursor: 'pointer', color: 'var(--text-muted)' }}
+                      >
+                        <Copy size={12} />
+                      </button>
+                    </div>
                     <div style={{ display: 'flex', gap: '4px' }}>
                       <button onClick={() => handleInspectPortal(school)} className="btn-secondary" title="View / Inspect Portal" style={{ padding: '5px', border: 'none', background: 'none', cursor: 'pointer', color: 'hsl(var(--color-info))' }}>
                         <Eye size={15} />
@@ -1118,34 +1158,7 @@ export default function SchoolProfile({ schoolDetails, fetchSchoolDetails, isDev
                 </div>
               )}
 
-              {/* SECTION E: ADMIN DASHBOARD CREDENTIALS (isAdmin = true) */}
-              {modalMode === 'add' && (
-                <div style={{ display: 'flex', flexDirection: 'column', gap: '14px', borderTop: '1px solid var(--border-glass)', paddingTop: '16px' }}>
-                  <span style={{ fontSize: '0.72rem', fontWeight: 800, color: 'hsl(var(--color-primary))', textTransform: 'uppercase', letterSpacing: '0.05em' }}>
-                    V. Admin Dashboard Credentials (Complex Admin Panel)
-                  </span>
-                  
-                  <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '16px' }}>
-                    <div className="form-group">
-                      <label>Admin Dashboard Username *</label>
-                      <input 
-                        type="text" name="complexAdminUsername" className="form-control" placeholder="complex_admin"
-                        value={formData.complexAdminUsername} onChange={handleInputChange} required
-                      />
-                      {formErrors.complexAdminUsername && <span style={{ color: '#ef4444', fontSize: '0.72rem', marginTop: '4px', display: 'block' }}>{formErrors.complexAdminUsername}</span>}
-                    </div>
 
-                    <div className="form-group">
-                      <label>Admin Dashboard Password *</label>
-                      <input 
-                        type="password" name="complexAdminPassword" className="form-control" placeholder="••••••••"
-                        value={formData.complexAdminPassword} onChange={handleInputChange} required
-                      />
-                      {formErrors.complexAdminPassword && <span style={{ color: '#ef4444', fontSize: '0.72rem', marginTop: '4px', display: 'block' }}>{formErrors.complexAdminPassword}</span>}
-                    </div>
-                  </div>
-                </div>
-              )}
 
               {/* Modal Actions Footer */}
               <div style={{ display: 'flex', gap: '12px', justifyContent: 'flex-end', borderTop: '1px solid var(--border-glass)', paddingTop: '20px', marginTop: '10px' }}>

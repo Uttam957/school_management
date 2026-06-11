@@ -17,13 +17,14 @@ import {
   ChevronDown,
   User,
   FileText,
-  CheckCircle
+  CheckCircle,
+  Download
 } from 'lucide-react';
+import { hasPermission } from '../utils/permissions';
 
 const STAFF_CATEGORIES = [
-  'All', 'Accountant', 'Receptionist', 'Librarian', 'Lab Assistant', 'Transport Manager',
-  'Driver', 'Nurse', 'Security Guard', 'IT Support', 'Maintenance Staff',
-  'Housekeeping Staff', 'Office Assistant', 'Peon', 'Counselor', 'Other'
+  'All', 'Administration', 'Accounts & Finance', 'IT Department', 'Transport', 'Hostel', 
+  'Security', 'Maintenance', 'Housekeeping', 'Health & Medical', 'Store & Inventory', 'Campus Support'
 ];
 
 export default function StaffDirectory({ readOnly = true, onAddClick }) {
@@ -37,6 +38,123 @@ export default function StaffDirectory({ readOnly = true, onAddClick }) {
   const [editData, setEditData] = useState({});
   const [editLoading, setEditLoading] = useState(false);
   const [editSuccess, setEditSuccess] = useState(false);
+  const [qrLoading, setQrLoading] = useState(false);
+
+  const handleRegenerateQR = async (empId) => {
+    try {
+      setQrLoading(true);
+      const res = await fetch('/api/employee-attendance/regenerate-qr', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ employeeId: empId, employeeType: 'Staff' })
+      });
+      if (res.ok) {
+        const data = await res.json();
+        setInspectStaff(prev => ({ ...prev, qrCodePath: data.qrPath }));
+        setStaffList(prev => prev.map(s => s.id === empId ? { ...s, qrCodePath: data.qrPath } : s));
+      } else {
+        alert('Failed to regenerate QR code.');
+      }
+    } catch (err) {
+      console.error('Error regenerating QR:', err);
+    } finally {
+      setQrLoading(false);
+    }
+  };
+
+  const handlePrintQR = (staff) => {
+    const printWindow = window.open('', '_blank', 'width=600,height=600');
+    const qrUrl = window.location.origin + (staff.qrCodePath || '');
+    printWindow.document.write(`
+      <html>
+        <head>
+          <title>Print ID Badge - ${staff.fullName || staff.name}</title>
+          <style>
+            body {
+              font-family: 'Inter', system-ui, sans-serif;
+              text-align: center;
+              padding: 40px;
+              color: #1e1b4b;
+              background: #ffffff;
+            }
+            .badge-card {
+              border: 2px solid #e2e8f0;
+              border-radius: 20px;
+              padding: 30px;
+              display: inline-block;
+              box-shadow: 0 10px 15px -3px rgba(0,0,0,0.05);
+              max-width: 350px;
+            }
+            .avatar {
+              width: 100px;
+              height: 100px;
+              border-radius: 50%;
+              object-fit: cover;
+              margin-bottom: 15px;
+              border: 3px solid #10b981;
+            }
+            .avatar-placeholder {
+              width: 100px;
+              height: 100px;
+              border-radius: 50%;
+              margin: 0 auto 15px;
+              display: flex;
+              align-items: center;
+              justify-content: center;
+              color: #ffffff;
+              font-size: 2rem;
+              font-weight: bold;
+              background: ${staff.avatarBg || 'linear-gradient(135deg, #10b981, #3b82f6)'};
+            }
+            .name {
+              font-size: 1.5rem;
+              font-weight: 800;
+              margin: 0 0 5px 0;
+            }
+            .id {
+              font-size: 1rem;
+              font-weight: 700;
+              color: #10b981;
+              margin: 0 0 20px 0;
+            }
+            .qr-image {
+              width: 200px;
+              height: 200px;
+              margin-bottom: 20px;
+            }
+            .footer {
+              font-size: 0.8rem;
+              color: #64748b;
+              font-weight: 500;
+              margin-top: 15px;
+            }
+          </style>
+        </head>
+        <body>
+          <div class="badge-card">
+            ${staff.photo ? `<img class="avatar" src="${staff.photo}" />` : `
+              <div class="avatar-placeholder">
+                ${(staff.fullName || staff.name || 'S').split(' ').map(n => n[0]).join('').substring(0, 2).toUpperCase()}
+              </div>
+            `}
+            <div class="name">${staff.fullName || staff.name}</div>
+            <div class="id">${staff.id}</div>
+            <div><img class="qr-image" src="${qrUrl}" /></div>
+            <div style="font-weight: 600; font-size: 0.9rem;">${staff.designation || staff.role || 'Staff'}</div>
+            <div style="font-size: 0.85rem; color: #475569; margin-top: 2px;">${staff.department || 'Aether Academy'}</div>
+            <div class="footer">Scan to record Attendance</div>
+          </div>
+          <script>
+            window.onload = function() {
+              window.print();
+              setTimeout(function() { window.close(); }, 500);
+            };
+          </script>
+        </body>
+      </html>
+    `);
+    printWindow.document.close();
+  };
 
   const fetchStaff = async () => {
     try {
@@ -115,6 +233,9 @@ export default function StaffDirectory({ readOnly = true, onAddClick }) {
     return matchesSearch && matchesCategory && matchesStatus;
   });
 
+  const isSearchOrFilterActive = searchQuery !== '' || categoryFilter !== 'All' || statusFilter !== 'All';
+  const displayStaff = isSearchOrFilterActive ? filteredStaff : [];
+
   // Safe JSON parse for qualifications/experiences
   const parseJSON = (val) => {
     if (Array.isArray(val)) return val;
@@ -122,29 +243,7 @@ export default function StaffDirectory({ readOnly = true, onAddClick }) {
     return [];
   };
 
-  // ============================================================
-  // EMPTY STATE
-  // ============================================================
-  if (!loading && staffList.length === 0) {
-    return (
-      <div className="animate-slide-up" style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', padding: '80px 24px', textAlign: 'center', gap: '24px', width: '100%' }}>
-        <div className="glass-panel" style={{ padding: '48px 32px', maxWidth: '500px', width: '100%', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '20px', borderRadius: '24px', boxShadow: 'var(--shadow-lg)' }}>
-          <div style={{ padding: '20px', borderRadius: '50%', background: 'rgba(hsl(var(--color-primary)), 0.1)', color: 'hsl(var(--color-primary))', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-            <UserCog size={48} />
-          </div>
-          <div>
-            <h3 style={{ fontSize: '1.5rem', fontWeight: 800, margin: '0 0 8px 0', color: 'var(--text-main)' }}>No staff members found</h3>
-            <p style={{ fontSize: '0.95rem', color: 'var(--text-muted)', margin: 0, lineHeight: 1.5 }}>Add your first staff member to get started.</p>
-          </div>
-          {!readOnly && onAddClick && (
-            <button onClick={onAddClick} className="btn-primary" style={{ padding: '12px 24px', borderRadius: '12px', fontWeight: 600, display: 'flex', alignItems: 'center', gap: '8px', fontSize: '0.9rem', cursor: 'pointer' }}>
-              <Plus size={16} /> Add Staff Member
-            </button>
-          )}
-        </div>
-      </div>
-    );
-  }
+
 
   // ============================================================
   // INSPECT DRAWER
@@ -249,6 +348,45 @@ export default function StaffDirectory({ readOnly = true, onAddClick }) {
                 ))}
               </div>
             )}
+
+            {/* QR Code Section */}
+            <div style={{ borderTop: '1px solid var(--border-glass)', paddingTop: '16px', display: 'flex', flexDirection: 'column', gap: '10px' }}>
+              <span style={{ fontSize: '0.8rem', color: 'var(--text-muted)', fontWeight: 700, letterSpacing: '0.04em', textTransform: 'uppercase' }}>Employee QR Code</span>
+              <div className="glass-panel" style={{ padding: '16px', borderRadius: '12px', background: 'rgba(255,255,255,0.02)', display: 'flex', alignItems: 'center', gap: '20px', flexWrap: 'wrap' }}>
+                <div style={{ background: '#ffffff', padding: '8px', borderRadius: '12px', display: 'flex', justifyContent: 'center', alignItems: 'center', border: '1px solid rgba(255,255,255,0.1)', width: '120px', height: '120px', flexShrink: 0 }}>
+                  {s.qrCodePath ? (
+                    <img src={s.qrCodePath} alt="QR Code" style={{ width: '100%', height: '100%', objectFit: 'contain' }} />
+                  ) : (
+                    <div style={{ fontSize: '0.75rem', color: '#64748b', textAlign: 'center', fontWeight: 600 }}>No QR Code Generated</div>
+                  )}
+                </div>
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '8px', flex: 1, minWidth: '180px' }}>
+                  <div style={{ fontSize: '0.82rem', fontWeight: 600 }}>ID Badge Access QR</div>
+                  <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)', lineHeight: '1.4' }}>
+                    Contains unique Employee ID & Type. Use the camera scanner in the Attendance Manager to record daily check-ins and check-outs.
+                  </div>
+                  <div style={{ display: 'flex', gap: '6px', flexWrap: 'wrap', marginTop: '4px' }}>
+                    {s.qrCodePath ? (
+                      <>
+                        <a href={s.qrCodePath} download={`QR_${s.id}.${s.qrCodePath.split('.').pop() || 'png'}`} className="btn-secondary"
+                          style={{ padding: '6px 12px', fontSize: '0.75rem', borderRadius: '8px', textDecoration: 'none', display: 'inline-flex', alignItems: 'center', gap: '4px' }}>
+                          <Download size={12} /> Download
+                        </a>
+                        <button onClick={() => handlePrintQR(s)} className="btn-secondary"
+                          style={{ padding: '6px 12px', fontSize: '0.75rem', borderRadius: '8px', display: 'flex', alignItems: 'center', gap: '4px' }}>
+                          Print Badge
+                        </button>
+                      </>
+                    ) : null}
+                    <button onClick={() => handleRegenerateQR(s.id)} className="btn-secondary" disabled={qrLoading}
+                      style={{ padding: '6px 12px', fontSize: '0.75rem', borderRadius: '8px', display: 'flex', alignItems: 'center', gap: '4px', borderColor: 'rgba(hsl(var(--color-primary)), 0.2)', color: 'hsl(var(--color-primary))' }}>
+                      {qrLoading ? 'Generating...' : s.qrCodePath ? 'Regenerate' : 'Generate QR Code'}
+                    </button>
+                  </div>
+                </div>
+              </div>
+            </div>
+
           </div>
 
 
@@ -301,14 +439,14 @@ export default function StaffDirectory({ readOnly = true, onAddClick }) {
                   <label style={{ fontSize: '0.8rem', fontWeight: 600 }}>Staff Category</label>
                   <select name="staffCategory" value={editData.staffCategory || editData.role || ''} onChange={(e) => setEditData(p => ({ ...p, staffCategory: e.target.value, role: e.target.value }))} className="form-control" style={inputStyle}>
                     <option value="">Select</option>
-                    {['Accountant', 'Receptionist', 'Librarian', 'Lab Assistant', 'Transport Manager', 'Driver', 'Nurse', 'Security Guard', 'IT Support', 'Maintenance Staff', 'Housekeeping Staff', 'Office Assistant', 'Peon', 'Counselor', 'Other'].map(c => <option key={c} value={c}>{c}</option>)}
+                    {['Administration', 'Accounts & Finance', 'IT Department', 'Transport', 'Hostel', 'Security', 'Maintenance', 'Housekeeping', 'Health & Medical', 'Store & Inventory', 'Campus Support'].map(c => <option key={c} value={c}>{c}</option>)}
                   </select>
                 </div>
                 <div className="form-group">
                   <label style={{ fontSize: '0.8rem', fontWeight: 600 }}>Department</label>
                   <select name="department" value={editData.department || ''} onChange={handleEditChange} className="form-control" style={inputStyle}>
                     <option value="">Select</option>
-                    {['Administration', 'Accounts & Finance', 'Library', 'IT & Technology', 'Transport', 'Security', 'Housekeeping', 'Maintenance', 'Health & Wellness', 'Front Office', 'Laboratory', 'Counseling', 'Store & Inventory', 'Other'].map(d => <option key={d} value={d}>{d}</option>)}
+                    {['Administration', 'Accounts & Finance', 'Information Technology', 'Transport', 'Hostel', 'Security', 'Maintenance', 'Housekeeping', 'Medical Services', 'Store & Inventory', 'Campus Operations'].map(d => <option key={d} value={d}>{d}</option>)}
                   </select>
                 </div>
                 <div className="form-group">
@@ -324,7 +462,6 @@ export default function StaffDirectory({ readOnly = true, onAddClick }) {
                   <select name="status" value={editData.status || 'Active'} onChange={handleEditChange} className="form-control" style={inputStyle}>
                     <option value="Active">Active</option>
                     <option value="Inactive">Inactive</option>
-                    <option value="On Leave">On Leave</option>
                   </select>
                 </div>
                 <div className="form-group">
@@ -384,110 +521,117 @@ export default function StaffDirectory({ readOnly = true, onAddClick }) {
             <option value="All">All Status</option>
             <option value="Active">Active</option>
             <option value="Inactive">Inactive</option>
-            <option value="On Leave">On Leave</option>
           </select>
         </div>
 
-        {!readOnly && onAddClick && (
-          <button onClick={onAddClick} className="btn-primary" style={{ padding: '10px 18px', borderRadius: '10px', fontWeight: 600, display: 'flex', alignItems: 'center', gap: '6px', cursor: 'pointer', marginLeft: 'auto', fontSize: '0.85rem' }}>
-            <Plus size={14} /> Add Staff
-          </button>
-        )}
-      </div>
 
-      {/* Stats Bar */}
-      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(140px, 1fr))', gap: '12px' }}>
-        {[
-          { label: 'Total Staff', value: staffList.length, color: 'hsl(var(--color-primary))' },
-          { label: 'Active', value: staffList.filter(s => s.status === 'Active').length, color: 'rgb(var(--color-success-rgb))' },
-          { label: 'On Leave', value: staffList.filter(s => s.status === 'On Leave').length, color: 'rgb(var(--color-warning-rgb))' },
-          { label: 'Inactive', value: staffList.filter(s => s.status === 'Inactive').length, color: 'rgb(var(--color-danger-rgb))' }
-        ].map((stat, i) => (
-          <div key={i} className="glass-panel" style={{ padding: '14px 18px', borderRadius: '12px', textAlign: 'center' }}>
-            <div style={{ fontSize: '1.4rem', fontWeight: 800, color: stat.color }}>{stat.value}</div>
-            <div style={{ fontSize: '0.75rem', fontWeight: 600, color: 'var(--text-muted)', marginTop: '2px' }}>{stat.label}</div>
-          </div>
-        ))}
       </div>
 
       {/* Directory Table */}
       <div className="glass-panel" style={{ padding: '24px' }}>
-        <div className="custom-table-container">
-          <table className="custom-table">
-            <thead>
-              <tr>
-                <th>Staff ID</th>
-                <th>Staff Member</th>
-                <th>Category</th>
-                <th>Department</th>
-                <th>Contact</th>
-                <th>Status</th>
-                <th>Actions</th>
-              </tr>
-            </thead>
-            <tbody>
-              {filteredStaff.length > 0 ? (
-                filteredStaff.map((s) => (
-                  <tr key={s.id}>
-                    <td style={{ fontWeight: 600, fontSize: '0.82rem' }}>{s.id}</td>
-                    <td>
-                      <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
-                        <div style={{
-                          width: '34px', height: '34px', borderRadius: '50%',
-                          background: s.avatarBg || 'linear-gradient(135deg, #667eea, #764ba2)',
-                          display: 'flex', alignItems: 'center', justifyContent: 'center',
-                          color: 'white', fontSize: '0.75rem', fontWeight: 700, overflow: 'hidden', flexShrink: 0
-                        }}>
-                          {s.photo ? <img src={s.photo} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover' }} /> : ((s.fullName || s.name || '?').split(' ').map(n => n[0]).join('').slice(0, 2))}
+        {!isSearchOrFilterActive ? (
+          <div style={{
+            display: 'flex',
+            flexDirection: 'column',
+            alignItems: 'center',
+            justifyContent: 'center',
+            padding: '100px 24px',
+            textAlign: 'center',
+            gap: '12px'
+          }}>
+            <span style={{
+              fontSize: '1.5rem',
+              fontWeight: 600,
+              color: 'var(--text-muted)',
+              opacity: 0.5,
+              filter: 'blur(0.8px)',
+              letterSpacing: '0.05em'
+            }}>
+              Please search or select a filter to view staff records
+            </span>
+          </div>
+        ) : (
+          <div className="custom-table-container">
+            <table className="custom-table">
+              <thead>
+                <tr>
+                  <th>Staff ID</th>
+                  <th>Staff Member</th>
+                  <th>Category</th>
+                  <th>Department</th>
+                  <th>Contact</th>
+                  <th>Status</th>
+                  <th>Actions</th>
+                </tr>
+              </thead>
+              <tbody>
+                {displayStaff.length > 0 ? (
+                  displayStaff.map((s) => (
+                    <tr key={s.id}>
+                      <td style={{ fontWeight: 600, fontSize: '0.82rem' }}>{s.id}</td>
+                      <td>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+                          <div style={{
+                            width: '34px', height: '34px', borderRadius: '50%',
+                            background: s.avatarBg || 'linear-gradient(135deg, #667eea, #764ba2)',
+                            display: 'flex', alignItems: 'center', justifyContent: 'center',
+                            color: 'white', fontSize: '0.75rem', fontWeight: 700, overflow: 'hidden', flexShrink: 0
+                          }}>
+                            {s.photo ? <img src={s.photo} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover' }} /> : ((s.fullName || s.name || '?').split(' ').map(n => n[0]).join('').slice(0, 2))}
+                          </div>
+                          <div>
+                            <span style={{ fontWeight: 600, fontSize: '0.88rem' }}>{s.fullName || s.name}</span>
+                            {s.designation && <div style={{ fontSize: '0.72rem', color: 'var(--text-muted)' }}>{s.designation}</div>}
+                          </div>
                         </div>
-                        <div>
-                          <span style={{ fontWeight: 600, fontSize: '0.88rem' }}>{s.fullName || s.name}</span>
-                          {s.designation && <div style={{ fontSize: '0.72rem', color: 'var(--text-muted)' }}>{s.designation}</div>}
+                      </td>
+                      <td><span style={{ fontSize: '0.82rem' }}>{s.staffCategory || s.role || '—'}</span></td>
+                      <td><span style={{ fontSize: '0.82rem' }}>{s.department || '—'}</span></td>
+                      <td>
+                        <div style={{ fontSize: '0.82rem' }}>
+                          <div>{s.mobile || s.phone || '—'}</div>
+                          {s.email && <div style={{ fontSize: '0.72rem', color: 'var(--text-muted)' }}>{s.email}</div>}
                         </div>
-                      </div>
-                    </td>
-                    <td><span style={{ fontSize: '0.82rem' }}>{s.staffCategory || s.role || '—'}</span></td>
-                    <td><span style={{ fontSize: '0.82rem' }}>{s.department || '—'}</span></td>
-                    <td>
-                      <div style={{ fontSize: '0.82rem' }}>
-                        <div>{s.mobile || s.phone || '—'}</div>
-                        {s.email && <div style={{ fontSize: '0.72rem', color: 'var(--text-muted)' }}>{s.email}</div>}
-                      </div>
-                    </td>
-                    <td>
-                      <span className={`badge ${s.status === 'Active' ? 'badge-success' : s.status === 'On Leave' ? 'badge-warning' : 'badge-danger'}`}>
-                        {s.status || 'Active'}
-                      </span>
-                    </td>
-                    <td>
-                      <div style={{ display: 'flex', gap: '6px' }}>
-                        <button onClick={() => setInspectStaff(s)} className="btn-secondary" style={{ padding: '6px 10px', fontSize: '0.8rem', borderRadius: '8px' }} title="Inspect">
-                          <Eye size={13} />
-                        </button>
-                        {!readOnly && (
-                          <>
-                            <button onClick={() => openEdit(s)} className="btn-secondary" style={{ padding: '6px 10px', fontSize: '0.8rem', borderRadius: '8px' }} title="Edit">
-                              <Edit3 size={13} />
-                            </button>
-                            <button onClick={() => handleDeleteStaff(s.id)} className="btn-secondary" style={{ padding: '6px 10px', fontSize: '0.8rem', borderRadius: '8px', borderColor: 'rgb(var(--color-danger-rgb))', color: 'rgb(var(--color-danger-rgb))' }} title="Dismiss">
-                              <Trash2 size={13} />
-                            </button>
-                          </>
-                        )}
-                      </div>
+                      </td>
+                      <td>
+                        <span className={`badge ${s.status === 'Active' ? 'badge-success' : s.status === 'On Leave' ? 'badge-warning' : s.status === 'Inactive' ? 'badge-danger' : 'badge-info'}`}>
+                          {s.status || 'Active'}
+                        </span>
+                      </td>
+                      <td>
+                        <div style={{ display: 'flex', gap: '6px' }}>
+                          <button onClick={() => setInspectStaff(s)} className="btn-secondary" style={{ padding: '6px 10px', fontSize: '0.8rem', borderRadius: '8px' }} title="Inspect">
+                            <Eye size={13} />
+                          </button>
+                          {!readOnly && (
+                            <>
+                              {hasPermission('staff-directory', 'edit') && (
+                                <button onClick={() => openEdit(s)} className="btn-secondary" style={{ padding: '6px 10px', fontSize: '0.8rem', borderRadius: '8px' }} title="Edit">
+                                  <Edit3 size={13} />
+                                </button>
+                              )}
+                              {hasPermission('staff-directory', 'delete') && (
+                                <button onClick={() => handleDeleteStaff(s.id)} className="btn-secondary" style={{ padding: '6px 10px', fontSize: '0.8rem', borderRadius: '8px', borderColor: 'rgb(var(--color-danger-rgb))', color: 'rgb(var(--color-danger-rgb))' }} title="Dismiss">
+                                  <Trash2 size={13} />
+                                </button>
+                              )}
+                            </>
+                          )}
+                        </div>
+                      </td>
+                    </tr>
+                  ))
+                ) : (
+                  <tr>
+                    <td colSpan="7" style={{ textAlign: 'center', padding: '40px', color: 'var(--text-muted)' }}>
+                      No staff members match your search criteria.
                     </td>
                   </tr>
-                ))
-              ) : (
-                <tr>
-                  <td colSpan="7" style={{ textAlign: 'center', padding: '40px', color: 'var(--text-muted)' }}>
-                    No staff members match your search criteria.
-                  </td>
-                </tr>
-              )}
-            </tbody>
-          </table>
-        </div>
+                )}
+              </tbody>
+            </table>
+          </div>
+        )}
       </div>
 
       {/* Inspect Drawer */}

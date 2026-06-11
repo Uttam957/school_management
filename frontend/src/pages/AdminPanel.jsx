@@ -23,7 +23,8 @@ import {
   AttendanceTrackerView,
   StudentReportsView, 
   ClassReportsView, 
-  MonthlyCalendarView 
+  MonthlyCalendarView,
+  YearlyAttendanceView
 } from './TeacherPanel';
 import {
   MarkAttendanceView,
@@ -45,6 +46,8 @@ import StudentManager from './StudentManager';
 import AddTeacher from './AddTeacher';
 import AddStaff from './AddStaff';
 import ExpensePanel from './ExpensePanel';
+import AttendanceManager from './AttendanceManager';
+import RolesPermissions from './RolesPermissions';
 
 export default function AdminPanel({ setActiveView, onLogout, adminView, setAdminView, onBackToMain }) {
   const [directoryKey, setDirectoryKey] = useState(0);
@@ -89,6 +92,8 @@ export default function AdminPanel({ setActiveView, onLogout, adminView, setAdmi
       case 'academic-exams':
       case 'academic-exams-history':
       case 'academic-exam-timetable':
+      case 'academic-published-timetable':
+      case 'academic-published-exam':
       case 'academic-events':
       case 'academic-notices':
       case 'academic-holidays':
@@ -107,6 +112,8 @@ export default function AdminPanel({ setActiveView, onLogout, adminView, setAdmi
         return <TeacherList key={`teachers-${directoryKey}`} setActiveView={setActiveView} readOnly={false} onAddClick={() => setAdminView('add-teacher')} />;
       case 'staff':
         return <StaffDirectory key={directoryKey} readOnly={false} onAddClick={() => setAdminView('add-staff')} />;
+      case 'employee-attendance':
+        return <AttendanceManager />;
 
       case 'collect-fees':
         return <CollectFeesView showToast={showToast} />;
@@ -213,7 +220,23 @@ export default function AdminPanel({ setActiveView, onLogout, adminView, setAdmi
                   transition: 'all 0.2s ease'
                 }}
               >
-                <Calendar size={16} /> Monthly Calendar
+                <Calendar size={16} /> Monthly Attendance
+              </button>
+
+              <button 
+                onClick={() => {
+                  setAttendanceTab('yearly-attendance');
+                  setAdminView('attendance');
+                }}
+                className={`tab-btn-custom ${attendanceTab === 'yearly-attendance' ? 'active' : ''}`}
+                style={{
+                  display: 'flex', alignItems: 'center', gap: '8px', padding: '10px 16px', borderRadius: '8px', fontSize: '0.85rem', fontWeight: 600, border: 'none', cursor: 'pointer',
+                  background: attendanceTab === 'yearly-attendance' ? 'rgba(hsl(var(--color-primary)), 0.1)' : 'transparent',
+                  color: attendanceTab === 'yearly-attendance' ? 'hsl(var(--color-primary))' : 'var(--text-muted)',
+                  transition: 'all 0.2s ease'
+                }}
+              >
+                <TrendingUp size={16} /> Yearly Attendance
               </button>
             </div>
 
@@ -266,8 +289,14 @@ export default function AdminPanel({ setActiveView, onLogout, adminView, setAdmi
             {attendanceTab === 'monthly-calendar' && (
               <MonthlyCalendarView showToast={showToast} />
             )}
+
+            {attendanceTab === 'yearly-attendance' && (
+              <YearlyAttendanceView showToast={showToast} />
+            )}
           </div>
         );
+      case 'roles-permissions':
+        return <RolesPermissions />;
       default:
         return <StudentDirectory readOnly={false} onAddClick={() => setAdminView('register-student')} />;
     }
@@ -307,7 +336,8 @@ export default function AdminPanel({ setActiveView, onLogout, adminView, setAdmi
                adminView === 'register-student' ? 'Admitting a New Student' :
                adminView === 'student-manager' ? 'Allocating Grade/Class & Section for Pending Students' :
                adminView === 'add-teacher' ? 'Registering a New Teacher' :
-               adminView === 'add-staff' ? 'Registering a New Staff Member' : `Managing ${adminView}`}
+               adminView === 'add-staff' ? 'Registering a New Staff Member' :
+               adminView === 'roles-permissions' ? 'Configuring System Roles, RBAC permissions, and Audit Logs' : `Managing ${adminView}`}
             </p>
           </div>
         </div>

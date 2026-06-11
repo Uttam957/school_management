@@ -28,10 +28,6 @@ export default function Header({
   schoolDetails,
   setActiveView,
   isAdmin,
-  isAccountant,
-  isRecep,
-  isTeacher,
-  isExpense,
   isDeveloperAdmin,
   onLogout
 }) {
@@ -186,70 +182,16 @@ export default function Header({
           )}
         </div>
 
-        {!isAdmin && !isAccountant && !isRecep && !isTeacher && !isExpense && !isDeveloperAdmin && (
-          <div style={{ position: 'relative' }}>
-            <button
-              onClick={() => {
-                setShowDashboardMenu(!showDashboardMenu);
-                setShowNotifications(false);
-                setShowProfileMenu(false);
-              }}
-              className="action-btn"
-              title="Dashboard Access"
-            >
-              <LayoutDashboard size={20} />
-            </button>
-
-            {showDashboardMenu && (
-              <div className="glass-panel" style={{
-                position: 'absolute',
-                top: '52px',
-                right: 0,
-                width: '220px',
-                padding: '8px',
-                zIndex: 999,
-                display: 'flex',
-                flexDirection: 'column',
-                gap: '4px'
-              }}>
-                <button
-                  onClick={() => { setActiveView('admin-login'); setShowDashboardMenu(false); setMobileOpen(false); }}
-                  className="nav-item"
-                  style={{ padding: '10px 12px', fontSize: '0.85rem', gap: '10px' }}
-                >
-                  <Shield size={18} /> Admin Dashboard
-                </button>
-                <button
-                  onClick={() => { setActiveView('accountant-login'); setShowDashboardMenu(false); setMobileOpen(false); }}
-                  className="nav-item"
-                  style={{ padding: '10px 12px', fontSize: '0.85rem', gap: '10px' }}
-                >
-                  <Calculator size={18} /> Accountant Dashboard
-                </button>
-                <button
-                  onClick={() => { setActiveView('recep-login'); setShowDashboardMenu(false); setMobileOpen(false); }}
-                  className="nav-item"
-                  style={{ padding: '10px 12px', fontSize: '0.85rem', gap: '10px' }}
-                >
-                  <UserCog size={18} /> Receptionist Dashboard
-                </button>
-                <button
-                  onClick={() => { setActiveView('teacher-login'); setShowDashboardMenu(false); setMobileOpen(false); }}
-                  className="nav-item"
-                  style={{ padding: '10px 12px', fontSize: '0.85rem', gap: '10px' }}
-                >
-                  <UserCheck size={18} /> Teacher Dashboard
-                </button>
-                <button
-                  onClick={() => { setActiveView('expense-login'); setShowDashboardMenu(false); setMobileOpen(false); }}
-                  className="nav-item"
-                  style={{ padding: '10px 12px', fontSize: '0.85rem', gap: '10px' }}
-                >
-                  <Wallet size={18} /> Expense Dashboard
-                </button>
-              </div>
-            )}
-          </div>
+        {!isAdmin && !isDeveloperAdmin && (
+          <button
+            onClick={() => setActiveView('admin-login')}
+            className="action-btn"
+            title="Admin Dashboard"
+            style={{ display: 'flex', alignItems: 'center', gap: '8px', fontSize: '0.85rem', width: 'auto', padding: '0 12px' }}
+          >
+            <Shield size={18} />
+            <span>Admin Dashboard</span>
+          </button>
         )}
       </div>
     </header>

@@ -2191,3 +2191,329 @@ export function ClassTimetableView({ showToast }) {
     </div>
   );
 }
+
+// ============================================================================
+// TAB F: YEARLY ATTENDANCE TELEMETRY VIEW
+// ============================================================================
+export function YearlyAttendanceView({ showToast }) {
+  const [studentsList, setStudentsList] = useState([]);
+  const [selectedStudent, setSelectedStudent] = useState('');
+  const [selectedGrade, setSelectedGrade] = useState('I');
+  const [selectedSection, setSelectedSection] = useState('A');
+  const [searchName, setSearchName] = useState('');
+  const [yearlyStats, setYearlyStats] = useState(null);
+  const [loading, setLoading] = useState(false);
+
+  const grades = ['I', 'II', 'III', 'IV', 'V', 'VI', 'VII', 'VIII', 'IX', 'X'];
+  const sections = ['A', 'B', 'C', 'D'];
+
+  // Load filtered students list (identical to MonthlyCalendarView)
+  const loadFilteredStudents = async () => {
+    try {
+      const queryParams = new URLSearchParams({
+        class: selectedGrade,
+        section: selectedSection,
+        search: searchName,
+        limit: 100
+      }).toString();
+      const res = await fetch(`/api/students?${queryParams}`);
+      if (res.ok) {
+        const data = await res.json();
+        setStudentsList(data.students || []);
+      }
+    } catch (err) {
+      console.error(err);
+    }
+  };
+
+  useEffect(() => {
+    loadFilteredStudents();
+  }, [selectedGrade, selectedSection, searchName]);
+
+  useEffect(() => {
+    if (studentsList.length > 0) {
+      const stillExists = studentsList.some(s => s.id === selectedStudent);
+      if (!stillExists) {
+        setSelectedStudent(studentsList[0].id);
+      }
+    } else {
+      setSelectedStudent('');
+      setYearlyStats(null);
+    }
+  }, [studentsList]);
+
+  // Fetch yearly student reports and extract stats for the selected student
+  const fetchYearlyStats = async () => {
+    if (!selectedStudent) {
+      setYearlyStats(null);
+      return;
+    }
+    try {
+      setLoading(true);
+      const queryParams = new URLSearchParams({
+        studentClass: selectedGrade,
+        section: selectedSection
+      }).toString();
+      const res = await fetch(`/api/attendance/reports/student?${queryParams}`);
+      if (res.ok) {
+        const data = await res.json();
+        const matchedReport = data.find(r => r.id === selectedStudent);
+        setYearlyStats(matchedReport || null);
+      }
+    } catch (err) {
+      console.error(err);
+      showToast('Error loading yearly stats.', 'error');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    fetchYearlyStats();
+  }, [selectedStudent, selectedGrade, selectedSection]);
+
+  return (
+    <div style={{ display: 'flex', flexDirection: 'column', gap: '24px' }}>
+      
+      {/* Selectors Card */}
+      <div className="glass-panel" style={{ padding: '20px 24px' }}>
+        <div style={{ display: 'flex', gap: '16px', flexWrap: 'wrap', alignItems: 'center' }}>
+          
+          {/* Grade/Class Filter */}
+          <div className="form-group" style={{ margin: 0, minWidth: '110px' }}>
+            <label style={{ fontSize: '0.75rem', fontWeight: 700, textTransform: 'uppercase', color: 'var(--text-muted)' }}>Grade</label>
+            <select className="select-custom" value={selectedGrade} onChange={(e) => setSelectedGrade(e.target.value)} style={{ height: '38px', borderRadius: '8px' }}>
+              {grades.map(g => (
+                <option key={g} value={g}>Grade {g}</option>
+              ))}
+            </select>
+          </div>
+
+          {/* Section Filter */}
+          <div className="form-group" style={{ margin: 0, minWidth: '100px' }}>
+            <label style={{ fontSize: '0.75rem', fontWeight: 700, textTransform: 'uppercase', color: 'var(--text-muted)' }}>Section</label>
+            <select className="select-custom" value={selectedSection} onChange={(e) => setSelectedSection(e.target.value)} style={{ height: '38px', borderRadius: '8px' }}>
+              {sections.map(s => (
+                <option key={s} value={s}>Section {s}</option>
+              ))}
+            </select>
+          </div>
+
+          {/* Search by Name */}
+          <div className="form-group" style={{ margin: 0, minWidth: '180px' }}>
+            <label style={{ fontSize: '0.75rem', fontWeight: 700, textTransform: 'uppercase', color: 'var(--text-muted)' }}>Search Name</label>
+            <input
+              type="text"
+              placeholder="Type student name..."
+              value={searchName}
+              onChange={(e) => setSearchName(e.target.value)}
+              className="form-control"
+              style={{ height: '38px', borderRadius: '8px', padding: '8px 12px' }}
+            />
+          </div>
+
+          {/* Student Selector */}
+          <div className="form-group" style={{ margin: 0, minWidth: '220px' }}>
+            <label style={{ fontSize: '0.75rem', fontWeight: 700, textTransform: 'uppercase', color: 'var(--text-muted)' }}>Select Student</label>
+            <select className="select-custom" value={selectedStudent} onChange={(e) => setSelectedStudent(e.target.value)} style={{ height: '38px', borderRadius: '8px' }}>
+              {studentsList.length === 0 && <option value="">No students found</option>}
+              {studentsList.map(s => (
+                <option key={s.id} value={s.id}>{s.fullName || s.name} ({s.admissionNumber})</option>
+              ))}
+            </select>
+          </div>
+
+        </div>
+      </div>
+
+      {/* Yearly Report Stats Cards */}
+      <div className="glass-panel" style={{ padding: '32px', position: 'relative' }}>
+        {loading ? (
+          <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', minHeight: '280px' }}>
+            <Loader2 className="animate-spin" size={32} />
+          </div>
+        ) : yearlyStats ? (
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '32px' }}>
+            
+            {/* Student Header Summary Info */}
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '16px', borderBottom: '1px solid var(--border-glass)', paddingBottom: '20px' }}>
+              <div>
+                <h3 style={{ fontSize: '1.5rem', fontWeight: 800, color: 'var(--text-main)', margin: '0 0 4px 0' }}>
+                  {yearlyStats.fullName}
+                </h3>
+                <p style={{ fontSize: '0.85rem', color: 'var(--text-muted)', margin: 0 }}>
+                  Admission Number: <strong style={{ color: 'var(--text-main)' }}>{yearlyStats.admissionNumber}</strong> | Class: <strong style={{ color: 'var(--text-main)' }}>Grade {yearlyStats.studentClass}-{yearlyStats.section}</strong>
+                </p>
+              </div>
+              
+              <div style={{ display: 'flex', alignItems: 'center', gap: '16px' }}>
+                <div style={{ textAlign: 'right' }}>
+                  <span style={{ fontSize: '0.75rem', fontWeight: 700, textTransform: 'uppercase', color: 'var(--text-muted)' }}>Yearly Attendance</span>
+                  <div style={{ fontSize: '1.75rem', fontWeight: 800, color: yearlyStats.attendancePercentage >= 75 ? '#10b981' : '#ef4444' }}>
+                    {yearlyStats.attendancePercentage}%
+                  </div>
+                </div>
+                <div style={{
+                  width: '56px',
+                  height: '56px',
+                  borderRadius: '50%',
+                  background: `conic-gradient(${yearlyStats.attendancePercentage >= 75 ? '#10b981' : '#ef4444'} ${yearlyStats.attendancePercentage}%, rgba(255,255,255,0.05) 0)`,
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  boxShadow: '0 0 15px rgba(0,0,0,0.1)'
+                }}>
+                  <div style={{
+                    width: '44px',
+                    height: '44px',
+                    borderRadius: '50%',
+                    background: 'var(--bg-glass-active)',
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    fontSize: '0.75rem',
+                    fontWeight: 700,
+                    color: 'var(--text-main)'
+                  }}>
+                    {yearlyStats.present + yearlyStats.late}/{yearlyStats.totalWorkingDays}d
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            {/* Counts Grid */}
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(180px, 1fr))', gap: '20px' }}>
+              
+              {/* Present Days Card */}
+              <div style={{
+                background: 'rgba(16, 185, 129, 0.08)',
+                border: '1px solid rgba(16, 185, 129, 0.2)',
+                borderRadius: '16px',
+                padding: '24px',
+                display: 'flex',
+                flexDirection: 'column',
+                gap: '12px',
+                position: 'relative',
+                overflow: 'hidden'
+              }}>
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                  <span style={{ fontSize: '0.8rem', fontWeight: 700, textTransform: 'uppercase', color: '#10b981' }}>Present</span>
+                  <div style={{ padding: '6px', borderRadius: '8px', background: 'rgba(16, 185, 129, 0.15)', color: '#10b981' }}>
+                    <CheckCircle size={18} />
+                  </div>
+                </div>
+                <div>
+                  <div style={{ fontSize: '2.25rem', fontWeight: 800, color: 'var(--text-main)', lineHeight: '1' }}>{yearlyStats.present}</div>
+                  <span style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>days attended fully</span>
+                </div>
+              </div>
+
+              {/* Late Days Card */}
+              <div style={{
+                background: 'rgba(249, 115, 22, 0.08)',
+                border: '1px solid rgba(249, 115, 22, 0.2)',
+                borderRadius: '16px',
+                padding: '24px',
+                display: 'flex',
+                flexDirection: 'column',
+                gap: '12px',
+                position: 'relative',
+                overflow: 'hidden'
+              }}>
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                  <span style={{ fontSize: '0.8rem', fontWeight: 700, textTransform: 'uppercase', color: '#f97316' }}>Late</span>
+                  <div style={{ padding: '6px', borderRadius: '8px', background: 'rgba(249, 115, 22, 0.15)', color: '#f97316' }}>
+                    <Clock size={18} />
+                  </div>
+                </div>
+                <div>
+                  <div style={{ fontSize: '2.25rem', fontWeight: 800, color: 'var(--text-main)', lineHeight: '1' }}>{yearlyStats.late}</div>
+                  <span style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>days marked late arrival</span>
+                </div>
+              </div>
+
+              {/* Leave Days Card */}
+              <div style={{
+                background: 'rgba(245, 158, 11, 0.08)',
+                border: '1px solid rgba(245, 158, 11, 0.2)',
+                borderRadius: '16px',
+                padding: '24px',
+                display: 'flex',
+                flexDirection: 'column',
+                gap: '12px',
+                position: 'relative',
+                overflow: 'hidden'
+              }}>
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                  <span style={{ fontSize: '0.8rem', fontWeight: 700, textTransform: 'uppercase', color: '#f59e0b' }}>Leave</span>
+                  <div style={{ padding: '6px', borderRadius: '8px', background: 'rgba(245, 158, 11, 0.15)', color: '#f59e0b' }}>
+                    <Calendar size={18} />
+                  </div>
+                </div>
+                <div>
+                  <div style={{ fontSize: '2.25rem', fontWeight: 800, color: 'var(--text-main)', lineHeight: '1' }}>{yearlyStats.leave}</div>
+                  <span style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>days on approved leave</span>
+                </div>
+              </div>
+
+              {/* Absent Days Card */}
+              <div style={{
+                background: 'rgba(239, 68, 68, 0.08)',
+                border: '1px solid rgba(239, 68, 68, 0.2)',
+                borderRadius: '16px',
+                padding: '24px',
+                display: 'flex',
+                flexDirection: 'column',
+                gap: '12px',
+                position: 'relative',
+                overflow: 'hidden'
+              }}>
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                  <span style={{ fontSize: '0.8rem', fontWeight: 700, textTransform: 'uppercase', color: '#ef4444' }}>Absent</span>
+                  <div style={{ padding: '6px', borderRadius: '8px', background: 'rgba(239, 68, 68, 0.15)', color: '#ef4444' }}>
+                    <AlertCircle size={18} />
+                  </div>
+                </div>
+                <div>
+                  <div style={{ fontSize: '2.25rem', fontWeight: 800, color: 'var(--text-main)', lineHeight: '1' }}>{yearlyStats.absent}</div>
+                  <span style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>days unexcused absence</span>
+                </div>
+              </div>
+
+            </div>
+
+            {/* Total Summary Footer Card */}
+            <div style={{
+              background: 'rgba(255,255,255,0.01)',
+              border: '1px dashed var(--border-glass)',
+              borderRadius: '12px',
+              padding: '16px 20px',
+              display: 'flex',
+              justifyContent: 'space-between',
+              alignItems: 'center',
+              flexWrap: 'wrap',
+              gap: '16px'
+            }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                <Info size={16} style={{ color: 'hsl(var(--color-primary))' }} />
+                <span style={{ fontSize: '0.85rem', color: 'var(--text-muted)' }}>
+                  Total school session days evaluated: <strong style={{ color: 'var(--text-main)' }}>{yearlyStats.totalWorkingDays} days</strong>
+                </span>
+              </div>
+              <span style={{ fontSize: '0.8rem', fontWeight: 700, color: yearlyStats.attendancePercentage >= 75 ? '#10b981' : '#ef4444', textTransform: 'uppercase' }}>
+                {yearlyStats.attendancePercentage >= 75 ? 'Compliance: Good Standing' : 'Compliance: Action Required'}
+              </span>
+            </div>
+
+          </div>
+        ) : (
+          <div style={{ padding: '40px 0', textAlign: 'center', color: 'var(--text-muted)' }}>
+            No attendance records found for this student.
+          </div>
+        )}
+      </div>
+
+    </div>
+  );
+}
+

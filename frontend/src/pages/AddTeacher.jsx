@@ -208,6 +208,7 @@ export default function AddTeacher({ setActiveView }) {
   const [formSubmitted, setFormSubmitted] = useState(false);
   const [draftRestoredAlert, setDraftRestoredAlert] = useState(false);
   const [draftSaving, setDraftSaving] = useState(false);
+  const isSubmitting = React.useRef(false);
 
   const tenantSubdomain = localStorage.getItem('tenant_subdomain') || 'default';
   const draftKey = `teacher_admission_draft_${tenantSubdomain}`;
@@ -241,6 +242,7 @@ export default function AddTeacher({ setActiveView }) {
     mobile: '',
     alternateMobile: '',
     email: '',
+    password: '',
     emergencyContactNumber: '',
 
     // Step 4: Address Information
@@ -318,13 +320,18 @@ export default function AddTeacher({ setActiveView }) {
     { value: 'Visiting Faculty', label: 'Visiting Faculty' }
   ];
 
-  const designationOptions = [
+  const roleOptions = [
     { value: 'Principal', label: 'Principal' },
     { value: 'Vice Principal', label: 'Vice Principal' },
-    { value: 'Head of Department', label: 'Head of Department' },
+    { value: 'Academic Coordinator', label: 'Academic Coordinator' },
+    { value: 'Head Teacher', label: 'Head Teacher' },
     { value: 'Teacher', label: 'Teacher' },
-    { value: 'Assistant Teacher', label: 'Assistant Teacher' },
-    { value: 'Lab Assistant', label: 'Lab Assistant' }
+    { value: 'Librarian', label: 'Librarian' },
+    { value: 'Lab Assistant', label: 'Lab Assistant' },
+    { value: 'Counselor', label: 'Counselor' },
+    { value: 'Receptionist', label: 'Receptionist' },
+    { value: 'Accountant', label: 'Accountant' },
+    { value: 'Transport Manager', label: 'Transport Manager' }
   ];
 
   const departmentOptions = [
@@ -457,7 +464,13 @@ export default function AddTeacher({ setActiveView }) {
   };
 
   const handleSelectChange = (fieldName, value) => {
-    setFormData(prev => ({ ...prev, [fieldName]: value }));
+    setFormData(prev => {
+      const updated = { ...prev, [fieldName]: value };
+      if (fieldName === 'designation' && value !== 'Teacher') {
+        updated.department = '';
+      }
+      return updated;
+    });
     if (formErrors[fieldName]) {
       setFormErrors(prev => ({ ...prev, [fieldName]: '' }));
     }
@@ -545,7 +558,7 @@ export default function AddTeacher({ setActiveView }) {
         teacherId: `TCH-${Date.now().toString().slice(-6)}`,
         joiningDate: new Date().toISOString().split('T')[0],
         employmentType: '', designation: '', department: '', primarySubject: '', secondarySubject: '', status: 'Active',
-        mobile: '', alternateMobile: '', email: '', emergencyContactNumber: '',
+        mobile: '', alternateMobile: '', email: '', password: '', emergencyContactNumber: '',
         currentAddress: '', currentCity: '', currentState: '', currentCountry: 'India', currentPostalCode: '',
         permanentAddress: '', permanentCity: '', permanentState: '', permanentCountry: 'India', permanentPostalCode: '', sameAsPermanent: false,
         qualifications: [
@@ -577,7 +590,9 @@ export default function AddTeacher({ setActiveView }) {
   };
 
   const handleSubmit = async (e) => {
-    e.preventDefault();
+    if (e) e.preventDefault();
+    if (isSubmitting.current) return;
+    isSubmitting.current = true;
     setFormSubmitted(true);
 
     let isValid = true;
@@ -589,7 +604,10 @@ export default function AddTeacher({ setActiveView }) {
       }
     }
 
-    if (!isValid) return;
+    if (!isValid) {
+      isSubmitting.current = false;
+      return;
+    }
 
     setLoading(true);
 
@@ -621,15 +639,18 @@ export default function AddTeacher({ setActiveView }) {
         clearDraft();
         setTimeout(() => setSuccessToast(false), 5000);
         setTimeout(() => setActiveView('teacher-list'), 1500);
+        // Keep loading=true and isSubmitting=true so the button remains disabled during the 1.5s redirect delay
       } else {
         const errData = await res.json();
         alert(errData.error || 'Server error occurred during teacher registration.');
+        setLoading(false);
+        isSubmitting.current = false;
       }
     } catch (err) {
       console.error(err);
       alert('Internal Server error connecting to the API.');
-    } finally {
       setLoading(false);
+      isSubmitting.current = false;
     }
   };
 
@@ -982,26 +1003,28 @@ export default function AddTeacher({ setActiveView }) {
               </div>
 
               <div className="form-group">
-                <label>Designation *</label>
+                <label>Role *</label>
                 <SearchableSelect 
-                  options={designationOptions}
+                  options={roleOptions}
                   value={formData.designation}
                   onChange={(val) => handleSelectChange('designation', val)}
-                  placeholder="Choose Designation"
+                  placeholder="Choose Role"
                   className="form-control"
                 />
               </div>
 
-              <div className="form-group">
-                <label>Department *</label>
-                <SearchableSelect 
-                  options={departmentOptions}
-                  value={formData.department}
-                  onChange={(val) => handleSelectChange('department', val)}
-                  placeholder="Choose Department"
-                  className="form-control"
-                />
-              </div>
+              {formData.designation === 'Teacher' && (
+                <div className="form-group animate-slide-down">
+                  <label>Department *</label>
+                  <SearchableSelect 
+                    options={departmentOptions}
+                    value={formData.department}
+                    onChange={(val) => handleSelectChange('department', val)}
+                    placeholder="Choose Department"
+                    className="form-control"
+                  />
+                </div>
+              )}
 
               <div className="form-group">
                 <label>Primary Subject</label>
@@ -1100,6 +1123,18 @@ export default function AddTeacher({ setActiveView }) {
                   style={{ borderColor: formErrors.email ? '#ef4444' : undefined }}
                 />
                 {formErrors.email && <span style={{ color: '#ef4444', fontSize: '0.75rem', marginTop: '2px', display: 'block' }}>{formErrors.email}</span>}
+              </div>
+
+              <div className="form-group">
+                <label>Portal Login Password</label>
+                <input 
+                  type="password"
+                  name="password"
+                  value={formData.password}
+                  onChange={handleTextChange}
+                  className="form-control"
+                  placeholder="Enter login password (default: teacher123)"
+                />
               </div>
 
               <div className="form-group">
@@ -1582,7 +1617,7 @@ export default function AddTeacher({ setActiveView }) {
                   <button type="button" onClick={() => setActiveStep(2)} style={{ background: 'none', border: 'none', color: 'hsl(var(--color-primary))', fontSize: '0.75rem', fontWeight: 600, cursor: 'pointer' }}>Edit</button>
                 </div>
                 <div style={{ display: 'flex', flexDirection: 'column', gap: '6px', fontSize: '0.85rem' }}>
-                  <div><strong>Designation:</strong> {formData.designation || 'N/A'}</div>
+                  <div><strong>Role:</strong> {formData.designation || 'N/A'}</div>
                   <div><strong>Department:</strong> {formData.department || 'N/A'}</div>
                   <div><strong>Subjects:</strong> {formData.primarySubject} {formData.secondarySubject ? `, ${formData.secondarySubject}` : ''}</div>
                   <div><strong>Type / Session:</strong> {formData.employmentType || 'N/A'} / {formData.joiningDate}</div>

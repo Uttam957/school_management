@@ -1,4 +1,41 @@
-import { readDb, writeDb, addActivity } from '../utils/db.js';
+import { readDb, writeDb, addActivity, getDefaultRoles } from '../utils/db.js';
+
+const mapDesignationToRoleId = (designation, dbRoles = []) => {
+  if (!designation) return 'role-teacher';
+  
+  // Try to find matching role name in dbRoles (case insensitive)
+  const matchedRole = dbRoles.find(r => r.name.toLowerCase() === designation.toLowerCase());
+  if (matchedRole) return matchedRole.id;
+  
+  // Dynamic slug format fallback
+  const slugId = `role-${designation.toLowerCase().trim().replace(/\s+/g, '-')}`;
+  if (dbRoles.some(r => r.id === slugId)) {
+    return slugId;
+  }
+  
+  switch (designation) {
+    case 'Super Admin':
+    case 'role-super-admin':
+      return 'role-principal';
+    case 'Academic':
+    case 'role-academic':
+      return 'role-academic-coordinator';
+    case 'Accountant':
+    case 'role-accountant':
+      return 'role-accountant';
+    case 'Receptionist':
+    case 'role-receptionist':
+      return 'role-receptionist';
+    case 'Teacher':
+    case 'role-teacher':
+      return 'role-teacher';
+    case 'Expense':
+    case 'role-expense':
+      return 'role-transport-manager';
+    default:
+      return 'role-teacher';
+  }
+};
 
 // ========================================================
 // TEACHER CRUD CONTROLLERS
@@ -59,13 +96,31 @@ export const registerTeacher = async (req, res) => {
       return res.status(400).json({ error: 'Missing required teacher registration details (Full Name).' });
     }
 
-    // Generate unique employee ID (Format: EMP-2026-XXXX)
-    let employeeId;
-    let isUnique = false;
-    while (!isUnique) {
-      const randNum = Math.floor(1000 + Math.random() * 9000);
-      employeeId = `EMP-2026-${randNum}`;
-      isUnique = !db.teachers.some(t => t.employeeId === employeeId);
+    // Generate unique employee ID (Format: EMP-2026-XXXX, sequential starting at 1001)
+    const currentYear = 2026;
+    let maxNum = 1000;
+    const prefix = 'EMP';
+    const yearPrefix = `${prefix}-${currentYear}-`;
+    if (db.teachers && db.teachers.length > 0) {
+      db.teachers.forEach(t => {
+        const id = t.employeeId || t.id || '';
+        if (id.startsWith(yearPrefix)) {
+          const suffixNum = parseInt(id.replace(yearPrefix, ''), 10);
+          if (!isNaN(suffixNum) && suffixNum > maxNum) {
+            maxNum = suffixNum;
+          }
+        }
+      });
+    }
+    const employeeId = `${yearPrefix}${maxNum + 1}`;
+
+    // Generate QR Code containing Employee ID and Employee Type
+    let qrPath = '';
+    try {
+      const { generateQrCode } = await import('../utils/qrService.js');
+      qrPath = await generateQrCode(employeeId, 'Teacher');
+    } catch (qrErr) {
+      console.error('Failed to generate QR Code during teacher registration:', qrErr);
     }
 
     // Auto-generate username and password if not provided
@@ -110,6 +165,7 @@ export const registerTeacher = async (req, res) => {
     const newTeacher = {
       id: employeeId, // Direct backward compatibility index
       employeeId,
+      qrCodePath: qrPath,
       teacherId: req.body.teacherId || `TCH-${Date.now().toString().slice(-6)}`,
       name: derivedFullName, // Legacy compatibility
       fullName: derivedFullName,
@@ -178,6 +234,38 @@ export const registerTeacher = async (req, res) => {
     };
 
     db.teachers.push(newTeacher);
+
+    if (!db.employeeQrCodes) db.employeeQrCodes = [];
+    db.employeeQrCodes.push({
+      id: `QR-${Date.now()}-${Math.floor(Math.random() * 1000)}`,
+      employeeId: employeeId,
+      employeeType: 'Teacher',
+      qrPath: qrPath,
+      createdAt: new Date().toISOString()
+    });
+
+    // Automatically create userAccess entry matching the teacher's designation
+    if (!db.userAccess) db.userAccess = [];
+    
+    // Ensure roles are initialized in DB if missing
+    if (!db.roles || db.roles.length === 0) {
+      db.roles = getDefaultRoles();
+    }
+    
+    const roleId = mapDesignationToRoleId(designation, db.roles);
+    
+    const accessEntry = {
+      id: `access-${Date.now()}-${Math.floor(Math.random() * 1000)}`,
+      userId: employeeId,
+      userName: derivedFullName,
+      userType: 'Teacher',
+      roleId: roleId,
+      status: 'Active',
+      overrides: {},
+      updatedAt: new Date().toISOString()
+    };
+    db.userAccess.push(accessEntry);
+
     addActivity(db, 'registration', 'New Faculty Registered', `${fullName} joined ${department || 'School'} Department as ${employmentType || 'Faculty'}`, 'hsl(var(--color-secondary))', 'rgba(hsl(var(--color-secondary)), 0.1)');
     writeDb(db);
 
@@ -344,6 +432,37 @@ export const updateTeacher = async (req, res) => {
     };
 
     db.teachers[teacherIndex] = updatedTeacher;
+
+    // Synchronize userAccess record matching the teacher's designation and name
+    if (!db.userAccess) db.userAccess = [];
+    if (!db.roles || db.roles.length === 0) {
+      db.roles = getDefaultRoles();
+    }
+    const accessIndex = db.userAccess.findIndex(ua => ua.userId === teacherId && ua.userType === 'Teacher');
+    const targetRoleId = mapDesignationToRoleId(updatedTeacher.designation, db.roles);
+    
+    if (accessIndex === -1) {
+      db.userAccess.push({
+        id: `access-${Date.now()}-${Math.floor(Math.random() * 1000)}`,
+        userId: teacherId,
+        userName: updatedTeacher.fullName || updatedTeacher.name,
+        userType: 'Teacher',
+        roleId: targetRoleId,
+        status: updatedTeacher.status || 'Active',
+        overrides: {},
+        updatedAt: new Date().toISOString()
+      });
+    } else {
+      db.userAccess[accessIndex].userName = updatedTeacher.fullName || updatedTeacher.name;
+      if (updateData.designation && updateData.designation !== currentTeacher.designation) {
+        db.userAccess[accessIndex].roleId = targetRoleId;
+      }
+      if (updateData.status) {
+        db.userAccess[accessIndex].status = updateData.status;
+      }
+      db.userAccess[accessIndex].updatedAt = new Date().toISOString();
+    }
+
     addActivity(db, 'alert', 'Teacher Profile Modified', `${updatedTeacher.name || updatedTeacher.fullName}'s professional records were updated.`, 'hsl(var(--color-secondary))', 'rgba(hsl(var(--color-secondary)), 0.1)');
     writeDb(db);
 

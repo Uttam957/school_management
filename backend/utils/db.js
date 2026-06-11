@@ -34,10 +34,14 @@ export const slugify = (text) => {
 export const restoreTenantContext = (req, res, next) => {
   let tenantId = req.headers['x-tenant-id'] || req.query.tenantId;
   if (!tenantId && req.headers.host) {
-    const host = req.headers.host;
-    const parts = host.split('.');
-    if (parts.length > 2 || (parts.length === 2 && !parts[1].startsWith('localhost'))) {
-      tenantId = parts[0];
+    const host = req.headers.host.split(':')[0]; // Remove port
+    // Skip tenant parsing for IP addresses (e.g. 127.0.0.1, 192.168.x.x)
+    const isIp = /^(?:[0-9]{1,3}\.){3}[0-9]{1,3}$/.test(host);
+    if (!isIp) {
+      const parts = host.split('.');
+      if (parts.length > 2 || (parts.length === 2 && !parts[1].startsWith('localhost'))) {
+        tenantId = parts[0];
+      }
     }
   }
   
@@ -187,6 +191,7 @@ const createTablesFromSchema = async () => {
 
     // Dynamic alters to align schema with memory data models
     const extraSchemaAlters = [
+      "ALTER TABLE staff ADD COLUMN designation VARCHAR(100)",
       "ALTER TABLE timetables ADD COLUMN sat JSON",
       "ALTER TABLE exam_timetables ADD COLUMN startTime VARCHAR(50)",
       "ALTER TABLE exam_timetables ADD COLUMN endTime VARCHAR(50)",
@@ -213,7 +218,8 @@ const createTablesFromSchema = async () => {
       "ALTER TABLE exams ADD COLUMN gradeSections JSON",
       "ALTER TABLE exams ADD COLUMN subjectIncluded JSON",
       "ALTER TABLE exams ADD COLUMN subjectMarks JSON",
-      "ALTER TABLE exams ADD COLUMN createdAt VARCHAR(100)"
+      "ALTER TABLE exams ADD COLUMN createdAt VARCHAR(100)",
+      "ALTER TABLE exams ADD COLUMN timetablePublished TINYINT(1) DEFAULT 0"
     ];
 
     for (const sql of extraSchemaAlters) {
@@ -277,13 +283,13 @@ const migrateJsonToSql = async () => {
         `INSERT INTO schools (
           id, name, code, subdomain, logo, principalName, email, phone, address, city, state, country, 
           academicSession, subscriptionPlan, url, status, adminName, adminEmail, adminUsername, adminPassword, 
-          complexAdminUsername, complexAdminPassword, createdAt
-        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+          createdAt
+        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
         [
           school.id, school.name, school.code, school.subdomain, school.logo, school.principalName, school.email, 
           school.phone, school.address, school.city, school.state, school.country, school.academicSession, 
           school.subscriptionPlan, school.url, school.status, school.adminName, school.adminEmail, 
-          school.adminUsername, school.adminPassword, school.complexAdminUsername || '', school.complexAdminPassword || '', 
+          school.adminUsername, school.adminPassword, 
           school.createdAt
         ]
       );
@@ -319,13 +325,13 @@ const migrateJsonToSql = async () => {
               `INSERT INTO staff (
                 id, name, fullName, role, department, email, phone, gender, qualification, experience, 
                 dateOfJoining, salaryGrade, reportingTo, address, city, state, pincode, emergencyContact, 
-                emergencyPhone, photo, aadharFile, certificateFile, status, avatarBg, password, tenantId
-              ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+                emergencyPhone, photo, aadharFile, certificateFile, status, avatarBg, password, tenantId, designation
+              ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
               [
                 s.id, s.name, s.fullName, s.role, s.department, s.email, s.phone, s.gender, s.qualification, 
                 s.experience, s.dateOfJoining, s.salaryGrade, s.reportingTo, s.address, s.city, s.state, s.pincode, 
                 s.emergencyContact, s.emergencyPhone, s.photo, s.aadharFile, s.certificateFile, s.status || 'Active', 
-                s.avatarBg, s.password, tenantId
+                s.avatarBg, s.password, tenantId, s.designation || ''
               ]
             );
           }
@@ -657,6 +663,402 @@ export const initSqlDb = async () => {
 // Start the init procedure on boot
 initSqlDb();
 
+// Default roles and permissions seeder data
+export const getDefaultRoles = () => {
+  const modules = [
+    'dashboard',
+    // Core Registers
+    'student-directory', 'teacher-directory', 'staff-directory',
+    // Registry Admissions
+    'registry-admissions',
+    // Student Manager
+    'student-manager',
+    // Attendance Manager (parent group)
+    'attendance-manager',
+    'monthly-attendance', 'student-report', 'yearly-attendance', 'employee-attendance',
+    // Academic Manager (parent group)
+    'academic-manager',
+    'class-timetable', 'teacher-timetable',
+    // Exam Management
+    'exam-timetable',
+    // Academic Activities (parent group)
+    'academic-activities',
+    'academic-calendar',
+    // Academic History
+    'academic-history',
+    // Published sections
+    'published-exam-timetable', 'published-exam',
+    // Results
+    'results',
+    // Notices, Events, Holidays
+    'notices', 'events', 'holidays',
+    // Finance
+    'fee-structures', 'salaries', 'expenses', 'income',
+    // System
+    'roles-permissions'
+  ];
+  const actions = ['view', 'create', 'edit', 'delete', 'approve', 'publish', 'export', 'import', 'manage-settings'];
+
+  const createEmptyMatrix = () => {
+    const matrix = {};
+    modules.forEach(m => {
+      matrix[m] = {};
+      actions.forEach(a => {
+        matrix[m][a] = false;
+      });
+    });
+    return matrix;
+  };
+
+  return [
+    // ===== STAFF ROLES (14) =====
+    {
+      id: 'role-principal',
+      name: 'Principal',
+      description: 'School principal with full administrative access to all modules and system settings.',
+      active: true,
+      isSystem: true,
+      permissions: (() => {
+        const matrix = createEmptyMatrix();
+        modules.forEach(m => {
+          actions.forEach(a => {
+            matrix[m][a] = true;
+          });
+        });
+        return matrix;
+      })()
+    },
+    {
+      id: 'role-vice-principal',
+      name: 'Vice Principal',
+      description: 'Vice principal with broad access to academics, staff, and student management.',
+      active: true,
+      isSystem: true,
+      permissions: (() => {
+        const matrix = createEmptyMatrix();
+        [
+          'dashboard', 'student-directory', 'teacher-directory', 'staff-directory',
+          'registry-admissions', 'student-manager',
+          'attendance-manager', 'monthly-attendance', 'student-report', 'yearly-attendance',
+          'academic-manager', 'class-timetable', 'teacher-timetable',
+          'exam-timetable', 'academic-activities', 'academic-calendar', 'academic-history',
+          'published-exam-timetable', 'published-exam',
+          'results', 'notices', 'events', 'holidays'
+        ].forEach(m => {
+          actions.forEach(a => {
+            matrix[m][a] = true;
+          });
+        });
+        ['fee-structures', 'salaries', 'expenses', 'income'].forEach(m => {
+          matrix[m]['view'] = true;
+          matrix[m]['export'] = true;
+        });
+        return matrix;
+      })()
+    },
+    {
+      id: 'role-academic-coordinator',
+      name: 'Academic Coordinator',
+      description: 'Coordinates academic programs, timetables, exam schedules, and curriculum planning.',
+      active: true,
+      isSystem: true,
+      permissions: (() => {
+        const matrix = createEmptyMatrix();
+        matrix['dashboard']['view'] = true;
+        [
+          'academic-manager', 'class-timetable', 'teacher-timetable',
+          'exam-timetable', 'academic-calendar', 'academic-history',
+          'published-exam-timetable', 'published-exam', 'results'
+        ].forEach(m => {
+          matrix[m]['view'] = true;
+          matrix[m]['create'] = true;
+          matrix[m]['edit'] = true;
+          matrix[m]['delete'] = true;
+          matrix[m]['approve'] = true;
+          matrix[m]['publish'] = true;
+          matrix[m]['export'] = true;
+          matrix[m]['import'] = true;
+          matrix[m]['manage-settings'] = true;
+        });
+        matrix['student-directory']['view'] = true;
+        matrix['teacher-directory']['view'] = true;
+        matrix['attendance-manager']['view'] = true;
+        matrix['attendance-manager']['create'] = true;
+        matrix['attendance-manager']['edit'] = true;
+        matrix['attendance-manager']['export'] = true;
+        matrix['monthly-attendance']['view'] = true;
+        matrix['student-report']['view'] = true;
+        matrix['yearly-attendance']['view'] = true;
+        ['notices', 'events', 'holidays', 'academic-activities'].forEach(m => {
+          matrix[m]['view'] = true;
+          matrix[m]['create'] = true;
+          matrix[m]['edit'] = true;
+          matrix[m]['delete'] = true;
+        });
+        return matrix;
+      })()
+    },
+    {
+      id: 'role-head-teacher',
+      name: 'Head Teacher',
+      description: 'Senior teacher overseeing department activities, attendance records, and exam coordination.',
+      active: true,
+      isSystem: true,
+      permissions: (() => {
+        const matrix = createEmptyMatrix();
+        matrix['dashboard']['view'] = true;
+        matrix['student-directory']['view'] = true;
+        matrix['student-directory']['export'] = true;
+        matrix['teacher-directory']['view'] = true;
+        [
+          'academic-manager', 'class-timetable', 'teacher-timetable',
+          'exam-timetable', 'academic-history',
+          'published-exam-timetable', 'published-exam', 'results'
+        ].forEach(m => {
+          matrix[m]['view'] = true;
+          matrix[m]['create'] = true;
+          matrix[m]['edit'] = true;
+          matrix[m]['delete'] = true;
+          matrix[m]['approve'] = true;
+          matrix[m]['publish'] = true;
+          matrix[m]['export'] = true;
+        });
+        matrix['attendance-manager']['view'] = true;
+        matrix['attendance-manager']['create'] = true;
+        matrix['attendance-manager']['edit'] = true;
+        matrix['attendance-manager']['export'] = true;
+        matrix['monthly-attendance']['view'] = true;
+        matrix['student-report']['view'] = true;
+        matrix['yearly-attendance']['view'] = true;
+        ['academic-calendar', 'academic-activities', 'notices', 'events', 'holidays'].forEach(m => {
+          matrix[m]['view'] = true;
+          matrix[m]['create'] = true;
+          matrix[m]['edit'] = true;
+        });
+        return matrix;
+      })()
+    },
+    {
+      id: 'role-teacher',
+      name: 'Teacher',
+      description: 'Standard subject teacher. Records attendance, enters marks, and views student profiles.',
+      active: true,
+      isSystem: true,
+      permissions: (() => {
+        const matrix = createEmptyMatrix();
+        matrix['dashboard']['view'] = true;
+        matrix['student-directory']['view'] = true;
+        matrix['academic-manager']['view'] = true;
+        matrix['class-timetable']['view'] = true;
+        matrix['teacher-timetable']['view'] = true;
+        matrix['exam-timetable']['view'] = true;
+        matrix['published-exam-timetable']['view'] = true;
+        matrix['published-exam']['view'] = true;
+        matrix['results']['view'] = true;
+        matrix['results']['create'] = true;
+        matrix['results']['edit'] = true;
+        matrix['attendance-manager']['view'] = true;
+        matrix['attendance-manager']['create'] = true;
+        matrix['attendance-manager']['edit'] = true;
+        matrix['monthly-attendance']['view'] = true;
+        matrix['student-report']['view'] = true;
+        matrix['yearly-attendance']['view'] = true;
+        ['academic-calendar', 'academic-activities', 'notices', 'events', 'holidays'].forEach(m => {
+          matrix[m]['view'] = true;
+        });
+        return matrix;
+      })()
+    },
+    {
+      id: 'role-librarian',
+      name: 'Librarian',
+      description: 'School librarian. Manages library resources, student access, and catalog records.',
+      active: true,
+      isSystem: true,
+      permissions: (() => {
+        const matrix = createEmptyMatrix();
+        matrix['dashboard']['view'] = true;
+        matrix['student-directory']['view'] = true;
+        matrix['teacher-directory']['view'] = true;
+        ['academic-calendar', 'academic-activities', 'notices', 'events', 'holidays'].forEach(m => {
+          matrix[m]['view'] = true;
+        });
+        return matrix;
+      })()
+    },
+    {
+      id: 'role-lab-assistant',
+      name: 'Lab Assistant',
+      description: 'Laboratory assistant. Supports practical sessions and maintains lab equipment inventory.',
+      active: true,
+      isSystem: true,
+      permissions: (() => {
+        const matrix = createEmptyMatrix();
+        matrix['dashboard']['view'] = true;
+        matrix['student-directory']['view'] = true;
+        matrix['academic-manager']['view'] = true;
+        matrix['class-timetable']['view'] = true;
+        matrix['attendance-manager']['view'] = true;
+        ['academic-calendar', 'academic-activities', 'notices', 'events', 'holidays'].forEach(m => {
+          matrix[m]['view'] = true;
+        });
+        return matrix;
+      })()
+    },
+    {
+      id: 'role-counselor',
+      name: 'Counselor',
+      description: 'Student counselor. Manages student welfare, behavioral tracking, and parent consultations.',
+      active: true,
+      isSystem: true,
+      permissions: (() => {
+        const matrix = createEmptyMatrix();
+        matrix['dashboard']['view'] = true;
+        matrix['student-directory']['view'] = true;
+        matrix['student-directory']['edit'] = true;
+        matrix['teacher-directory']['view'] = true;
+        matrix['attendance-manager']['view'] = true;
+        matrix['attendance-manager']['export'] = true;
+        matrix['monthly-attendance']['view'] = true;
+        matrix['student-report']['view'] = true;
+        matrix['yearly-attendance']['view'] = true;
+        matrix['results']['view'] = true;
+        ['academic-calendar', 'academic-activities', 'notices', 'events', 'holidays'].forEach(m => {
+          matrix[m]['view'] = true;
+        });
+        return matrix;
+      })()
+    },
+    {
+      id: 'role-receptionist',
+      name: 'Receptionist',
+      description: 'Front-office receptionist. Manages admissions, visitor records, and inquiry handling.',
+      active: true,
+      isSystem: true,
+      permissions: (() => {
+        const matrix = createEmptyMatrix();
+        matrix['dashboard']['view'] = true;
+        matrix['student-directory']['view'] = true;
+        matrix['student-directory']['create'] = true;
+        matrix['student-directory']['edit'] = true;
+        matrix['student-directory']['export'] = true;
+        matrix['student-directory']['import'] = true;
+        matrix['registry-admissions']['view'] = true;
+        matrix['registry-admissions']['create'] = true;
+        matrix['registry-admissions']['edit'] = true;
+        matrix['teacher-directory']['view'] = true;
+        matrix['staff-directory']['view'] = true;
+        matrix['attendance-manager']['view'] = true;
+        ['notices', 'events', 'holidays', 'academic-calendar', 'academic-activities'].forEach(m => {
+          matrix[m]['view'] = true;
+        });
+        return matrix;
+      })()
+    },
+    {
+      id: 'role-accountant',
+      name: 'Accountant',
+      description: 'Accounts administrator. Manages fee structures, collections, invoices, salaries, and financial reports.',
+      active: true,
+      isSystem: true,
+      permissions: (() => {
+        const matrix = createEmptyMatrix();
+        matrix['dashboard']['view'] = true;
+        ['fee-structures', 'salaries', 'expenses', 'income'].forEach(m => {
+          matrix[m]['view'] = true;
+          matrix[m]['create'] = true;
+          matrix[m]['edit'] = true;
+          matrix[m]['delete'] = true;
+          matrix[m]['approve'] = true;
+          matrix[m]['export'] = true;
+          matrix[m]['manage-settings'] = true;
+        });
+        matrix['student-directory']['view'] = true;
+        matrix['teacher-directory']['view'] = true;
+        matrix['staff-directory']['view'] = true;
+        ['notices', 'events', 'holidays', 'academic-calendar', 'academic-activities'].forEach(m => {
+          matrix[m]['view'] = true;
+        });
+        return matrix;
+      })()
+    },
+    {
+      id: 'role-transport-manager',
+      name: 'Transport Manager',
+      description: 'Transport coordinator. Manages school bus routes, vehicle tracking, and driver assignments.',
+      active: true,
+      isSystem: true,
+      permissions: (() => {
+        const matrix = createEmptyMatrix();
+        matrix['dashboard']['view'] = true;
+        matrix['student-directory']['view'] = true;
+        matrix['student-directory']['export'] = true;
+        matrix['staff-directory']['view'] = true;
+        matrix['staff-directory']['export'] = true;
+        matrix['expenses']['view'] = true;
+        matrix['expenses']['create'] = true;
+        matrix['expenses']['edit'] = true;
+        matrix['expenses']['export'] = true;
+        ['notices', 'events', 'holidays', 'academic-calendar', 'academic-activities'].forEach(m => {
+          matrix[m]['view'] = true;
+        });
+        return matrix;
+      })()
+    },
+    // ===== PORTAL ROLES =====
+    {
+      id: 'role-student',
+      name: 'Student',
+      description: 'Student portal. Views timetables, exam reports, notices, and events.',
+      active: true,
+      isSystem: true,
+      permissions: (() => {
+        const matrix = createEmptyMatrix();
+        matrix['dashboard']['view'] = true;
+        matrix['academic-manager']['view'] = true;
+        matrix['class-timetable']['view'] = true;
+        matrix['academic-calendar']['view'] = true;
+        matrix['exam-timetable']['view'] = true;
+        matrix['published-exam-timetable']['view'] = true;
+        matrix['published-exam']['view'] = true;
+        matrix['results']['view'] = true;
+        matrix['notices']['view'] = true;
+        matrix['events']['view'] = true;
+        matrix['holidays']['view'] = true;
+        return matrix;
+      })()
+    },
+    {
+      id: 'role-parent',
+      name: 'Parent',
+      description: 'Parent portal. Views children attendance, fees, academic cards, and school notices.',
+      active: true,
+      isSystem: true,
+      permissions: (() => {
+        const matrix = createEmptyMatrix();
+        matrix['dashboard']['view'] = true;
+        matrix['student-directory']['view'] = true;
+        matrix['academic-manager']['view'] = true;
+        matrix['class-timetable']['view'] = true;
+        matrix['academic-calendar']['view'] = true;
+        matrix['exam-timetable']['view'] = true;
+        matrix['published-exam-timetable']['view'] = true;
+        matrix['published-exam']['view'] = true;
+        matrix['results']['view'] = true;
+        matrix['notices']['view'] = true;
+        matrix['events']['view'] = true;
+        matrix['holidays']['view'] = true;
+        matrix['attendance-manager']['view'] = true;
+        matrix['monthly-attendance']['view'] = true;
+        matrix['student-report']['view'] = true;
+        matrix['yearly-attendance']['view'] = true;
+        matrix['fee-structures']['view'] = true;
+        return matrix;
+      })()
+    }
+  ];
+};
+
 // Load dynamic cached tenant details from MySQL database
 export const loadTenantSqlIntoMemory = async (tenantId) => {
   try {
@@ -693,7 +1095,10 @@ export const loadTenantSqlIntoMemory = async (tenantId) => {
       income: [],
       attendance: [],
       subscriptionPlans: [],
-      schools: []
+      schools: [],
+      roles: [],
+      userAccess: [],
+      auditLogs: []
     };
 
     // 1. Get Global Platform details
@@ -819,7 +1224,8 @@ export const loadTenantSqlIntoMemory = async (tenantId) => {
         gradeSections,
         subjectIncluded,
         subjectMarks,
-        createdAt: ex.createdAt || ''
+        createdAt: ex.createdAt || '',
+        timetablePublished: ex.timetablePublished === 1 || ex.timetablePublished === true
       };
     });
 
@@ -1034,6 +1440,77 @@ export const loadTenantSqlIntoMemory = async (tenantId) => {
       };
     });
 
+    // Load Roles & Permissions details
+    const dbRoles = await sqlDb.query('SELECT * FROM roles WHERE tenantId = ?', [tId]);
+    if (dbRoles.length === 0) {
+      // Seed default roles
+      const defaultRoles = getDefaultRoles();
+      for (const r of defaultRoles) {
+        await sqlDb.query(
+          `INSERT INTO roles (id, name, description, active, isSystem, permissions, createdAt, tenantId) VALUES (?, ?, ?, ?, ?, ?, ?, ?)`,
+          [
+            r.id,
+            r.name,
+            r.description,
+            r.active ? 1 : 0,
+            r.isSystem ? 1 : 0,
+            JSON.stringify(r.permissions),
+            new Date().toISOString(),
+            tId
+          ]
+        );
+      }
+      data.roles = defaultRoles;
+    } else {
+      data.roles = dbRoles.map(r => ({
+        ...r,
+        active: r.active === 1 || r.active === true || r.active === '1',
+        isSystem: r.isSystem === 1 || r.isSystem === true || r.isSystem === '1',
+        permissions: typeof r.permissions === 'string' ? JSON.parse(r.permissions) : (r.permissions || {})
+      }));
+    }
+
+    const dbUserAccess = await sqlDb.query('SELECT * FROM user_access WHERE tenantId = ?', [tId]);
+    data.userAccess = dbUserAccess.map(ua => ({
+      ...ua,
+      overrides: typeof ua.overrides === 'string' ? JSON.parse(ua.overrides) : (ua.overrides || {})
+    }));
+
+    data.auditLogs = await sqlDb.query('SELECT * FROM audit_logs WHERE tenantId = ?', [tId]);
+
+    const dbQrCodes = await sqlDb.query('SELECT * FROM employee_qr_codes WHERE tenantId = ?', [tId]);
+    data.employeeQrCodes = dbQrCodes;
+
+    // Link qrCodePath onto teachers and staff in memory for quick frontend access
+    if (data.teachers && Array.isArray(data.teachers)) {
+      data.teachers.forEach(t => {
+        const qr = dbQrCodes.find(q => q.employeeId === t.employeeId || q.employeeId === t.id);
+        if (qr) t.qrCodePath = qr.qrPath;
+      });
+    }
+    if (data.staff && Array.isArray(data.staff)) {
+      data.staff.forEach(s => {
+        const qr = dbQrCodes.find(q => q.employeeId === s.id);
+        if (qr) s.qrCodePath = qr.qrPath;
+      });
+    }
+
+
+    const dbAttRecords = await sqlDb.query('SELECT * FROM attendance_records WHERE tenantId = ?', [tId]);
+    data.attendanceRecords = dbAttRecords.map(a => ({
+      ...a,
+      workingHours: parseFloat(a.workingHours || 0)
+    }));
+
+    const dbAttLogs = await sqlDb.query('SELECT * FROM attendance_logs WHERE tenantId = ?', [tId]);
+    data.attendanceLogs = dbAttLogs;
+
+    const dbAttReports = await sqlDb.query('SELECT * FROM attendance_reports WHERE tenantId = ?', [tId]);
+    data.attendanceReports = dbAttReports.map(r => ({
+      ...r,
+      filters: typeof r.filters === 'string' ? JSON.parse(r.filters) : (r.filters || {})
+    }));
+
     dbCache[queryTenantId] = data;
     return data;
   } catch (err) {
@@ -1070,33 +1547,70 @@ export const ensureTenantSqlLoaded = async (req, res, next) => {
 
 // Asynchronous write dispatcher to MySQL
 export const saveMemoryDbToSql = async (tenantId, db) => {
+  const tId = tenantId || 'platform';
   try {
     if (!isSqlActive()) return;
 
-    const tId = tenantId || 'platform';
     console.log(`[SQL Sync] Initiating async MySQL database update for tenant: ${tId}`);
 
     // 1. Sync global platforms
     if (db.schools && Array.isArray(db.schools)) {
+      // Synchronize deleted schools from MySQL
+      const activeSchoolIds = db.schools.map(s => s.id).filter(Boolean);
+      let deletedSubdomains = [];
+      try {
+        if (activeSchoolIds.length > 0) {
+          const rows = await sqlDb.query(`SELECT subdomain FROM schools WHERE id NOT IN (${activeSchoolIds.map(() => '?').join(',')})`, activeSchoolIds);
+          deletedSubdomains = (rows || []).map(r => r.subdomain);
+          await sqlDb.query(`DELETE FROM schools WHERE id NOT IN (${activeSchoolIds.map(() => '?').join(',')})`, activeSchoolIds);
+        } else {
+          const rows = await sqlDb.query(`SELECT subdomain FROM schools`);
+          deletedSubdomains = (rows || []).map(r => r.subdomain);
+          await sqlDb.query('DELETE FROM schools');
+        }
+      } catch (dbErr) {
+        console.error('[SQL Sync delete schools error]', dbErr.message);
+      }
+
+      // Cleanup deleted tenant subdomains data completely in MySQL
+      if (deletedSubdomains.length > 0) {
+        const tenantTables = [
+          'teachers', 'staff', 'students', 'invoices', 'fees', 'expenses', 'payroll',
+          'staff_payments', 'activities', 'exams', 'exam_timetables', 'notices',
+          'holidays', 'events', 'results', 'overall_results', 'subjects', 'timeslots',
+          'fee_structures', 'salary_structures', 'staff_salary_structures', 'income',
+          'attendance', 'roles', 'user_access', 'audit_logs', 'employee_qr_codes',
+          'attendance_records', 'attendance_logs', 'attendance_reports'
+        ];
+        for (const sub of deletedSubdomains) {
+          for (const tbl of tenantTables) {
+            try {
+              await sqlDb.query(`DELETE FROM ${tbl} WHERE tenantId = ?`, [sub]);
+            } catch (tblErr) {
+              // Ignore table/field missing errors
+            }
+          }
+        }
+      }
+
       for (const s of db.schools) {
         await sqlDb.query(
           `INSERT INTO schools (
             id, name, code, subdomain, logo, principalName, email, phone, address, city, state, country, 
             academicSession, subscriptionPlan, url, status, adminName, adminEmail, adminUsername, adminPassword, 
-            complexAdminUsername, complexAdminPassword, createdAt
-          ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+            createdAt
+          ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
           ON DUPLICATE KEY UPDATE 
             name=VALUES(name), logo=VALUES(logo), principalName=VALUES(principalName), email=VALUES(email),
             phone=VALUES(phone), address=VALUES(address), city=VALUES(city), state=VALUES(state),
             academicSession=VALUES(academicSession), subscriptionPlan=VALUES(subscriptionPlan),
             status=VALUES(status), adminName=VALUES(adminName), adminEmail=VALUES(adminEmail),
-            adminUsername=VALUES(adminUsername), adminPassword=VALUES(adminPassword),
-            complexAdminUsername=VALUES(complexAdminUsername), complexAdminPassword=VALUES(complexAdminPassword)`,
+            adminUsername=VALUES(adminUsername), adminPassword=VALUES(adminPassword)`,
           [
             s.id, s.name, s.code, s.subdomain, s.logo, s.principalName || s.principal || '', s.email, 
             s.phone, s.address, s.city, s.state, s.country || 'India', s.academicSession || '2026-2027', 
             s.subscriptionPlan || 'Starter', s.url, s.status || 'Active', s.adminName || '', s.adminEmail || '', 
-            s.adminUsername || '', s.adminPassword || '', s.complexAdminUsername || '', s.complexAdminPassword || '', 
+            s.adminUsername || '', s.adminPassword || '', 
             s.createdAt
           ]
         );
@@ -1190,17 +1704,17 @@ export const saveMemoryDbToSql = async (tenantId, db) => {
           s.id, s.name, s.fullName, s.role, s.department, s.email, s.phone, s.gender, s.qualification, 
           s.experience, s.dateOfJoining, s.salaryGrade, s.reportingTo, s.address, s.city, s.state, s.pincode, 
           s.emergencyContact, s.emergencyPhone, s.photo, s.aadharFile, s.certificateFile, s.status || 'Active', 
-          s.avatarBg, s.password, tId
+          s.avatarBg, s.password, tId, s.designation || ''
         ].map(v => v === undefined ? null : v);
         await sqlDb.query(
           `INSERT INTO staff (
             id, name, fullName, role, department, email, phone, gender, qualification, experience, 
             dateOfJoining, salaryGrade, reportingTo, address, city, state, pincode, emergencyContact, 
-            emergencyPhone, photo, aadharFile, certificateFile, status, avatarBg, password, tenantId
-          ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+            emergencyPhone, photo, aadharFile, certificateFile, status, avatarBg, password, tenantId, designation
+          ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
           ON DUPLICATE KEY UPDATE
             name=VALUES(name), role=VALUES(role), department=VALUES(department), email=VALUES(email),
-            phone=VALUES(phone), status=VALUES(status), password=VALUES(password)`,
+            phone=VALUES(phone), status=VALUES(status), password=VALUES(password), designation=VALUES(designation)`,
           params
         );
       }
@@ -1571,14 +2085,15 @@ export const saveMemoryDbToSql = async (tenantId, db) => {
         await sqlDb.query(
           `INSERT INTO exams (
             id, name, term, startDate, endDate, status, tenantId,
-            description, totalMarks, gradeSections, subjectIncluded, subjectMarks, createdAt
-          ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+            description, totalMarks, gradeSections, subjectIncluded, subjectMarks, createdAt, timetablePublished
+          ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
            ON DUPLICATE KEY UPDATE 
             name=VALUES(name), term=VALUES(term), status=VALUES(status), 
             startDate=VALUES(startDate), endDate=VALUES(endDate),
             description=VALUES(description), totalMarks=VALUES(totalMarks),
             gradeSections=VALUES(gradeSections), subjectIncluded=VALUES(subjectIncluded),
-            subjectMarks=VALUES(subjectMarks), createdAt=VALUES(createdAt)`,
+            subjectMarks=VALUES(subjectMarks), createdAt=VALUES(createdAt),
+            timetablePublished=VALUES(timetablePublished)`,
           [
             ex.id,
             ex.examName || ex.name || '',
@@ -1592,7 +2107,8 @@ export const saveMemoryDbToSql = async (tenantId, db) => {
             ex.gradeSections ? JSON.stringify(ex.gradeSections) : '[]',
             ex.subjectIncluded ? JSON.stringify(ex.subjectIncluded) : '{}',
             ex.subjectMarks ? JSON.stringify(ex.subjectMarks) : '{}',
-            ex.createdAt || new Date().toISOString()
+            ex.createdAt || new Date().toISOString(),
+            ex.timetablePublished ? 1 : 0
           ]
         );
       }
@@ -1899,9 +2415,187 @@ export const saveMemoryDbToSql = async (tenantId, db) => {
       }
     }
 
+    // 17. Sync Roles
+    if (db.roles && Array.isArray(db.roles)) {
+      const activeRoleIds = db.roles.map(r => r.id).filter(Boolean);
+      if (activeRoleIds.length > 0) {
+        await sqlDb.query(`DELETE FROM roles WHERE tenantId = ? AND id NOT IN (${activeRoleIds.map(() => '?').join(',')})`, [tId, ...activeRoleIds]);
+      } else {
+        await sqlDb.query('DELETE FROM roles WHERE tenantId = ?', [tId]);
+      }
+
+      for (const r of db.roles) {
+        if (!r.id) continue;
+        await sqlDb.query(
+          `INSERT INTO roles (id, name, description, active, isSystem, permissions, createdAt, tenantId) VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+           ON DUPLICATE KEY UPDATE name=VALUES(name), description=VALUES(description), active=VALUES(active), permissions=VALUES(permissions)`,
+          [
+            r.id,
+            r.name,
+            r.description || '',
+            r.active ? 1 : 0,
+            r.isSystem ? 1 : 0,
+            typeof r.permissions === 'object' ? JSON.stringify(r.permissions) : (r.permissions || '{}'),
+            r.createdAt || new Date().toISOString(),
+            tId
+          ]
+        );
+      }
+    }
+
+    // 18. Sync User Access
+    if (db.userAccess && Array.isArray(db.userAccess)) {
+      const activeUaIds = db.userAccess.map(ua => ua.id).filter(Boolean);
+      if (activeUaIds.length > 0) {
+        await sqlDb.query(`DELETE FROM user_access WHERE tenantId = ? AND id NOT IN (${activeUaIds.map(() => '?').join(',')})`, [tId, ...activeUaIds]);
+      } else {
+        await sqlDb.query('DELETE FROM user_access WHERE tenantId = ?', [tId]);
+      }
+
+      for (const ua of db.userAccess) {
+        if (!ua.id) continue;
+        await sqlDb.query(
+          `INSERT INTO user_access (id, userId, userName, userType, roleId, status, overrides, updatedAt, tenantId) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
+           ON DUPLICATE KEY UPDATE roleId=VALUES(roleId), status=VALUES(status), overrides=VALUES(overrides), userName=VALUES(userName), updatedAt=VALUES(updatedAt)`,
+          [
+            ua.id,
+            ua.userId,
+            ua.userName,
+            ua.userType,
+            ua.roleId || null,
+            ua.status || 'Active',
+            typeof ua.overrides === 'object' ? JSON.stringify(ua.overrides) : (ua.overrides || '{}'),
+            ua.updatedAt || new Date().toISOString(),
+            tId
+          ]
+        );
+      }
+    }
+
+    // 19. Sync Audit Logs
+    if (db.auditLogs && Array.isArray(db.auditLogs)) {
+      const activeLogIds = db.auditLogs.map(l => l.id).filter(Boolean);
+      if (activeLogIds.length > 0) {
+        await sqlDb.query(`DELETE FROM audit_logs WHERE tenantId = ? AND id NOT IN (${activeLogIds.map(() => '?').join(',')})`, [tId, ...activeLogIds]);
+      } else {
+        await sqlDb.query('DELETE FROM audit_logs WHERE tenantId = ?', [tId]);
+      }
+
+      for (const l of db.auditLogs) {
+        if (!l.id) continue;
+        await sqlDb.query(
+          `INSERT INTO audit_logs (id, userId, userName, userRole, action, details, ipAddress, timestamp, tenantId) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
+           ON DUPLICATE KEY UPDATE action=VALUES(action)`,
+          [
+            l.id,
+            l.userId || null,
+            l.userName || '',
+            l.userRole || '',
+            l.action,
+            l.details || '',
+            l.ipAddress || '',
+            l.timestamp || new Date().toISOString(),
+            tId
+          ]
+        );
+      }
+    }
+
+    // 20. Sync Employee QR Codes
+    if (db.employeeQrCodes && Array.isArray(db.employeeQrCodes)) {
+      const activeQrIds = db.employeeQrCodes.map(q => q.id).filter(Boolean);
+      if (activeQrIds.length > 0) {
+        await sqlDb.query(`DELETE FROM employee_qr_codes WHERE tenantId = ? AND id NOT IN (${activeQrIds.map(() => '?').join(',')})`, [tId, ...activeQrIds]);
+      } else {
+        await sqlDb.query('DELETE FROM employee_qr_codes WHERE tenantId = ?', [tId]);
+      }
+      for (const q of db.employeeQrCodes) {
+        if (!q.id) continue;
+        await sqlDb.query(
+          `INSERT INTO employee_qr_codes (id, employeeId, employeeType, qrPath, createdAt, tenantId, teacherId, staffId)
+           VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+           ON DUPLICATE KEY UPDATE qrPath=VALUES(qrPath)`,
+          [
+            q.id, q.employeeId, q.employeeType, q.qrPath, q.createdAt || new Date().toISOString(), tId,
+            q.employeeType === 'Teacher' ? q.employeeId : null,
+            q.employeeType === 'Staff' ? q.employeeId : null
+          ]
+        );
+      }
+    }
+
+    // 21. Sync Attendance Records
+    if (db.attendanceRecords && Array.isArray(db.attendanceRecords)) {
+      const activeAttIds = db.attendanceRecords.map(a => a.id).filter(Boolean);
+      if (activeAttIds.length > 0) {
+        await sqlDb.query(`DELETE FROM attendance_records WHERE tenantId = ? AND id NOT IN (${activeAttIds.map(() => '?').join(',')})`, [tId, ...activeAttIds]);
+      } else {
+        await sqlDb.query('DELETE FROM attendance_records WHERE tenantId = ?', [tId]);
+      }
+      for (const a of db.attendanceRecords) {
+        if (!a.id) continue;
+        await sqlDb.query(
+          `INSERT INTO attendance_records (id, employeeId, employeeType, name, department, designation, date, checkIn, checkOut, workingHours, status, createdAt, tenantId, teacherId, staffId)
+           VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+           ON DUPLICATE KEY UPDATE checkIn=VALUES(checkIn), checkOut=VALUES(checkOut), workingHours=VALUES(workingHours), status=VALUES(status)`,
+          [
+            a.id, a.employeeId, a.employeeType, a.name, a.department || '', a.designation || '', a.date, a.checkIn || null, a.checkOut || null, parseFloat(a.workingHours || 0), a.status || 'Present', a.createdAt || new Date().toISOString(), tId,
+            a.employeeType === 'Teacher' ? a.employeeId : null,
+            a.employeeType === 'Staff' ? a.employeeId : null
+          ]
+        );
+      }
+    }
+
+    // 22. Sync Attendance Logs
+    if (db.attendanceLogs && Array.isArray(db.attendanceLogs)) {
+      const activeLogIds = db.attendanceLogs.map(l => l.id).filter(Boolean);
+      if (activeLogIds.length > 0) {
+        await sqlDb.query(`DELETE FROM attendance_logs WHERE tenantId = ? AND id NOT IN (${activeLogIds.map(() => '?').join(',')})`, [tId, ...activeLogIds]);
+      } else {
+        await sqlDb.query('DELETE FROM attendance_logs WHERE tenantId = ?', [tId]);
+      }
+      for (const l of db.attendanceLogs) {
+        if (!l.id) continue;
+        await sqlDb.query(
+          `INSERT INTO attendance_logs (id, employeeId, employeeType, scanTime, scanType, status, tenantId, teacherId, staffId)
+           VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
+           ON DUPLICATE KEY UPDATE scanTime=VALUES(scanTime), scanType=VALUES(scanType), status=VALUES(status)`,
+          [
+            l.id, l.employeeId, l.employeeType, l.scanTime, l.scanType, l.status, tId,
+            l.employeeType === 'Teacher' ? l.employeeId : null,
+            l.employeeType === 'Staff' ? l.employeeId : null
+          ]
+        );
+      }
+    }
+
+    // 23. Sync Attendance Reports
+    if (db.attendanceReports && Array.isArray(db.attendanceReports)) {
+      const activeRepIds = db.attendanceReports.map(r => r.id).filter(Boolean);
+      if (activeRepIds.length > 0) {
+        await sqlDb.query(`DELETE FROM attendance_reports WHERE tenantId = ? AND id NOT IN (${activeRepIds.map(() => '?').join(',')})`, [tId, ...activeRepIds]);
+      } else {
+        await sqlDb.query('DELETE FROM attendance_reports WHERE tenantId = ?', [tId]);
+      }
+      for (const r of db.attendanceReports) {
+        if (!r.id) continue;
+        await sqlDb.query(
+          `INSERT INTO attendance_reports (id, reportName, reportType, generatedAt, filters, filePath, tenantId)
+           VALUES (?, ?, ?, ?, ?, ?, ?)
+           ON DUPLICATE KEY UPDATE reportName=VALUES(reportName), filePath=VALUES(filePath)`,
+          [
+            r.id, r.reportName, r.reportType, r.generatedAt,
+            typeof r.filters === 'object' ? JSON.stringify(r.filters) : (r.filters || '{}'),
+            r.filePath, tId
+          ]
+        );
+      }
+    }
+
     console.log(`[SQL Sync SUCCESS] Finished database sync for tenant: ${tId}`);
   } catch (err) {
-    console.error(`[SQL Sync ERROR] Sync query failed for tenant ${tenantId}:`, err);
+    console.error(`[SQL Sync ERROR] Sync query failed for tenant ${tId || 'platform'}:`, err);
   }
 };
 
@@ -1942,6 +2636,10 @@ export const readDb = () => {
     if (!db.results) db.results = [];
     if (!db.overallResults) db.overallResults = [];
     if (!db.subjects) db.subjects = [];
+    if (!db.employeeQrCodes) db.employeeQrCodes = [];
+    if (!db.attendanceRecords) db.attendanceRecords = [];
+    if (!db.attendanceLogs) db.attendanceLogs = [];
+    if (!db.attendanceReports) db.attendanceReports = [];
     if (!db.timeslots) {
       db.timeslots = [
         '09:00 AM - 10:00 AM',
@@ -1972,6 +2670,10 @@ export const readDb = () => {
       events: [],
       results: [],
       overallResults: [],
+      employeeQrCodes: [],
+      attendanceRecords: [],
+      attendanceLogs: [],
+      attendanceReports: [],
       timeslots: [
         '09:00 AM - 10:00 AM',
         '10:00 AM - 11:00 AM',

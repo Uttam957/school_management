@@ -20,8 +20,10 @@ import {
   Download,
   Info,
   Edit3,
-  Plus
+  Plus,
+  Printer
 } from 'lucide-react';
+import { hasPermission } from '../utils/permissions';
 
 
 
@@ -57,6 +59,223 @@ export default function StudentDirectory({ readOnly = true, onAddClick }) {
   const [editingStudent, setEditingStudent] = useState(null);
   const [editFormData, setEditFormData] = useState({});
   const [editLoading, setEditLoading] = useState(false);
+  const [schoolDetails, setSchoolDetails] = useState(null);
+
+  useEffect(() => {
+    const fetchSchool = async () => {
+      try {
+        const res = await fetch('/api/school');
+        if (res.ok) {
+          const data = await res.json();
+          setSchoolDetails(data);
+        }
+      } catch (err) {
+        console.error('Error fetching school details:', err);
+      }
+    };
+    fetchSchool();
+  }, []);
+
+  const handlePrintIDCard = (student) => {
+    const printWindow = window.open('', '_blank', 'width=600,height=700');
+    const schoolName = schoolDetails?.name || 'Aether Academy';
+    printWindow.document.write(`
+      <html>
+        <head>
+          <title>Student ID Card - ${student.name}</title>
+          <style>
+            @import url('https://fonts.googleapis.com/css2?family=Outfit:wght@400;600;700;800&display=swap');
+            body {
+              font-family: 'Outfit', sans-serif;
+              text-align: center;
+              padding: 40px;
+              color: #1e1b4b;
+              background: #f8fafc;
+              display: flex;
+              justify-content: center;
+              align-items: center;
+              height: 90vh;
+              margin: 0;
+            }
+            .badge-card {
+              border: 1px solid #e2e8f0;
+              border-radius: 24px;
+              background: #ffffff;
+              box-shadow: 0 20px 25px -5px rgba(0,0,0,0.1), 0 10px 10px -5px rgba(0,0,0,0.04);
+              width: 350px;
+              overflow: hidden;
+              position: relative;
+              text-align: left;
+            }
+            .header-banner {
+              background: linear-gradient(135deg, #4f46e5 0%, #7c3aed 100%);
+              padding: 24px 20px;
+              color: #ffffff;
+              text-align: center;
+              position: relative;
+            }
+            .header-banner h2 {
+              margin: 0;
+              font-size: 1.25rem;
+              font-weight: 800;
+              letter-spacing: 0.03em;
+              text-transform: uppercase;
+              text-shadow: 0 2px 4px rgba(0,0,0,0.1);
+            }
+            .header-banner p {
+              margin: 4px 0 0 0;
+              font-size: 0.75rem;
+              font-weight: 600;
+              color: #e0e7ff;
+              text-transform: uppercase;
+              letter-spacing: 0.1em;
+            }
+            .card-body {
+              padding: 24px;
+              display: flex;
+              flex-direction: column;
+              align-items: center;
+            }
+            .avatar-container {
+              position: relative;
+              margin-top: -60px;
+              margin-bottom: 16px;
+              z-index: 10;
+            }
+            .avatar {
+              width: 100px;
+              height: 100px;
+              border-radius: 50%;
+              object-fit: cover;
+              border: 4px solid #ffffff;
+              box-shadow: 0 10px 15px -3px rgba(0,0,0,0.1);
+            }
+            .avatar-placeholder {
+              width: 100px;
+              height: 100px;
+              border-radius: 50%;
+              display: flex;
+              align-items: center;
+              justify-content: center;
+              color: #ffffff;
+              font-size: 2.2rem;
+              font-weight: 800;
+              border: 4px solid #ffffff;
+              box-shadow: 0 10px 15px -3px rgba(0,0,0,0.1);
+              background: ${student.photoBg || 'linear-gradient(135deg, #4f46e5, #7c3aed)'};
+            }
+            .student-name {
+              font-size: 1.4rem;
+              font-weight: 800;
+              color: #1e1b4b;
+              margin: 0 0 4px 0;
+              text-align: center;
+            }
+            .student-title {
+              font-size: 0.82rem;
+              font-weight: 700;
+              color: #4f46e5;
+              text-transform: uppercase;
+              letter-spacing: 0.05em;
+              margin-bottom: 20px;
+              background: #f0f0ff;
+              padding: 4px 12px;
+              border-radius: 12px;
+              display: inline-block;
+            }
+            .details-grid {
+              width: 100%;
+              display: flex;
+              flex-direction: column;
+              gap: 12px;
+              border-top: 1px dashed #e2e8f0;
+              padding-top: 16px;
+            }
+            .detail-row {
+              display: flex;
+              flex-direction: column;
+              gap: 2px;
+            }
+            .detail-label {
+              font-size: 0.72rem;
+              font-weight: 700;
+              color: #64748b;
+              text-transform: uppercase;
+              letter-spacing: 0.03em;
+            }
+            .detail-value {
+              font-size: 0.88rem;
+              font-weight: 600;
+              color: #1e1b4b;
+            }
+            .footer-tag {
+              background: #f8fafc;
+              padding: 12px;
+              text-align: center;
+              font-size: 0.75rem;
+              font-weight: 700;
+              color: #64748b;
+              border-top: 1px solid #f1f5f9;
+              text-transform: uppercase;
+              letter-spacing: 0.05em;
+            }
+          </style>
+        </head>
+        <body>
+          <div class="badge-card">
+            <div class="header-banner">
+              <h2>${schoolName}</h2>
+              <p>Student Identity Card</p>
+            </div>
+            <div class="card-body">
+              <div class="avatar-container">
+                ${student.photo ? '<img class="avatar" src="' + student.photo + '" />' : ' \
+                  <div class="avatar-placeholder"> \
+                    ' + (student.name ? student.name.split(' ').map(n => n[0]).join('').substring(0, 2).toUpperCase() : 'S') + ' \
+                  </div> \
+                '}
+              </div>
+              <div class="student-name">${student.name}</div>
+              <div class="student-title">Class ${student.studentClass || (student.grade && student.grade.split('-')[0]) || 'I'} ${student.section ? ' - Sec ' + student.section : ''}</div>
+              
+              <div class="details-grid">
+                <div class="detail-row">
+                  <span class="detail-label">Student Name</span>
+                  <span class="detail-value">${student.name}</span>
+                </div>
+                <div class="detail-row">
+                  <span class="detail-label">Reg ID / Adm No</span>
+                  <span class="detail-value">${student.id} / ${student.admissionNumber || 'N/A'}</span>
+                </div>
+                <div class="detail-row">
+                  <span class="detail-label">Father's Name</span>
+                  <span class="detail-value">${student.fatherName || 'N/A'}</span>
+                </div>
+                <div class="detail-row">
+                  <span class="detail-label">Phone No</span>
+                  <span class="detail-value">${student.phone || student.guardianContact || 'N/A'}</span>
+                </div>
+                <div class="detail-row">
+                  <span class="detail-label">Address</span>
+                  <span class="detail-value">${student.permanentAddress || student.currentAddress || student.address || 'N/A'}</span>
+                </div>
+              </div>
+            </div>
+            <div class="footer-tag">
+              Academic Session ${student.academicYear || '2026-2027'}
+            </div>
+          </div>
+          <script>
+            window.onload = function() {
+              window.print();
+              setTimeout(function() { window.close(); }, 500);
+            };
+          </script>
+        </body>
+      </html>
+    `);
+    printWindow.document.close();
+  };
 
   const openEditModal = (student) => {
     setEditingStudent(student);
@@ -102,6 +321,13 @@ export default function StudentDirectory({ readOnly = true, onAddClick }) {
   };
 
   const fetchStudents = async () => {
+    if (classFilter === 'All') {
+      setStudents([]);
+      setTotalCount(0);
+      setTotalPages(1);
+      setLoading(false);
+      return;
+    }
     try {
       setLoading(true);
       const queryParams = new URLSearchParams({
@@ -163,76 +389,13 @@ export default function StudentDirectory({ readOnly = true, onAddClick }) {
 
   const isSearchOrFilterActive = searchQuery !== '' || classFilter !== 'All' || sectionFilter !== 'All' || yearFilter !== 'All';
 
-  if (!loading && totalCount === 0 && !isSearchOrFilterActive) {
-    return (
-      <div className="animate-slide-up" style={{ 
-        display: 'flex', 
-        flexDirection: 'column', 
-        alignItems: 'center', 
-        justifyContent: 'center', 
-        padding: '80px 24px', 
-        textAlign: 'center',
-        gap: '24px',
-        width: '100%'
-      }}>
-        <div className="glass-panel" style={{
-          padding: '48px 32px',
-          maxWidth: '500px',
-          width: '100%',
-          display: 'flex',
-          flexDirection: 'column',
-          alignItems: 'center',
-          gap: '20px',
-          borderRadius: '24px',
-          boxShadow: 'var(--shadow-lg)'
-        }}>
-          <div style={{
-            padding: '20px',
-            borderRadius: '50%',
-            background: 'rgba(hsl(var(--color-primary)), 0.1)',
-            color: 'hsl(var(--color-primary))',
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'center'
-          }}>
-            <User size={48} />
-          </div>
-          <div>
-            <h3 style={{ fontSize: '1.5rem', fontWeight: 800, margin: '0 0 8px 0', color: 'var(--text-main)' }}>No students found</h3>
-            <p style={{ fontSize: '0.95rem', color: 'var(--text-muted)', margin: 0, lineHeight: 1.5 }}>
-              Add your first student to get started with the School Management System.
-            </p>
-          </div>
-          {!readOnly && onAddClick && (
-            <button 
-              onClick={onAddClick}
-              className="btn-primary"
-              style={{ 
-                padding: '12px 24px', 
-                borderRadius: '12px', 
-                fontWeight: 600, 
-                display: 'flex', 
-                alignItems: 'center', 
-                gap: '8px',
-                fontSize: '0.9rem',
-                cursor: 'pointer'
-              }}
-            >
-              <Plus size={16} /> Register Student
-            </button>
-          )}
-        </div>
-      </div>
-    );
-  }
-
   return (
     <div className="animate-slide-up" style={{ display: 'flex', flexDirection: 'column', gap: '20px', width: '100%' }}>
       
       {/* Search & Actions Bar */}
       <div className="glass-panel" style={{ padding: '20px 24px', display: 'flex', flexDirection: 'column', gap: '16px' }}>
         
-        {/* Row 1: Search & Filter indicators */}
+        {/* Row 1: Search & Section filter */}
         <div style={{ display: 'flex', gap: '12px', flexWrap: 'wrap', alignItems: 'center', justifyContent: 'space-between' }}>
           
           <div className="search-bar-container" style={{ width: '100%', maxWidth: '380px' }}>
@@ -249,46 +412,55 @@ export default function StudentDirectory({ readOnly = true, onAddClick }) {
 
           <div style={{ display: 'flex', gap: '10px', alignItems: 'center' }}>
             <span style={{ fontSize: '0.85rem', color: 'var(--text-muted)', fontWeight: 600, display: 'flex', alignItems: 'center', gap: '4px' }}>
-              <Filter size={14} /> Filters:
+              <Filter size={14} /> Section:
             </span>
             
-            {/* Class filter */}
             <select 
               className="select-custom"
-              value={classFilter}
-              onChange={(e) => setClassFilter(e.target.value)}
+              value={sectionFilter}
+              onChange={(e) => setSectionFilter(e.target.value)}
               style={{ padding: '8px 12px', borderRadius: '8px', fontSize: '0.85rem' }}
             >
-              <option value="All">All Classes</option>
-              <option value="LKG">LKG</option>
-              <option value="UKG">UKG</option>
-              {['I', 'II', 'III', 'IV', 'V', 'VI', 'VII', 'VIII', 'IX', 'X'].map(grade => (
-                <option key={grade} value={grade}>
-                  Grade {grade}
-                </option>
-              ))}
-            </select>
-
-            {/* Academic Year Filter */}
-            <select 
-              className="select-custom"
-              value={yearFilter}
-              onChange={(e) => setYearFilter(e.target.value)}
-              style={{ padding: '8px 12px', borderRadius: '8px', fontSize: '0.85rem' }}
-            >
-              <option value="All">All Years</option>
-              {Array.from({ length: 2049 - 2026 + 1 }, (_, i) => {
-                const s = 2026 + i;
-                return `${s}-${s + 1}`;
-              }).map(sy => (
-                <option key={sy} value={sy}>{sy}</option>
-              ))}
+              <option value="All">All Sections</option>
+              <option value="A">Section A</option>
+              <option value="B">Section B</option>
+              <option value="C">Section C</option>
+              <option value="D">Section D</option>
             </select>
           </div>
 
         </div>
 
-        {/* Row 2: Sort indices */}
+        {/* Row 2: Grade Chips selection */}
+        <div style={{ display: 'flex', flexDirection: 'column', gap: '8px', borderTop: '1px solid var(--border-glass)', paddingTop: '14px' }}>
+          <span style={{ fontSize: '0.85rem', color: 'var(--text-muted)', fontWeight: 600 }}>Grades:</span>
+          <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap' }}>
+            {['LKG', 'UKG', 'I', 'II', 'III', 'IV', 'V', 'VI', 'VII', 'VIII', 'IX', 'X'].map(grade => {
+              const isSelected = classFilter === grade;
+              return (
+                <button
+                  key={grade}
+                  onClick={() => setClassFilter(classFilter === grade ? 'All' : grade)}
+                  className={isSelected ? "btn-primary" : "btn-secondary"}
+                  style={{
+                    padding: '6px 14px',
+                    fontSize: '0.82rem',
+                    borderRadius: '8px',
+                    boxShadow: isSelected ? '0 2px 8px rgba(hsl(var(--color-primary)), 0.25)' : 'none',
+                    border: isSelected ? 'none' : '1px solid var(--border-glass)',
+                    cursor: 'pointer',
+                    transition: 'all 0.2s ease',
+                    height: 'fit-content'
+                  }}
+                >
+                  {grade === 'LKG' || grade === 'UKG' ? grade : `Grade ${grade}`}
+                </button>
+              );
+            })}
+          </div>
+        </div>
+
+        {/* Row 3: Sort indices */}
         <div style={{ display: 'flex', gap: '12px', flexWrap: 'wrap', alignItems: 'center', justifyContent: 'space-between', borderTop: '1px solid var(--border-glass)', paddingTop: '14px' }}>
           
           <div style={{ display: 'flex', gap: '10px', alignItems: 'center' }}>
@@ -330,7 +502,28 @@ export default function StudentDirectory({ readOnly = true, onAddClick }) {
       {/* Directory Roster Table Card */}
       <div className="glass-panel" style={{ padding: '24px', position: 'relative' }}>
         
-        {loading ? (
+        {classFilter === 'All' ? (
+          <div style={{
+            display: 'flex',
+            flexDirection: 'column',
+            alignItems: 'center',
+            justifyContent: 'center',
+            padding: '100px 24px',
+            textAlign: 'center',
+            gap: '12px'
+          }}>
+            <span style={{
+              fontSize: '1.5rem',
+              fontWeight: 600,
+              color: 'var(--text-muted)',
+              opacity: 0.5,
+              filter: 'blur(0.8px)',
+              letterSpacing: '0.05em'
+            }}>
+              Please select a grade
+            </span>
+          </div>
+        ) : loading ? (
           <div style={{ textAlign: 'center', padding: '60px', color: 'var(--text-muted)', fontSize: '0.9rem' }}>
             Loading students database directory...
           </div>
@@ -396,23 +589,34 @@ export default function StudentDirectory({ readOnly = true, onAddClick }) {
                             >
                               <Info size={12} /> Inspect
                             </button>
+                            <button 
+                              onClick={() => handlePrintIDCard(stu)}
+                              className="btn-secondary" 
+                              style={{ padding: '6px 12px', fontSize: '0.8rem', borderRadius: '8px', display: 'flex', alignItems: 'center', gap: '4px' }}
+                            >
+                              <Printer size={12} /> ID Card
+                            </button>
                             {!readOnly && (
                               <>
-                                <button 
-                                  onClick={() => openEditModal(stu)}
-                                  className="btn-secondary" 
-                                  style={{ padding: '6px 12px', fontSize: '0.8rem', borderRadius: '8px', display: 'flex', alignItems: 'center', gap: '4px' }}
-                                >
-                                  <Edit3 size={12} /> Edit
-                                </button>
-                                <button 
-                                  onClick={() => handleDeleteStudent(stu.id, stu.name)}
-                                  className="btn-danger" 
-                                  style={{ padding: '6px 8px', borderRadius: '8px', background: 'rgba(var(--color-danger-rgb), 0.1)', border: '1px solid rgba(var(--color-danger-rgb), 0.2)', color: 'rgb(var(--color-danger-rgb))' }}
-                                  title="Delete profile"
-                                >
-                                  <Trash2 size={14} />
-                                </button>
+                                {hasPermission('student-directory', 'edit') && (
+                                  <button 
+                                    onClick={() => openEditModal(stu)}
+                                    className="btn-secondary" 
+                                    style={{ padding: '6px 12px', fontSize: '0.8rem', borderRadius: '8px', display: 'flex', alignItems: 'center', gap: '4px' }}
+                                  >
+                                    <Edit3 size={12} /> Edit
+                                  </button>
+                                )}
+                                {hasPermission('student-directory', 'delete') && (
+                                  <button 
+                                    onClick={() => handleDeleteStudent(stu.id, stu.name)}
+                                    className="btn-danger" 
+                                    style={{ padding: '6px 8px', borderRadius: '8px', background: 'rgba(var(--color-danger-rgb), 0.1)', border: '1px solid rgba(var(--color-danger-rgb), 0.2)', color: 'rgb(var(--color-danger-rgb))' }}
+                                    title="Delete profile"
+                                  >
+                                    <Trash2 size={14} />
+                                  </button>
+                                )}
                               </>
                             )}
                           </div>
@@ -522,9 +726,18 @@ export default function StudentDirectory({ readOnly = true, onAddClick }) {
 
               <div>
                 <h4 style={{ fontSize: '1.25rem', fontWeight: 800, margin: '0 0 4px 0' }}>{selectedStudent.name}</h4>
-                <span className="badge badge-success" style={{ fontSize: '0.8rem', padding: '4px 12px' }}>
-                  {selectedStudent.studentClass || selectedStudent.grade.split('-')[0] || 'Nursery'} Grade
-                </span>
+                <div style={{ display: 'flex', gap: '8px', justifyContent: 'center', marginTop: '6px', flexWrap: 'wrap' }}>
+                  <span className="badge badge-success" style={{ fontSize: '0.8rem', padding: '4px 12px' }}>
+                    {selectedStudent.studentClass || (selectedStudent.grade && selectedStudent.grade.split('-')[0]) || 'Nursery'} Grade
+                  </span>
+                  <button 
+                    onClick={() => handlePrintIDCard(selectedStudent)}
+                    className="btn-secondary" 
+                    style={{ padding: '4px 12px', fontSize: '0.8rem', borderRadius: '20px', display: 'flex', alignItems: 'center', gap: '4px' }}
+                  >
+                    <Printer size={12} /> Print ID Card
+                  </button>
+                </div>
               </div>
             </div>
 

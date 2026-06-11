@@ -8,18 +8,11 @@ import AddStaff from './pages/AddStaff';
 import StaffDirectory from './pages/StaffDirectory';
 import FinancePortal from './pages/FinancePortal';
 import SchoolProfile from './pages/SchoolProfile';
+import AttendanceManager from './pages/AttendanceManager';
 import RegisterStudent from './pages/RegisterStudent';
 import AdminPanel from './pages/AdminPanel';
-import RecepPanel from './pages/RecepPanel';
-import TeacherPanel from './pages/TeacherPanel';
-import AccountantPanel from './pages/AccountantPanel';
-import ExpensePanel from './pages/ExpensePanel';
 import SchoolLogin from './pages/SchoolLogin';
 import AdminLogin from './pages/AdminLogin';
-import AccountantLogin from './pages/AccountantLogin';
-import RecepLogin from './pages/RecepLogin';
-import TeacherLogin from './pages/TeacherLogin';
-import ExpenseLogin from './pages/ExpenseLogin';
 
 import './App.css';
 
@@ -34,11 +27,16 @@ window.fetch = function (url, options = {}) {
       delete options.headers['x-tenant-id'];
     } else if (!options.headers['x-tenant-id']) {
       const host = window.location.hostname;
-      const parts = host.split('.');
+      // Skip tenant parsing for IP addresses (e.g. 127.0.0.1)
+      const isIp = /^(?:[0-9]{1,3}\.){3}[0-9]{1,3}$/.test(host);
       let tenant = null;
-      if (parts.length > 2 || (parts.length === 2 && !parts[1].startsWith('localhost'))) {
-        tenant = parts[0];
-      } else {
+      if (!isIp) {
+        const parts = host.split('.');
+        if (parts.length > 2 || (parts.length === 2 && !parts[1].startsWith('localhost'))) {
+          tenant = parts[0];
+        }
+      }
+      if (!tenant) {
         const urlParams = new URLSearchParams(window.location.search);
         tenant = urlParams.get('tenant') || localStorage.getItem('tenant_subdomain');
       }
@@ -56,10 +54,6 @@ window.fetch = function (url, options = {}) {
 
 const getInitialAuthState = (targetRole) => {
   const path = window.location.pathname;
-  if (path.startsWith('/receptionist') && targetRole === 'Receptionist') return true;
-  if (path.startsWith('/teacher') && targetRole === 'Teacher') return true;
-  if (path.startsWith('/expense') && targetRole === 'Expense') return true;
-  if ((path.startsWith('/accountant') || path.startsWith('/finance')) && targetRole === 'Accountant') return true;
   if (path.startsWith('/admin') && targetRole === 'Admin') return true;
   if (path.startsWith('/school') && targetRole === 'Developer') return true;
   
@@ -69,10 +63,6 @@ const getInitialAuthState = (targetRole) => {
   if (savedRole === 'Developer Admin' && targetRole === 'Developer') return true;
   if (savedRole === 'Admin Dashboard' && targetRole === 'Admin') return true;
   if ((savedRole === 'Main Admin' || savedRole === 'admin') && targetRole === 'Admin') return true;
-  if ((savedRole === 'Receptionist' || savedRole === 'recep') && targetRole === 'Receptionist') return true;
-  if ((savedRole === 'Teacher' || savedRole === 'teacher') && targetRole === 'Teacher') return true;
-  if ((savedRole === 'Finance Manager' || savedRole === 'accountant') && targetRole === 'Accountant') return true;
-  if ((savedRole === 'Expense Manager' || savedRole === 'expense') && targetRole === 'Expense') return true;
   
   return false;
 };
@@ -84,14 +74,6 @@ export default function App() {
   const setActiveView = (view) => {
     if (view === 'admin-login') {
       setActiveSubadminLogin('admin');
-    } else if (view === 'accountant-login') {
-      setActiveSubadminLogin('accountant');
-    } else if (view === 'recep-login') {
-      setActiveSubadminLogin('recep');
-    } else if (view === 'teacher-login') {
-      setActiveSubadminLogin('teacher');
-    } else if (view === 'expense-login') {
-      setActiveSubadminLogin('expense');
     } else {
       setActiveViewState(view);
     }
@@ -106,17 +88,9 @@ export default function App() {
   const [isDeveloperAdmin, setIsDeveloperAdmin] = useState(() => getInitialAuthState('Developer'));
   const [isAdmin, setIsAdmin] = useState(() => getInitialAuthState('Admin'));
   const [isSchoolAdmin, setIsSchoolAdmin] = useState(() => getInitialAuthState('SchoolAdmin'));
-  const [isRecep, setIsRecep] = useState(() => getInitialAuthState('Receptionist'));
-  const [isTeacher, setIsTeacher] = useState(() => getInitialAuthState('Teacher'));
-  const [isAccountant, setIsAccountant] = useState(() => getInitialAuthState('Accountant'));
-  const [isExpense, setIsExpense] = useState(() => getInitialAuthState('Expense'));
 
   // Active view states for sub-dashboards
   const [adminView, setAdminView] = useState('students');
-  const [recepView, setRecepView] = useState('dashboard');
-  const [teacherView, setTeacherView] = useState('dashboard');
-  const [accountantView, setAccountantView] = useState('dashboard');
-  const [expenseView, setExpenseView] = useState('dashboard');
 
   const initialised = useRef(false);
 
@@ -168,24 +142,6 @@ export default function App() {
   }, [theme]);
 
   const checkRoutePath = () => {
-    const path = window.location.pathname;
-    if (path.startsWith('/receptionist')) {
-      setIsRecep(true);
-      setRecepView('overview');
-      return true;
-    } else if (path.startsWith('/teacher')) {
-      setIsTeacher(true);
-      setTeacherView('dashboard');
-      return true;
-    } else if (path.startsWith('/expense')) {
-      setIsExpense(true);
-      setExpenseView('dashboard');
-      return true;
-    } else if (path.startsWith('/accountant') || path.startsWith('/finance')) {
-      setIsAccountant(true);
-      setAccountantView('dashboard');
-      return true;
-    }
     return false;
   };
 
@@ -193,49 +149,22 @@ export default function App() {
   useEffect(() => {
     fetchSchoolDetails();
 
-    const pathMatched = checkRoutePath();
-    if (!pathMatched) {
-      const savedRole = sessionStorage.getItem('role') || sessionStorage.getItem('portal_role');
-      if (savedRole) {
-        switch (savedRole) {
-          case 'Developer Admin':
-            setIsDeveloperAdmin(true);
-            setActiveView('school');
-            break;
-          case 'Main Admin':
-          case 'admin':
-            setIsAdmin(true);
-            setIsSchoolAdmin(false);
-            setAdminView('students');
-            break;
-          case 'Admin Dashboard':
-            setIsAdmin(true);
-            setIsSchoolAdmin(false);
-            setAdminView('students');
-            break;
-          case 'Receptionist':
-          case 'recep':
-            setIsRecep(true);
-            setRecepView('overview');
-            break;
-          case 'Teacher':
-          case 'teacher':
-            setIsTeacher(true);
-            setTeacherView('dashboard');
-            break;
-          case 'Finance Manager':
-          case 'accountant':
-            setIsAccountant(true);
-            setAccountantView('dashboard');
-            break;
-          case 'Expense Manager':
-          case 'expense':
-            setIsExpense(true);
-            setExpenseView('dashboard');
-            break;
-          default:
-            break;
-        }
+    const savedRole = sessionStorage.getItem('role') || sessionStorage.getItem('portal_role');
+    if (savedRole) {
+      switch (savedRole) {
+        case 'Developer Admin':
+          setIsDeveloperAdmin(true);
+          setActiveView('school');
+          break;
+        case 'Main Admin':
+        case 'admin':
+        case 'Admin Dashboard':
+          setIsAdmin(true);
+          setIsSchoolAdmin(false);
+          setAdminView('students');
+          break;
+        default:
+          break;
       }
     }
     initialised.current = true;
@@ -247,58 +176,27 @@ export default function App() {
       setIsDeveloperAdmin(false);
       setIsAdmin(false);
       setIsSchoolAdmin(false);
-      setIsRecep(false);
-      setIsTeacher(false);
-      setIsAccountant(false);
-      setIsExpense(false);
 
-      const pathMatched = checkRoutePath();
-      if (!pathMatched) {
-        const savedRole = sessionStorage.getItem('role') || sessionStorage.getItem('portal_role');
-        if (savedRole) {
-          switch (savedRole) {
-            case 'Developer Admin':
-              setIsDeveloperAdmin(true);
-              setActiveView('school');
-              break;
-            case 'Main Admin':
-            case 'admin':
-              setIsAdmin(true);
-              setIsSchoolAdmin(false);
-              setAdminView('students');
-              break;
-            case 'Admin Dashboard':
-              setIsAdmin(true);
-              setIsSchoolAdmin(false);
-              setAdminView('students');
-              break;
-            case 'Receptionist':
-            case 'recep':
-              setIsRecep(true);
-              setRecepView('overview');
-              break;
-            case 'Teacher':
-            case 'teacher':
-              setIsTeacher(true);
-              setTeacherView('dashboard');
-              break;
-            case 'Finance Manager':
-            case 'accountant':
-              setIsAccountant(true);
-              setAccountantView('dashboard');
-              break;
-            case 'Expense Manager':
-            case 'expense':
-              setIsExpense(true);
-              setExpenseView('dashboard');
-              break;
-            default:
-              setActiveView('students');
-              break;
-          }
-        } else {
-          setActiveView('students');
+      const savedRole = sessionStorage.getItem('role') || sessionStorage.getItem('portal_role');
+      if (savedRole) {
+        switch (savedRole) {
+          case 'Developer Admin':
+            setIsDeveloperAdmin(true);
+            setActiveView('school');
+            break;
+          case 'Main Admin':
+          case 'admin':
+          case 'Admin Dashboard':
+            setIsAdmin(true);
+            setIsSchoolAdmin(false);
+            setAdminView('students');
+            break;
+          default:
+            setActiveView('students');
+            break;
         }
+      } else {
+        setActiveView('students');
       }
     };
 
@@ -317,18 +215,10 @@ export default function App() {
       window.history.pushState(null, '', `/school${query}`);
     } else if (isAdmin) {
       window.history.pushState(null, '', `/admin${query}`);
-    } else if (isRecep) {
-      window.history.pushState(null, '', `/receptionist${query}`);
-    } else if (isAccountant) {
-      window.history.pushState(null, '', `/accountant${query}`);
-    } else if (isExpense) {
-      window.history.pushState(null, '', `/expense${query}`);
-    } else if (isTeacher) {
-      window.history.pushState(null, '', `/teacher${query}`);
     } else {
       window.history.pushState(null, '', `/${activeView}${query}`);
     }
-  }, [activeView, isDeveloperAdmin, isAdmin, isRecep, isAccountant, isExpense, isTeacher]);
+  }, [activeView, isDeveloperAdmin, isAdmin]);
 
   // URL Auto-login Hook
   useEffect(() => {
@@ -358,8 +248,21 @@ export default function App() {
             const data = await res.json();
             sessionStorage.setItem('token', data.token);
             sessionStorage.setItem('role', data.role);
-            sessionStorage.setItem('username', data.username);
+            sessionStorage.setItem('portal_role', data.role);
+            sessionStorage.setItem('username', data.username || usernameParam);
             sessionStorage.setItem('name', data.name);
+            
+            if (data.permissions) {
+              sessionStorage.setItem('permissions', JSON.stringify(data.permissions));
+            } else {
+              sessionStorage.removeItem('permissions');
+            }
+            if (data.overrides) {
+              sessionStorage.setItem('overrides', JSON.stringify(data.overrides));
+            } else {
+              sessionStorage.removeItem('overrides');
+            }
+
             if (data.school) {
               sessionStorage.setItem('school_name', data.school.name);
               sessionStorage.setItem('school_subdomain', data.school.subdomain);
@@ -382,39 +285,24 @@ export default function App() {
 
   const handleLoginSuccess = (role, name) => {
     sessionStorage.setItem('portal_role', role);
-    switch (role) {
-      case 'Developer Admin':
-        setIsDeveloperAdmin(true);
-        setActiveView('school');
-        break;
-      case 'Main Admin':
-        setIsAdmin(true);
-        setIsSchoolAdmin(false);
-        setAdminView('students');
-        break;
-      case 'Admin Dashboard':
-        setIsAdmin(true);
-        setIsSchoolAdmin(false);
-        setAdminView('students');
-        break;
-      case 'Teacher':
-        setIsTeacher(true);
-        setTeacherView('dashboard');
-        break;
-      case 'Finance Manager':
-        setIsAccountant(true);
-        setAccountantView('dashboard');
-        break;
-      case 'Expense Manager':
-        setIsExpense(true);
-        setExpenseView('dashboard');
-        break;
-      case 'Receptionist':
-        setIsRecep(true);
-        setRecepView('overview');
-        break;
-      default:
-        break;
+    if (role === 'Developer Admin') {
+      setIsDeveloperAdmin(true);
+      setActiveView('school');
+    } else if (role === 'Student') {
+      setIsAdmin(false);
+      setIsSchoolAdmin(false);
+      setActiveView('students');
+    } else if (role === 'Parent') {
+      setIsAdmin(false);
+      setIsSchoolAdmin(false);
+      setActiveView('students');
+    } else {
+      // Any admin/subadmin/staff/teacher dashboard role
+      setIsAdmin(true);
+      setIsSchoolAdmin(false);
+      
+      // Select appropriate initial view if they don't have student view access
+      setAdminView('overview');
     }
     fetchSchoolDetails();
   };
@@ -425,10 +313,6 @@ export default function App() {
     setIsDeveloperAdmin(false);
     setIsAdmin(false);
     setIsSchoolAdmin(false);
-    setIsRecep(false);
-    setIsTeacher(false);
-    setIsAccountant(false);
-    setIsExpense(false);
     setActiveView('students');
     
     // Clear path on logout
@@ -437,18 +321,8 @@ export default function App() {
     window.history.pushState(null, '', `/${query}`);
   };
 
-  const handleExpenseToAdmin = () => {
-    setIsAdmin(true);
-    setIsExpense(false);
-    setAdminView('dashboard');
-  };
-
   const handleBackToMain = () => {
     setIsAdmin(false);
-    setIsRecep(false);
-    setIsTeacher(false);
-    setIsAccountant(false);
-    setIsExpense(false);
     setIsSchoolAdmin(true);
     setActiveViewState('students');
     sessionStorage.setItem('role', 'Main Admin');
@@ -468,22 +342,6 @@ export default function App() {
       return <AdminPanel setActiveView={setActiveView} onLogout={handleLogout} adminView={adminView} setAdminView={setAdminView} onBackToMain={handleBackToMain} />;
     }
 
-    if (isRecep) {
-      return <RecepPanel setActiveView={setActiveView} onLogout={handleLogout} recepView={recepView} setRecepView={setRecepView} onBackToMain={handleBackToMain} />;
-    }
-
-    if (isTeacher) {
-      return <TeacherPanel setActiveView={setActiveView} onLogout={handleLogout} teacherView={teacherView} setTeacherView={setTeacherView} onBackToMain={handleBackToMain} />;
-    }
-
-    if (isAccountant) {
-      return <AccountantPanel setActiveView={setActiveView} onLogout={handleLogout} accountantView={accountantView} setAccountantView={setAdminView} onBackToMain={handleBackToMain} />;
-    }
-
-    if (isExpense) {
-      return <ExpensePanel setActiveView={setActiveView} onLogout={handleLogout} expenseView={expenseView} setExpenseView={setExpenseView} onAccessAdmin={handleExpenseToAdmin} onBackToMain={handleBackToMain} />;
-    }
-
     switch (activeView) {
       case 'students':
         return <StudentDirectory readOnly={true} onAddClick={() => setActiveView('register-student')} />;
@@ -499,6 +357,8 @@ export default function App() {
         return <StaffDirectory readOnly={true} onAddClick={() => setActiveView('add-staff')} />;
       case 'finance':
         return <FinancePortal />;
+      case 'employee-attendance':
+        return <AttendanceManager />;
       case 'school':
         return <SchoolProfile schoolDetails={schoolDetails} fetchSchoolDetails={fetchSchoolDetails} isDeveloperAdmin={isDeveloperAdmin} />;
       case 'admin-login':
@@ -514,60 +374,13 @@ export default function App() {
             onCancel={() => setActiveView('students')} 
           />
         );
-      case 'accountant-login':
-        return (
-          <AccountantLogin 
-            onLogin={() => {
-              sessionStorage.setItem('role', 'Finance Manager');
-              sessionStorage.setItem('portal_role', 'Finance Manager');
-              setIsAccountant(true);
-              setAccountantView('dashboard');
-            }} 
-            onCancel={() => setActiveView('students')} 
-          />
-        );
-      case 'recep-login':
-        return (
-          <RecepLogin 
-            onLogin={() => {
-              sessionStorage.setItem('role', 'Receptionist');
-              sessionStorage.setItem('portal_role', 'Receptionist');
-              setIsRecep(true);
-              setRecepView('overview');
-            }} 
-            onCancel={() => setActiveView('students')} 
-          />
-        );
-      case 'teacher-login':
-        return (
-          <TeacherLogin 
-            onLogin={() => {
-              sessionStorage.setItem('role', 'Teacher');
-              sessionStorage.setItem('portal_role', 'Teacher');
-              setIsTeacher(true);
-              setTeacherView('dashboard');
-            }} 
-            onCancel={() => setActiveView('students')} 
-          />
-        );
-      case 'expense-login':
-        return (
-          <ExpenseLogin 
-            onLogin={() => {
-              sessionStorage.setItem('role', 'Expense Manager');
-              sessionStorage.setItem('portal_role', 'Expense Manager');
-              setIsExpense(true);
-              setExpenseView('dashboard');
-            }} 
-            onCancel={() => setActiveView('students')} 
-          />
-        );
+
       default:
         return <StudentDirectory readOnly={true} onAddClick={() => setActiveView('register-student')} />;
     }
   };
 
-  const isLoggedIn = isDeveloperAdmin || isAdmin || isRecep || isTeacher || isAccountant || isExpense || isSchoolAdmin;
+  const isLoggedIn = isDeveloperAdmin || isAdmin || isSchoolAdmin;
 
   if (!isLoggedIn) {
     const host = window.location.hostname;
@@ -593,19 +406,11 @@ export default function App() {
   }
 
   if (activeSubadminLogin) {
-    const loginBgs = {
-      admin: 'linear-gradient(135deg, hsl(250, 100%, 97%) 0%, hsl(320, 100%, 97%) 100%)',
-      accountant: 'linear-gradient(135deg, hsl(150, 100%, 96%) 0%, hsl(160, 100%, 97%) 100%)',
-      recep: 'linear-gradient(135deg, hsl(150, 100%, 97%) 0%, hsl(195, 100%, 97%) 100%)',
-      teacher: 'linear-gradient(135deg, hsl(320, 100%, 97%) 0%, hsl(250, 100%, 97%) 100%)',
-      expense: 'linear-gradient(135deg, hsl(0, 100%, 97%) 0%, hsl(35, 100%, 97%) 100%)'
-    };
-
     return (
       <div data-theme="light" style={{
         width: '100vw',
         minHeight: '100vh',
-        background: loginBgs[activeSubadminLogin] || '#ffffff',
+        background: 'linear-gradient(135deg, hsl(250, 100%, 97%) 0%, hsl(320, 100%, 97%) 100%)',
         display: 'grid',
         placeItems: 'center',
         padding: '40px 20px',
@@ -620,54 +425,6 @@ export default function App() {
               setIsAdmin(true);
               setIsSchoolAdmin(false);
               setAdminView('dashboard');
-              setActiveSubadminLogin(null);
-            }} 
-            onCancel={() => setActiveSubadminLogin(null)} 
-          />
-        )}
-        {activeSubadminLogin === 'accountant' && (
-          <AccountantLogin 
-            onLogin={() => {
-              sessionStorage.setItem('role', 'Finance Manager');
-              sessionStorage.setItem('portal_role', 'Finance Manager');
-              setIsAccountant(true);
-              setAccountantView('dashboard');
-              setActiveSubadminLogin(null);
-            }} 
-            onCancel={() => setActiveSubadminLogin(null)} 
-          />
-        )}
-        {activeSubadminLogin === 'recep' && (
-          <RecepLogin 
-            onLogin={() => {
-              sessionStorage.setItem('role', 'Receptionist');
-              sessionStorage.setItem('portal_role', 'Receptionist');
-              setIsRecep(true);
-              setRecepView('overview');
-              setActiveSubadminLogin(null);
-            }} 
-            onCancel={() => setActiveSubadminLogin(null)} 
-          />
-        )}
-        {activeSubadminLogin === 'teacher' && (
-          <TeacherLogin 
-            onLogin={() => {
-              sessionStorage.setItem('role', 'Teacher');
-              sessionStorage.setItem('portal_role', 'Teacher');
-              setIsTeacher(true);
-              setTeacherView('dashboard');
-              setActiveSubadminLogin(null);
-            }} 
-            onCancel={() => setActiveSubadminLogin(null)} 
-          />
-        )}
-        {activeSubadminLogin === 'expense' && (
-          <ExpenseLogin 
-            onLogin={() => {
-              sessionStorage.setItem('role', 'Expense Manager');
-              sessionStorage.setItem('portal_role', 'Expense Manager');
-              setIsExpense(true);
-              setExpenseView('dashboard');
               setActiveSubadminLogin(null);
             }} 
             onCancel={() => setActiveSubadminLogin(null)} 
@@ -691,23 +448,6 @@ export default function App() {
         onAdminLogout={handleLogout}
         adminView={adminView}
         setAdminView={setAdminView}
-        isRecep={isRecep}
-        onRecepLogout={handleLogout}
-        recepView={recepView}
-        setRecepView={setRecepView}
-        isTeacher={isTeacher}
-        onTeacherLogout={handleLogout}
-        teacherView={teacherView}
-        setTeacherView={setTeacherView}
-        isAccountant={isAccountant}
-        onAccountantLogout={handleLogout}
-        accountantView={accountantView}
-        setAccountantView={setAccountantView}
-        isExpense={isExpense}
-        onExpenseLogout={handleLogout}
-        expenseView={expenseView}
-        setExpenseView={setExpenseView}
-        onAccessAdmin={handleExpenseToAdmin}
         isDeveloperAdmin={isDeveloperAdmin}
         onDeveloperAdminLogout={handleLogout}
         onBackToMain={handleBackToMain}
@@ -740,10 +480,6 @@ export default function App() {
           setTheme={setTheme}
           schoolDetails={schoolDetails}
           isAdmin={isAdmin}
-          isAccountant={isAccountant}
-          isRecep={isRecep}
-          isTeacher={isTeacher}
-          isExpense={isExpense}
           isDeveloperAdmin={isDeveloperAdmin}
           setActiveView={setActiveView}
           onLogout={handleLogout}

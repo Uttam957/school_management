@@ -103,13 +103,13 @@ async function seed() {
       `INSERT INTO schools (
         id, name, code, subdomain, logo, principalName, email, phone, address, city, state, country,
         academicSession, subscriptionPlan, url, status, adminName, adminEmail, adminUsername, adminPassword,
-        complexAdminUsername, complexAdminPassword, createdAt
-      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+        createdAt
+      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
       [
         schoolId, 'Green Valley Public School', 'SCH-GV-001', tenantId, '', 'Dr. John Miller', 
         'contact@greenvalley.edu', '1234567890', 'Khimel Rani Station Rd', 'Bali', 'Rajasthan', 'India', 
         '2026-2027', 'Growth', `http://${tenantId}.localhost:3000`, 'Active', 'Zachary Langley', 
-        'qino@mailinator.com', 'greenvalley_admin', 'uttam@2004', 'admin_complex', 'complex123', 
+        'qino@mailinator.com', 'greenvalley_admin', 'uttam@2004', 
         new Date().toISOString()
       ]
     );

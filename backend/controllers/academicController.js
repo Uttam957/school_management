@@ -170,7 +170,7 @@ export const createExam = (req, res) => {
 
 export const updateExam = (req, res) => {
   const { id } = req.params;
-  const { examName, examType, academicSession, description, gradeSections, status, totalMarks, subjectMarks, subjectIncluded } = req.body;
+  const { examName, examType, academicSession, description, gradeSections, status, totalMarks, subjectMarks, subjectIncluded, timetablePublished } = req.body;
 
   const db = readDb();
   const examIndex = db.exams.findIndex(e => e.id === id);
@@ -195,6 +195,7 @@ export const updateExam = (req, res) => {
   if (totalMarks !== undefined) db.exams[examIndex].totalMarks = totalMarks;
   if (subjectMarks !== undefined) db.exams[examIndex].subjectMarks = subjectMarks;
   if (subjectIncluded !== undefined) db.exams[examIndex].subjectIncluded = subjectIncluded;
+  if (timetablePublished !== undefined) db.exams[examIndex].timetablePublished = timetablePublished;
 
   writeDb(db);
   res.json(db.exams[examIndex]);
@@ -341,6 +342,7 @@ export const generateExamSchedule = (req, res) => {
   }
 
   exam.status = 'Scheduled';
+  exam.timetablePublished = false;
   db.examTimetables.push(...newSchedules);
   writeDb(db);
 
@@ -465,6 +467,13 @@ export const createExamTimetable = (req, res) => {
   };
 
   db.examTimetables.push(newSchedule);
+
+  // Reset published status when editing schedules
+  const parentExam = (db.exams || []).find(e => e.id === examId);
+  if (parentExam) {
+    parentExam.timetablePublished = false;
+  }
+
   writeDb(db);
 
   res.status(201).json(newSchedule);
@@ -475,10 +484,19 @@ export const deleteExamTimetable = (req, res) => {
   const db = readDb();
 
   const initialCount = db.examTimetables.length;
+  const slot = db.examTimetables.find(et => et.id === id);
   db.examTimetables = db.examTimetables.filter(et => et.id !== id);
 
   if (db.examTimetables.length === initialCount) {
     return res.status(404).json({ error: 'Exam slot not found.' });
+  }
+
+  // Reset published status when deleting schedules
+  if (slot) {
+    const parentExam = (db.exams || []).find(e => e.id === slot.examId);
+    if (parentExam) {
+      parentExam.timetablePublished = false;
+    }
   }
 
   writeDb(db);
@@ -494,6 +512,12 @@ export const deleteCohortExamTimetable = (req, res) => {
 
   if (db.examTimetables.length === initialCount) {
     return res.status(404).json({ error: 'No schedules found for this exam and cohort.' });
+  }
+
+  // Reset published status when deleting cohort schedules
+  const parentExam = (db.exams || []).find(e => e.id === examId);
+  if (parentExam) {
+    parentExam.timetablePublished = false;
   }
 
   writeDb(db);
@@ -1100,10 +1124,13 @@ export const createExamTimetableBulk = (req, res) => {
     }
   });
 
-  // Find parent exam and transition its status from Draft or Published to Scheduled
+  // Find parent exam and transition its status from Draft or Published to Scheduled, and reset published flag
   const exam = (db.exams || []).find(e => e.id === examId);
-  if (exam && (exam.status === 'Draft' || exam.status === 'Published')) {
-    exam.status = 'Scheduled';
+  if (exam) {
+    if (exam.status === 'Draft' || exam.status === 'Published') {
+      exam.status = 'Scheduled';
+    }
+    exam.timetablePublished = false;
   }
 
   writeDb(db);

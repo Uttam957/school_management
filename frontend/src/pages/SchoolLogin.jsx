@@ -59,8 +59,21 @@ export default function SchoolLogin({ tenantSubdomain, onLoginSuccess }) {
         // Save token & active tenant details
         sessionStorage.setItem('token', data.token);
         sessionStorage.setItem('role', data.role);
-        sessionStorage.setItem('username', data.username);
+        sessionStorage.setItem('portal_role', data.role);
+        sessionStorage.setItem('username', data.username || username);
         sessionStorage.setItem('name', data.name);
+        
+        if (data.permissions) {
+          sessionStorage.setItem('permissions', JSON.stringify(data.permissions));
+        } else {
+          sessionStorage.removeItem('permissions');
+        }
+        if (data.overrides) {
+          sessionStorage.setItem('overrides', JSON.stringify(data.overrides));
+        } else {
+          sessionStorage.removeItem('overrides');
+        }
+
         if (data.school) {
           sessionStorage.setItem('school_name', data.school.name);
           sessionStorage.setItem('school_subdomain', data.school.subdomain);

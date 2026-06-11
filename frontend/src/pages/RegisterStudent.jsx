@@ -208,6 +208,7 @@ export default function RegisterStudent({ setActiveView }) {
   const [formSubmitted, setFormSubmitted] = useState(false);
   const [draftRestoredAlert, setDraftRestoredAlert] = useState(false);
   const [draftSaving, setDraftSaving] = useState(false);
+  const isSubmitting = React.useRef(false);
 
   const tenantSubdomain = localStorage.getItem('tenant_subdomain') || 'default';
   const draftKey = `admission_draft_${tenantSubdomain}`;
@@ -610,7 +611,9 @@ export default function RegisterStudent({ setActiveView }) {
   };
 
   const handleSubmit = async (e) => {
-    e.preventDefault();
+    if (e) e.preventDefault();
+    if (isSubmitting.current) return;
+    isSubmitting.current = true;
     setFormSubmitted(true);
 
     // Validate overall required fields
@@ -623,7 +626,10 @@ export default function RegisterStudent({ setActiveView }) {
       }
     }
 
-    if (!isValid) return;
+    if (!isValid) {
+      isSubmitting.current = false;
+      return;
+    }
 
     setLoading(true);
 
@@ -651,15 +657,18 @@ export default function RegisterStudent({ setActiveView }) {
         clearDraft();
         setTimeout(() => setSuccessToast(false), 5000);
         setTimeout(() => setActiveView('students'), 1500);
+        // Keep loading=true and isSubmitting=true so the button remains disabled during the 1.5s redirect delay
       } else {
         const errData = await res.json();
         alert(errData.error || 'Server error occurred during admission submit.');
+        setLoading(false);
+        isSubmitting.current = false;
       }
     } catch (err) {
       console.error(err);
       alert('Internal Server error connecting to the API.');
-    } finally {
       setLoading(false);
+      isSubmitting.current = false;
     }
   };
 

@@ -2258,7 +2258,12 @@ export default function AcademicPanel({ subView, setAdminView }) {
                   </div>
 
                   {/* Card Actions */}
-                  <div style={{ padding: '12px 20px', borderTop: '1px solid var(--border-glass)', display: 'flex', gap: '8px', flexWrap: 'wrap', justifyContent: 'flex-end' }}>
+                  <div style={{ padding: '12px 20px', borderTop: '1px solid var(--border-glass)', display: 'flex', gap: '8px', flexWrap: 'wrap', justifyContent: 'flex-end', alignItems: 'center' }}>
+                    {ex.status === 'Published' && (
+                      <span style={{ fontSize: '0.72rem', fontWeight: 700, color: '#10b981', display: 'flex', alignItems: 'center', gap: '4px', marginRight: 'auto' }}>
+                        <CheckCircle size={14} /> Published
+                      </span>
+                    )}
                     {ex.status !== 'Published' && ex.status !== 'Completed' && (
                       <button 
                         onClick={(e) => { e.stopPropagation(); handlePublishExam(ex.id); }} 
@@ -2547,6 +2552,12 @@ export default function AcademicPanel({ subView, setAdminView }) {
         const responses = await Promise.all(promises);
         const allOk = responses.every(res => res.ok);
         if (allOk) {
+          // Reset published status when editing schedules
+          await fetch(`/api/academics/exams/${activeExam}`, {
+            method: 'PUT',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ timetablePublished: false })
+          });
           showToast('Custom exam timetable saved successfully!', 'success');
           setIsManualSchedulerOpen(false);
           fetchAllData();
@@ -2791,15 +2802,47 @@ export default function AcademicPanel({ subView, setAdminView }) {
             return (
               <div key={ex.id} className="glass-panel" style={{ padding: '24px', marginBottom: '24px' }}>
                 <div>
-                  <div style={{ borderBottom: '2px solid var(--border-glass)', paddingBottom: '16px', marginBottom: '20px' }}>
-                    <h2 style={{ fontSize: '1.2rem', fontWeight: 800, margin: 0 }}>{ex.examName}</h2>
-                    <div style={{ display: 'flex', gap: '20px', fontSize: '0.82rem', color: 'var(--text-muted)', marginTop: '6px' }}>
-                      <span>Type: <strong>{ex.examType}</strong></span>
-                      <span>Session: <strong>{ex.academicSession || '-'}</strong></span>
-                      {earliestStart && <span>Starts: <strong>{formatDate(earliestStart)}</strong></span>}
-                      {ex.endDate && <span>Ends: <strong>{formatDate(ex.endDate)}</strong></span>}
-                      <span>Total Marks: <strong>{ex.totalMarks || '-'}</strong></span>
+                  <div style={{ borderBottom: '2px solid var(--border-glass)', paddingBottom: '16px', marginBottom: '20px', display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '12px' }}>
+                    <div>
+                      <h2 style={{ fontSize: '1.2rem', fontWeight: 800, margin: 0 }}>{ex.examName}</h2>
+                      <div style={{ display: 'flex', gap: '20px', fontSize: '0.82rem', color: 'var(--text-muted)', marginTop: '6px' }}>
+                        <span>Type: <strong>{ex.examType}</strong></span>
+                        <span>Session: <strong>{ex.academicSession || '-'}</strong></span>
+                        {earliestStart && <span>Starts: <strong>{formatDate(earliestStart)}</strong></span>}
+                        {ex.endDate && <span>Ends: <strong>{formatDate(ex.endDate)}</strong></span>}
+                        <span>Total Marks: <strong>{ex.totalMarks || '-'}</strong></span>
+                      </div>
                     </div>
+                    {ex.timetablePublished ? (
+                      <span style={{ fontSize: '0.8rem', fontWeight: 700, color: '#10b981', display: 'flex', alignItems: 'center', gap: '4px', background: 'rgba(16,185,129,0.08)', padding: '4px 12px', borderRadius: '12px', border: '1px solid rgba(16,185,129,0.15)' }}>
+                        <CheckCircle size={14} /> Published
+                      </span>
+                    ) : (
+                      <button
+                        onClick={async () => {
+                          try {
+                            const res = await fetch(`/api/academics/exams/${ex.id}`, {
+                              method: 'PUT',
+                              headers: { 'Content-Type': 'application/json' },
+                              body: JSON.stringify({ timetablePublished: true })
+                            });
+                            if (res.ok) {
+                              showToast('Exam timetable published successfully!', 'success');
+                              fetchAllData();
+                            } else {
+                              const data = await res.json();
+                              showToast(data.error || 'Failed to publish timetable.', 'error');
+                            }
+                          } catch (err) {
+                            showToast('Network error.', 'error');
+                          }
+                        }}
+                        className="btn-primary"
+                        style={{ padding: '6px 12px', fontSize: '0.75rem', borderRadius: '8px', display: 'flex', alignItems: 'center', gap: '6px', background: 'linear-gradient(135deg, #10b981 0%, #059669 100%)', border: 'none', color: '#fff' }}
+                      >
+                        <Send size={12} /> Publish Timetable
+                      </button>
+                    )}
                   </div>
 
                   {examSchedules.length > 0 ? (
@@ -3077,6 +3120,217 @@ export default function AcademicPanel({ subView, setAdminView }) {
             <BookOpen size={48} style={{ opacity: 0.3 }} />
             <span style={{ fontSize: '1rem', fontWeight: 600 }}>No completed exams found</span>
             <p style={{ fontSize: '0.85rem', margin: 0 }}>Completed exams will appear here after being marked as completed.</p>
+          </div>
+        )}
+      </div>
+    );
+  };
+
+  const renderPublishedExams = () => {
+    const publishedExams = exams.filter(ex => ex.status === 'Published');
+
+    return (
+      <div style={{ display: 'flex', flexDirection: 'column', gap: '24px' }}>
+        {/* Header */}
+        <div className="glass-panel" style={{ padding: '20px 24px', display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '16px' }}>
+          <div>
+            <h3 style={{ fontSize: '1.1rem', fontWeight: 700 }}>Published Exams</h3>
+            <p style={{ fontSize: '0.85rem', color: 'var(--text-muted)' }}>Official active examination configurations visible to students/teachers.</p>
+          </div>
+        </div>
+
+        {/* Exam Cards */}
+        {publishedExams.length > 0 ? (
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(360px, 1fr))', gap: '20px' }}>
+            {publishedExams.map(ex => {
+              const gsList = ex.gradeSections || [];
+              const earliestStart = gsList.length > 0 ? gsList.map(g => g.startDate).filter(Boolean).sort()[0] : '';
+              const totalSubjects = ex.scheduleCount || 0;
+              const statusColors = { Published: { bg: 'rgba(16,185,129,0.08)', color: '#10b981', border: '1px solid rgba(16,185,129,0.15)' } };
+              const sc = statusColors.Published;
+
+              return (
+                <div 
+                  key={ex.id} 
+                  className="glass-panel" 
+                  style={{ 
+                    padding: '0', 
+                    borderRadius: '16px', 
+                    overflow: 'hidden', 
+                    display: 'flex', 
+                    flexDirection: 'column'
+                  }}
+                >
+                  {/* Card Header */}
+                  <div style={{ padding: '20px 20px 16px', borderBottom: '1px solid var(--border-glass)', display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
+                    <div>
+                      <div style={{ fontSize: '0.75rem', fontWeight: 700, color: 'hsl(var(--color-primary))', textTransform: 'uppercase', letterSpacing: '0.5px', marginBottom: '4px' }}>
+                        {gsList.length > 0 ? gsList.map(gs => gs.section ? `Grade - ${gs.grade}-${gs.section}` : `Grade - ${gs.grade}`).join(', ') : 'No Grades'}
+                        {ex.academicSession && ` · Session ${ex.academicSession}`}
+                      </div>
+                      <h3 style={{ fontSize: '1.05rem', fontWeight: 800, margin: 0, color: 'var(--text-main)' }}>{ex.examName}</h3>
+                      <div style={{ display: 'flex', gap: '6px', flexWrap: 'wrap', marginTop: '6px' }}>
+                        <span style={{ fontSize: '0.72rem', padding: '2px 8px', borderRadius: '10px', background: 'rgba(99, 102, 241, 0.08)', color: 'hsl(var(--color-primary))', border: '1px solid rgba(99, 102, 241, 0.15)', fontWeight: 600 }}>{ex.examType}</span>
+                        <span style={{ fontSize: '0.72rem', padding: '2px 8px', borderRadius: '10px', background: 'rgba(245, 158, 11, 0.08)', color: '#f59e0b', border: '1px solid rgba(245, 158, 11, 0.15)', fontWeight: 600 }}>Total Marks: {ex.totalMarks || 100}</span>
+                      </div>
+                    </div>
+                    <span style={{ padding: '4px 10px', borderRadius: '20px', fontSize: '0.68rem', fontWeight: 700, ...sc }}>{ex.status}</span>
+                  </div>
+
+                  {/* Card Body */}
+                  <div style={{ padding: '16px 20px', display: 'flex', flexDirection: 'column', gap: '12px', flex: 1 }}>
+                    <div style={{ display: 'grid', gridTemplateColumns: '130px 1fr', gap: '8px', fontSize: '0.8rem' }}>
+                      <div style={{ color: 'var(--text-muted)' }}>Total Subjects</div>
+                      <div style={{ fontWeight: 600, textAlign: 'right' }}>{totalSubjects}</div>
+                      <div style={{ color: 'var(--text-muted)' }}>Start Date</div>
+                      <div style={{ fontWeight: 600, textAlign: 'right' }}>{earliestStart || '-'}</div>
+                      <div style={{ color: 'var(--text-muted)' }}>End Date</div>
+                      <div style={{ fontWeight: 600, textAlign: 'right' }}>{ex.endDate || 'Not scheduled'}</div>
+                    </div>
+
+                    <div style={{ marginTop: '4px', paddingTop: '10px', borderTop: '1px dashed var(--border-glass)' }}>
+                      <div style={{ fontSize: '0.75rem', fontWeight: 700, color: 'var(--text-muted)', marginBottom: '8px', textTransform: 'uppercase', letterSpacing: '0.5px' }}>Subjects & Marks</div>
+                      <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
+                        {(() => {
+                          const list = [];
+                          gsList.forEach(gs => {
+                            const gradeSubs = subjects.filter(sub => sub.grade === gs.grade).map(sub => sub.subjectName);
+                            const uniqueGradeSubs = [...new Set(gradeSubs)];
+                            uniqueGradeSubs.forEach(sub => {
+                              const subKey = `${gs.grade}-${sub}`;
+                              const isIncluded = ex.subjectIncluded ? ex.subjectIncluded[subKey] !== false : true;
+                              if (isIncluded) {
+                                const marks = ex.subjectMarks && ex.subjectMarks[subKey] !== undefined ? ex.subjectMarks[subKey] : (ex.totalMarks || 100);
+                                list.push({ grade: gs.grade, section: gs.section, subject: sub, marks });
+                              }
+                            });
+                          });
+                          if (list.length === 0) {
+                            return <div style={{ fontSize: '0.78rem', color: 'var(--text-muted)', fontStyle: 'italic' }}>No subjects added</div>;
+                          }
+                          return list.map((item, idx) => (
+                            <div key={idx} style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.8rem', alignItems: 'center', padding: '4px 0' }}>
+                              <span style={{ fontWeight: 600, color: 'var(--text-main)' }}>
+                                {item.subject}
+                              </span>
+                              <span style={{ fontWeight: 700, color: '#f59e0b', fontSize: '0.78rem' }}>{item.marks} Marks</span>
+                            </div>
+                          ));
+                        })()}
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+        ) : (
+          <div className="glass-panel" style={{ padding: '60px 40px', textAlign: 'center', color: 'var(--text-muted)' }}>
+            <BookOpen size={40} style={{ opacity: 0.3 }} />
+            <p style={{ fontWeight: 600, marginTop: '12px' }}>No published exams found</p>
+          </div>
+        )}
+      </div>
+    );
+  };
+
+  const renderPublishedTimetables = () => {
+    const publishedTimetableExams = exams.filter(ex => ex.timetablePublished === true && ex.status !== 'Completed');
+
+    const formatDate = (dateStr) => {
+      if (!dateStr) return '-';
+      return new Date(dateStr + 'T00:00:00').toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
+    };
+
+    return (
+      <div style={{ display: 'flex', flexDirection: 'column', gap: '24px' }}>
+        {/* Header */}
+        <div className="glass-panel" style={{ padding: '20px 24px', display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '16px' }}>
+          <div>
+            <h3 style={{ fontSize: '1.1rem', fontWeight: 700 }}>Published Exam Timetables</h3>
+            <p style={{ fontSize: '0.85rem', color: 'var(--text-muted)' }}>Official active examination timetables visible to students/teachers.</p>
+          </div>
+        </div>
+
+        {publishedTimetableExams.length > 0 ? (
+          publishedTimetableExams.map(ex => {
+            const examSchedules = examTimetables.filter(et => et.examId === ex.id);
+            const examGradeSections = ex.gradeSections || [];
+            const earliestStart = examGradeSections.length > 0 ? examGradeSections.map(g => g.startDate).filter(Boolean).sort()[0] : '';
+            const examCohorts = [...new Set(examSchedules.map(s => s.cohort).filter(Boolean))].sort();
+
+            return (
+              <div key={ex.id} className="glass-panel" style={{ padding: '24px', marginBottom: '24px' }}>
+                <div>
+                  <div style={{ borderBottom: '2px solid var(--border-glass)', paddingBottom: '16px', marginBottom: '20px' }}>
+                    <h2 style={{ fontSize: '1.2rem', fontWeight: 800, margin: 0 }}>{ex.examName}</h2>
+                    <div style={{ display: 'flex', gap: '20px', fontSize: '0.82rem', color: 'var(--text-muted)', marginTop: '6px' }}>
+                      <span>Type: <strong>{ex.examType}</strong></span>
+                      <span>Session: <strong>{ex.academicSession || '-'}</strong></span>
+                      {earliestStart && <span>Starts: <strong>{formatDate(earliestStart)}</strong></span>}
+                      {ex.endDate && <span>Ends: <strong>{formatDate(ex.endDate)}</strong></span>}
+                      <span>Total Marks: <strong>{ex.totalMarks || '-'}</strong></span>
+                    </div>
+                  </div>
+
+                  {examSchedules.length > 0 ? (
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: '24px' }}>
+                      {examCohorts.map(cohort => {
+                        const cohortSchedules = examSchedules.filter(s => s.cohort === cohort);
+                        const [grade, section] = cohort.split('-');
+                        return (
+                          <div key={cohort} id={`printable-exam-timetable-${cohort}`} style={{ display: 'flex', flexDirection: 'column', gap: '16px', background: 'var(--bg-glass-active)', border: '1px solid var(--border-glass)', padding: '20px', borderRadius: '12px' }}>
+                            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', borderBottom: '1px solid var(--border-glass)', paddingBottom: '10px' }}>
+                              <h4 style={{ fontSize: '0.95rem', fontWeight: 700, margin: 0, color: 'hsl(var(--color-primary))' }}>
+                                Grade {grade}{section ? ` - Section ${section}` : ''}
+                              </h4>
+                              <div style={{ display: 'flex', gap: '8px', alignItems: 'center' }} className="no-print">
+                                <button 
+                                  className="btn-secondary" 
+                                  onClick={() => handleExportTimetable(cohort, 'pdf', examSchedules, ex.examName)} 
+                                  style={{ padding: '4px 10px', fontSize: '0.75rem', borderRadius: '6px', display: 'flex', alignItems: 'center', gap: '4px', border: '1px solid var(--border-glass)' }}
+                                >
+                                  <Download size={12} /> Export PDF
+                                </button>
+                              </div>
+                            </div>
+                            <table className="table-custom" style={{ width: '100%', borderCollapse: 'collapse', marginTop: '10px' }}>
+                              <thead>
+                                <tr>
+                                  <th style={{ textAlign: 'left', padding: '12px 16px' }}>Subject</th>
+                                  <th style={{ textAlign: 'left', padding: '12px 16px' }}>Exam Date</th>
+                                  <th style={{ textAlign: 'left', padding: '12px 16px' }}>Time Slot</th>
+                                </tr>
+                              </thead>
+                              <tbody>
+                                {cohortSchedules.map(slot => (
+                                  <tr key={slot.id} style={{ borderBottom: '1px solid var(--border-glass)' }}>
+                                    <td style={{ fontWeight: 700, textAlign: 'left', padding: '12px 16px' }}>{slot.subject}</td>
+                                    <td style={{ textAlign: 'left', padding: '12px 16px' }}>{formatDate(slot.examDate)}</td>
+                                    <td style={{ textAlign: 'left', padding: '12px 16px' }}>
+                                      {slot.startTime && slot.endTime ? `${slot.startTime} - ${slot.endTime}` : (slot.timeSlot || slot.duration || '-')}
+                                    </td>
+                                  </tr>
+                                ))}
+                              </tbody>
+                            </table>
+                          </div>
+                        );
+                      })}
+                    </div>
+                  ) : (
+                    <div style={{ padding: '40px', textAlign: 'center', color: 'var(--text-muted)' }}>
+                      No active schedules found for this exam.
+                    </div>
+                  )}
+                </div>
+              </div>
+            );
+          })
+        ) : (
+          <div className="glass-panel" style={{ padding: '60px 40px', textAlign: 'center', color: 'var(--text-muted)' }}>
+            <Calendar size={40} style={{ opacity: 0.3 }} />
+            <p style={{ fontWeight: 600, marginTop: '12px' }}>No published timetables found</p>
           </div>
         )}
       </div>
@@ -4017,6 +4271,10 @@ export default function AcademicPanel({ subView, setAdminView }) {
         return renderExamsHistory();
       case 'academic-exam-timetable':
         return renderExamTimetable();
+      case 'academic-published-timetable':
+        return renderPublishedTimetables();
+      case 'academic-published-exam':
+        return renderPublishedExams();
       case 'academic-events':
         return renderEvents();
       case 'academic-notices':

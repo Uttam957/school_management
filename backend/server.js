@@ -6,11 +6,15 @@ import { fileURLToPath } from 'url';
 import studentRoutes from './routes/studentRoutes.js';
 import teacherRoutes from './routes/teacherRoutes.js';
 import attendanceRoutes from './routes/attendanceRoutes.js';
+import employeeAttendanceRoutes from './routes/employeeAttendanceRoutes.js';
 import financeRoutes from './routes/financeRoutes.js';
 import academicRoutes from './routes/academicRoutes.js';
+import rbacRoutes from './routes/rbacRoutes.js';
 import upload from './middleware/upload.js';
 import { readDb, writeDb, addActivity, tenantStorage, slugify, restoreTenantContext, ensureTenantSqlLoaded } from './utils/db.js';
 import { generateToken } from './middleware/auth.js';
+import { generateQrCode } from './utils/qrService.js';
+
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -30,10 +34,14 @@ app.use((req, res, next) => {
   }
   let tenantId = req.headers['x-tenant-id'] || req.query.tenantId;
   if (!tenantId && req.headers.host) {
-    const host = req.headers.host;
-    const parts = host.split('.');
-    if (parts.length > 2 || (parts.length === 2 && !parts[1].startsWith('localhost'))) {
-      tenantId = parts[0];
+    const host = req.headers.host.split(':')[0]; // Remove port
+    // Skip tenant parsing for IP addresses (e.g. 127.0.0.1, 192.168.x.x)
+    const isIp = /^(?:[0-9]{1,3}\.){3}[0-9]{1,3}$/.test(host);
+    if (!isIp) {
+      const parts = host.split('.');
+      if (parts.length > 2 || (parts.length === 2 && !parts[1].startsWith('localhost'))) {
+        tenantId = parts[0];
+      }
     }
   }
   
@@ -93,68 +101,130 @@ app.post('/api/auth/login', (req, res) => {
   }
 
   // Authenticate by role (auto-detect when role is 'Auto')
-  const tryRoles = role === 'Auto' ? ['Main Admin', 'Admin Dashboard', 'Teacher', 'Finance Manager', 'Expense Manager', 'Receptionist', 'Student', 'Parent'] : [role];
+  const tryRoles = role === 'Auto' ? ['Main Admin', 'Admin Dashboard', 'Teacher', 'Staff', 'Student', 'Parent'] : [role];
   
   for (const currentRole of tryRoles) {
     if (currentRole === 'Main Admin') {
       if ((username === schoolRecord.adminUsername || username === schoolRecord.adminEmail) && password === schoolRecord.adminPassword) {
-        const token = generateToken({ role: 'Main Admin', tenantId, username });
-        return res.json({ token, role: 'Main Admin', name: schoolRecord.adminName, school: schoolRecord });
+        const adminRole = (db.roles || []).find(r => r.id === 'role-principal' || r.name === 'Principal' || r.id === 'role-super-admin' || r.name === 'Super Admin');
+        let permissions = {};
+        if (adminRole) {
+          permissions = adminRole.permissions;
+        } else {
+          // Dynamic fallback to full access permissions
+          const modules = [
+            'dashboard', 'students', 'teachers', 'staff', 'academics', 'calendar', 'exams',
+            'results', 'notices', 'events', 'holidays', 'attendance', 'fee-structures',
+            'salaries', 'expenses', 'income', 'roles-permissions'
+          ];
+          const actions = ['view', 'create', 'edit', 'delete', 'approve', 'publish', 'export', 'import', 'manage-settings'];
+          const matrix = {};
+          modules.forEach(m => {
+            matrix[m] = {};
+            actions.forEach(a => {
+              matrix[m][a] = true;
+            });
+          });
+          permissions = matrix;
+        }
+        const token = generateToken({ role: 'Main Admin', tenantId, username, permissions });
+        return res.json({ token, role: 'Main Admin', name: schoolRecord.adminName, school: schoolRecord, permissions });
       }
-    } else if (currentRole === 'Admin Dashboard') {
-      if (username === schoolRecord.complexAdminUsername && password === schoolRecord.complexAdminPassword) {
-        const token = generateToken({ role: 'Admin Dashboard', tenantId, username });
-        return res.json({ token, role: 'Admin Dashboard', name: schoolRecord.adminName || 'Admin Dashboard', school: schoolRecord });
-      }
+
     } else if (currentRole === 'Teacher') {
-      const teacher = (db.teachers || []).find(t => t.username === username && t.password === password);
+      const teacher = (db.teachers || []).find(t =>
+        (t.status === 'Active' || !t.status) &&
+        (t.username === username || t.email === username) &&
+        t.password === password
+      );
       if (teacher) {
-        const token = generateToken({ role: 'Teacher', tenantId, username, id: teacher.id });
-        return res.json({ token, role: 'Teacher', name: teacher.name, school: schoolRecord });
+        const access = (db.userAccess || []).find(ua => ua.userId === teacher.id && ua.userType === 'Teacher');
+        let roleRecord = access ? (db.roles || []).find(r => r.id === access.roleId) : null;
+        if (!roleRecord) {
+          roleRecord = (db.roles || []).find(r => r.id === 'role-teacher' || r.name === 'Teacher');
+        }
+        const roleName = roleRecord ? roleRecord.name : 'Teacher';
+        const permissions = roleRecord ? roleRecord.permissions : {};
+        const overrides = access ? access.overrides : {};
+        const token = generateToken({
+          role: roleName,
+          userType: 'Teacher',
+          tenantId,
+          username,
+          id: teacher.id,
+          name: teacher.fullName || teacher.name,
+          permissions,
+          overrides
+        });
+        return res.json({
+          token,
+          role: roleName,
+          userType: 'Teacher',
+          name: teacher.fullName || teacher.name,
+          school: schoolRecord,
+          permissions,
+          overrides
+        });
+      }
+    } else if (currentRole === 'Staff') {
+      const staffMember = (db.staff || []).find(s =>
+        (s.status === 'Active' || !s.status) &&
+        (s.email === username || s.phone === username) &&
+        s.password === password
+      );
+      if (staffMember) {
+        const access = (db.userAccess || []).find(ua => ua.userId === staffMember.id && ua.userType === 'Staff');
+        let roleRecord = access ? (db.roles || []).find(r => r.id === access.roleId) : null;
+        if (!roleRecord) {
+          const possibleRoleName = staffMember.role || 'Staff';
+          roleRecord = (db.roles || []).find(r => r.name.toLowerCase() === possibleRoleName.toLowerCase());
+        }
+        const roleName = roleRecord ? roleRecord.name : (staffMember.role || 'Staff');
+        const permissions = roleRecord ? roleRecord.permissions : {};
+        const overrides = access ? access.overrides : {};
+        const token = generateToken({
+          role: roleName,
+          userType: 'Staff',
+          tenantId,
+          username,
+          id: staffMember.id,
+          name: staffMember.fullName || staffMember.name,
+          permissions,
+          overrides
+        });
+        return res.json({
+          token,
+          role: roleName,
+          userType: 'Staff',
+          name: staffMember.fullName || staffMember.name,
+          school: schoolRecord,
+          permissions,
+          overrides
+        });
       }
     } else if (currentRole === 'Student') {
       const student = (db.students || []).find(s => 
-        s.status === 'Active' &&
+        (s.status === 'Active' || !s.status) &&
         (s.studentUsername === username || s.admissionNumber === username) && 
         (s.studentPassword === password || password === 'student123')
       );
       if (student) {
-        const token = generateToken({ role: 'Student', tenantId, username, id: student.id });
-        return res.json({ token, role: 'Student', name: student.name || student.fullName, school: schoolRecord });
+        const roleRecord = (db.roles || []).find(r => r.id === 'role-student' || r.name === 'Student');
+        const permissions = roleRecord ? roleRecord.permissions : {};
+        const token = generateToken({ role: 'Student', tenantId, username, id: student.id, permissions });
+        return res.json({ token, role: 'Student', name: student.name || student.fullName, school: schoolRecord, permissions });
       }
     } else if (currentRole === 'Parent') {
       const student = (db.students || []).find(s => 
-        s.status === 'Active' &&
+        (s.status === 'Active' || !s.status) &&
         (s.parentUsername === username || s.fatherEmail === username || s.motherEmail === username || s.fatherMobile === username || s.motherMobile === username) && 
         (s.parentPassword === password || password === 'parent123')
       );
       if (student) {
-        const token = generateToken({ role: 'Parent', tenantId, username, id: student.id });
-        return res.json({ token, role: 'Parent', name: student.fatherName || student.motherName || 'Parent', school: schoolRecord });
-      }
-    } else {
-      // Staff roles: Finance Manager, Expense Manager, Receptionist
-      const matchedStaff = (db.staff || []).find(s => {
-        const matchUsername = s.email === username || s.phone === username;
-        const matchPassword = s.password === password || password === 'password123' || s.emergencyPhone === password;
-        return matchUsername && matchPassword;
-      });
-
-      if (matchedStaff) {
-        const staffRoleStr = matchedStaff.role || matchedStaff.position || '';
-        let isRoleValid = false;
-        if (currentRole === 'Finance Manager' && (staffRoleStr.toLowerCase().includes('account') || staffRoleStr.toLowerCase().includes('finance') || staffRoleStr.toLowerCase().includes('recep') || staffRoleStr.toLowerCase().includes('admin'))) {
-          isRoleValid = true;
-        } else if (currentRole === 'Expense Manager' && (staffRoleStr.toLowerCase().includes('expense') || staffRoleStr.toLowerCase().includes('admin'))) {
-          isRoleValid = true;
-        } else if (currentRole === 'Receptionist' && (staffRoleStr.toLowerCase().includes('recep') || staffRoleStr.toLowerCase().includes('front') || staffRoleStr.toLowerCase().includes('admin'))) {
-          isRoleValid = true;
-        }
-        
-        if (isRoleValid || matchedStaff) {
-          const token = generateToken({ role: currentRole, tenantId, username, id: matchedStaff.id });
-          return res.json({ token, role: currentRole, name: matchedStaff.name, school: schoolRecord });
-        }
+        const roleRecord = (db.roles || []).find(r => r.id === 'role-parent' || r.name === 'Parent');
+        const permissions = roleRecord ? roleRecord.permissions : {};
+        const token = generateToken({ role: 'Parent', tenantId, username, id: student.id, permissions });
+        return res.json({ token, role: 'Parent', name: student.fatherName || student.motherName || 'Parent', school: schoolRecord, permissions });
       }
     }
   }
@@ -212,13 +282,11 @@ app.post('/api/platform/schools', (req, res) => {
     adminName, 
     adminEmail, 
     adminUsername, 
-    adminPassword,
-    complexAdminUsername,
-    complexAdminPassword
+    adminPassword
   } = req.body;
 
-  if (!name || !subdomain || !adminEmail || !adminPassword || !adminUsername || !complexAdminUsername || !complexAdminPassword) {
-    return res.status(400).json({ error: 'Name, subdomain, admin email, admin username, password, admin dashboard username, and admin dashboard password are required.' });
+  if (!name || !subdomain || !adminEmail || !adminPassword || !adminUsername) {
+    return res.status(400).json({ error: 'Name, subdomain, admin email, admin username, and password are required.' });
   }
 
   const cleanSubdomain = slugify(subdomain);
@@ -252,8 +320,6 @@ app.post('/api/platform/schools', (req, res) => {
     adminEmail,
     adminUsername,
     adminPassword,
-    complexAdminUsername,
-    complexAdminPassword,
     createdAt: new Date().toISOString()
   };
 
@@ -509,6 +575,7 @@ app.use('/api/teachers', teacherRoutes);
 // 2A. ATTENDANCE ROUTER
 // ==========================================
 app.use('/api/attendance', attendanceRoutes);
+app.use('/api/employee-attendance', employeeAttendanceRoutes);
 
 // ==========================================
 // 2B. FINANCE ROUTER
@@ -519,6 +586,11 @@ app.use('/api/finance', financeRoutes);
 // 2C. ACADEMICS ROUTER
 // ==========================================
 app.use('/api/academics', academicRoutes);
+
+// ==========================================
+// 2D. RBAC ROUTER
+// ==========================================
+app.use('/api/rbac', rbacRoutes);
 
 // ==========================================
 // 2B. STAFF ENDPOINTS (Complete Module)
@@ -549,7 +621,7 @@ const staffUploadFields = upload.fields([
   { name: 'otherFile', maxCount: 1 }
 ]);
 
-app.post('/api/staff', staffUploadFields, restoreTenantContext, (req, res) => {
+app.post('/api/staff', staffUploadFields, restoreTenantContext, async (req, res) => {
   try {
     const body = req.body;
 
@@ -576,16 +648,35 @@ app.post('/api/staff', staffUploadFields, restoreTenantContext, (req, res) => {
       try { parsedExperiences = JSON.parse(body.experiences); } catch { parsedExperiences = []; }
     }
 
-    // Generate unique staff ID
-    const staffIdFromForm = body.staffId;
-    let staffId = staffIdFromForm || `STF-${new Date().getFullYear()}-${Math.floor(1000 + Math.random() * 9000)}`;
-
+    // Generate unique staff ID (Format: STF-2026-XXXX, sequential starting at 2001)
     const db = readDb();
     if (!db.staff) db.staff = [];
 
-    // Ensure unique ID
-    while (db.staff.some(s => s.id === staffId)) {
-      staffId = `STF-${new Date().getFullYear()}-${Math.floor(1000 + Math.random() * 9000)}`;
+    const staffIdFromForm = body.staffId;
+    let staffId = staffIdFromForm;
+    if (!staffId) {
+      const currentYear = 2026;
+      let maxNum = 2000;
+      const prefix = 'STF';
+      const yearPrefix = `${prefix}-${currentYear}-`;
+      db.staff.forEach(s => {
+        const id = s.id || '';
+        if (id.startsWith(yearPrefix)) {
+          const suffixNum = parseInt(id.replace(yearPrefix, ''), 10);
+          if (!isNaN(suffixNum) && suffixNum > maxNum) {
+            maxNum = suffixNum;
+          }
+        }
+      });
+      staffId = `${yearPrefix}${maxNum + 1}`;
+    }
+
+    // Generate QR Code containing Employee ID and Employee Type
+    let qrPath = '';
+    try {
+      qrPath = await generateQrCode(staffId, 'Staff');
+    } catch (qrErr) {
+      console.error('Failed to generate QR Code during staff registration:', qrErr);
     }
 
     const newStaff = {
@@ -657,6 +748,7 @@ app.post('/api/staff', staffUploadFields, restoreTenantContext, (req, res) => {
       certificateFile: getFilePath('certificateFile'),
       otherFile: getFilePath('otherFile'),
       // Meta
+      qrCodePath: qrPath,
       createdAt: new Date().toISOString(),
       updatedAt: new Date().toISOString(),
       password: '',
@@ -664,6 +756,16 @@ app.post('/api/staff', staffUploadFields, restoreTenantContext, (req, res) => {
     };
 
     db.staff.push(newStaff);
+
+    if (!db.employeeQrCodes) db.employeeQrCodes = [];
+    db.employeeQrCodes.push({
+      id: `QR-${Date.now()}-${Math.floor(Math.random() * 1000)}`,
+      employeeId: staffId,
+      employeeType: 'Staff',
+      qrPath: qrPath,
+      createdAt: new Date().toISOString()
+    });
+
     addActivity(db, 'registration', 'New Staff Recruited', `${derivedFullName} joined as ${staffRole || 'Staff'}`, 'hsl(var(--color-info))', 'rgba(hsl(var(--color-info)), 0.1)');
     writeDb(db);
 
