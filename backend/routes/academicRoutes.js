@@ -1,4 +1,5 @@
 import express from 'express';
+import multer from 'multer';
 import {
   getTimetables,
   createTimetable,
@@ -18,6 +19,14 @@ import {
   createEvent,
   updateEvent,
   deleteEvent,
+  getCalendarEvents,
+  createCalendarEvent,
+  updateCalendarEvent,
+  deleteCalendarEvent,
+  getCalendarImports,
+  uploadCalendarFile,
+  confirmCalendarImport,
+  downloadCalendarTemplate,
   getNotices,
   createNotice,
   updateNotice,
@@ -43,7 +52,11 @@ import {
   getTeacherTimetables,
   createExamTimetableBulk,
   createResultStudentBulk,
-  deleteStudentExamResults
+  deleteStudentExamResults,
+  getPublishedEvents,
+  publishEvent,
+  unpublishEvent,
+  submitCohortResults
 } from '../controllers/academicController.js';
 
 
@@ -93,6 +106,23 @@ router.post('/events', createEvent);
 router.put('/events/:id', updateEvent);
 router.delete('/events/:id', deleteEvent);
 
+// Enhanced Academic Calendar Management System
+const upload = multer({ storage: multer.memoryStorage() });
+
+router.get('/calendar-events', getCalendarEvents);
+router.post('/calendar-events', createCalendarEvent);
+router.put('/calendar-events/:id', updateCalendarEvent);
+router.delete('/calendar-events/:id', deleteCalendarEvent);
+router.get('/calendar-imports', getCalendarImports);
+router.post('/calendar-upload', upload.single('file'), uploadCalendarFile);
+router.post('/calendar-import-confirm', confirmCalendarImport);
+router.get('/calendar-template', downloadCalendarTemplate);
+
+// Calendar Publish Endpoints
+router.get('/calendar/published', getPublishedEvents);
+router.post('/calendar/publish', publishEvent);
+router.post('/calendar/unpublish', unpublishEvent);
+
 // Notices
 router.get('/notices', getNotices);
 router.post('/notices', createNotice);
@@ -113,6 +143,7 @@ router.post('/results/bulk', createResultBulk);
 router.get('/results/overall', getOverallResults);
 router.post('/results/student-bulk', createResultStudentBulk);
 router.delete('/results/student/:studentId/exam/:examId', deleteStudentExamResults);
+router.post('/results/submit-cohort', submitCohortResults);
 
 export default router;
 // Trigger nodemon restart

@@ -60,7 +60,7 @@ export default function Academics() {
     e.preventDefault();
     const errors = {};
     if (!formData.subject.trim()) errors.subject = 'Subject name is required.';
-    if (!formData.teacher.trim()) errors.teacher = 'Teacher name is required.';
+    if (!formData.teacher.trim()) errors.teacher = 'Staff name is required.';
     if (!formData.room.trim()) errors.room = 'Classroom code is required.';
 
     if (Object.keys(errors).length > 0) {

@@ -352,6 +352,27 @@ p {
   transform: translateY(-2px);
 }
 
+.btn-danger {
+  background: rgba(var(--color-danger-rgb), 0.1);
+  border: 1px solid rgba(var(--color-danger-rgb), 0.2);
+  color: rgb(var(--color-danger-rgb));
+  padding: 8px 16px;
+  border-radius: 10px;
+  font-family: var(--font-primary);
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.25s ease;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.btn-danger:hover {
+  background: rgba(var(--color-danger-rgb), 0.2);
+  border-color: rgba(var(--color-danger-rgb), 0.4);
+  transform: translateY(-1px);
+}
+
 /* Custom Badge Status Styles */
 .badge {
   padding: 4px 10px;
@@ -731,4 +752,12 @@ textarea.form-control:disabled {
 
 .admin-dash-card p {
   font-size: 0.875rem;
+}
+
+.search-item-hover {
+  transition: background 0.15s ease;
+}
+
+.search-item-hover:hover {
+  background: rgba(var(--color-primary-rgb), 0.08) !important;
 }

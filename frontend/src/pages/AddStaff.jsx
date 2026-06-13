@@ -81,6 +81,7 @@ const DEPARTMENTS = [
 const EMPLOYMENT_TYPES = ['Full-Time', 'Part-Time', 'Contract', 'Temporary'];
 const EMPLOYEE_STATUSES = ['Active', 'Inactive'];
 const BLOOD_GROUPS = ['A+', 'A-', 'B+', 'B-', 'AB+', 'AB-', 'O+', 'O-'];
+const DESIGNATION_LEVELS = ['Trainee', 'Junior', 'Associate', 'Senior', 'Lead', 'Supervisor', 'Coordinator', 'Manager', 'Head', 'Director'];
 
 // ============================================================
 // STEP DEFINITIONS
@@ -195,7 +196,7 @@ export default function AddStaff({ setActiveView }) {
     dob: '', bloodGroup: '', nationality: 'Indian', maritalStatus: '',
     aadhaarNumber: '', panNumber: '',
     // Step 2: Employment
-    joiningDate: '', staffCategory: '', designation: '', department: '',
+    joiningDate: '', staffCategory: '', designation: '', designationLevel: '', department: '',
     employmentType: '', employeeStatus: 'Active',
     // Step 3: Contact
     mobile: '', alternateMobile: '', email: '', emergencyContactNumber: '',
@@ -253,7 +254,8 @@ export default function AddStaff({ setActiveView }) {
       const updated = {
         ...prev,
         [name]: value,
-        designation: '', // Clear previous designation on category change
+        designation: '',
+        designationLevel: '',
       };
       
       // Auto-select department according to the chosen category
@@ -329,7 +331,7 @@ export default function AddStaff({ setActiveView }) {
       firstName: '', middleName: '', lastName: '', gender: '',
       dob: '', bloodGroup: '', nationality: 'Indian', maritalStatus: '',
       aadhaarNumber: '', panNumber: '',
-      joiningDate: '', staffCategory: '', designation: '', department: '',
+      joiningDate: '', staffCategory: '', designation: '', designationLevel: '', department: '',
       employmentType: '', employeeStatus: 'Active',
       mobile: '', alternateMobile: '', email: '', emergencyContactNumber: '',
       currentAddress: '', currentCity: '', currentState: '', currentCountry: 'India', currentPostalCode: '',
@@ -375,9 +377,11 @@ export default function AddStaff({ setActiveView }) {
       if (res.ok) {
         setSuccessToast(true);
         setTimeout(() => setSuccessToast(false), 5000);
-        setTimeout(() => setActiveView('staff'), 1500);
-        resetForm();
-        // Keep loading=true and isSubmitting=true so the button remains disabled during the 1.5s redirect delay
+        setTimeout(() => {
+          resetForm();
+          setLoading(false);
+          isSubmitting.current = false;
+        }, 1500);
       } else {
         const err = await res.json();
         alert(err.error || 'Failed to register staff.');
@@ -526,6 +530,10 @@ export default function AddStaff({ setActiveView }) {
           <label>Designation *</label>
           <CustomSelect name="designation" value={formData.designation} onChange={handleChange} options={formData.staffCategory ? (STAFF_CATEGORY_MAPPING[formData.staffCategory]?.designations || []) : []} placeholder={formData.staffCategory ? "Select Designation" : "Select Category First"} className="form-control" style={{...inputStyle, border: validationErrors.designation ? '1.5px solid #ef4444' : '1.5px solid #cbd5e1'}} />
           {validationErrors.designation && <span style={{ color: '#ef4444', fontSize: '0.75rem', marginTop: '4px', display: 'block' }}>{validationErrors.designation}</span>}
+        </div>
+        <div className="form-group">
+          <label>Designation Level</label>
+          <CustomSelect name="designationLevel" value={formData.designationLevel} onChange={handleChange} options={DESIGNATION_LEVELS} placeholder="Select Level" className="form-control" style={inputStyle} />
         </div>
         <div className="form-group">
           <label>Department *</label>
@@ -813,6 +821,7 @@ export default function AddStaff({ setActiveView }) {
               <div style={{ display: 'flex', flexDirection: 'column', gap: '4px', fontSize: '0.82rem' }}>
                 <div><strong>Category:</strong> {formData.staffCategory || '—'}</div>
                 <div><strong>Designation:</strong> {formData.designation || '—'}</div>
+                <div><strong>Level:</strong> {formData.designationLevel || '—'}</div>
                 <div><strong>Department:</strong> {formData.department || '—'}</div>
                 <div><strong>Type:</strong> {formData.employmentType || '—'}</div>
                 <div><strong>Joining:</strong> {formData.joiningDate || '—'}</div>
@@ -925,6 +934,9 @@ export default function AddStaff({ setActiveView }) {
             )}
             <button type="button" onClick={resetForm} className="btn-secondary" style={{ padding: '12px 24px', borderRadius: '10px', display: 'flex', alignItems: 'center', gap: '8px', fontWeight: 600, cursor: 'pointer' }}>
               <RotateCcw size={16} /> Reset
+            </button>
+            <button type="button" onClick={() => setActiveView('staff')} className="btn-secondary" style={{ padding: '12px 24px', borderRadius: '10px', display: 'flex', alignItems: 'center', gap: '8px', fontWeight: 600, cursor: 'pointer' }}>
+              Cancel
             </button>
           </div>
           <div>

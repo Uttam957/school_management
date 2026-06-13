@@ -324,14 +324,11 @@ export default function AddTeacher({ setActiveView }) {
     { value: 'Principal', label: 'Principal' },
     { value: 'Vice Principal', label: 'Vice Principal' },
     { value: 'Academic Coordinator', label: 'Academic Coordinator' },
-    { value: 'Head Teacher', label: 'Head Teacher' },
-    { value: 'Teacher', label: 'Teacher' },
+    { value: 'Subject Teacher', label: 'Subject Teacher' },
     { value: 'Librarian', label: 'Librarian' },
-    { value: 'Lab Assistant', label: 'Lab Assistant' },
-    { value: 'Counselor', label: 'Counselor' },
     { value: 'Receptionist', label: 'Receptionist' },
     { value: 'Accountant', label: 'Accountant' },
-    { value: 'Transport Manager', label: 'Transport Manager' }
+    { value: 'Expense Manager', label: 'Expense Manager' }
   ];
 
   const departmentOptions = [
@@ -466,7 +463,7 @@ export default function AddTeacher({ setActiveView }) {
   const handleSelectChange = (fieldName, value) => {
     setFormData(prev => {
       const updated = { ...prev, [fieldName]: value };
-      if (fieldName === 'designation' && value !== 'Teacher') {
+      if (fieldName === 'designation' && value !== 'Subject Teacher') {
         updated.department = '';
       }
       return updated;
@@ -549,34 +546,38 @@ export default function AddTeacher({ setActiveView }) {
 
 
 
+  const performReset = () => {
+    clearDraft();
+    setFormData({
+      firstName: '', middleName: '', lastName: '', fullName: '', gender: '', dob: '', bloodGroup: '',
+      nationality: 'Indian', maritalStatus: '', aadhaarNumber: '', panNumber: '',
+      teacherId: `TCH-${Date.now().toString().slice(-6)}`,
+      joiningDate: new Date().toISOString().split('T')[0],
+      employmentType: '', designation: '', department: '', primarySubject: '', secondarySubject: '', status: 'Active',
+      mobile: '', alternateMobile: '', email: '', password: '', emergencyContactNumber: '',
+      currentAddress: '', currentCity: '', currentState: '', currentCountry: 'India', currentPostalCode: '',
+      permanentAddress: '', permanentCity: '', permanentState: '', permanentCountry: 'India', permanentPostalCode: '', sameAsPermanent: false,
+      qualifications: [
+        { degree: 'B.Ed', institution: '', board: '', year: '', percentage: '' },
+        { degree: 'M.Ed', institution: '', board: '', year: '', percentage: '' },
+        { degree: 'B.Sc', institution: '', board: '', year: '', percentage: '' },
+        { degree: 'M.Sc', institution: '', board: '', year: '', percentage: '' }
+      ],
+      experience: '',
+      experiences: [{ schoolName: '', designation: '', duration: '', reason: '' }]
+    });
+    setFiles({
+      photo: null, aadhaarFile: null, panFile: null, resumeFile: null,
+      qualificationFile: null, experienceFile: null, joiningLetterFile: null, otherFile: null
+    });
+    setFormErrors({});
+    setFormSubmitted(false);
+    setActiveStep(1);
+  };
+
   const resetForm = () => {
     if (window.confirm("Are you sure you want to clear the entire form and draft data?")) {
-      clearDraft();
-      setFormData({
-        firstName: '', middleName: '', lastName: '', fullName: '', gender: '', dob: '', bloodGroup: '',
-        nationality: 'Indian', maritalStatus: '', aadhaarNumber: '', panNumber: '',
-        teacherId: `TCH-${Date.now().toString().slice(-6)}`,
-        joiningDate: new Date().toISOString().split('T')[0],
-        employmentType: '', designation: '', department: '', primarySubject: '', secondarySubject: '', status: 'Active',
-        mobile: '', alternateMobile: '', email: '', password: '', emergencyContactNumber: '',
-        currentAddress: '', currentCity: '', currentState: '', currentCountry: 'India', currentPostalCode: '',
-        permanentAddress: '', permanentCity: '', permanentState: '', permanentCountry: 'India', permanentPostalCode: '', sameAsPermanent: false,
-        qualifications: [
-          { degree: 'B.Ed', institution: '', board: '', year: '', percentage: '' },
-          { degree: 'M.Ed', institution: '', board: '', year: '', percentage: '' },
-          { degree: 'B.Sc', institution: '', board: '', year: '', percentage: '' },
-          { degree: 'M.Sc', institution: '', board: '', year: '', percentage: '' }
-        ],
-        experience: '',
-        experiences: [{ schoolName: '', designation: '', duration: '', reason: '' }]
-      });
-      setFiles({
-        photo: null, aadhaarFile: null, panFile: null, resumeFile: null,
-        qualificationFile: null, experienceFile: null, joiningLetterFile: null, otherFile: null
-      });
-      setFormErrors({});
-      setFormSubmitted(false);
-      setActiveStep(1);
+      performReset();
     }
   };
 
@@ -636,10 +637,12 @@ export default function AddTeacher({ setActiveView }) {
 
       if (res.ok) {
         setSuccessToast(true);
-        clearDraft();
         setTimeout(() => setSuccessToast(false), 5000);
-        setTimeout(() => setActiveView('teacher-list'), 1500);
-        // Keep loading=true and isSubmitting=true so the button remains disabled during the 1.5s redirect delay
+        setTimeout(() => {
+          performReset();
+          setLoading(false);
+          isSubmitting.current = false;
+        }, 1500);
       } else {
         const errData = await res.json();
         alert(errData.error || 'Server error occurred during teacher registration.');
@@ -1013,7 +1016,7 @@ export default function AddTeacher({ setActiveView }) {
                 />
               </div>
 
-              {formData.designation === 'Teacher' && (
+              {formData.designation === 'Subject Teacher' && (
                 <div className="form-group animate-slide-down">
                   <label>Department *</label>
                   <SearchableSelect 
@@ -1713,7 +1716,7 @@ export default function AddTeacher({ setActiveView }) {
           <div style={{ display: 'flex', gap: '12px' }}>
             <button 
               type="button" 
-              onClick={() => { clearDraft(); setActiveView('teacher-list'); }} 
+              onClick={() => { clearDraft(); setActiveView('teachers'); }} 
               className="btn-secondary"
               style={{ padding: '12px 24px', borderRadius: '10px', fontWeight: 600, cursor: 'pointer' }}
             >

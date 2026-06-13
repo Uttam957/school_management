@@ -191,6 +191,7 @@ export const getStudentAttendanceReport = (req, res) => {
       return {
         id: stu.id,
         fullName: stu.fullName || stu.name,
+        rollNumber: stu.rollNumber || stu.roll || '—',
         admissionNumber: stu.admissionNumber,
         studentClass: stu.studentClass || stu.grade?.split('-')[0] || 'IX',
         section: stu.section || stu.grade?.split('-')[1] || 'A',

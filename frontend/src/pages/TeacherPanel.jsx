@@ -26,13 +26,42 @@ import {
 } from 'lucide-react';
 import StudentDirectory from './StudentDirectory';
 import TeacherList from './TeacherList';
+import { fetchActiveGrades } from '../utils/grades';
+
+const parseGradeName = (fullName) => {
+  if (!fullName) return { baseGrade: '', department: '' };
+  const match = fullName.match(/^(.+?)\s*\((.+?)\)$/);
+  if (match) {
+    return { baseGrade: match[1], department: match[2] };
+  }
+  return { baseGrade: fullName, department: '' };
+};
+
+const isGrade11or12 = (name) => {
+  if (!name) return false;
+  const clean = name.trim().toUpperCase();
+  return clean.includes('11') || clean.includes('12') || clean.includes('XI') || clean.includes('XII');
+};
 
 export default function TeacherPanel({ setActiveView, onLogout, teacherView, setTeacherView, onBackToMain }) {
   // Global filter states
   const [selectedDate, setSelectedDate] = useState(new Date().toISOString().split('T')[0]);
-  const [selectedClass, setSelectedClass] = useState('IX');
+  const [selectedClass, setSelectedClass] = useState('');
   const [selectedSection, setSelectedSection] = useState('A');
   const [studentSearch, setStudentSearch] = useState('');
+
+  // Load active grades for top level selection
+  const [topActiveGrades, setTopActiveGrades] = useState([]);
+  useEffect(() => {
+    const loadGrades = async () => {
+      const grades = await fetchActiveGrades();
+      setTopActiveGrades(grades);
+      if (grades.length > 0) {
+        setSelectedClass(grades[0].name);
+      }
+    };
+    loadGrades();
+  }, []);
 
   // Notification states
   const [notification, setNotification] = useState(null);
@@ -72,16 +101,16 @@ export default function TeacherPanel({ setActiveView, onLogout, teacherView, set
   // Subheader Text
   const getSubheaderText = () => {
     switch (teacherView) {
-      case 'dashboard': return 'Teacher Dashboard - manage attendance and student records';
+      case 'dashboard': return 'Staff Dashboard - manage attendance and student records';
       case 'mark-attendance': return 'Mark and review today\'s student attendance';
-      case 'attendance-tracker': return 'Track cohort status and attendance telemetry summaries';
+
       case 'attendance-history': return 'Search, review, and modify historical rosters';
       case 'student-reports': return 'Generate attendance metrics and export spreadsheets';
       case 'class-reports': return 'Evaluate overall cohort averages and stats';
       case 'monthly-calendar': return 'Monthly calendar tracker grid per student';
       case 'class-timetable': return 'View weekly class timetables';
       case 'students': return 'Access complete student academic records directory';
-      case 'teacher-list': return 'View faculty roster and teacher profiles';
+      case 'teacher-list': return 'View faculty roster and staff profiles';
       default: return 'Mark and review today\'s student attendance';
     }
   };
@@ -117,14 +146,7 @@ export default function TeacherPanel({ setActiveView, onLogout, teacherView, set
             showToast={showToast}
           />
         );
-      case 'attendance-tracker':
-        return (
-          <AttendanceTrackerView 
-            date={selectedDate}
-            setDate={setSelectedDate}
-            showToast={showToast}
-          />
-        );
+
       case 'attendance-history':
         return (
           <AttendanceHistoryView 
@@ -208,7 +230,7 @@ export default function TeacherPanel({ setActiveView, onLogout, teacherView, set
             <GraduationCap size={24} />
           </div>
           <div>
-            <h2 style={{ fontSize: '1.25rem', fontWeight: 700 }}>Teacher Dashboard</h2>
+            <h2 style={{ fontSize: '1.25rem', fontWeight: 700 }}>Staff Dashboard</h2>
             <p style={{ fontSize: '0.85rem', color: 'var(--text-muted)' }}>
               {getSubheaderText()}
             </p>
@@ -232,6 +254,56 @@ export function MarkAttendanceView({ date, setDate, studentClass, setClass, sect
   const [loading, setLoading] = useState(false);
   const [saving, setSaving] = useState(false);
   const [submitting, setSubmitting] = useState(false);
+  const [activeGrades, setActiveGrades] = useState([]);
+
+  const { baseGrade: baseClass, department: selectedDept } = parseGradeName(studentClass);
+  const isHighGrade = isGrade11or12(baseClass);
+
+  // Compute unique base grades from activeGrades
+  const baseGrades = [];
+  const seenBase = new Set();
+  activeGrades.forEach(g => {
+    const base = parseGradeName(g.name).baseGrade;
+    if (!seenBase.has(base)) {
+      seenBase.add(base);
+      baseGrades.push(base);
+    }
+  });
+
+  // Compute departments for the currently selected baseClass
+  const departmentsForSelectedGrade = activeGrades
+    .filter(g => parseGradeName(g.name).baseGrade === baseClass)
+    .map(g => parseGradeName(g.name).department)
+    .filter(Boolean);
+
+  const handleBaseClassChange = (newBaseClass) => {
+    if (isGrade11or12(newBaseClass)) {
+      const depts = activeGrades
+        .filter(g => parseGradeName(g.name).baseGrade === newBaseClass)
+        .map(g => parseGradeName(g.name).department)
+        .filter(Boolean);
+      if (depts.length > 0) {
+        const targetDept = depts.includes(selectedDept) ? selectedDept : depts[0];
+        setClass(`${newBaseClass} (${targetDept})`);
+      } else {
+        setClass(newBaseClass);
+      }
+    } else {
+      setClass(newBaseClass);
+    }
+  };
+
+  const handleDeptChange = (newDept) => {
+    setClass(`${baseClass} (${newDept})`);
+  };
+
+  useEffect(() => {
+    const loadGrades = async () => {
+      const grades = await fetchActiveGrades();
+      setActiveGrades(grades);
+    };
+    loadGrades();
+  }, []);
 
   // Check if attendance is already submitted
   const isSubmitted = roster.length > 0 && roster.some(s => s.submitted);
@@ -395,22 +467,34 @@ export function MarkAttendanceView({ date, setDate, studentClass, setClass, sect
               <label style={{ fontSize: '0.75rem', fontWeight: 700, textTransform: 'uppercase', color: 'var(--text-muted)' }}>Grade Class</label>
               <select 
                 className="select-custom" 
-                value={studentClass} 
-                onChange={(e) => setClass(e.target.value)}
+                value={baseClass} 
+                onChange={(e) => handleBaseClassChange(e.target.value)}
                 style={{ height: '38px', borderRadius: '8px' }}
               >
-                <option value="I">Grade I</option>
-                <option value="II">Grade II</option>
-                <option value="III">Grade III</option>
-                <option value="IV">Grade IV</option>
-                <option value="V">Grade V</option>
-                <option value="VI">Grade VI</option>
-                <option value="VII">Grade VII</option>
-                <option value="VIII">Grade VIII</option>
-                <option value="IX">Grade IX</option>
-                <option value="X">Grade X</option>
+                {baseGrades.map(g => (
+                  <option key={g} value={g}>
+                    {g.startsWith('LKG') || g.startsWith('UKG') || g.startsWith('NURSERY') ? g : `Grade ${g}`}
+                  </option>
+                ))}
               </select>
             </div>
+
+            {/* Department Filter (Only for Grade XI/XII) */}
+            {isHighGrade && departmentsForSelectedGrade.length > 0 && (
+              <div className="form-group" style={{ margin: 0, minWidth: '130px' }}>
+                <label style={{ fontSize: '0.75rem', fontWeight: 700, textTransform: 'uppercase', color: 'var(--text-muted)' }}>Department</label>
+                <select 
+                  className="select-custom" 
+                  value={selectedDept} 
+                  onChange={(e) => handleDeptChange(e.target.value)}
+                  style={{ height: '38px', borderRadius: '8px' }}
+                >
+                  {departmentsForSelectedGrade.map(d => (
+                    <option key={d} value={d}>{d}</option>
+                  ))}
+                </select>
+              </div>
+            )}
 
             {/* Section Filter */}
             <div className="form-group" style={{ margin: 0, minWidth: '100px' }}>
@@ -468,8 +552,8 @@ export function MarkAttendanceView({ date, setDate, studentClass, setClass, sect
         ) : roster.length === 0 ? (
           <div style={{ textAlign: 'center', padding: '60px 20px', color: 'var(--text-muted)' }}>
             <AlertCircle size={48} style={{ margin: '0 auto 16px', color: 'var(--text-muted)', opacity: 0.6 }} />
-            <h3 style={{ fontSize: '1.05rem', fontWeight: 700, color: 'var(--text-main)' }}>No Students Found</h3>
-            <p style={{ fontSize: '0.85rem', marginTop: '4px' }}>No records matched Grade {studentClass}-{section} for the selected parameters.</p>
+            <h3 style={{ fontSize: '1.05rem', fontWeight: 700, color: 'var(--text-main)' }}>No Students Registered</h3>
+            <p style={{ fontSize: '0.85rem', marginTop: '4px' }}>There are no students registered in Grade {studentClass} - Section {section}.</p>
           </div>
         ) : (
           <div style={{ overflowX: 'auto', maxHeight: 'calc(100vh - 280px)', overflowY: 'auto' }}>
@@ -477,10 +561,12 @@ export function MarkAttendanceView({ date, setDate, studentClass, setClass, sect
               <thead style={{ position: 'sticky', top: 0, zIndex: 10, background: 'var(--bg-glass-active)', backdropFilter: 'blur(10px)', borderBottom: '1px solid var(--border-glass)' }}>
                 <tr style={{ background: 'var(--table-header-bg)', borderBottom: '1px solid var(--border-glass)' }}>
                   <th style={{ padding: '16px 20px', fontSize: '0.75rem', fontWeight: 700, color: 'var(--text-muted)', textTransform: 'uppercase' }}>Roll No</th>
-                  <th style={{ padding: '16px 20px', fontSize: '0.75rem', fontWeight: 700, color: 'var(--text-muted)', textTransform: 'uppercase' }}>Admission No</th>
                   <th style={{ padding: '16px 20px', fontSize: '0.75rem', fontWeight: 700, color: 'var(--text-muted)', textTransform: 'uppercase' }}>Photo</th>
                   <th style={{ padding: '16px 20px', fontSize: '0.75rem', fontWeight: 700, color: 'var(--text-muted)', textTransform: 'uppercase' }}>Student Name</th>
                   <th style={{ padding: '16px 20px', fontSize: '0.75rem', fontWeight: 700, color: 'var(--text-muted)', textTransform: 'uppercase' }}>Class/Sec</th>
+                  {isHighGrade && (
+                    <th style={{ padding: '16px 20px', fontSize: '0.75rem', fontWeight: 700, color: 'var(--text-muted)', textTransform: 'uppercase' }}>Department</th>
+                  )}
                   <th style={{ padding: '16px 20px', fontSize: '0.75rem', fontWeight: 700, color: 'var(--text-muted)', textTransform: 'uppercase', textAlign: 'center' }}>Attendance Status</th>
                   <th style={{ padding: '16px 20px', fontSize: '0.75rem', fontWeight: 700, color: 'var(--text-muted)', textTransform: 'uppercase' }}>Remarks / Reasons</th>
                 </tr>
@@ -491,9 +577,6 @@ export function MarkAttendanceView({ date, setDate, studentClass, setClass, sect
                     
                     {/* Roll No */}
                     <td style={{ padding: '14px 20px', fontSize: '0.85rem', fontWeight: 700, color: 'var(--text-main)' }}>{stu.rollNumber}</td>
-                    
-                    {/* Admission No */}
-                    <td style={{ padding: '14px 20px', fontSize: '0.85rem', color: 'var(--text-muted)' }}>{stu.admissionNumber}</td>
                     
                     {/* Photo */}
                     <td style={{ padding: '14px 20px' }}>
@@ -527,9 +610,26 @@ export function MarkAttendanceView({ date, setDate, studentClass, setClass, sect
                         fontSize: '0.75rem',
                         fontWeight: 600
                       }}>
-                        {stu.studentClass}-{stu.section}
+                        {isHighGrade ? `${parseGradeName(stu.studentClass).baseGrade || baseClass}-${stu.section}` : `${stu.studentClass}-${stu.section}`}
                       </span>
                     </td>
+
+                    {/* Department (Only for Grade XI/XII) */}
+                    {isHighGrade && (
+                      <td style={{ padding: '14px 20px', fontSize: '0.85rem', color: 'var(--text-muted)' }}>
+                        <span style={{ 
+                          padding: '4px 8px', 
+                          borderRadius: '6px', 
+                          background: 'rgba(99, 102, 241, 0.08)', 
+                          border: '1px solid rgba(99, 102, 241, 0.2)',
+                          color: 'hsl(var(--color-primary))',
+                          fontSize: '0.75rem',
+                          fontWeight: 600
+                        }}>
+                          {parseGradeName(stu.studentClass).department || selectedDept || '—'}
+                        </span>
+                      </td>
+                    )}
 
                     {/* Attendance Buttons */}
                     <td style={{ padding: '14px 20px' }}>
@@ -718,12 +818,64 @@ export function MarkAttendanceView({ date, setDate, studentClass, setClass, sect
 // TAB B: ATTENDANCE HISTORY LOG VIEW
 // ============================================================================
 export function AttendanceHistoryView({ showToast }) {
-  const [date, setDate] = useState(new Date().toISOString().split('T')[0]);
-  const [studentClass, setClass] = useState('IX');
+  const [studentClass, setClass] = useState('');
   const [section, setSection] = useState('A');
   const [search, setSearch] = useState('');
   const [roster, setRoster] = useState([]);
   const [loading, setLoading] = useState(false);
+  const [activeGrades, setActiveGrades] = useState([]);
+
+  const { baseGrade: baseClass, department: selectedDept } = parseGradeName(studentClass);
+  const isHighGrade = isGrade11or12(baseClass);
+
+  // Compute unique base grades from activeGrades
+  const baseGrades = [];
+  const seenBase = new Set();
+  activeGrades.forEach(g => {
+    const base = parseGradeName(g.name).baseGrade;
+    if (!seenBase.has(base)) {
+      seenBase.add(base);
+      baseGrades.push(base);
+    }
+  });
+
+  // Compute departments for the currently selected baseClass
+  const departmentsForSelectedGrade = activeGrades
+    .filter(g => parseGradeName(g.name).baseGrade === baseClass)
+    .map(g => parseGradeName(g.name).department)
+    .filter(Boolean);
+
+  const handleBaseClassChange = (newBaseClass) => {
+    if (isGrade11or12(newBaseClass)) {
+      const depts = activeGrades
+        .filter(g => parseGradeName(g.name).baseGrade === newBaseClass)
+        .map(g => parseGradeName(g.name).department)
+        .filter(Boolean);
+      if (depts.length > 0) {
+        const targetDept = depts.includes(selectedDept) ? selectedDept : depts[0];
+        setClass(`${newBaseClass} (${targetDept})`);
+      } else {
+        setClass(newBaseClass);
+      }
+    } else {
+      setClass(newBaseClass);
+    }
+  };
+
+  const handleDeptChange = (newDept) => {
+    setClass(`${baseClass} (${newDept})`);
+  };
+
+  useEffect(() => {
+    const loadGrades = async () => {
+      const grades = await fetchActiveGrades();
+      setActiveGrades(grades);
+      if (grades.length > 0) {
+        setClass(grades[0].name);
+      }
+    };
+    loadGrades();
+  }, []);
   const [saving, setSaving] = useState(false);
   const [activeTab, setActiveTab] = useState('all'); // 'all' or 'submitted'
   const [submittedDates, setSubmittedDates] = useState([]);
@@ -837,10 +989,9 @@ export function AttendanceHistoryView({ showToast }) {
 
   // Export attendance report as CSV
   const exportAttendanceCSV = () => {
-    const headers = ['Roll No', 'Admission No', 'Student Name', 'Grade', 'Section', 'Attendance Status', 'Remarks'];
+    const headers = ['Roll No', 'Student Name', 'Grade', 'Section', 'Attendance Status', 'Remarks'];
     const rows = roster.map(stu => [
       stu.rollNumber,
-      stu.admissionNumber,
       stu.fullName,
       studentClass,
       section,
@@ -946,24 +1097,36 @@ export function AttendanceHistoryView({ showToast }) {
 
           <div className="form-group" style={{ margin: 0, minWidth: '110px' }}>
             <label style={{ fontSize: '0.75rem', fontWeight: 700, textTransform: 'uppercase', color: 'var(--text-muted)' }}>Grade Class</label>
-            <select 
-              className="select-custom" 
-              value={studentClass} 
-              onChange={(e) => setClass(e.target.value)}
-              style={{ height: '38px', borderRadius: '8px' }}
-            >
-              <option value="I">Grade I</option>
-              <option value="II">Grade II</option>
-              <option value="III">Grade III</option>
-              <option value="IV">Grade IV</option>
-              <option value="V">Grade V</option>
-              <option value="VI">Grade VI</option>
-              <option value="VII">Grade VII</option>
-              <option value="VIII">Grade VIII</option>
-              <option value="IX">Grade IX</option>
-              <option value="X">Grade X</option>
-            </select>
+              <select 
+                className="select-custom" 
+                value={baseClass} 
+                onChange={(e) => handleBaseClassChange(e.target.value)}
+                style={{ height: '38px', borderRadius: '8px' }}
+              >
+                {baseGrades.map(g => (
+                  <option key={g} value={g}>
+                    {g.startsWith('LKG') || g.startsWith('UKG') || g.startsWith('NURSERY') ? g : `Grade ${g}`}
+                  </option>
+                ))}
+              </select>
           </div>
+
+          {/* Department Filter (Only for Grade XI/XII) */}
+          {isHighGrade && departmentsForSelectedGrade.length > 0 && (
+            <div className="form-group" style={{ margin: 0, minWidth: '130px' }}>
+              <label style={{ fontSize: '0.75rem', fontWeight: 700, textTransform: 'uppercase', color: 'var(--text-muted)' }}>Department</label>
+              <select 
+                className="select-custom" 
+                value={selectedDept} 
+                onChange={(e) => handleDeptChange(e.target.value)}
+                style={{ height: '38px', borderRadius: '8px' }}
+              >
+                {departmentsForSelectedGrade.map(d => (
+                  <option key={d} value={d}>{d}</option>
+                ))}
+              </select>
+            </div>
+          )}
 
           <div className="form-group" style={{ margin: 0, minWidth: '100px' }}>
             <label style={{ fontSize: '0.75rem', fontWeight: 700, textTransform: 'uppercase', color: 'var(--text-muted)' }}>Section</label>
@@ -984,7 +1147,7 @@ export function AttendanceHistoryView({ showToast }) {
             <Search size={16} className="search-bar-icon" />
             <input 
               type="text" 
-              placeholder="Search roll, admission, name..."
+              placeholder="Search roll, name..."
               className="search-bar-input"
               value={search}
               onChange={(e) => setSearch(e.target.value)}
@@ -1010,8 +1173,8 @@ export function AttendanceHistoryView({ showToast }) {
         ) : roster.length === 0 ? (
           <div style={{ textAlign: 'center', padding: '60px 20px', color: 'var(--text-muted)' }}>
             <AlertCircle size={48} style={{ margin: '0 auto 16px', color: 'var(--text-muted)', opacity: 0.6 }} />
-            <h3 style={{ fontSize: '1.05rem', fontWeight: 700, color: 'var(--text-main)' }}>No Roster Found</h3>
-            <p style={{ fontSize: '0.85rem', marginTop: '4px' }}>No records saved for this criteria yet.</p>
+            <h3 style={{ fontSize: '1.05rem', fontWeight: 700, color: 'var(--text-main)' }}>No Students Registered</h3>
+            <p style={{ fontSize: '0.85rem', marginTop: '4px' }}>There are no students registered or saved attendance records in Grade {studentClass} - Section {section}.</p>
           </div>
         ) : (
           <div style={{ overflowX: 'auto', maxHeight: 'calc(100vh - 280px)', overflowY: 'auto' }}>
@@ -1019,8 +1182,11 @@ export function AttendanceHistoryView({ showToast }) {
               <thead style={{ position: 'sticky', top: 0, zIndex: 10, background: 'var(--bg-glass-active)', backdropFilter: 'blur(10px)', borderBottom: '1px solid var(--border-glass)' }}>
                 <tr style={{ background: 'var(--table-header-bg)', borderBottom: '1px solid var(--border-glass)' }}>
                   <th style={{ padding: '16px 20px', fontSize: '0.75rem', fontWeight: 700, color: 'var(--text-muted)', textTransform: 'uppercase' }}>Roll No</th>
-                  <th style={{ padding: '16px 20px', fontSize: '0.75rem', fontWeight: 700, color: 'var(--text-muted)', textTransform: 'uppercase' }}>Admission No</th>
                   <th style={{ padding: '16px 20px', fontSize: '0.75rem', fontWeight: 700, color: 'var(--text-muted)', textTransform: 'uppercase' }}>Student Name</th>
+                  <th style={{ padding: '16px 20px', fontSize: '0.75rem', fontWeight: 700, color: 'var(--text-muted)', textTransform: 'uppercase' }}>Class/Sec</th>
+                  {isHighGrade && (
+                    <th style={{ padding: '16px 20px', fontSize: '0.75rem', fontWeight: 700, color: 'var(--text-muted)', textTransform: 'uppercase' }}>Department</th>
+                  )}
                   <th style={{ padding: '16px 20px', fontSize: '0.75rem', fontWeight: 700, color: 'var(--text-muted)', textTransform: 'uppercase', textAlign: 'center' }}>Attendance Status</th>
                   <th style={{ padding: '16px 20px', fontSize: '0.75rem', fontWeight: 700, color: 'var(--text-muted)', textTransform: 'uppercase' }}>Remarks</th>
                 </tr>
@@ -1029,8 +1195,38 @@ export function AttendanceHistoryView({ showToast }) {
                 {roster.map((stu) => (
                   <tr key={stu.id} style={{ borderBottom: '1px solid var(--border-glass)' }} className="table-row-hover">
                     <td style={{ padding: '14px 20px', fontSize: '0.85rem', fontWeight: 700 }}>{stu.rollNumber}</td>
-                    <td style={{ padding: '14px 20px', fontSize: '0.85rem', color: 'var(--text-muted)' }}>{stu.admissionNumber}</td>
                     <td style={{ padding: '14px 20px', fontSize: '0.85rem', fontWeight: 700 }}>{stu.fullName}</td>
+
+                    {/* Class/Sec */}
+                    <td style={{ padding: '14px 20px', fontSize: '0.85rem', color: 'var(--text-muted)' }}>
+                      <span style={{ 
+                        padding: '4px 8px', 
+                        borderRadius: '6px', 
+                        background: 'rgba(255,255,255,0.03)', 
+                        border: '1px solid var(--border-glass)',
+                        fontSize: '0.75rem',
+                        fontWeight: 600
+                      }}>
+                        {isHighGrade ? `${parseGradeName(stu.studentClass).baseGrade || baseClass}-${stu.section}` : `${stu.studentClass}-${stu.section}`}
+                      </span>
+                    </td>
+
+                    {/* Department (Only for Grade XI/XII) */}
+                    {isHighGrade && (
+                      <td style={{ padding: '14px 20px', fontSize: '0.85rem', color: 'var(--text-muted)' }}>
+                        <span style={{ 
+                          padding: '4px 8px', 
+                          borderRadius: '6px', 
+                          background: 'rgba(99, 102, 241, 0.08)', 
+                          border: '1px solid rgba(99, 102, 241, 0.2)',
+                          color: 'hsl(var(--color-primary))',
+                          fontSize: '0.75rem',
+                          fontWeight: 600
+                        }}>
+                          {parseGradeName(stu.studentClass).department || selectedDept || '—'}
+                        </span>
+                      </td>
+                    )}
                     
                     <td style={{ padding: '14px 20px' }}>
                       <div style={{ display: 'flex', gap: '8px', justifyContent: 'center' }}>
@@ -1139,6 +1335,24 @@ export function StudentReportsView({ showToast }) {
   const [search, setSearch] = useState('');
   const [reports, setReports] = useState([]);
   const [loading, setLoading] = useState(false);
+  const [activeGrades, setActiveGrades] = useState([]);
+  const [selectedStudentId, setSelectedStudentId] = useState('All');
+
+  useEffect(() => {
+    const loadGrades = async () => {
+      const grades = await fetchActiveGrades();
+      setActiveGrades(grades);
+    };
+    loadGrades();
+  }, []);
+
+  useEffect(() => {
+    setSelectedStudentId('All');
+  }, [studentClass, section, search, reports]);
+
+  const displayedReports = selectedStudentId === 'All'
+    ? reports
+    : reports.filter(r => r.id === selectedStudentId);
 
   const fetchReports = async () => {
     try {
@@ -1167,14 +1381,14 @@ export function StudentReportsView({ showToast }) {
 
   // EXPORT TO CSV
   const handleExportCSV = () => {
-    if (reports.length === 0) {
+    if (displayedReports.length === 0) {
       showToast('No records available to export.', 'error');
       return;
     }
 
-    const headers = ['Student Name,Admission Number,Class,Section,Total Working Days,Present Days,Absent Days,Leave Days,Late Days,Attendance Percentage'];
-    const rows = reports.map(r => 
-      `"${r.fullName}","${r.admissionNumber}","${r.studentClass}","${r.section}","${r.totalWorkingDays}","${r.present}","${r.absent}","${r.leave}","${r.late}","${r.attendancePercentage}%"`
+    const headers = ['Roll No,Student Name,Class,Section,Total Working Days,Present Days,Absent Days,Leave Days,Late Days,Attendance Percentage'];
+    const rows = displayedReports.map(r => 
+      `"${r.rollNumber || '—'}","${r.fullName}","${r.studentClass}","${r.section}","${r.totalWorkingDays}","${r.present}","${r.absent}","${r.leave}","${r.late}","${r.attendancePercentage}%"`
     );
     const csvContent = "data:text/csv;charset=utf-8," + headers.concat(rows).join("\n");
     const encodedUri = encodeURI(csvContent);
@@ -1187,7 +1401,7 @@ export function StudentReportsView({ showToast }) {
     showToast('Spreadsheet download triggered successfully!', 'success');
   };
 
-  // EXPORT TO PDF (Print Window Option)
+  // Export to PDF / Print Window
   const handleExportPDF = () => {
     window.print();
   };
@@ -1205,16 +1419,11 @@ export function StudentReportsView({ showToast }) {
               <label style={{ fontSize: '0.75rem', fontWeight: 700, textTransform: 'uppercase', color: 'var(--text-muted)' }}>Class Filter</label>
               <select className="select-custom" value={studentClass} onChange={(e) => setClass(e.target.value)} style={{ height: '38px', borderRadius: '8px' }}>
                 <option value="All">All Classes</option>
-                <option value="I">Grade I</option>
-                <option value="II">Grade II</option>
-                <option value="III">Grade III</option>
-                <option value="IV">Grade IV</option>
-                <option value="V">Grade V</option>
-                <option value="VI">Grade VI</option>
-                <option value="VII">Grade VII</option>
-                <option value="VIII">Grade VIII</option>
-                <option value="IX">Grade IX</option>
-                <option value="X">Grade X</option>
+                {activeGrades.map(g => g.name).map(g => (
+                  <option key={g} value={g}>
+                    {g.startsWith('LKG') || g.startsWith('UKG') || g.startsWith('NURSERY') ? g : `Grade ${g}`}
+                  </option>
+                ))}
               </select>
             </div>
 
@@ -1226,6 +1435,16 @@ export function StudentReportsView({ showToast }) {
                 <option value="B">Section B</option>
                 <option value="C">Section C</option>
                 <option value="D">Section D</option>
+              </select>
+            </div>
+
+            <div className="form-group" style={{ margin: 0, minWidth: '160px' }}>
+              <label style={{ fontSize: '0.75rem', fontWeight: 700, textTransform: 'uppercase', color: 'var(--text-muted)' }}>Select Student</label>
+              <select className="select-custom" value={selectedStudentId} onChange={(e) => setSelectedStudentId(e.target.value)} style={{ height: '38px', borderRadius: '8px' }}>
+                <option value="All">All Students</option>
+                {reports.map(r => (
+                  <option key={r.id} value={r.id}>{r.fullName}</option>
+                ))}
               </select>
             </div>
 
@@ -1266,16 +1485,21 @@ export function StudentReportsView({ showToast }) {
         ) : reports.length === 0 ? (
           <div style={{ textAlign: 'center', padding: '60px 20px', color: 'var(--text-muted)' }}>
             <AlertCircle size={48} style={{ margin: '0 auto 16px', color: 'var(--text-muted)', opacity: 0.6 }} />
-            <h3 style={{ fontSize: '1.05rem', fontWeight: 700 }}>No Analytics Compiled</h3>
-            <p style={{ fontSize: '0.85rem', marginTop: '4px' }}>Please check filter parameters.</p>
+            <h3 style={{ fontSize: '1.05rem', fontWeight: 700, color: 'var(--text-main)' }}>No Students Registered</h3>
+            <p style={{ fontSize: '0.85rem', marginTop: '4px' }}>
+              {studentClass === 'All' && section === 'All' 
+                ? 'There are no students registered in the system.'
+                : `There are no students registered in Grade ${studentClass} - Section ${section}.`
+              }
+            </p>
           </div>
         ) : (
           <div style={{ overflowX: 'auto' }}>
             <table className="student-table" style={{ width: '100%', borderCollapse: 'collapse', textAlign: 'left' }}>
               <thead>
                 <tr style={{ background: 'var(--table-header-bg)', borderBottom: '1px solid var(--border-glass)' }}>
+                  <th style={{ padding: '16px 20px', fontSize: '0.75rem', fontWeight: 700, color: 'var(--text-muted)', textTransform: 'uppercase' }}>Roll No</th>
                   <th style={{ padding: '16px 20px', fontSize: '0.75rem', fontWeight: 700, color: 'var(--text-muted)', textTransform: 'uppercase' }}>Student Name</th>
-                  <th style={{ padding: '16px 20px', fontSize: '0.75rem', fontWeight: 700, color: 'var(--text-muted)', textTransform: 'uppercase' }}>Admission No</th>
                   <th style={{ padding: '16px 20px', fontSize: '0.75rem', fontWeight: 700, color: 'var(--text-muted)', textTransform: 'uppercase' }}>Class/Sec</th>
                   <th style={{ padding: '16px 20px', fontSize: '0.75rem', fontWeight: 700, color: 'var(--text-muted)', textTransform: 'uppercase', textAlign: 'center' }}>Total Days</th>
                   <th style={{ padding: '16px 20px', fontSize: '0.75rem', fontWeight: 700, color: 'var(--text-muted)', textTransform: 'uppercase', textAlign: 'center', color: '#10b981' }}>Present</th>
@@ -1286,15 +1510,15 @@ export function StudentReportsView({ showToast }) {
                 </tr>
               </thead>
               <tbody>
-                {reports.map((r) => {
+                {displayedReports.map((r) => {
                   let rateColor = '#10b981'; // green
                   if (r.attendancePercentage < 75) rateColor = '#ef4444'; // red
                   else if (r.attendancePercentage < 90) rateColor = '#f59e0b'; // amber
 
                   return (
                     <tr key={r.id} style={{ borderBottom: '1px solid var(--border-glass)' }} className="table-row-hover">
+                      <td style={{ padding: '14px 20px', fontSize: '0.85rem', fontWeight: 700, color: 'var(--text-main)' }}>{r.rollNumber}</td>
                       <td style={{ padding: '14px 20px', fontSize: '0.85rem', fontWeight: 700 }}>{r.fullName}</td>
-                      <td style={{ padding: '14px 20px', fontSize: '0.85rem', color: 'var(--text-muted)' }}>{r.admissionNumber}</td>
                       <td style={{ padding: '14px 20px', fontSize: '0.85rem' }}>{r.studentClass}-{r.section}</td>
                       <td style={{ padding: '14px 20px', fontSize: '0.85rem', fontWeight: 700, textAlign: 'center' }}>{r.totalWorkingDays}</td>
                       <td style={{ padding: '14px 20px', fontSize: '0.85rem', fontWeight: 700, textAlign: 'center', color: '#10b981' }}>{r.present}</td>
@@ -1422,7 +1646,7 @@ export function ClassReportsView({ showToast }) {
 export function MonthlyCalendarView({ showToast }) {
   const [studentsList, setStudentsList] = useState([]);
   const [selectedStudent, setSelectedStudent] = useState('');
-  const [selectedGrade, setSelectedGrade] = useState('I');
+  const [selectedGrade, setSelectedGrade] = useState('');
   const [selectedSection, setSelectedSection] = useState('A');
   const [searchName, setSearchName] = useState('');
   const [selectedMonth, setSelectedMonth] = useState(new Date().getMonth() + 1); // 1-12
@@ -1430,8 +1654,20 @@ export function MonthlyCalendarView({ showToast }) {
   const [calendarLogs, setCalendarLogs] = useState({});
   const [loading, setLoading] = useState(false);
   const [activeTooltip, setActiveTooltip] = useState(null);
+  const [activeGrades, setActiveGrades] = useState([]);
 
-  const grades = ['I', 'II', 'III', 'IV', 'V', 'VI', 'VII', 'VIII', 'IX', 'X'];
+  useEffect(() => {
+    const loadGrades = async () => {
+      const grades = await fetchActiveGrades();
+      setActiveGrades(grades);
+      if (grades.length > 0) {
+        setSelectedGrade(grades[0].name);
+      }
+    };
+    loadGrades();
+  }, []);
+
+  const grades = activeGrades.map(g => g.name);
   const sections = ['A', 'B', 'C', 'D'];
 
   // Load filtered students
@@ -1708,299 +1944,7 @@ export function MonthlyCalendarView({ showToast }) {
   );
 }
 
-// ============================================================================
-// TAB F: ATTENDANCE TRACKER READ-ONLY VIEW
-// ============================================================================
-export function AttendanceTrackerView({ date, setDate, showToast }) {
-  const [cohorts, setCohorts] = useState([]);
-  const [loading, setLoading] = useState(false);
-  const [selectedCohort, setSelectedCohort] = useState(null); // { studentClass, section }
-  const [roster, setRoster] = useState([]);
-  const [loadingRoster, setLoadingRoster] = useState(false);
 
-  // Fetch all class cohort reports
-  const fetchCohorts = async () => {
-    try {
-      setLoading(true);
-      const res = await fetch(`/api/attendance/reports/class?date=${date}`);
-      if (res.ok) {
-        const data = await res.json();
-        setCohorts(data);
-        setSelectedCohort(null);
-        setRoster([]);
-      }
-    } catch (err) {
-      console.error('Error fetching cohorts:', err);
-      showToast('Error loading cohort tracking cards.', 'error');
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  useEffect(() => {
-    fetchCohorts();
-  }, [date]);
-
-  // Fetch detailed roster when a cohort is selected
-  const fetchRoster = async (studentClass, section) => {
-    try {
-      setLoadingRoster(true);
-      const queryParams = new URLSearchParams({
-        date,
-        studentClass,
-        section
-      }).toString();
-      const res = await fetch(`/api/attendance?${queryParams}`);
-      if (res.ok) {
-        const data = await res.json();
-        setRoster(data);
-      }
-    } catch (err) {
-      console.error('Error loading tracker roster:', err);
-      showToast('Error loading detailed roster.', 'error');
-    } finally {
-      setLoadingRoster(false);
-    }
-  };
-
-  const handleCohortClick = (c) => {
-    setSelectedCohort(c);
-    fetchRoster(c.studentClass, c.section);
-  };
-
-  // Calculations for school-wide stats
-  const totalStudents = cohorts.reduce((sum, c) => sum + (c.totalStudents || 0), 0);
-  const presentCount = cohorts.reduce((sum, c) => sum + (c.presentStudents || 0), 0);
-  const absentCount = cohorts.reduce((sum, c) => sum + (c.absentStudents || 0), 0);
-  const leaveCount = cohorts.reduce((sum, c) => sum + (c.leaveStudents || 0), 0);
-  const lateCount = cohorts.reduce((sum, c) => sum + (c.lateStudents || 0), 0);
-  const markedCount = cohorts.reduce((sum, c) => sum + (c.markedStudents || 0), 0);
-  const attendanceRate = markedCount > 0 ? Math.round(((presentCount + lateCount) / markedCount) * 100) : 100;
-
-  return (
-    <div style={{ display: 'flex', flexDirection: 'column', gap: '28px' }}>
-      
-      {/* 1. FILTER HEADER */}
-      <div className="glass-panel" style={{ padding: '20px 24px' }}>
-        <div style={{ display: 'flex', gap: '16px', flexWrap: 'wrap', alignItems: 'center', justifyContent: 'space-between' }}>
-          <div>
-            <h3 style={{ fontSize: '1.05rem', fontWeight: 800, color: 'var(--text-main)' }}>School Attendance Telemetry</h3>
-            <p style={{ fontSize: '0.8rem', color: 'var(--text-muted)', marginTop: '2px' }}>Real-time summary statistics and cohort card tracker</p>
-          </div>
-          <div className="form-group" style={{ margin: 0, minWidth: '180px' }}>
-            <label style={{ fontSize: '0.72rem', fontWeight: 700, color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.04em', marginBottom: '6px', display: 'block' }}>Select Date</label>
-            <input 
-              type="date" 
-              value={date} 
-              onChange={(e) => setDate(e.target.value)}
-              className="form-control"
-              style={{ height: '38px', borderRadius: '8px', padding: '8px 12px' }}
-            />
-          </div>
-        </div>
-      </div>
-
-      {/* 2. SCHOOL-WIDE TELEMETRY SUMMARY CARDS */}
-      <div className="admin-dashboard-grid" style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(140px, 1fr))', gap: '16px' }}>
-        <div className="glass-panel" style={{ padding: '16px 20px', display: 'flex', flexDirection: 'column', gap: '4px', textAlign: 'left', borderLeft: '4px solid #6366f1', background: 'rgba(99, 102, 241, 0.02)' }}>
-          <span style={{ fontSize: '0.7rem', color: '#6366f1', textTransform: 'uppercase', fontWeight: 700 }}>Total School Roster</span>
-          <strong style={{ fontSize: '1.6rem', color: 'var(--text-main)', fontWeight: 800 }}>{totalStudents}</strong>
-        </div>
-        <div className="glass-panel" style={{ padding: '16px 20px', display: 'flex', flexDirection: 'column', gap: '4px', textAlign: 'left', borderLeft: '4px solid #10b981', background: 'rgba(16, 185, 129, 0.02)' }}>
-          <span style={{ fontSize: '0.7rem', color: '#10b981', textTransform: 'uppercase', fontWeight: 700 }}>School Present</span>
-          <strong style={{ fontSize: '1.6rem', color: '#10b981', fontWeight: 800 }}>{presentCount}</strong>
-        </div>
-        <div className="glass-panel" style={{ padding: '16px 20px', display: 'flex', flexDirection: 'column', gap: '4px', textAlign: 'left', borderLeft: '4px solid #ef4444', background: 'rgba(239, 68, 68, 0.02)' }}>
-          <span style={{ fontSize: '0.7rem', color: '#ef4444', textTransform: 'uppercase', fontWeight: 700 }}>School Absent</span>
-          <strong style={{ fontSize: '1.6rem', color: '#ef4444', fontWeight: 800 }}>{absentCount}</strong>
-        </div>
-        <div className="glass-panel" style={{ padding: '16px 20px', display: 'flex', flexDirection: 'column', gap: '4px', textAlign: 'left', borderLeft: '4px solid #f59e0b', background: 'rgba(245, 158, 11, 0.02)' }}>
-          <span style={{ fontSize: '0.7rem', color: '#f59e0b', textTransform: 'uppercase', fontWeight: 700 }}>School Leave/Late</span>
-          <strong style={{ fontSize: '1.6rem', color: '#f59e0b', fontWeight: 800 }}>{leaveCount + lateCount}</strong>
-        </div>
-        <div className="glass-panel" style={{ padding: '16px 20px', display: 'flex', flexDirection: 'column', gap: '4px', textAlign: 'left', borderLeft: '4px solid #10b981', background: 'rgba(16, 185, 129, 0.02)' }}>
-          <span style={{ fontSize: '0.7rem', color: '#10b981', textTransform: 'uppercase', fontWeight: 700 }}>Overall Attendance Rate</span>
-          <strong style={{ fontSize: '1.6rem', color: '#10b981', fontWeight: 800 }}>{attendanceRate}%</strong>
-        </div>
-      </div>
-
-      {/* 3. COHORT CARDS GRID */}
-      <div>
-        <h3 style={{ fontSize: '1.1rem', fontWeight: 800, marginBottom: '16px' }}>
-          Class-Wise Attendance Cohorts
-        </h3>
-        {loading ? (
-          <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', minHeight: '200px' }}>
-            <Loader2 className="animate-spin" size={32} style={{ color: 'hsl(var(--color-primary))' }} />
-          </div>
-        ) : cohorts.length === 0 ? (
-          <div className="glass-panel" style={{ padding: '40px', textAlign: 'center', color: 'var(--text-muted)' }}>
-            No cohort data found for this date.
-          </div>
-        ) : (
-          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))', gap: '20px' }}>
-            {cohorts.map((r, i) => {
-              const percentage = r.attendancePercentage;
-              const ringColor = percentage >= 90 ? '#10b981' : percentage >= 75 ? '#f59e0b' : '#ef4444';
-              const isSelected = selectedCohort && selectedCohort.studentClass === r.studentClass && selectedCohort.section === r.section;
-              
-              return (
-                <div 
-                  className="glass-panel" 
-                  key={i} 
-                  onClick={() => handleCohortClick(r)}
-                  style={{ 
-                    padding: '24px', 
-                    borderRadius: '16px', 
-                    display: 'flex', 
-                    flexDirection: 'column', 
-                    gap: '16px', 
-                    background: isSelected ? 'rgba(99, 102, 241, 0.08)' : 'rgba(255,255,255,0.01)', 
-                    border: isSelected ? '2px solid #6366f1' : '1px solid rgba(255,255,255,0.05)', 
-                    cursor: 'pointer',
-                    transition: 'all 0.2s ease',
-                    boxShadow: isSelected ? '0 8px 24px rgba(99, 102, 241, 0.2)' : 'none'
-                  }}
-                >
-                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                    <div>
-                      <span style={{ fontSize: '0.75rem', fontWeight: 800, textTransform: 'uppercase', color: 'hsl(var(--color-secondary))', letterSpacing: '0.05em' }}>
-                        Grade {r.studentClass} - Section {r.section}
-                      </span>
-                      <h4 style={{ fontSize: '1.05rem', fontWeight: 700, color: 'var(--text-main)', marginTop: '4px' }}>Roster Summary</h4>
-                    </div>
-                    <div style={{
-                      width: '46px',
-                      height: '46px',
-                      borderRadius: '50%',
-                      background: 'rgba(255,255,255,0.03)',
-                      border: `2px solid ${ringColor}`,
-                      display: 'flex',
-                      alignItems: 'center',
-                      justifyContent: 'center',
-                      fontWeight: 800,
-                      fontSize: '0.85rem',
-                      color: ringColor
-                    }}>
-                      {percentage}%
-                    </div>
-                  </div>
-
-                  <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, 1fr)', gap: '10px' }}>
-                    <div style={{ background: 'rgba(255,255,255,0.01)', padding: '8px 12px', borderRadius: '8px', border: '1px solid rgba(255,255,255,0.02)' }}>
-                      <div style={{ fontSize: '0.65rem', color: 'var(--text-muted)', textTransform: 'uppercase', fontWeight: 700 }}>Total</div>
-                      <div style={{ fontSize: '1.05rem', fontWeight: 700, color: 'var(--text-main)', marginTop: '2px' }}>{r.totalStudents}</div>
-                    </div>
-                    <div style={{ background: 'rgba(16, 185, 129, 0.03)', padding: '8px 12px', borderRadius: '8px', border: '1px solid rgba(16, 185, 129, 0.06)' }}>
-                      <div style={{ fontSize: '0.65rem', color: '#10b981', textTransform: 'uppercase', fontWeight: 700 }}>Present</div>
-                      <div style={{ fontSize: '1.05rem', fontWeight: 700, color: '#10b981', marginTop: '2px' }}>{r.presentStudents}</div>
-                    </div>
-                    <div style={{ background: 'rgba(239, 68, 68, 0.03)', padding: '8px 12px', borderRadius: '8px', border: '1px solid rgba(239, 68, 68, 0.06)' }}>
-                      <div style={{ fontSize: '0.65rem', color: '#ef4444', textTransform: 'uppercase', fontWeight: 700 }}>Absent</div>
-                      <div style={{ fontSize: '1.05rem', fontWeight: 700, color: '#ef4444', marginTop: '2px' }}>{r.absentStudents}</div>
-                    </div>
-                    <div style={{ background: 'rgba(249, 115, 22, 0.03)', padding: '8px 12px', borderRadius: '8px', border: '1px solid rgba(249, 115, 22, 0.06)' }}>
-                      <div style={{ fontSize: '0.65rem', color: '#f97316', textTransform: 'uppercase', fontWeight: 700 }}>Late/Leave</div>
-                      <div style={{ fontSize: '1.05rem', fontWeight: 700, color: '#f97316', marginTop: '2px' }}>{r.lateStudents + r.leaveStudents}</div>
-                    </div>
-                  </div>
-
-                  <div style={{ display: 'flex', flexDirection: 'column', gap: '6px', marginTop: '4px' }}>
-                    <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.7rem', color: 'var(--text-muted)', fontWeight: 600 }}>
-                      <span>Marking Progress</span>
-                      <span>{r.markedStudents} of {r.totalStudents} marked</span>
-                    </div>
-                    <div style={{ height: '6px', background: 'rgba(255,255,255,0.05)', borderRadius: '3px', overflow: 'hidden' }}>
-                      <div style={{
-                        height: '100%',
-                        width: `${(r.markedStudents / r.totalStudents) * 100}%`,
-                        background: 'linear-gradient(90deg, hsl(var(--color-primary)) 0%, hsl(var(--color-secondary)) 100%)',
-                        borderRadius: '3px',
-                        transition: 'width 0.4s ease'
-                      }} />
-                    </div>
-                  </div>
-                </div>
-              );
-            })}
-          </div>
-        )}
-      </div>
-
-      {/* 4. DRILL DOWN CLASS DETAIL TABLE */}
-      {selectedCohort && (
-        <div className="glass-panel" style={{ padding: '24px', display: 'flex', flexDirection: 'column', gap: '16px', animation: 'fadeIn 0.25s ease-out' }}>
-          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-            <div>
-              <h3 style={{ fontSize: '1.1rem', fontWeight: 800 }}>
-                Roster Detail: Grade {selectedCohort.studentClass} - Section {selectedCohort.section}
-              </h3>
-              <p style={{ fontSize: '0.8rem', color: 'var(--text-muted)', marginTop: '2px' }}>Detailed student-wise logs for {date}</p>
-            </div>
-            <button 
-              className="btn-secondary"
-              onClick={() => { setSelectedCohort(null); setRoster([]); }}
-              style={{ padding: '6px 12px', fontSize: '0.8rem' }}
-            >
-              Clear Detail
-            </button>
-          </div>
-
-          {loadingRoster ? (
-            <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', minHeight: '180px' }}>
-              <Loader2 className="animate-spin" size={28} />
-            </div>
-          ) : roster.length === 0 ? (
-            <div style={{ color: 'var(--text-muted)', textAlign: 'center', padding: '20px' }}>No logs recorded for this class.</div>
-          ) : (
-            <div style={{ overflowX: 'auto', maxHeight: 'calc(100vh - 280px)', overflowY: 'auto' }}>
-              <table className="student-table" style={{ width: '100%', borderCollapse: 'collapse', textAlign: 'left' }}>
-                <thead style={{ position: 'sticky', top: 0, zIndex: 10, background: 'var(--bg-glass-active)', backdropFilter: 'blur(10px)', borderBottom: '1px solid var(--border-glass)' }}>
-                  <tr style={{ background: 'var(--table-header-bg)', borderBottom: '1px solid var(--border-glass)' }}>
-                    <th style={{ padding: '16px 20px', fontSize: '0.75rem', fontWeight: 700, color: 'var(--text-muted)', textTransform: 'uppercase' }}>Roll No</th>
-                    <th style={{ padding: '16px 20px', fontSize: '0.75rem', fontWeight: 700, color: 'var(--text-muted)', textTransform: 'uppercase' }}>Admission No</th>
-                    <th style={{ padding: '16px 20px', fontSize: '0.75rem', fontWeight: 700, color: 'var(--text-muted)', textTransform: 'uppercase' }}>Student Name</th>
-                    <th style={{ padding: '16px 20px', fontSize: '0.75rem', fontWeight: 700, color: 'var(--text-muted)', textTransform: 'uppercase', textAlign: 'center' }}>Status</th>
-                    <th style={{ padding: '16px 20px', fontSize: '0.75rem', fontWeight: 700, color: 'var(--text-muted)', textTransform: 'uppercase' }}>Remarks</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {roster.map((stu) => {
-                    let statusBg = 'rgba(255,255,255,0.03)';
-                    let statusColor = 'var(--text-muted)';
-                    if (stu.attendanceStatus === 'Present') { statusBg = 'rgba(16,185,129,0.08)'; statusColor = '#10b981'; }
-                    else if (stu.attendanceStatus === 'Absent') { statusBg = 'rgba(239,68,68,0.08)'; statusColor = '#ef4444'; }
-                    else if (stu.attendanceStatus === 'Leave') { statusBg = 'rgba(245,158,11,0.08)'; statusColor = '#f59e0b'; }
-                    else if (stu.attendanceStatus === 'Late') { statusBg = 'rgba(249,115,22,0.08)'; statusColor = '#f97316'; }
-                    
-                    return (
-                      <tr key={stu.id} style={{ borderBottom: '1px solid var(--border-glass)' }} className="table-row-hover">
-                        <td style={{ padding: '14px 20px', fontSize: '0.85rem', fontWeight: 700 }}>{stu.rollNumber}</td>
-                        <td style={{ padding: '14px 20px', fontSize: '0.85rem', color: 'var(--text-muted)' }}>{stu.admissionNumber}</td>
-                        <td style={{ padding: '14px 20px', fontSize: '0.85rem', fontWeight: 700 }}>{stu.fullName}</td>
-                        <td style={{ padding: '14px 20px', textAlign: 'center' }}>
-                          <span style={{ 
-                            padding: '6px 12px', borderRadius: '20px', fontSize: '0.75rem', fontWeight: 700, 
-                            background: statusBg, color: statusColor, display: 'inline-block', minWidth: '80px',
-                            border: `1px solid ${statusColor}22`
-                          }}>
-                            {stu.attendanceStatus || 'Not Marked'}
-                          </span>
-                        </td>
-                        <td style={{ padding: '14px 20px', fontSize: '0.8rem', color: 'var(--text-muted)' }}>{stu.remarks || '-'}</td>
-                      </tr>
-                    );
-                  })}
-                </tbody>
-              </table>
-            </div>
-          )}
-        </div>
-      )}
-
-    </div>
-  );
-}
 
 // ============================================================================
 // TAB G: CLASS TIMETABLE LOG VIEW (READ ONLY)
@@ -2012,6 +1956,15 @@ export function ClassTimetableView({ showToast }) {
   const [searchQuery, setSearchQuery] = useState('');
   const [searchGrade, setSearchGrade] = useState('All');
   const [searchSection, setSearchSection] = useState('All');
+  const [activeGrades, setActiveGrades] = useState([]);
+
+  useEffect(() => {
+    const loadGrades = async () => {
+      const grades = await fetchActiveGrades();
+      setActiveGrades(grades);
+    };
+    loadGrades();
+  }, []);
 
   const daysOfWeek = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
 
@@ -2079,7 +2032,7 @@ export function ClassTimetableView({ showToast }) {
             style={{ padding: '6px 12px', borderRadius: '8px', fontSize: '0.82rem', background: 'var(--bg-glass-active)', border: '1px solid var(--border-glass)', color: 'var(--text-main)' }}
           >
             <option value="All">All Grades</option>
-            {['I', 'II', 'III', 'IV', 'V', 'VI', 'VII', 'VIII', 'IX', 'X'].map(g => (
+            {activeGrades.map(g => g.name).map(g => (
               <option key={g} value={g}>Grade {g}</option>
             ))}
           </select>
@@ -2198,13 +2151,27 @@ export function ClassTimetableView({ showToast }) {
 export function YearlyAttendanceView({ showToast }) {
   const [studentsList, setStudentsList] = useState([]);
   const [selectedStudent, setSelectedStudent] = useState('');
-  const [selectedGrade, setSelectedGrade] = useState('I');
+  const [selectedGrade, setSelectedGrade] = useState('');
   const [selectedSection, setSelectedSection] = useState('A');
   const [searchName, setSearchName] = useState('');
   const [yearlyStats, setYearlyStats] = useState(null);
   const [loading, setLoading] = useState(false);
+  const [activeGrades, setActiveGrades] = useState([]);
 
-  const grades = ['I', 'II', 'III', 'IV', 'V', 'VI', 'VII', 'VIII', 'IX', 'X'];
+  useEffect(() => {
+    const loadGrades = async () => {
+      const grades = await fetchActiveGrades();
+      setActiveGrades(grades);
+      if (grades.length > 0) {
+        setSelectedGrade(grades[0].name);
+      } else {
+        setSelectedGrade('');
+      }
+    };
+    loadGrades();
+  }, []);
+
+  const grades = activeGrades.map(g => g.name);
   const sections = ['A', 'B', 'C', 'D'];
 
   // Load filtered students list (identical to MonthlyCalendarView)

@@ -24,12 +24,20 @@ import {
   Printer
 } from 'lucide-react';
 import { hasPermission } from '../utils/permissions';
-
-
+import { fetchActiveGrades } from '../utils/grades';
 
 export default function StudentDirectory({ readOnly = true, onAddClick }) {
   const [students, setStudents] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [activeGrades, setActiveGrades] = useState([]);
+
+  useEffect(() => {
+    const loadGrades = async () => {
+      const grades = await fetchActiveGrades();
+      setActiveGrades(grades);
+    };
+    loadGrades();
+  }, []);
 
   
   const hasValue = (val) => {
@@ -435,7 +443,7 @@ export default function StudentDirectory({ readOnly = true, onAddClick }) {
         <div style={{ display: 'flex', flexDirection: 'column', gap: '8px', borderTop: '1px solid var(--border-glass)', paddingTop: '14px' }}>
           <span style={{ fontSize: '0.85rem', color: 'var(--text-muted)', fontWeight: 600 }}>Grades:</span>
           <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap' }}>
-            {['LKG', 'UKG', 'I', 'II', 'III', 'IV', 'V', 'VI', 'VII', 'VIII', 'IX', 'X'].map(grade => {
+            {activeGrades.map(g => g.name).map(grade => {
               const isSelected = classFilter === grade;
               return (
                 <button
@@ -453,7 +461,7 @@ export default function StudentDirectory({ readOnly = true, onAddClick }) {
                     height: 'fit-content'
                   }}
                 >
-                  {grade === 'LKG' || grade === 'UKG' ? grade : `Grade ${grade}`}
+                  {grade.startsWith('LKG') || grade.startsWith('UKG') || grade.startsWith('NURSERY') ? grade : `Grade ${grade}`}
                 </button>
               );
             })}
@@ -1157,10 +1165,11 @@ export default function StudentDirectory({ readOnly = true, onAddClick }) {
                   <label>Class/Grade</label>
                   <select value={editFormData.studentClass || ''} onChange={(e) => setEditFormData({ ...editFormData, studentClass: e.target.value })}
                     className="form-control" style={{ padding: '10px 14px', borderRadius: '10px' }}>
-                    <option value="LKG">LKG</option>
-                    <option value="UKG">UKG</option>
-                    {['I', 'II', 'III', 'IV', 'V', 'VI', 'VII', 'VIII', 'IX', 'X'].map(grade => (
-                      <option key={grade} value={grade}>Class {grade}</option>
+                    <option value="">Select Grade</option>
+                    {activeGrades.map(g => g.name).map(grade => (
+                      <option key={grade} value={grade}>
+                        {grade.startsWith('LKG') || grade.startsWith('UKG') || grade.startsWith('NURSERY') ? grade : `Grade ${grade}`}
+                      </option>
                     ))}
                   </select>
                 </div>
@@ -1182,7 +1191,7 @@ export default function StudentDirectory({ readOnly = true, onAddClick }) {
                   <label>Academic Session</label>
                   <select value={editFormData.academicYear || ''} onChange={(e) => setEditFormData({ ...editFormData, academicYear: e.target.value })}
                     className="form-control" style={{ padding: '10px 14px', borderRadius: '10px' }}>
-                    {Array.from({ length: 2049 - 2026 + 1 }, (_, i) => {
+                    {Array.from({ length: 2030 - 2026 + 1 }, (_, i) => {
                       const s = 2026 + i;
                       return `${s}-${s + 1}`;
                     }).map(sy => (

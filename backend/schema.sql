@@ -77,7 +77,8 @@ CREATE TABLE IF NOT EXISTS student_enrollments (
   createdAt VARCHAR(100),
   updatedAt VARCHAR(100),
   tenantId VARCHAR(100),
-  FOREIGN KEY (studentId) REFERENCES students(id) ON DELETE CASCADE
+  FOREIGN KEY (studentId) REFERENCES students(id) ON DELETE CASCADE,
+  UNIQUE KEY unique_student_enrollment (studentId, academicYear, tenantId)
 );
 
 -- 4. Parents Table
@@ -100,7 +101,8 @@ CREATE TABLE IF NOT EXISTS parents (
   createdAt VARCHAR(100),
   updatedAt VARCHAR(100),
   tenantId VARCHAR(100),
-  FOREIGN KEY (studentId) REFERENCES students(id) ON DELETE CASCADE
+  FOREIGN KEY (studentId) REFERENCES students(id) ON DELETE CASCADE,
+  UNIQUE KEY unique_student_parent (studentId, tenantId)
 );
 
 -- 5. Addresses Table
@@ -118,7 +120,8 @@ CREATE TABLE IF NOT EXISTS addresses (
   createdAt VARCHAR(100),
   updatedAt VARCHAR(100),
   tenantId VARCHAR(100),
-  FOREIGN KEY (studentId) REFERENCES students(id) ON DELETE CASCADE
+  FOREIGN KEY (studentId) REFERENCES students(id) ON DELETE CASCADE,
+  UNIQUE KEY unique_student_address (studentId, tenantId)
 );
 
 -- 6. Medical Records Table
@@ -135,7 +138,8 @@ CREATE TABLE IF NOT EXISTS medical_records (
   createdAt VARCHAR(100),
   updatedAt VARCHAR(100),
   tenantId VARCHAR(100),
-  FOREIGN KEY (studentId) REFERENCES students(id) ON DELETE CASCADE
+  FOREIGN KEY (studentId) REFERENCES students(id) ON DELETE CASCADE,
+  UNIQUE KEY unique_student_medical (studentId, tenantId)
 );
 
 -- 7. Documents Table
@@ -162,7 +166,8 @@ CREATE TABLE IF NOT EXISTS fee_assignments (
   initialPaymentStatus VARCHAR(50) DEFAULT 'Pending',
   assignedAt VARCHAR(100),
   tenantId VARCHAR(100),
-  FOREIGN KEY (studentId) REFERENCES students(id) ON DELETE CASCADE
+  FOREIGN KEY (studentId) REFERENCES students(id) ON DELETE CASCADE,
+  UNIQUE KEY unique_student_fee_assign (studentId, tenantId)
 );
 
 -- 9. Student Accounts Table
@@ -440,6 +445,33 @@ CREATE TABLE IF NOT EXISTS events (
   tenantId VARCHAR(100)
 );
 
+-- 24a. Academic Calendar Events Table
+CREATE TABLE IF NOT EXISTS academic_calendar_events (
+  id VARCHAR(50) PRIMARY KEY,
+  eventDate VARCHAR(50) NOT NULL,
+  title VARCHAR(255) NOT NULL,
+  eventType VARCHAR(100) NOT NULL,
+  description TEXT,
+  applicableClasses VARCHAR(255),
+  startTime VARCHAR(50),
+  endTime VARCHAR(50),
+  session VARCHAR(50) NOT NULL,
+  tenantId VARCHAR(100) NOT NULL,
+  createdAt VARCHAR(100) NOT NULL,
+  updatedAt VARCHAR(100) NOT NULL
+);
+
+-- 24b. Academic Calendar Imports Table
+CREATE TABLE IF NOT EXISTS academic_calendar_imports (
+  id VARCHAR(50) PRIMARY KEY,
+  fileName VARCHAR(255) NOT NULL,
+  importDate VARCHAR(100) NOT NULL,
+  importedBy VARCHAR(255) NOT NULL,
+  totalRecords INT DEFAULT 0,
+  session VARCHAR(50) NOT NULL,
+  tenantId VARCHAR(100) NOT NULL
+);
+
 -- 25. Results Table
 CREATE TABLE IF NOT EXISTS results (
   id VARCHAR(50) PRIMARY KEY,
@@ -657,6 +689,48 @@ CREATE TABLE IF NOT EXISTS attendance_reports (
   INDEX idx_rep_tenant (tenantId)
 );
 
+-- 42. Published Calendar Events Table
+CREATE TABLE IF NOT EXISTS published_calendar_events (
+  eventId VARCHAR(100) NOT NULL,
+  tenantId VARCHAR(100) NOT NULL,
+  PRIMARY KEY (eventId, tenantId)
+);
+
+-- 43. Grades Table
+CREATE TABLE IF NOT EXISTS grades (
+  id VARCHAR(50) PRIMARY KEY,
+  name VARCHAR(100) NOT NULL,
+  status VARCHAR(50) DEFAULT 'Active',
+  createdAt VARCHAR(100),
+  updatedAt VARCHAR(100),
+  tenantId VARCHAR(100)
+);
+
+-- 44. Departments Table
+CREATE TABLE IF NOT EXISTS departments (
+  id VARCHAR(50) PRIMARY KEY,
+  name VARCHAR(100) NOT NULL,
+  status VARCHAR(50) DEFAULT 'Active',
+  createdAt VARCHAR(100),
+  updatedAt VARCHAR(100),
+  tenantId VARCHAR(100)
+);
+
+-- 45. Grade-Department Mapping Table
+CREATE TABLE IF NOT EXISTS grade_departments (
+  id VARCHAR(50) PRIMARY KEY,
+  gradeId VARCHAR(50) NOT NULL,
+  departmentId VARCHAR(50) NOT NULL,
+  status VARCHAR(50) DEFAULT 'Active',
+  tenantId VARCHAR(100),
+  createdAt VARCHAR(100),
+  updatedAt VARCHAR(100),
+  FOREIGN KEY (gradeId) REFERENCES grades(id) ON DELETE CASCADE,
+  FOREIGN KEY (departmentId) REFERENCES departments(id) ON DELETE CASCADE,
+  UNIQUE KEY unique_grade_dept (gradeId, departmentId, tenantId)
+);
+
 -- Re-enable foreign key checks
 SET FOREIGN_KEY_CHECKS = 1;
+
 

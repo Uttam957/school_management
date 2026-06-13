@@ -457,7 +457,7 @@ function AddExpenseView({ showToast, setExpenseView }) {
 
   const categories = {
     'Office & Administrative': ['Stationery', 'Printing', 'Internet Bills', 'Telephone Bills', 'Office Supplies'],
-    'Staff Welfare': ['Tea & Refreshments', 'Snacks', 'Staff Meetings', 'Staff Events', 'Training Programs'],
+    'Employee Welfare': ['Tea & Refreshments', 'Snacks', 'Employee Meetings', 'Employee Events', 'Training Programs'],
     'Furniture & Equipment': ['Classroom Furniture', 'Office Furniture', 'Laboratory Equipment', 'Sports Equipment', 'Computers', 'Smart Boards', 'Projectors'],
     'Building & Renovation': ['Construction', 'Painting', 'Flooring', 'Plumbing', 'Electrical Work', 'Classroom Renovation', 'Washroom Renovation', 'Roof Repair', 'Boundary Wall Repair'],
     'Utilities': ['Electricity', 'Water', 'Gas', 'Generator Fuel', 'Solar Maintenance'],
@@ -740,7 +740,7 @@ function CategoriesView({ expenses, showToast, fetchExpenses }) {
   const [activeTab, setActiveTab] = useState('Office & Administrative');
 
   const categories = [
-    'Office & Administrative', 'Staff Welfare', 'Furniture & Equipment', 
+    'Office & Administrative', 'Employee Welfare', 'Furniture & Equipment', 
     'Building & Renovation', 'Utilities', 'Transportation', 
     'Maintenance & Repair', 'Academic Expenses', 'Events & Functions', 'Other Expenses'
   ];
@@ -846,7 +846,7 @@ function AllExpensesView({ expenses, showToast, fetchExpenses }) {
   const itemsPerPage = 10;
 
   const categories = [
-    'Office & Administrative', 'Staff Welfare', 'Furniture & Equipment', 
+    'Office & Administrative', 'Employee Welfare', 'Furniture & Equipment', 
     'Building & Renovation', 'Utilities', 'Transportation', 
     'Maintenance & Repair', 'Academic Expenses', 'Events & Functions', 'Other Expenses'
   ];

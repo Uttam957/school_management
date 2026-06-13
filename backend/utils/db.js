@@ -39,7 +39,7 @@ export const restoreTenantContext = (req, res, next) => {
     const isIp = /^(?:[0-9]{1,3}\.){3}[0-9]{1,3}$/.test(host);
     if (!isIp) {
       const parts = host.split('.');
-      if (parts.length > 2 || (parts.length === 2 && !parts[1].startsWith('localhost'))) {
+      if (parts.length > 2 || (parts.length === 2 && parts[1] === 'localhost')) {
         tenantId = parts[0];
       }
     }
@@ -219,7 +219,8 @@ const createTablesFromSchema = async () => {
       "ALTER TABLE exams ADD COLUMN subjectIncluded JSON",
       "ALTER TABLE exams ADD COLUMN subjectMarks JSON",
       "ALTER TABLE exams ADD COLUMN createdAt VARCHAR(100)",
-      "ALTER TABLE exams ADD COLUMN timetablePublished TINYINT(1) DEFAULT 0"
+      "ALTER TABLE exams ADD COLUMN timetablePublished TINYINT(1) DEFAULT 0",
+      "ALTER TABLE results ADD COLUMN status VARCHAR(50) DEFAULT 'Draft'"
     ];
 
     for (const sql of extraSchemaAlters) {
@@ -799,49 +800,9 @@ export const getDefaultRoles = () => {
       })()
     },
     {
-      id: 'role-head-teacher',
-      name: 'Head Teacher',
-      description: 'Senior teacher overseeing department activities, attendance records, and exam coordination.',
-      active: true,
-      isSystem: true,
-      permissions: (() => {
-        const matrix = createEmptyMatrix();
-        matrix['dashboard']['view'] = true;
-        matrix['student-directory']['view'] = true;
-        matrix['student-directory']['export'] = true;
-        matrix['teacher-directory']['view'] = true;
-        [
-          'academic-manager', 'class-timetable', 'teacher-timetable',
-          'exam-timetable', 'academic-history',
-          'published-exam-timetable', 'published-exam', 'results'
-        ].forEach(m => {
-          matrix[m]['view'] = true;
-          matrix[m]['create'] = true;
-          matrix[m]['edit'] = true;
-          matrix[m]['delete'] = true;
-          matrix[m]['approve'] = true;
-          matrix[m]['publish'] = true;
-          matrix[m]['export'] = true;
-        });
-        matrix['attendance-manager']['view'] = true;
-        matrix['attendance-manager']['create'] = true;
-        matrix['attendance-manager']['edit'] = true;
-        matrix['attendance-manager']['export'] = true;
-        matrix['monthly-attendance']['view'] = true;
-        matrix['student-report']['view'] = true;
-        matrix['yearly-attendance']['view'] = true;
-        ['academic-calendar', 'academic-activities', 'notices', 'events', 'holidays'].forEach(m => {
-          matrix[m]['view'] = true;
-          matrix[m]['create'] = true;
-          matrix[m]['edit'] = true;
-        });
-        return matrix;
-      })()
-    },
-    {
-      id: 'role-teacher',
-      name: 'Teacher',
-      description: 'Standard subject teacher. Records attendance, enters marks, and views student profiles.',
+      id: 'role-subject-teacher',
+      name: 'Subject Teacher',
+      description: 'Subject teacher. Records attendance, enters marks, manages academic activities, and views student profiles.',
       active: true,
       isSystem: true,
       permissions: (() => {
@@ -886,49 +847,7 @@ export const getDefaultRoles = () => {
         return matrix;
       })()
     },
-    {
-      id: 'role-lab-assistant',
-      name: 'Lab Assistant',
-      description: 'Laboratory assistant. Supports practical sessions and maintains lab equipment inventory.',
-      active: true,
-      isSystem: true,
-      permissions: (() => {
-        const matrix = createEmptyMatrix();
-        matrix['dashboard']['view'] = true;
-        matrix['student-directory']['view'] = true;
-        matrix['academic-manager']['view'] = true;
-        matrix['class-timetable']['view'] = true;
-        matrix['attendance-manager']['view'] = true;
-        ['academic-calendar', 'academic-activities', 'notices', 'events', 'holidays'].forEach(m => {
-          matrix[m]['view'] = true;
-        });
-        return matrix;
-      })()
-    },
-    {
-      id: 'role-counselor',
-      name: 'Counselor',
-      description: 'Student counselor. Manages student welfare, behavioral tracking, and parent consultations.',
-      active: true,
-      isSystem: true,
-      permissions: (() => {
-        const matrix = createEmptyMatrix();
-        matrix['dashboard']['view'] = true;
-        matrix['student-directory']['view'] = true;
-        matrix['student-directory']['edit'] = true;
-        matrix['teacher-directory']['view'] = true;
-        matrix['attendance-manager']['view'] = true;
-        matrix['attendance-manager']['export'] = true;
-        matrix['monthly-attendance']['view'] = true;
-        matrix['student-report']['view'] = true;
-        matrix['yearly-attendance']['view'] = true;
-        matrix['results']['view'] = true;
-        ['academic-calendar', 'academic-activities', 'notices', 'events', 'holidays'].forEach(m => {
-          matrix[m]['view'] = true;
-        });
-        return matrix;
-      })()
-    },
+
     {
       id: 'role-receptionist',
       name: 'Receptionist',
@@ -983,22 +902,24 @@ export const getDefaultRoles = () => {
       })()
     },
     {
-      id: 'role-transport-manager',
-      name: 'Transport Manager',
-      description: 'Transport coordinator. Manages school bus routes, vehicle tracking, and driver assignments.',
+      id: 'role-expense-manager',
+      name: 'Expense Manager',
+      description: 'Expense manager. Oversees school expenses, financial reporting, and budgeting.',
       active: true,
       isSystem: true,
       permissions: (() => {
         const matrix = createEmptyMatrix();
         matrix['dashboard']['view'] = true;
         matrix['student-directory']['view'] = true;
-        matrix['student-directory']['export'] = true;
         matrix['staff-directory']['view'] = true;
-        matrix['staff-directory']['export'] = true;
         matrix['expenses']['view'] = true;
         matrix['expenses']['create'] = true;
         matrix['expenses']['edit'] = true;
+        matrix['expenses']['delete'] = true;
+        matrix['expenses']['approve'] = true;
         matrix['expenses']['export'] = true;
+        matrix['income']['view'] = true;
+        matrix['income']['export'] = true;
         ['notices', 'events', 'holidays', 'academic-calendar', 'academic-activities'].forEach(m => {
           matrix[m]['view'] = true;
         });
@@ -1098,7 +1019,10 @@ export const loadTenantSqlIntoMemory = async (tenantId) => {
       schools: [],
       roles: [],
       userAccess: [],
-      auditLogs: []
+      auditLogs: [],
+      grades: [],
+      departments: [],
+      gradeDepartments: []
     };
 
     // 1. Get Global Platform details
@@ -1239,6 +1163,10 @@ export const loadTenantSqlIntoMemory = async (tenantId) => {
     data.notices = await sqlDb.query('SELECT * FROM notices WHERE tenantId = ?', [tId]);
     data.holidays = await sqlDb.query('SELECT * FROM holidays WHERE tenantId = ?', [tId]);
     data.events = await sqlDb.query('SELECT * FROM events WHERE tenantId = ?', [tId]);
+    data.academicCalendarEvents = await sqlDb.query('SELECT * FROM academic_calendar_events WHERE tenantId = ?', [tId]);
+    data.academicCalendarImports = await sqlDb.query('SELECT * FROM academic_calendar_imports WHERE tenantId = ?', [tId]);
+    const rawPublished = await sqlDb.query('SELECT eventId FROM published_calendar_events WHERE tenantId = ?', [tId]);
+    data.publishedCalendarEvents = rawPublished.map(p => p.eventId);
 
     const rawResults = await sqlDb.query('SELECT * FROM results WHERE tenantId = ?', [tId]);
     data.results = rawResults.map(r => ({
@@ -1246,7 +1174,8 @@ export const loadTenantSqlIntoMemory = async (tenantId) => {
       obtainedMarks: r.marksObtained !== undefined ? r.marksObtained : 0,
       totalMarks: r.maxMarks !== undefined ? r.maxMarks : 100,
       locked: r.isLocked === 1 || r.isLocked === true,
-      published: r.isPublished === 1 || r.isPublished === true
+      published: r.isPublished === 1 || r.isPublished === true,
+      status: r.status || 'Draft'
     }));
 
     data.subjects = (await sqlDb.query('SELECT * FROM subjects WHERE tenantId = ?', [tId]))
@@ -1511,6 +1440,27 @@ export const loadTenantSqlIntoMemory = async (tenantId) => {
       filters: typeof r.filters === 'string' ? JSON.parse(r.filters) : (r.filters || {})
     }));
 
+    // Load centralized grades, departments, and grade mappings
+    const dbGrades = await sqlDb.query('SELECT * FROM grades WHERE tenantId = ?', [tId]);
+    data.grades = dbGrades.map(g => ({
+      ...g,
+      status: g.status || 'Active'
+    }));
+
+    const dbDepts = await sqlDb.query('SELECT * FROM departments WHERE tenantId = ?', [tId]);
+    data.departments = dbDepts.map(d => ({
+      ...d,
+      status: d.status || 'Active'
+    }));
+
+    const dbGradeDepts = await sqlDb.query('SELECT * FROM grade_departments WHERE tenantId = ?', [tId]);
+    data.gradeDepartments = dbGradeDepts.map(gd => ({
+      ...gd,
+      status: gd.status || 'Active'
+    }));
+
+    // Seeder disabled: User wishes grade list to start empty until manually configured
+
     dbCache[queryTenantId] = data;
     return data;
   } catch (err) {
@@ -1527,9 +1477,9 @@ export const ensureTenantSqlLoaded = async (req, res, next) => {
 
   let tenantId = req.headers['x-tenant-id'] || req.query.tenantId;
   if (!tenantId && req.headers.host) {
-    const host = req.headers.host;
+    const host = req.headers.host.split(':')[0]; // Remove port
     const parts = host.split('.');
-    if (parts.length > 2 || (parts.length === 2 && !parts[1].startsWith('localhost'))) {
+    if (parts.length > 2 || (parts.length === 2 && parts[1] === 'localhost')) {
       tenantId = parts[0];
     }
   }
@@ -1545,13 +1495,21 @@ export const ensureTenantSqlLoaded = async (req, res, next) => {
   next();
 };
 
+// Queue to serialize SQL sync operations per tenant to prevent concurrent write race conditions
+const sqlSyncQueues = {};
+
 // Asynchronous write dispatcher to MySQL
 export const saveMemoryDbToSql = async (tenantId, db) => {
   const tId = tenantId || 'platform';
-  try {
-    if (!isSqlActive()) return;
+  if (!isSqlActive()) return;
 
-    console.log(`[SQL Sync] Initiating async MySQL database update for tenant: ${tId}`);
+  if (!sqlSyncQueues[tId]) {
+    sqlSyncQueues[tId] = Promise.resolve();
+  }
+
+  const syncPromise = sqlSyncQueues[tId].then(async () => {
+    try {
+      console.log(`[SQL Sync] Initiating async MySQL database update for tenant: ${tId}`);
 
     // 1. Sync global platforms
     if (db.schools && Array.isArray(db.schools)) {
@@ -2176,9 +2134,9 @@ export const saveMemoryDbToSql = async (tenantId, db) => {
         await sqlDb.query(
           `INSERT INTO results (
             id, studentId, studentName, examId, examName, subject, marksObtained, maxMarks, grade, remarks, isLocked, isPublished, tenantId,
-            term, percentage, gpa, \`rank\`
-          ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-           ON DUPLICATE KEY UPDATE marksObtained=VALUES(marksObtained), grade=VALUES(grade), isLocked=VALUES(isLocked), isPublished=VALUES(isPublished)`,
+            term, percentage, gpa, \`rank\`, status
+          ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+           ON DUPLICATE KEY UPDATE marksObtained=VALUES(marksObtained), grade=VALUES(grade), isLocked=VALUES(isLocked), isPublished=VALUES(isPublished), status=VALUES(status)`,
           [
             r.id,
             r.studentId || '',
@@ -2196,7 +2154,8 @@ export const saveMemoryDbToSql = async (tenantId, db) => {
             r.term || '',
             r.percentage !== undefined ? r.percentage : 0,
             r.gpa !== undefined ? parseFloat(r.gpa) : 0.0,
-            r.rank !== undefined ? String(r.rank) : '-'
+            r.rank !== undefined ? String(r.rank) : '-',
+            r.status || 'Draft'
           ]
         );
       }
@@ -2511,6 +2470,20 @@ export const saveMemoryDbToSql = async (tenantId, db) => {
       }
       for (const q of db.employeeQrCodes) {
         if (!q.id) continue;
+        // Skip orphan QR records to prevent foreign key constraint violations
+        if (q.employeeType === 'Teacher') {
+          const teacherExists = db.teachers && db.teachers.some(t => t.id === q.employeeId || t.employeeId === q.employeeId);
+          if (!teacherExists) {
+            console.warn(`[SQL Sync WARNING] Skipping orphan employee_qr_code record for non-existent teacher: ${q.employeeId}`);
+            continue;
+          }
+        } else if (q.employeeType === 'Staff') {
+          const staffExists = db.staff && db.staff.some(s => s.id === q.employeeId);
+          if (!staffExists) {
+            console.warn(`[SQL Sync WARNING] Skipping orphan employee_qr_code record for non-existent staff: ${q.employeeId}`);
+            continue;
+          }
+        }
         await sqlDb.query(
           `INSERT INTO employee_qr_codes (id, employeeId, employeeType, qrPath, createdAt, tenantId, teacherId, staffId)
            VALUES (?, ?, ?, ?, ?, ?, ?, ?)
@@ -2534,6 +2507,20 @@ export const saveMemoryDbToSql = async (tenantId, db) => {
       }
       for (const a of db.attendanceRecords) {
         if (!a.id) continue;
+        // Skip orphan attendance records to prevent foreign key constraint violations
+        if (a.employeeType === 'Teacher') {
+          const teacherExists = db.teachers && db.teachers.some(t => t.id === a.employeeId || t.employeeId === a.employeeId);
+          if (!teacherExists) {
+            console.warn(`[SQL Sync WARNING] Skipping orphan attendance record for non-existent teacher: ${a.employeeId}`);
+            continue;
+          }
+        } else if (a.employeeType === 'Staff') {
+          const staffExists = db.staff && db.staff.some(s => s.id === a.employeeId);
+          if (!staffExists) {
+            console.warn(`[SQL Sync WARNING] Skipping orphan attendance record for non-existent staff: ${a.employeeId}`);
+            continue;
+          }
+        }
         await sqlDb.query(
           `INSERT INTO attendance_records (id, employeeId, employeeType, name, department, designation, date, checkIn, checkOut, workingHours, status, createdAt, tenantId, teacherId, staffId)
            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
@@ -2557,6 +2544,20 @@ export const saveMemoryDbToSql = async (tenantId, db) => {
       }
       for (const l of db.attendanceLogs) {
         if (!l.id) continue;
+        // Skip orphan attendance logs to prevent foreign key constraint violations
+        if (l.employeeType === 'Teacher') {
+          const teacherExists = db.teachers && db.teachers.some(t => t.id === l.employeeId || t.employeeId === l.employeeId);
+          if (!teacherExists) {
+            console.warn(`[SQL Sync WARNING] Skipping orphan attendance log for non-existent teacher: ${l.employeeId}`);
+            continue;
+          }
+        } else if (l.employeeType === 'Staff') {
+          const staffExists = db.staff && db.staff.some(s => s.id === l.employeeId);
+          if (!staffExists) {
+            console.warn(`[SQL Sync WARNING] Skipping orphan attendance log for non-existent staff: ${l.employeeId}`);
+            continue;
+          }
+        }
         await sqlDb.query(
           `INSERT INTO attendance_logs (id, employeeId, employeeType, scanTime, scanType, status, tenantId, teacherId, staffId)
            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
@@ -2593,10 +2594,142 @@ export const saveMemoryDbToSql = async (tenantId, db) => {
       }
     }
 
+    // 24. Sync Academic Calendar Events
+    if (db.academicCalendarEvents && Array.isArray(db.academicCalendarEvents)) {
+      const activeEventIds = db.academicCalendarEvents.map(e => e.id).filter(Boolean);
+      if (activeEventIds.length > 0) {
+        await sqlDb.query(`DELETE FROM academic_calendar_events WHERE tenantId = ? AND id NOT IN (${activeEventIds.map(() => '?').join(',')})`, [tId, ...activeEventIds]);
+      } else {
+        await sqlDb.query('DELETE FROM academic_calendar_events WHERE tenantId = ?', [tId]);
+      }
+
+      for (const e of db.academicCalendarEvents) {
+        if (!e.id) continue;
+        await sqlDb.query(
+          `INSERT INTO academic_calendar_events (
+            id, eventDate, title, eventType, description, applicableClasses, startTime, endTime, session, tenantId, createdAt, updatedAt
+          ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+          ON DUPLICATE KEY UPDATE 
+            eventDate=VALUES(eventDate), title=VALUES(title), eventType=VALUES(eventType), 
+            description=VALUES(description), applicableClasses=VALUES(applicableClasses), 
+            startTime=VALUES(startTime), endTime=VALUES(endTime), session=VALUES(session), 
+            updatedAt=VALUES(updatedAt)`,
+          [
+            e.id, e.eventDate, e.title, e.eventType, e.description || '', e.applicableClasses || '',
+            e.startTime || '', e.endTime || '', e.session, tId, e.createdAt || new Date().toISOString(), e.updatedAt || new Date().toISOString()
+          ]
+        );
+      }
+    }
+
+    // 25. Sync Academic Calendar Imports
+    if (db.academicCalendarImports && Array.isArray(db.academicCalendarImports)) {
+      const activeImportIds = db.academicCalendarImports.map(i => i.id).filter(Boolean);
+      if (activeImportIds.length > 0) {
+        await sqlDb.query(`DELETE FROM academic_calendar_imports WHERE tenantId = ? AND id NOT IN (${activeImportIds.map(() => '?').join(',')})`, [tId, ...activeImportIds]);
+      } else {
+        await sqlDb.query('DELETE FROM academic_calendar_imports WHERE tenantId = ?', [tId]);
+      }
+
+      for (const i of db.academicCalendarImports) {
+        if (!i.id) continue;
+        await sqlDb.query(
+          `INSERT INTO academic_calendar_imports (
+            id, fileName, importDate, importedBy, totalRecords, session, tenantId
+          ) VALUES (?, ?, ?, ?, ?, ?, ?)
+          ON DUPLICATE KEY UPDATE 
+            fileName=VALUES(fileName), importDate=VALUES(importDate), 
+            importedBy=VALUES(importedBy), totalRecords=VALUES(totalRecords), session=VALUES(session)`,
+          [
+            i.id, i.fileName, i.importDate, i.importedBy, i.totalRecords || 0, i.session, tId
+          ]
+        );
+      }
+    }
+
+    // 26. Sync Published Calendar Events
+    if (db.publishedCalendarEvents && Array.isArray(db.publishedCalendarEvents)) {
+      const activePublishedIds = db.publishedCalendarEvents.filter(Boolean);
+      if (activePublishedIds.length > 0) {
+        await sqlDb.query(`DELETE FROM published_calendar_events WHERE tenantId = ? AND eventId NOT IN (${activePublishedIds.map(() => '?').join(',')})`, [tId, ...activePublishedIds]);
+      } else {
+        await sqlDb.query('DELETE FROM published_calendar_events WHERE tenantId = ?', [tId]);
+      }
+
+      for (const eventId of db.publishedCalendarEvents) {
+        if (!eventId) continue;
+        await sqlDb.query(
+          `INSERT IGNORE INTO published_calendar_events (eventId, tenantId) VALUES (?, ?)`,
+          [eventId, tId]
+        );
+      }
+    }
+
+    // Sync central grades
+    if (db.grades && Array.isArray(db.grades)) {
+      const activeGradeIds = db.grades.map(g => g.id).filter(Boolean);
+      if (activeGradeIds.length > 0) {
+        await sqlDb.query(`DELETE FROM grades WHERE tenantId = ? AND id NOT IN (${activeGradeIds.map(() => '?').join(',')})`, [tId, ...activeGradeIds]);
+      } else {
+        await sqlDb.query('DELETE FROM grades WHERE tenantId = ?', [tId]);
+      }
+      for (const g of db.grades) {
+        if (!g.id) continue;
+        await sqlDb.query(
+          `INSERT INTO grades (id, name, status, createdAt, updatedAt, tenantId)
+           VALUES (?, ?, ?, ?, ?, ?)
+           ON DUPLICATE KEY UPDATE name=VALUES(name), status=VALUES(status), updatedAt=VALUES(updatedAt)`,
+          [g.id, g.name, g.status || 'Active', g.createdAt || new Date().toISOString(), g.updatedAt || new Date().toISOString(), tId]
+        );
+      }
+    }
+
+    // Sync central departments
+    if (db.departments && Array.isArray(db.departments)) {
+      const activeDeptIds = db.departments.map(d => d.id).filter(Boolean);
+      if (activeDeptIds.length > 0) {
+        await sqlDb.query(`DELETE FROM departments WHERE tenantId = ? AND id NOT IN (${activeDeptIds.map(() => '?').join(',')})`, [tId, ...activeDeptIds]);
+      } else {
+        await sqlDb.query('DELETE FROM departments WHERE tenantId = ?', [tId]);
+      }
+      for (const d of db.departments) {
+        if (!d.id) continue;
+        await sqlDb.query(
+          `INSERT INTO departments (id, name, status, createdAt, updatedAt, tenantId)
+           VALUES (?, ?, ?, ?, ?, ?)
+           ON DUPLICATE KEY UPDATE name=VALUES(name), status=VALUES(status), updatedAt=VALUES(updatedAt)`,
+          [d.id, d.name, d.status || 'Active', d.createdAt || new Date().toISOString(), d.updatedAt || new Date().toISOString(), tId]
+        );
+      }
+    }
+
+    // Sync central grade mappings
+    if (db.gradeDepartments && Array.isArray(db.gradeDepartments)) {
+      const activeMappingIds = db.gradeDepartments.map(gd => gd.id).filter(Boolean);
+      if (activeMappingIds.length > 0) {
+        await sqlDb.query(`DELETE FROM grade_departments WHERE tenantId = ? AND id NOT IN (${activeMappingIds.map(() => '?').join(',')})`, [tId, ...activeMappingIds]);
+      } else {
+        await sqlDb.query('DELETE FROM grade_departments WHERE tenantId = ?', [tId]);
+      }
+      for (const gd of db.gradeDepartments) {
+        if (!gd.id) continue;
+        await sqlDb.query(
+          `INSERT INTO grade_departments (id, gradeId, departmentId, status, tenantId, createdAt, updatedAt)
+           VALUES (?, ?, ?, ?, ?, ?, ?)
+           ON DUPLICATE KEY UPDATE status=VALUES(status), updatedAt=VALUES(updatedAt)`,
+          [gd.id, gd.gradeId, gd.departmentId, gd.status || 'Active', tId, gd.createdAt || new Date().toISOString(), gd.updatedAt || new Date().toISOString()]
+        );
+      }
+    }
+
     console.log(`[SQL Sync SUCCESS] Finished database sync for tenant: ${tId}`);
-  } catch (err) {
-    console.error(`[SQL Sync ERROR] Sync query failed for tenant ${tId || 'platform'}:`, err);
-  }
+    } catch (err) {
+      console.error(`[SQL Sync ERROR] Sync query failed for tenant ${tId || 'platform'}:`, err);
+    }
+  });
+
+  sqlSyncQueues[tId] = syncPromise;
+  return syncPromise;
 };
 
 // Central Database Reader (Preserves synchronous signature)
@@ -2634,12 +2767,18 @@ export const readDb = () => {
     if (!db.holidays) db.holidays = [];
     if (!db.events) db.events = [];
     if (!db.results) db.results = [];
+    if (!db.academicCalendarEvents) db.academicCalendarEvents = [];
+    if (!db.academicCalendarImports) db.academicCalendarImports = [];
     if (!db.overallResults) db.overallResults = [];
+    if (!db.publishedCalendarEvents) db.publishedCalendarEvents = [];
     if (!db.subjects) db.subjects = [];
     if (!db.employeeQrCodes) db.employeeQrCodes = [];
     if (!db.attendanceRecords) db.attendanceRecords = [];
     if (!db.attendanceLogs) db.attendanceLogs = [];
     if (!db.attendanceReports) db.attendanceReports = [];
+    if (!db.grades) db.grades = [];
+    if (!db.departments) db.departments = [];
+    if (!db.gradeDepartments) db.gradeDepartments = [];
     if (!db.timeslots) {
       db.timeslots = [
         '09:00 AM - 10:00 AM',
@@ -2669,11 +2808,17 @@ export const readDb = () => {
       holidays: [],
       events: [],
       results: [],
+      academicCalendarEvents: [],
+      academicCalendarImports: [],
+      publishedCalendarEvents: [],
       overallResults: [],
       employeeQrCodes: [],
       attendanceRecords: [],
       attendanceLogs: [],
       attendanceReports: [],
+      grades: [],
+      departments: [],
+      gradeDepartments: [],
       timeslots: [
         '09:00 AM - 10:00 AM',
         '10:00 AM - 11:00 AM',

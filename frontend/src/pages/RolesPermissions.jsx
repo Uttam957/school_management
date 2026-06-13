@@ -23,6 +23,8 @@ import {
 } from 'lucide-react';
 import { hasPermission, isSuperAdmin } from '../utils/permissions';
 
+const TEACHER_ROLES = ['Principal', 'Vice Principal', 'Academic Coordinator', 'Subject Teacher', 'Librarian', 'Receptionist', 'Accountant', 'Expense Manager'];
+
 export default function RolesPermissions() {
   const [activeTab, setActiveTab] = useState('dashboard'); // dashboard, roles, matrix, users, audit
   const [roles, setRoles] = useState([]);
@@ -79,8 +81,8 @@ export default function RolesPermissions() {
     { id: 'dashboard', label: 'Dashboard & Telemetry' },
     // Core Registers
     { id: 'student-directory', label: 'Student Directory' },
-    { id: 'teacher-directory', label: 'Teacher Directory' },
-    { id: 'staff-directory', label: 'Staff Directory' },
+    { id: 'teacher-directory', label: 'Staff Directory' },
+    { id: 'staff-directory', label: 'Employee Directory' },
     // Registry Admissions
     { id: 'registry-admissions', label: 'Registry Admissions' },
     // Student Manager
@@ -163,7 +165,8 @@ export default function RolesPermissions() {
       setAuditLogs(auditData);
 
       if (rolesData.length > 0 && !matrixRoleId) {
-        setMatrixRoleId(rolesData[0].id);
+        const firstTeacherRole = rolesData.find(r => TEACHER_ROLES.includes(r.name));
+        setMatrixRoleId(firstTeacherRole ? firstTeacherRole.id : rolesData[0].id);
       }
     } catch (err) {
       console.error('Failed to load RBAC configuration details:', err);
@@ -332,8 +335,6 @@ export default function RolesPermissions() {
       });
     });
 
-    setRoles(roles.map(r => r.id === matrixRoleId ? { ...r, permissions: updatedPermissions } : r));
-
     try {
       const res = await fetch(`/api/rbac/roles/${matrixRoleId}`, {
         method: 'PUT',
@@ -341,8 +342,8 @@ export default function RolesPermissions() {
         body: JSON.stringify({ permissions: updatedPermissions })
       });
       if (res.ok) {
+        setRoles(roles.map(r => r.id === matrixRoleId ? { ...r, permissions: updatedPermissions } : r));
         showToast(mode === 'grant-all' ? 'All access grants verified!' : 'Cleared all access parameters.', 'success');
-        fetchAllData();
       } else {
         const data = await res.json();
         showToast(data.error || 'Failed to update role permissions.', 'error');
@@ -786,7 +787,7 @@ export default function RolesPermissions() {
           <div className="glass-panel" style={{ padding: '20px', borderRadius: '16px', border: '1px solid var(--border-glass)', background: 'var(--bg-card)', display: 'flex', flexDirection: 'column', gap: '16px', height: 'fit-content' }}>
             <h3 style={{ margin: 0, fontSize: '0.95rem', fontWeight: 800, textTransform: 'uppercase', letterSpacing: '0.02em', color: 'var(--text-muted)' }}>Role Profiles</h3>
             <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
-              {roles.map(r => (
+              {roles.filter(r => TEACHER_ROLES.includes(r.name)).map(r => (
                 <button
                   key={r.id}
                   onClick={() => setMatrixRoleId(r.id)}

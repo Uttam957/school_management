@@ -351,7 +351,7 @@ export default function TeacherList({ setActiveView, readOnly = true, onAddClick
             <Search size={18} className="search-bar-icon" />
             <input 
               type="text" 
-              placeholder="Search teacher, Employee ID, department..." 
+              placeholder="Search staff, Employee ID, department..." 
               className="search-bar-input"
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
@@ -408,7 +408,7 @@ export default function TeacherList({ setActiveView, readOnly = true, onAddClick
             
             <select className="select-custom" value={sortBy} onChange={(e) => setSortBy(e.target.value)}
               style={{ padding: '6px 12px', borderRadius: '8px', fontSize: '0.8rem' }}>
-              <option value="name">Teacher Name</option>
+              <option value="name">Staff Name</option>
               <option value="employeeId">Employee ID</option>
               <option value="department">Department</option>
               <option value="joiningDate">Joining Date</option>
@@ -455,7 +455,7 @@ export default function TeacherList({ setActiveView, readOnly = true, onAddClick
           </div>
         ) : loading ? (
           <div style={{ textAlign: 'center', padding: '60px', color: 'var(--text-muted)', fontSize: '0.9rem' }}>
-            Loading teachers directory...
+            Loading staff directory...
           </div>
         ) : (
           <>
@@ -465,7 +465,7 @@ export default function TeacherList({ setActiveView, readOnly = true, onAddClick
                   <tr>
                     <th>Photo</th>
                     <th>Employee ID</th>
-                    <th>Teacher Name</th>
+                    <th>Staff Name</th>
                     <th>Department</th>
                     <th>Subject</th>
                     <th>Mobile</th>
@@ -535,7 +535,7 @@ export default function TeacherList({ setActiveView, readOnly = true, onAddClick
                   ) : (
                     <tr>
                       <td colSpan="11" style={{ textAlign: 'center', padding: '50px', color: 'var(--text-muted)' }}>
-                        No teachers found matching your filters. Click "Add Teacher" in the sidebar to register new faculty.
+                        No staff found matching your filters. Click "Add Staff" in the sidebar to register new staff.
                       </td>
                     </tr>
                   )}
@@ -581,7 +581,7 @@ export default function TeacherList({ setActiveView, readOnly = true, onAddClick
             
             {/* Drawer Header */}
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', borderBottom: '1px solid var(--border-glass)', paddingBottom: '16px' }}>
-              <h3 style={{ fontSize: '1.2rem', fontWeight: 800, margin: 0 }}>Teacher Profile Inspector</h3>
+              <h3 style={{ fontSize: '1.2rem', fontWeight: 800, margin: 0 }}>Staff Profile Inspector</h3>
               <button onClick={() => setSelectedTeacher(null)}
                 style={{ background: 'none', border: 'none', color: 'var(--text-muted)', cursor: 'pointer', padding: '4px' }}>
                 <X size={20} />
@@ -619,7 +619,7 @@ export default function TeacherList({ setActiveView, readOnly = true, onAddClick
             <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
               {[
                 { label: 'Employee ID', value: selectedTeacher.employeeId || selectedTeacher.id },
-                { label: 'Teacher ID', value: selectedTeacher.teacherId || 'N/A' },
+                { label: 'Staff ID', value: selectedTeacher.teacherId || 'N/A' },
                 { label: 'Department', value: selectedTeacher.department || 'N/A' },
                 { label: 'Role', value: selectedTeacher.designation || 'N/A' },
                 { label: 'Primary Subject', value: selectedTeacher.primarySubject || selectedTeacher.subjectSpecialization || selectedTeacher.subject || 'N/A' },
@@ -772,7 +772,7 @@ export default function TeacherList({ setActiveView, readOnly = true, onAddClick
             
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', borderBottom: '1px solid var(--border-glass)', paddingBottom: '14px' }}>
               <h3 style={{ fontSize: '1.15rem', fontWeight: 800, margin: 0, display: 'flex', alignItems: 'center', gap: '8px' }}>
-                <Edit3 size={18} style={{ color: 'hsl(var(--color-primary))' }} /> Edit Teacher Profile
+                <Edit3 size={18} style={{ color: 'hsl(var(--color-primary))' }} /> Edit Staff Profile
               </h3>
               <button onClick={() => setEditingTeacher(null)}
                 style={{ background: 'none', border: 'none', color: 'var(--text-muted)', cursor: 'pointer' }}>

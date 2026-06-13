@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import { fetchActiveGrades } from '../utils/grades';
 import { 
   User, 
   Users, 
@@ -310,19 +311,7 @@ export default function RegisterStudent({ setActiveView }) {
 
   const [formErrors, setFormErrors] = useState({});
 
-  // Searchable dropdown datasets
-  const classOptions = [
-    { value: 'I', label: 'Class I' },
-    { value: 'II', label: 'Class II' },
-    { value: 'III', label: 'Class III' },
-    { value: 'IV', label: 'Class IV' },
-    { value: 'V', label: 'Class V' },
-    { value: 'VI', label: 'Class VI' },
-    { value: 'VII', label: 'Class VII' },
-    { value: 'VIII', label: 'Class VIII' },
-    { value: 'IX', label: 'Class IX' },
-    { value: 'X', label: 'Class X' }
-  ];
+  const [classOptions, setClassOptions] = useState([]);
 
   const sectionOptions = [
     { value: 'A', label: 'Section A' },
@@ -378,6 +367,18 @@ export default function RegisterStudent({ setActiveView }) {
     { value: 'Percentage', label: 'Percentage (%)' },
     { value: 'Fixed', label: 'Fixed Amount (₹)' }
   ];
+
+  // Load dynamic grades
+  useEffect(() => {
+    const loadGrades = async () => {
+      const activeGrades = await fetchActiveGrades();
+      setClassOptions(activeGrades.map(g => ({ 
+        value: g.name, 
+        label: g.name.startsWith('LKG') || g.name.startsWith('UKG') || g.name.startsWith('NURSERY') ? g.name : `Grade ${g.name}` 
+      })));
+    };
+    loadGrades();
+  }, []);
 
   // 1. Auto Load Draft
   useEffect(() => {
@@ -516,88 +517,92 @@ export default function RegisterStudent({ setActiveView }) {
     window.scrollTo({ top: 0, behavior: 'smooth' });
   };
 
+  const performReset = () => {
+    clearDraft();
+    setFormData({
+      firstName: '',
+      middleName: '',
+      lastName: '',
+      fullName: '',
+      admissionNumber: '',
+      manualAdmissionNumber: false,
+      admissionDate: new Date().toISOString().split('T')[0],
+      dob: '',
+      gender: '',
+      bloodGroup: '',
+      nationality: 'Indian',
+      category: 'General',
+      religion: 'Hinduism',
+      aadhaarNumber: '',
+      academicYear: '2026-2027',
+      admissionType: 'New Admission',
+      studentClass: '',
+      section: '',
+      rollNumber: '',
+      autoRollNumber: true,
+      previousSchoolName: '',
+      previousSchoolAddress: '',
+      previousClassStudied: '',
+      transferCertificateNumber: '',
+      status: 'Pending',
+      fatherName: '',
+      fatherOccupation: '',
+      fatherMobile: '',
+      fatherEmail: '',
+      motherName: '',
+      motherOccupation: '',
+      motherMobile: '',
+      motherEmail: '',
+      guardianName: '',
+      guardianRelation: '',
+      guardianContact: '',
+      currentAddress: '',
+      permanentAddress: '',
+      city: '',
+      state: '',
+      country: 'India',
+      postalCode: '',
+      emergencyContactNumber: '',
+      sameAsPermanent: false,
+      medicalConditions: '',
+      allergies: '',
+      disabilities: '',
+      emergencyNotes: '',
+      doctorName: '',
+      doctorContact: '',
+      transportRequired: 'No',
+      route: '',
+      pickupPoint: '',
+      dropPoint: '',
+      transportFeePlan: '',
+      hostelRequired: 'No',
+      hostelBlock: '',
+      roomNumber: '',
+      bedNumber: '',
+      feeStructure: 'STANDARD-2026',
+      scholarshipDetails: '',
+      discountType: '',
+      discountAmount: '0',
+      initialPaymentStatus: 'Pending'
+    });
+    setFiles({
+      photo: null,
+      birthCertificateFile: null,
+      aadhaarFile: null,
+      marksheetFile: null,
+      transferCertificateFile: null,
+      addressProofFile: null,
+      medicalCertificateFile: null,
+      additionalFile: null
+    });
+    setFormErrors({});
+    setFormSubmitted(false);
+    setActiveStep(1);
+  };
+
   const resetForm = () => {
     if (window.confirm("Are you sure you want to clear the entire form and draft data?")) {
-      clearDraft();
-      setFormData({
-        firstName: '',
-        middleName: '',
-        lastName: '',
-        fullName: '',
-        admissionNumber: '',
-        manualAdmissionNumber: false,
-        admissionDate: new Date().toISOString().split('T')[0],
-        dob: '',
-        gender: '',
-        bloodGroup: '',
-        nationality: 'Indian',
-        category: 'General',
-        religion: 'Hinduism',
-        aadhaarNumber: '',
-        academicYear: '2026-2027',
-        admissionType: 'New Admission',
-        studentClass: '',
-        section: '',
-        rollNumber: '',
-        autoRollNumber: true,
-        previousSchoolName: '',
-        previousSchoolAddress: '',
-        previousClassStudied: '',
-        transferCertificateNumber: '',
-        status: 'Pending',
-        fatherName: '',
-        fatherOccupation: '',
-        fatherMobile: '',
-        fatherEmail: '',
-        motherName: '',
-        motherOccupation: '',
-        motherMobile: '',
-        motherEmail: '',
-        guardianName: '',
-        guardianRelation: '',
-        guardianContact: '',
-        currentAddress: '',
-        permanentAddress: '',
-        city: '',
-        state: '',
-        country: 'India',
-        postalCode: '',
-        emergencyContactNumber: '',
-        sameAsPermanent: false,
-        medicalConditions: '',
-        allergies: '',
-        disabilities: '',
-        emergencyNotes: '',
-        doctorName: '',
-        doctorContact: '',
-        transportRequired: 'No',
-        route: '',
-        pickupPoint: '',
-        dropPoint: '',
-        transportFeePlan: '',
-        hostelRequired: 'No',
-        hostelBlock: '',
-        roomNumber: '',
-        bedNumber: '',
-        feeStructure: '',
-        scholarshipDetails: '',
-        discountType: '',
-        discountAmount: '0',
-        initialPaymentStatus: 'Pending'
-      });
-      setFiles({
-        photo: null,
-        birthCertificateFile: null,
-        aadhaarFile: null,
-        marksheetFile: null,
-        transferCertificateFile: null,
-        addressProofFile: null,
-        medicalCertificateFile: null,
-        additionalFile: null
-      });
-      setFormErrors({});
-      setFormSubmitted(false);
-      setActiveStep(1);
+      performReset();
     }
   };
 
@@ -654,10 +659,12 @@ export default function RegisterStudent({ setActiveView }) {
 
       if (res.ok) {
         setSuccessToast(true);
-        clearDraft();
         setTimeout(() => setSuccessToast(false), 5000);
-        setTimeout(() => setActiveView('students'), 1500);
-        // Keep loading=true and isSubmitting=true so the button remains disabled during the 1.5s redirect delay
+        setTimeout(() => {
+          performReset();
+          setLoading(false);
+          isSubmitting.current = false;
+        }, 1500);
       } else {
         const errData = await res.json();
         alert(errData.error || 'Server error occurred during admission submit.');
@@ -1054,7 +1061,7 @@ export default function RegisterStudent({ setActiveView }) {
                   onChange={handleTextChange}
                   className="form-control"
                 >
-                  {Array.from({ length: 2049 - 2026 + 1 }, (_, i) => {
+                  {Array.from({ length: 2030 - 2026 + 1 }, (_, i) => {
                     const s = 2026 + i;
                     return `${s}-${s + 1}`;
                   }).map(sy => (

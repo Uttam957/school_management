@@ -261,7 +261,7 @@ export default function StaffDirectory({ readOnly = true, onAddClick }) {
           {/* Header */}
           <div style={{ padding: '20px 24px', display: 'flex', justifyContent: 'space-between', alignItems: 'center', borderBottom: '1px solid var(--border-glass)', flexShrink: 0 }}>
             <h3 style={{ margin: 0, fontSize: '1.1rem', fontWeight: 700, display: 'flex', alignItems: 'center', gap: '10px' }}>
-              <Eye size={18} style={{ color: 'hsl(var(--color-primary))' }} /> Staff Profile
+              <Eye size={18} style={{ color: 'hsl(var(--color-primary))' }} /> Employee Profile
             </h3>
             <button onClick={() => setInspectStaff(null)} style={{ background: 'none', border: 'none', color: 'var(--text-muted)', cursor: 'pointer', padding: '6px' }}><X size={20} /></button>
           </div>
@@ -282,7 +282,7 @@ export default function StaffDirectory({ readOnly = true, onAddClick }) {
 
             {/* Info Sections */}
             {renderInfoSection('Basic Information', User, 'hsl(var(--color-primary))', [
-              { label: 'Staff ID', value: s.id },
+              { label: 'Employee ID', value: s.id },
               { label: 'Gender', value: s.gender },
               { label: 'Date of Birth', value: s.dob },
               { label: 'Blood Group', value: s.bloodGroup },
@@ -341,7 +341,7 @@ export default function StaffDirectory({ readOnly = true, onAddClick }) {
                 <h4 style={{ fontSize: '0.85rem', fontWeight: 700, margin: '0 0 10px 0', color: 'rgb(var(--color-warning-rgb))', display: 'flex', alignItems: 'center', gap: '8px' }}><Clock size={14} /> Experience</h4>
                 {expArr.filter(e => e.organization).map((exp, i) => (
                   <div key={i} style={{ padding: '8px 0', borderBottom: i < expArr.length - 1 ? '1px solid var(--border-glass)' : 'none', fontSize: '0.82rem' }}>
-                    <div style={{ fontWeight: 600 }}>{exp.designation || 'Staff'} at {exp.organization}</div>
+                    <div style={{ fontWeight: 600 }}>{exp.designation || 'Employee'} at {exp.organization}</div>
                     <div style={{ color: 'var(--text-muted)' }}>{[exp.fromDate, exp.toDate].filter(Boolean).join(' → ')}</div>
                     {exp.responsibilities && <div style={{ color: 'var(--text-muted)', marginTop: '2px' }}>{exp.responsibilities}</div>}
                   </div>
@@ -419,13 +419,13 @@ export default function StaffDirectory({ readOnly = true, onAddClick }) {
           {editSuccess ? (
             <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '16px', padding: '40px 0' }}>
               <CheckCircle size={48} style={{ color: 'rgb(var(--color-success-rgb))' }} />
-              <h3 style={{ margin: 0, fontWeight: 700 }}>Staff Updated!</h3>
+              <h3 style={{ margin: 0, fontWeight: 700 }}>Employee Updated!</h3>
             </div>
           ) : (
             <>
               <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '20px' }}>
                 <h3 style={{ margin: 0, fontWeight: 700, display: 'flex', alignItems: 'center', gap: '10px' }}>
-                  <Edit3 size={18} style={{ color: 'hsl(var(--color-primary))' }} /> Edit Staff Profile
+                  <Edit3 size={18} style={{ color: 'hsl(var(--color-primary))' }} /> Edit Employee Profile
                 </h3>
                 <button onClick={() => setEditStaff(null)} style={{ background: 'none', border: 'none', color: 'var(--text-muted)', cursor: 'pointer' }}><X size={20} /></button>
               </div>
@@ -436,7 +436,7 @@ export default function StaffDirectory({ readOnly = true, onAddClick }) {
                   <input type="text" name="fullName" value={editData.fullName || editData.name || ''} onChange={(e) => setEditData(p => ({ ...p, fullName: e.target.value, name: e.target.value }))} className="form-control" style={inputStyle} />
                 </div>
                 <div className="form-group">
-                  <label style={{ fontSize: '0.8rem', fontWeight: 600 }}>Staff Category</label>
+                  <label style={{ fontSize: '0.8rem', fontWeight: 600 }}>Employee Category</label>
                   <select name="staffCategory" value={editData.staffCategory || editData.role || ''} onChange={(e) => setEditData(p => ({ ...p, staffCategory: e.target.value, role: e.target.value }))} className="form-control" style={inputStyle}>
                     <option value="">Select</option>
                     {['Administration', 'Accounts & Finance', 'IT Department', 'Transport', 'Hostel', 'Security', 'Maintenance', 'Housekeeping', 'Health & Medical', 'Store & Inventory', 'Campus Support'].map(c => <option key={c} value={c}>{c}</option>)}
@@ -547,7 +547,7 @@ export default function StaffDirectory({ readOnly = true, onAddClick }) {
               filter: 'blur(0.8px)',
               letterSpacing: '0.05em'
             }}>
-              Please search or select a filter to view staff records
+              Please search or select a filter to view employee records
             </span>
           </div>
         ) : (
@@ -555,8 +555,8 @@ export default function StaffDirectory({ readOnly = true, onAddClick }) {
             <table className="custom-table">
               <thead>
                 <tr>
-                  <th>Staff ID</th>
-                  <th>Staff Member</th>
+                  <th>Employee ID</th>
+                  <th>Employee Name</th>
                   <th>Category</th>
                   <th>Department</th>
                   <th>Contact</th>
@@ -624,7 +624,7 @@ export default function StaffDirectory({ readOnly = true, onAddClick }) {
                 ) : (
                   <tr>
                     <td colSpan="7" style={{ textAlign: 'center', padding: '40px', color: 'var(--text-muted)' }}>
-                      No staff members match your search criteria.
+                      No employees match your search criteria.
                     </td>
                   </tr>
                 )}

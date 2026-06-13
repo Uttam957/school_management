@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useMemo, useRef } from 'react';
 import { createPortal } from 'react-dom';
+import { fetchActiveGrades } from '../utils/grades';
 import {
   Award,
   Search,
@@ -26,6 +27,16 @@ import {
   Share2,
   Trash2
 } from 'lucide-react';
+
+const parseStudentClass = (studentClass) => {
+  if (!studentClass) return { grade: '-', department: '-' };
+  const match = studentClass.match(/^(.+?)\s*\((.+?)\)$/);
+  if (match) {
+    return { grade: match[1], department: match[2] };
+  }
+  return { grade: studentClass, department: '-' };
+};
+
 export default function ResultManagementPanel({ activeTab: propActiveTab = 'analytics', setAdminView }) {
   const [activeTab, setActiveTab] = useState(propActiveTab);
 
@@ -35,6 +46,15 @@ export default function ResultManagementPanel({ activeTab: propActiveTab = 'anal
 
   const [loading, setLoading] = useState(false);
   const [notification, setNotification] = useState(null);
+  const [activeGrades, setActiveGrades] = useState([]);
+
+  useEffect(() => {
+    const loadGrades = async () => {
+      const grades = await fetchActiveGrades();
+      setActiveGrades(grades);
+    };
+    loadGrades();
+  }, []);
 
   // Auth/Role State
   const [userRole, setUserRole] = useState('Admin');
@@ -63,6 +83,93 @@ export default function ResultManagementPanel({ activeTab: propActiveTab = 'anal
   const [bulkInputText, setBulkInputText] = useState('');
   const [showBulkModal, setShowBulkModal] = useState(false);
 
+  // Department selection state (for XI & XII)
+  const [selectedDepartment, setSelectedDepartment] = useState('');
+
+  // Exam student attendance status: key format: `${selectedExam}_${studentId}` -> 'Present' | 'Absent'
+  const [examAttendance, setExamAttendance] = useState(() => {
+    try {
+      const stored = localStorage.getItem('exam_student_attendance');
+      return stored ? JSON.parse(stored) : {};
+    } catch (e) {
+      return {};
+    }
+  });
+
+  // Persist to localStorage
+  useEffect(() => {
+    localStorage.setItem('exam_student_attendance', JSON.stringify(examAttendance));
+  }, [examAttendance]);
+
+  // Published student exams: mapping studentId -> { [examId]: true }
+  const [publishedExams, setPublishedExams] = useState(() => {
+    try {
+      const stored = localStorage.getItem('published_student_exams');
+      return stored ? JSON.parse(stored) : {};
+    } catch (e) {
+      return {};
+    }
+  });
+
+  // Persist to localStorage
+  useEffect(() => {
+    localStorage.setItem('published_student_exams', JSON.stringify(publishedExams));
+  }, [publishedExams]);
+
+  // Handle department resetting on class change
+  useEffect(() => {
+    if (selectedClass) {
+      const hasDepts = activeGrades.some(g => g.gradeName === selectedClass && g.departmentName);
+      if (hasDepts) {
+        const depts = activeGrades.filter(g => g.gradeName === selectedClass && g.departmentName);
+        if (depts.length > 0) {
+          setSelectedDepartment(depts[0].departmentName);
+        } else {
+          setSelectedDepartment('');
+        }
+      } else {
+        setSelectedDepartment('');
+      }
+    } else {
+      setSelectedDepartment('');
+    }
+  }, [selectedClass, activeGrades]);
+
+  const targetClass = useMemo(() => {
+    if (!selectedClass) return '';
+    const hasDepts = activeGrades.some(g => g.gradeName === selectedClass && g.departmentName);
+    if (hasDepts && selectedDepartment) {
+      return `${selectedClass} (${selectedDepartment})`;
+    }
+    return selectedClass;
+  }, [selectedClass, selectedDepartment, activeGrades]);
+
+  const hasDepartments = useMemo(() => {
+    if (!selectedClass) return false;
+    return activeGrades.some(g => g.gradeName === selectedClass && g.departmentName);
+  }, [selectedClass, activeGrades]);
+
+  const availableDepartments = useMemo(() => {
+    if (!selectedClass) return [];
+    const depts = activeGrades
+      .filter(g => g.gradeName === selectedClass && g.departmentName)
+      .map(g => g.departmentName);
+    return [...new Set(depts)].filter(Boolean);
+  }, [selectedClass, activeGrades]);
+
+  const uniqueGradeNames = useMemo(() => {
+    const names = new Set();
+    activeGrades.forEach(g => {
+      if (g.gradeName) {
+        names.add(g.gradeName);
+      } else if (g.name) {
+        const base = g.name.split(' ')[0];
+        names.add(base);
+      }
+    });
+    return Array.from(names);
+  }, [activeGrades]);
+
   // Per-student Result Modal States
   const [studentExamSelections, setStudentExamSelections] = useState({}); // studentId -> examId
   const [studentExamCategories, setStudentExamCategories] = useState({}); // studentId -> examType/category
@@ -73,25 +180,155 @@ export default function ResultManagementPanel({ activeTab: propActiveTab = 'anal
   const [historySelectedExam, setHistorySelectedExam] = useState(null);
   const [formMarks, setFormMarks] = useState({}); // subject -> obtainedMarks
   const [formRemarks, setFormRemarks] = useState({}); // subject -> remarks
+  const [modalAttendance, setModalAttendance] = useState('Present');
+
+  // Initialize modal attendance state when student or exam changes
+  useEffect(() => {
+    if (activeStudentForModal && activeExamForModal) {
+      // 1. Check if there are saved results indicating 'Absent'
+      const studentResults = results.filter(r => 
+        r.studentId === activeStudentForModal.id && 
+        r.examId === activeExamForModal.id
+      );
+      const hasAbsentRecord = studentResults.some(r => r.remarks === 'Absent');
+      if (hasAbsentRecord) {
+        setModalAttendance('Absent');
+      } else {
+        // 2. Fallback to roster page attendance selection
+        const rosterStatus = examAttendance[`${activeExamForModal.id}_${activeStudentForModal.id}`] || 'Present';
+        setModalAttendance(rosterStatus);
+      }
+    } else {
+      setModalAttendance('Present');
+    }
+  }, [activeStudentForModal, activeExamForModal, results, examAttendance]);
 
 
   // Sub-Tab: Report Card Preview State
   const [reportStudentId, setReportStudentId] = useState('');
-  const [reportExamId, setReportExamId] = useState('');
   const [reportClass, setReportClass] = useState('');
-  const [reportSection, setReportSection] = useState('A');
+  const [reportDepartment, setReportDepartment] = useState('');
+  const [reportSearchQuery, setReportSearchQuery] = useState('');
+  const [showReportSearchResults, setShowReportSearchResults] = useState(false);
+
+  // Memoized search filtered students across all classes with published results
+  const reportSearchFilteredStudents = useMemo(() => {
+    const query = reportSearchQuery.trim().toLowerCase();
+    if (!query) return [];
+    return students.filter(s => {
+      // Check if student has at least one published exam
+      const studentPubs = publishedExams[s.id];
+      if (!studentPubs) return false;
+      const hasPublished = Object.values(studentPubs).some(val => val === true);
+      if (!hasPublished) return false;
+
+      return (
+        s.name.toLowerCase().includes(query) ||
+        (s.rollNumber || s.roll || '').toString().toLowerCase().includes(query)
+      );
+    });
+  }, [students, reportSearchQuery, publishedExams]);
+
+  // Handle department resetting on report class change
+  useEffect(() => {
+    if (reportClass) {
+      const hasDepts = activeGrades.some(g => g.gradeName === reportClass && g.departmentName);
+      if (hasDepts) {
+        const depts = activeGrades.filter(g => g.gradeName === reportClass && g.departmentName);
+        if (depts.length > 0) {
+          setReportDepartment(depts[0].departmentName);
+        } else {
+          setReportDepartment('');
+        }
+      } else {
+        setReportDepartment('');
+      }
+    } else {
+      setReportDepartment('');
+    }
+  }, [reportClass, activeGrades]);
+
+  const targetReportClass = useMemo(() => {
+    if (!reportClass) return '';
+    const hasDepts = activeGrades.some(g => g.gradeName === reportClass && g.departmentName);
+    if (hasDepts && reportDepartment) {
+      return `${reportClass} (${reportDepartment})`;
+    }
+    return reportClass;
+  }, [reportClass, reportDepartment, activeGrades]);
+
+  const reportHasDepartments = useMemo(() => {
+    if (!reportClass) return false;
+    return activeGrades.some(g => g.gradeName === reportClass && g.departmentName);
+  }, [reportClass, activeGrades]);
+
+  const reportAvailableDepartments = useMemo(() => {
+    if (!reportClass) return [];
+    const depts = activeGrades
+      .filter(g => g.gradeName === reportClass && g.departmentName)
+      .map(g => g.departmentName);
+    return [...new Set(depts)].filter(Boolean);
+  }, [reportClass, activeGrades]);
+
+
 
   const reportFilteredStudents = useMemo(() => {
     if (!reportClass) return [];
-    return students.filter(
-      s => s.studentClass === reportClass && (!reportSection || s.section === reportSection)
-    );
-  }, [students, reportClass, reportSection]);
+    return students.filter(s => {
+      if (s.studentClass !== targetReportClass) return false;
+      const studentPubs = publishedExams[s.id];
+      if (!studentPubs) return false;
+      // Show if they have at least one exam published
+      return Object.values(studentPubs).some(val => val === true);
+    });
+  }, [students, reportClass, targetReportClass, publishedExams]);
 
   // Sub-Tab: Academic Records / Search State
   const [historySearch, setHistorySearch] = useState('');
   const [historyClassFilter, setHistoryClassFilter] = useState('');
   const [historySectionFilter, setHistorySectionFilter] = useState('');
+  const [historyDepartmentFilter, setHistoryDepartmentFilter] = useState('');
+
+  // Handle department resetting on history class change
+  useEffect(() => {
+    if (historyClassFilter) {
+      const hasDepts = activeGrades.some(g => g.gradeName === historyClassFilter && g.departmentName);
+      if (hasDepts) {
+        const depts = activeGrades.filter(g => g.gradeName === historyClassFilter && g.departmentName);
+        if (depts.length > 0) {
+          setHistoryDepartmentFilter(depts[0].departmentName);
+        } else {
+          setHistoryDepartmentFilter('');
+        }
+      } else {
+        setHistoryDepartmentFilter('');
+      }
+    } else {
+      setHistoryDepartmentFilter('');
+    }
+  }, [historyClassFilter, activeGrades]);
+
+  const targetHistoryClass = useMemo(() => {
+    if (!historyClassFilter) return '';
+    const hasDepts = activeGrades.some(g => g.gradeName === historyClassFilter && g.departmentName);
+    if (hasDepts && historyDepartmentFilter) {
+      return `${historyClassFilter} (${historyDepartmentFilter})`;
+    }
+    return historyClassFilter;
+  }, [historyClassFilter, historyDepartmentFilter, activeGrades]);
+
+  const historyHasDepartments = useMemo(() => {
+    if (!historyClassFilter) return false;
+    return activeGrades.some(g => g.gradeName === historyClassFilter && g.departmentName);
+  }, [historyClassFilter, activeGrades]);
+
+  const historyAvailableDepartments = useMemo(() => {
+    if (!historyClassFilter) return [];
+    const depts = activeGrades
+      .filter(g => g.gradeName === historyClassFilter && g.departmentName)
+      .map(g => g.departmentName);
+    return [...new Set(depts)].filter(Boolean);
+  }, [historyClassFilter, activeGrades]);
 
 
 
@@ -148,9 +385,9 @@ export default function ResultManagementPanel({ activeTab: propActiveTab = 'anal
   const filteredStudents = useMemo(() => {
     if (!selectedClass) return [];
     return students.filter(
-      s => s.studentClass === selectedClass && (!selectedSection || s.section === selectedSection)
+      s => s.studentClass === targetClass && (!selectedSection || s.section === selectedSection)
     );
-  }, [students, selectedClass, selectedSection]);
+  }, [students, selectedClass, targetClass, selectedSection]);
 
   const searchedStudents = useMemo(() => {
     const query = rosterSearch.trim().toLowerCase();
@@ -166,7 +403,7 @@ export default function ResultManagementPanel({ activeTab: propActiveTab = 'anal
       results.forEach(r => {
         if (
           r.examId === selectedExam &&
-          r.studentClass === selectedClass &&
+          r.studentClass === targetClass &&
           r.subject.toLowerCase() === selectedSubject.toLowerCase()
         ) {
           newMarks[r.studentId] = r.obtainedMarks;
@@ -179,12 +416,12 @@ export default function ResultManagementPanel({ activeTab: propActiveTab = 'anal
       setMarksDraft({});
       setRemarksDraft({});
     }
-  }, [selectedExam, selectedClass, selectedSubject, results]);
+  }, [selectedExam, selectedClass, targetClass, selectedSubject, results]);
 
   // Load existing marks into the modal form when a student and exam are selected for modal results entry
   useEffect(() => {
     if (activeStudentForModal && activeExamForModal) {
-      const cls = activeStudentForModal.studentClass || selectedClass;
+      const cls = activeStudentForModal.studentClass || targetClass;
       const sec = activeStudentForModal.section || selectedSection;
       if (cls) {
         const allScheduled = examTimetables.filter(et => 
@@ -256,34 +493,47 @@ export default function ResultManagementPanel({ activeTab: propActiveTab = 'anal
 
     // Validate that no obtained marks exceed the max marks
     let validationError = null;
-    const resultsList = scheduledSubjects.map(s => {
-      const subKey = `${cls}-${s.subject}`;
-      const maxMarks = (activeExamForModal.subjectMarks && activeExamForModal.subjectMarks[subKey] !== undefined)
-        ? activeExamForModal.subjectMarks[subKey]
-        : (activeExamForModal.totalMarks || 100);
+    const resultsList = modalAttendance === 'Absent'
+      ? scheduledSubjects.map(s => {
+          const subKey = `${cls}-${s.subject}`;
+          const maxMarks = (activeExamForModal.subjectMarks && activeExamForModal.subjectMarks[subKey] !== undefined)
+            ? activeExamForModal.subjectMarks[subKey]
+            : (activeExamForModal.totalMarks || 100);
+          return {
+            subject: s.subject,
+            obtainedMarks: 0,
+            totalMarks: maxMarks,
+            remarks: 'Absent'
+          };
+        })
+      : scheduledSubjects.map(s => {
+          const subKey = `${cls}-${s.subject}`;
+          const maxMarks = (activeExamForModal.subjectMarks && activeExamForModal.subjectMarks[subKey] !== undefined)
+            ? activeExamForModal.subjectMarks[subKey]
+            : (activeExamForModal.totalMarks || 100);
 
-      const obtVal = formMarks[s.subject];
-      if (obtVal === undefined || obtVal === '') {
-        return {
-          subject: s.subject,
-          obtainedMarks: 0,
-          totalMarks: maxMarks,
-          remarks: formRemarks[s.subject] || ''
-        };
-      }
+          const obtVal = formMarks[s.subject];
+          if (obtVal === undefined || obtVal === '') {
+            return {
+              subject: s.subject,
+              obtainedMarks: 0,
+              totalMarks: maxMarks,
+              remarks: formRemarks[s.subject] || ''
+            };
+          }
 
-      const obt = parseFloat(obtVal);
-      if (isNaN(obt) || obt < 0 || obt > maxMarks) {
-        validationError = `Obtained marks for ${s.subject} must be between 0 and ${maxMarks}.`;
-      }
+          const obt = parseFloat(obtVal);
+          if (isNaN(obt) || obt < 0 || obt > maxMarks) {
+            validationError = `Obtained marks for ${s.subject} must be between 0 and ${maxMarks}.`;
+          }
 
-      return {
-        subject: s.subject,
-        obtainedMarks: obt,
-        totalMarks: maxMarks,
-        remarks: formRemarks[s.subject] || ''
-      };
-    });
+          return {
+            subject: s.subject,
+            obtainedMarks: obt,
+            totalMarks: maxMarks,
+            remarks: formRemarks[s.subject] || ''
+          };
+        });
 
     if (validationError) {
       showToast(validationError, 'error');
@@ -306,6 +556,11 @@ export default function ResultManagementPanel({ activeTab: propActiveTab = 'anal
 
       if (res.ok) {
         showToast(statusVal === 'Draft' ? 'Draft results saved successfully!' : 'Results submitted successfully!', 'success');
+        // Sync back to roster exam attendance
+        setExamAttendance(prev => ({
+          ...prev,
+          [`${activeExamForModal.id}_${activeStudentForModal.id}`]: modalAttendance
+        }));
         setActiveStudentForModal(null);
         setActiveExamForModal(null);
         fetchAllData();
@@ -346,6 +601,8 @@ export default function ResultManagementPanel({ activeTab: propActiveTab = 'anal
       setLoading(false);
     }
   };
+
+
 
   // Handle saving marks (Draft or Final)
   const handleSaveMarks = async (status = 'Draft') => {
@@ -451,6 +708,22 @@ export default function ResultManagementPanel({ activeTab: propActiveTab = 'anal
     showToast(`Successfully parsed and loaded ${importCount} students' marks! Review scores below before saving.`, 'success');
   };
 
+  // Publish all results for a student
+  const handlePublish = (studentId, studentExams) => {
+    if (!studentExams || studentExams.length === 0) return;
+    setPublishedExams(prev => {
+      const updated = { ...prev };
+      if (!updated[studentId]) {
+        updated[studentId] = {};
+      }
+      studentExams.forEach(exam => {
+        updated[studentId][exam.examId] = true;
+      });
+      return updated;
+    });
+    showToast('Student results published successfully!', 'success');
+  };
+
 
   // Print report card helper
   const handlePrint = (divId) => {
@@ -530,18 +803,36 @@ export default function ResultManagementPanel({ activeTab: propActiveTab = 'anal
 
 
 
-  // Load report card details for active report view student
+  // Load report card details for active report view student — aggregates ALL published exams
   const activeReportCardData = useMemo(() => {
-    if (!reportStudentId || !reportExamId) return null;
+    if (!reportStudentId) return null;
+    const studentPubs = publishedExams[reportStudentId];
+    if (!studentPubs) return null;
+    
     const student = students.find(s => s.id === reportStudentId);
-    const exam = exams.find(e => e.id === reportExamId);
-    const overall = overallResults.find(o => o.studentId === reportStudentId && o.examId === reportExamId);
-    const subjectMarks = results.filter(r => r.studentId === reportStudentId && r.examId === reportExamId);
+    if (!student) return null;
 
-    if (!student || !exam) return null;
+    // Gather all published exam data
+    const publishedExamIds = Object.keys(studentPubs).filter(eid => studentPubs[eid] === true);
+    if (publishedExamIds.length === 0) return null;
 
-    return { student, exam, overall, subjectMarks };
-  }, [reportStudentId, reportExamId, students, exams, overallResults, results]);
+    const examSections = publishedExamIds.map(examId => {
+      const exam = exams.find(e => e.id === examId);
+      if (!exam) return null;
+      const overall = overallResults.find(o => o.studentId === reportStudentId && o.examId === examId);
+      const subjectMarks = results.filter(r => r.studentId === reportStudentId && r.examId === examId);
+      return { exam, overall, subjectMarks };
+    }).filter(Boolean);
+
+    if (examSections.length === 0) return null;
+
+    // Calculate grand totals across all exams
+    const grandTotalObtained = examSections.reduce((sum, sec) => sum + (sec.overall?.totalObtained || 0), 0);
+    const grandTotalMax = examSections.reduce((sum, sec) => sum + (sec.overall?.totalMax || 0), 0);
+    const grandPercentage = grandTotalMax > 0 ? Math.round((grandTotalObtained / grandTotalMax) * 100) : 0;
+
+    return { student, examSections, grandTotalObtained, grandTotalMax, grandPercentage };
+  }, [reportStudentId, students, exams, overallResults, results, publishedExams]);
 
   const filteredHistoryEntries = useMemo(() => {
     // Start with overallResults entries
@@ -551,8 +842,13 @@ export default function ResultManagementPanel({ activeTab: propActiveTab = 'anal
       const key = `${o.studentId}-${o.examId}`;
       const student = students.find(s => s.id === o.studentId);
       const exam = exams.find(e => e.id === o.examId);
+      // Determine if student was absent for this exam set
+      const studentExamResults = results.filter(sr => sr.studentId === o.studentId && sr.examId === o.examId);
+      const isAbsent = studentExamResults.length > 0 && studentExamResults.every(sr => sr.remarks === 'Absent');
+
       entriesMap[key] = {
         ...o,
+        isAbsent,
         roll: student?.rollNumber || student?.roll || o.studentRoll || 'N/A',
         studentName: student?.name || o.studentName || 'Unknown Student',
         studentClass: student?.studentClass || o.cohort || 'N/A',
@@ -574,6 +870,7 @@ export default function ResultManagementPanel({ activeTab: propActiveTab = 'anal
       
       // Calculate basic stats from all results for this student+exam
       const studentExamResults = results.filter(sr => sr.studentId === r.studentId && sr.examId === r.examId);
+      const isAbsent = studentExamResults.length > 0 && studentExamResults.every(sr => sr.remarks === 'Absent');
       const totalObtained = studentExamResults.reduce((sum, sr) => sum + (sr.obtainedMarks || 0), 0);
       const totalMax = studentExamResults.reduce((sum, sr) => sum + (sr.totalMarks || 0), 0);
       const percentage = totalMax > 0 ? Math.round((totalObtained / totalMax) * 100) : 0;
@@ -589,7 +886,7 @@ export default function ResultManagementPanel({ activeTab: propActiveTab = 'anal
         totalObtained,
         totalMax,
         percentage,
-
+        isAbsent,
         grade,
         passStatus,
         roll: student?.rollNumber || student?.roll || 'N/A',
@@ -605,7 +902,7 @@ export default function ResultManagementPanel({ activeTab: propActiveTab = 'anal
     const mapped = Object.values(entriesMap);
 
     return mapped.filter(entry => {
-      const matchesClass = historyClassFilter ? entry.studentClass === historyClassFilter : true;
+      const matchesClass = historyClassFilter ? entry.studentClass === targetHistoryClass : true;
       const matchesSection = historySectionFilter ? entry.section === historySectionFilter : true;
       
       const query = historySearch.trim().toLowerCase();
@@ -618,7 +915,7 @@ export default function ResultManagementPanel({ activeTab: propActiveTab = 'anal
 
       return matchesClass && matchesSection && matchesSearch;
     });
-  }, [overallResults, results, students, exams, historySearch, historyClassFilter, historySectionFilter]);
+  }, [overallResults, results, students, exams, historySearch, historyClassFilter, targetHistoryClass, historySectionFilter]);
 
   const groupedStudentEntries = useMemo(() => {
     const studentMap = {};
@@ -640,7 +937,7 @@ export default function ResultManagementPanel({ activeTab: propActiveTab = 'anal
         examName: entry.examName,
         percentage: entry.percentage,
         grade: entry.grade,
-
+        isAbsent: entry.isAbsent,
         passStatus: entry.passStatus,
         examObj: entry.examObj
       });
@@ -796,7 +1093,7 @@ export default function ResultManagementPanel({ activeTab: propActiveTab = 'anal
                   <div className="form-group" style={{ flex: 1, minWidth: '120px' }}>
                     <label style={{ fontSize: '0.75rem', fontWeight: 600, display: 'block', marginBottom: '4px' }}>Session</label>
                     <select className="select-custom" style={{ width: '100%' }} value={selectedSession} onChange={e => setSelectedSession(e.target.value)}>
-                      {Array.from({ length: 2049 - 2026 + 1 }, (_, i) => {
+                      {Array.from({ length: 2030 - 2026 + 1 }, (_, i) => {
                         const s = 2026 + i;
                         return `${s}-${s + 1}`;
                       }).map(sy => (
@@ -809,11 +1106,27 @@ export default function ResultManagementPanel({ activeTab: propActiveTab = 'anal
                     <label style={{ fontSize: '0.75rem', fontWeight: 600, display: 'block', marginBottom: '4px' }}>Class</label>
                     <select className="select-custom" style={{ width: '100%' }} value={selectedClass} onChange={e => { setSelectedClass(e.target.value); setStudentExamSelections({}); setStudentExamCategories({}); setRosterSearch(''); }}>
                       <option value="">Select Grade</option>
-                      {['I', 'II', 'III', 'IV', 'V', 'VI', 'VII', 'VIII', 'IX', 'X'].map(g => (
-                        <option key={g} value={g}>Grade {g}</option>
+                      {uniqueGradeNames.map(g => (
+                        <option key={g} value={g}>{g.startsWith('LKG') || g.startsWith('UKG') || g.startsWith('NURSERY') ? g : `Grade ${g}`}</option>
                       ))}
                     </select>
                   </div>
+
+                  {hasDepartments && (
+                    <div className="form-group animate-scale-up" style={{ flex: 1, minWidth: '150px' }}>
+                      <label style={{ fontSize: '0.75rem', fontWeight: 600, display: 'block', marginBottom: '4px' }}>Department</label>
+                      <select 
+                        className="select-custom" 
+                        style={{ width: '100%' }} 
+                        value={selectedDepartment} 
+                        onChange={e => { setSelectedDepartment(e.target.value); setStudentExamSelections({}); setStudentExamCategories({}); setRosterSearch(''); }}
+                      >
+                        {availableDepartments.map(dept => (
+                          <option key={dept} value={dept}>{dept}</option>
+                        ))}
+                      </select>
+                    </div>
+                  )}
 
                   <div className="form-group" style={{ flex: 1, minWidth: '150px' }}>
                     <label style={{ fontSize: '0.75rem', fontWeight: 600, display: 'block', marginBottom: '4px' }}>Section</label>
@@ -835,7 +1148,7 @@ export default function ResultManagementPanel({ activeTab: propActiveTab = 'anal
                       <option value="">Select Exam</option>
                       {exams.filter(ex => {
                         if (ex.academicSession !== selectedSession) return false;
-                        const cohortMatches = (ex.gradeSections || []).some(gs => gs.grade === selectedClass && (!selectedSection || gs.section === selectedSection || !gs.section));
+                        const cohortMatches = (ex.gradeSections || []).some(gs => gs.grade === targetClass && (!selectedSection || gs.section === selectedSection || !gs.section));
                         const hasTimetable = examTimetables.some(et => et.examId === ex.id);
                         return cohortMatches && hasTimetable;
                       }).map(ex => (
@@ -866,9 +1179,11 @@ export default function ResultManagementPanel({ activeTab: propActiveTab = 'anal
                         />
                       </div>
                     </div>
-                    <span style={{ fontSize: '0.8rem', color: 'var(--text-muted)' }}>
-                      Total Students: <strong>{searchedStudents.length}</strong> {rosterSearch && `(filtered from ${filteredStudents.length})`}
-                    </span>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+                      <span style={{ fontSize: '0.8rem', color: 'var(--text-muted)' }}>
+                        Total Students: <strong>{searchedStudents.length}</strong> {rosterSearch && `(filtered from ${filteredStudents.length})`}
+                      </span>
+                    </div>
                   </div>
 
                   {filteredStudents.length > 0 ? (
@@ -878,25 +1193,65 @@ export default function ResultManagementPanel({ activeTab: propActiveTab = 'anal
                           <table className="custom-table" style={{ width: '100%', tableLayout: 'fixed' }}>
                             <thead>
                               <tr>
-                                <th style={{ width: '25%' }}>Roll Number</th>
-                                <th style={{ width: '25%' }}>Student Name</th>
-                                <th style={{ width: '25%', textAlign: 'center' }}>Grade</th>
-                                <th style={{ width: '25%', textAlign: 'center' }}>Actions</th>
+                                <th style={{ width: '15%', textAlign: 'left' }}>Roll Number</th>
+                                <th style={{ width: hasDepartments ? '25%' : '30%', textAlign: 'left' }}>Student Name</th>
+                                <th style={{ width: hasDepartments ? '15%' : '20%', textAlign: 'left' }}>Grade</th>
+                                <th style={{ width: hasDepartments ? '15%' : '15%', textAlign: 'left' }}>Section</th>
+                                {hasDepartments && <th style={{ width: '15%', textAlign: 'left' }}>Department</th>}
+                                <th style={{ width: hasDepartments ? '15%' : '20%', textAlign: 'center' }}>Actions</th>
                               </tr>
                             </thead>
                             <tbody>
                               {searchedStudents.map(student => {
                                 const globalExamObj = exams.find(ex => ex.id === selectedExam);
+                                const attendanceKey = `${selectedExam}_${student.id}`;
+                                const studentResults = results.filter(r => r.studentId === student.id && r.examId === selectedExam);
+                                const hasAbsentRecord = studentResults.length > 0 && studentResults.every(r => r.remarks === 'Absent');
+                                const isPresent = !hasAbsentRecord && (examAttendance[attendanceKey] || 'Present') === 'Present';
 
                                 return (
-                                  <tr key={student.id}>
-                                    <td style={{ fontWeight: 700 }}>{student.rollNumber || student.roll || '-'}</td>
-                                    <td>{student.name}</td>
-                                    <td style={{ textAlign: 'center' }}>Grade {student.studentClass}-{student.section}</td>
+                                  <tr key={student.id} style={{ opacity: isPresent ? 1 : 0.75, transition: 'opacity 0.2s ease' }}>
+                                    <td style={{ fontWeight: 700, textAlign: 'left' }}>{student.rollNumber || student.roll || '-'}</td>
+                                    <td style={{ textAlign: 'left' }}>
+                                      <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                                        <span>{student.name}</span>
+                                        {!isPresent && (
+                                          <span style={{
+                                            padding: '2px 8px',
+                                            fontSize: '0.7rem',
+                                            fontWeight: 700,
+                                            background: 'rgba(239, 68, 68, 0.08)',
+                                            color: '#ef4444',
+                                            borderRadius: '99px',
+                                            textTransform: 'uppercase',
+                                            border: '1px solid rgba(239, 68, 68, 0.15)',
+                                            display: 'inline-flex',
+                                            alignItems: 'center',
+                                            gap: '4px'
+                                          }}>
+                                            <AlertCircle size={10} /> Absent
+                                          </span>
+                                        )}
+                                      </div>
+                                    </td>
+                                    {(() => {
+                                      const { grade, department } = parseStudentClass(student.studentClass);
+                                      const displayGrade = grade.startsWith('LKG') || grade.startsWith('UKG') || grade.startsWith('NURSERY') ? grade : `Grade ${grade}`;
+                                      return (
+                                        <>
+                                          <td style={{ textAlign: 'left' }}>{displayGrade}</td>
+                                          <td style={{ textAlign: 'left', fontWeight: 600 }}>{student.section || 'A'}</td>
+                                          {hasDepartments && (
+                                            <td style={{ textAlign: 'left', fontWeight: department !== '-' ? 700 : 400, color: department !== '-' ? 'hsl(var(--color-primary))' : 'var(--text-muted)' }}>{department}</td>
+                                          )}
+                                        </>
+                                      );
+                                    })()}
                                     <td style={{ textAlign: 'center' }}>
                                       <div style={{ display: 'flex', gap: '6px', justifyContent: 'center' }}>
                                         {(() => {
                                           const hasResult = results.some(r => r.studentId === student.id && r.examId === selectedExam);
+                                          const isActionDisabled = !globalExamObj;
                                           return (
                                             <>
                                               {hasResult ? (
@@ -910,9 +1265,11 @@ export default function ResultManagementPanel({ activeTab: propActiveTab = 'anal
                                                     justifyContent: 'center',
                                                     background: 'rgba(99, 102, 241, 0.08)',
                                                     color: 'hsl(var(--color-primary))',
-                                                    border: '1px solid rgba(99, 102, 241, 0.15)'
+                                                    border: '1px solid rgba(99, 102, 241, 0.15)',
+                                                    opacity: isActionDisabled ? 0.5 : 1,
+                                                    cursor: isActionDisabled ? 'not-allowed' : 'pointer'
                                                   }}
-                                                  disabled={!globalExamObj}
+                                                  disabled={isActionDisabled}
                                                   onClick={() => {
                                                     if (!globalExamObj) {
                                                       showToast('Please select an exam set first.', 'error');
@@ -935,9 +1292,11 @@ export default function ResultManagementPanel({ activeTab: propActiveTab = 'anal
                                                     borderRadius: '8px', 
                                                     display: 'inline-flex', 
                                                     alignItems: 'center', 
-                                                    gap: '4px' 
+                                                    gap: '4px',
+                                                    opacity: isActionDisabled ? 0.5 : 1,
+                                                    cursor: isActionDisabled ? 'not-allowed' : 'pointer'
                                                   }}
-                                                  disabled={!globalExamObj}
+                                                  disabled={isActionDisabled}
                                                   onClick={() => {
                                                     if (!globalExamObj) {
                                                       showToast('Please select an exam set first.', 'error');
@@ -1005,46 +1364,133 @@ export default function ResultManagementPanel({ activeTab: propActiveTab = 'anal
           {/* TAB 4: REPORT CARDS */}
           {activeTab === 'report-cards' && (
             <div style={{ display: 'flex', flexDirection: 'column', gap: '24px' }}>
-              <div className="glass-panel" style={{ padding: '20px', display: 'flex', gap: '16px', flexWrap: 'wrap' }}>
-                <div className="form-group" style={{ flex: 1, minWidth: '150px' }}>
-                  <label style={{ fontSize: '0.75rem', fontWeight: 600, display: 'block', marginBottom: '4px' }}>Select Exam</label>
-                  <select className="select-custom" style={{ width: '100%' }} value={reportExamId} onChange={e => setReportExamId(e.target.value)}>
-                    <option value="">Select Exam</option>
-                    {exams.map(e => (
-                      <option key={e.id} value={e.id}>{e.examName}</option>
-                    ))}
-                  </select>
+              <div className="glass-panel" style={{ padding: '20px', display: 'flex', gap: '16px', flexWrap: 'wrap', alignItems: 'flex-end' }}>
+                <div className="form-group" style={{ flex: 2, minWidth: '220px', position: 'relative' }}>
+                  <label style={{ fontSize: '0.75rem', fontWeight: 600, display: 'block', marginBottom: '4px' }}>Search Student (Name / Roll No)</label>
+                  <div style={{ position: 'relative' }}>
+                    <input 
+                      type="text" 
+                      className="form-control" 
+                      placeholder="Search name or roll number..." 
+                      value={reportSearchQuery}
+                      onChange={e => {
+                        setReportSearchQuery(e.target.value);
+                        setShowReportSearchResults(true);
+                      }}
+                      onFocus={() => setShowReportSearchResults(true)}
+                      onBlur={() => setTimeout(() => setShowReportSearchResults(false), 200)}
+                      style={{ paddingLeft: '32px', width: '100%', boxSizing: 'border-box' }}
+                    />
+                    <Search size={14} style={{ position: 'absolute', left: '10px', top: '50%', transform: 'translateY(-50%)', color: 'var(--text-muted)' }} />
+                  </div>
+                  {showReportSearchResults && reportSearchQuery.trim() !== '' && (
+                    <div style={{
+                      position: 'absolute',
+                      top: '100%',
+                      left: 0,
+                      right: 0,
+                      background: 'var(--bg-glass-active, #ffffff)',
+                      border: '1px solid var(--border-glass, #cbd5e1)',
+                      borderRadius: '8px',
+                      boxShadow: '0 10px 25px -5px rgba(0,0,0,0.15)',
+                      zIndex: 1000,
+                      maxHeight: '200px',
+                      overflowY: 'auto',
+                      marginTop: '4px'
+                    }}>
+                      {reportSearchFilteredStudents.length > 0 ? (
+                        reportSearchFilteredStudents.map(student => {
+                          const { grade } = parseStudentClass(student.studentClass);
+                          const displayGrade = grade.startsWith('LKG') || grade.startsWith('UKG') || grade.startsWith('NURSERY') ? grade : `Grade ${grade}`;
+                          return (
+                            <div 
+                              key={student.id} 
+                              onClick={() => {
+                                const { grade, department } = parseStudentClass(student.studentClass);
+                                setReportClass(grade);
+                                if (department && department !== '-') {
+                                  setReportDepartment(department);
+                                } else {
+                                  setReportDepartment('');
+                                }
+                                setReportStudentId(student.id);
+                                setReportSearchQuery(student.name);
+                                setShowReportSearchResults(false);
+                              }}
+                              style={{
+                                padding: '10px 14px',
+                                cursor: 'pointer',
+                                borderBottom: '1px solid var(--border-glass, rgba(0,0,0,0.05))',
+                                fontSize: '0.82rem',
+                                display: 'flex',
+                                justifyContent: 'space-between',
+                                color: 'var(--text-main, #0f172a)'
+                              }}
+                              onMouseDown={(e) => {
+                                // Prevent input blur from firing before onClick when clicking a list item
+                                e.preventDefault();
+                              }}
+                              className="search-item-hover"
+                            >
+                              <strong style={{ color: 'hsl(var(--color-primary))' }}>{student.name}</strong>
+                              <span style={{ fontSize: '0.78rem', color: 'var(--text-muted)' }}>
+                                Roll {student.rollNumber || student.roll || '-'} · {displayGrade} ({student.section || 'A'})
+                              </span>
+                            </div>
+                          );
+                        })
+                      ) : (
+                        <div style={{ padding: '12px 14px', fontSize: '0.78rem', color: 'var(--text-muted)', textAlign: 'center' }}>
+                          No students found with published exams
+                        </div>
+                      )}
+                    </div>
+                  )}
                 </div>
+
                 <div className="form-group" style={{ flex: 1, minWidth: '130px' }}>
                   <label style={{ fontSize: '0.75rem', fontWeight: 600, display: 'block', marginBottom: '4px' }}>Grade</label>
-                  <select className="select-custom" style={{ width: '100%' }} value={reportClass} onChange={e => { setReportClass(e.target.value); setReportStudentId(''); }}>
+                  <select className="select-custom" style={{ width: '100%' }} value={reportClass} onChange={e => { setReportClass(e.target.value); setReportStudentId(''); setReportSearchQuery(''); }}>
                     <option value="">Select Grade</option>
-                    {['I', 'II', 'III', 'IV', 'V', 'VI', 'VII', 'VIII', 'IX', 'X'].map(g => (
-                      <option key={g} value={g}>Grade {g}</option>
+                    {uniqueGradeNames.map(g => (
+                      <option key={g} value={g}>{g.startsWith('LKG') || g.startsWith('UKG') || g.startsWith('NURSERY') ? g : `Grade ${g}`}</option>
                     ))}
                   </select>
                 </div>
-                <div className="form-group" style={{ flex: 1, minWidth: '100px' }}>
-                  <label style={{ fontSize: '0.75rem', fontWeight: 600, display: 'block', marginBottom: '4px' }}>Section</label>
-                  <select className="select-custom" style={{ width: '100%' }} value={reportSection} onChange={e => { setReportSection(e.target.value); setReportStudentId(''); }}>
-                    {['A', 'B', 'C', 'D', 'E'].map(sec => (
-                      <option key={sec} value={sec}>{sec}</option>
-                    ))}
-                  </select>
-                </div>
+
+                {reportHasDepartments && (
+                  <div className="form-group animate-scale-up" style={{ flex: 1, minWidth: '130px' }}>
+                    <label style={{ fontSize: '0.75rem', fontWeight: 600, display: 'block', marginBottom: '4px' }}>Department</label>
+                    <select 
+                      className="select-custom" 
+                      style={{ width: '100%' }} 
+                      value={reportDepartment} 
+                      onChange={e => { setReportDepartment(e.target.value); setReportStudentId(''); }}
+                    >
+                      {reportAvailableDepartments.map(dept => (
+                        <option key={dept} value={dept}>{dept}</option>
+                      ))}
+                    </select>
+                  </div>
+                )}
+
                 <div className="form-group" style={{ flex: 2, minWidth: '200px' }}>
                   <label style={{ fontSize: '0.75rem', fontWeight: 600, display: 'block', marginBottom: '4px' }}>Select Student</label>
-                  <select className="select-custom" style={{ width: '100%' }} value={reportStudentId} onChange={e => setReportStudentId(e.target.value)} disabled={!reportClass}>
+                  <select className="select-custom" style={{ width: '100%' }} value={reportStudentId} onChange={e => {
+                    const studentId = e.target.value;
+                    setReportStudentId(studentId);
+                    const selected = students.find(s => s.id === studentId);
+                    if (selected) {
+                      setReportSearchQuery(selected.name);
+                    } else {
+                      setReportSearchQuery('');
+                    }
+                  }} disabled={!reportClass}>
                     <option value="">Select Student</option>
                     {reportFilteredStudents.map(s => (
                       <option key={s.id} value={s.id}>Roll {s.rollNumber || s.roll} - {s.name}</option>
                     ))}
                   </select>
-                </div>
-                <div style={{ display: 'flex', gap: '8px', paddingTop: '16px' }}>
-                  <button onClick={() => handlePrint('printable-academic-report')} disabled={!activeReportCardData} className="btn-primary" style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
-                    <Printer size={16} /> Print Report Card
-                  </button>
                 </div>
               </div>
 
@@ -1068,10 +1514,30 @@ export default function ResultManagementPanel({ activeTab: propActiveTab = 'anal
                           </p>
                         </div>
                       </div>
-                      <div style={{ textAlign: 'right' }}>
+                       <div style={{ textAlign: 'right', display: 'flex', flexDirection: 'column', alignItems: 'flex-end', gap: '8px' }}>
                         <span style={{ fontSize: '0.8rem', background: '#f1f5f9', padding: '4px 12px', borderRadius: '99px', fontWeight: 700, color: '#334155' }}>
-                          Academic Transcript Record
+                          Consolidated Academic Report Card
                         </span>
+                        <button 
+                          className="no-print btn-primary"
+                          style={{
+                            padding: '6px 12px',
+                            fontSize: '0.78rem',
+                            borderRadius: '8px',
+                            display: 'inline-flex',
+                            alignItems: 'center',
+                            gap: '4px',
+                            background: 'linear-gradient(135deg, hsl(var(--color-primary)) 0%, #4f46e5 100%)',
+                            border: 'none',
+                            color: '#ffffff',
+                            cursor: 'pointer',
+                            fontWeight: 600,
+                            boxShadow: '0 2px 8px rgba(99, 102, 241, 0.25)'
+                          }}
+                          onClick={() => handlePrint('printable-academic-report')}
+                        >
+                          <Printer size={12} /> Print Report Card
+                        </button>
                       </div>
                     </div>
 
@@ -1088,60 +1554,98 @@ export default function ResultManagementPanel({ activeTab: propActiveTab = 'anal
                         <div>Grade/Class: <strong style={{ color: '#0f172a' }}>Class {activeReportCardData.student.studentClass} - Section {activeReportCardData.student.section}</strong></div>
                         <div>Roll Number: <strong style={{ color: '#0f172a' }}>{activeReportCardData.student.rollNumber || activeReportCardData.student.roll}</strong></div>
                         <div>Father Name: <strong style={{ color: '#0f172a' }}>{activeReportCardData.student.fatherName}</strong></div>
-                        <div>Term Session: <strong style={{ color: '#0f172a' }}>{activeReportCardData.exam.academicSession}</strong></div>
+                        <div>Total Exams: <strong style={{ color: '#0f172a' }}>{activeReportCardData.examSections.length}</strong></div>
                       </div>
 
                       <div style={{ textAlign: 'right', display: 'flex', flexDirection: 'column', justifyContent: 'center' }}>
-                        <span style={{ fontSize: '0.75rem', color: '#64748b', display: 'block' }}>EXAM RATING</span>
+                        <span style={{ fontSize: '0.75rem', color: '#64748b', display: 'block' }}>OVERALL %</span>
                         <strong style={{ fontSize: '1.4rem', color: 'hsl(var(--color-primary))' }}>
-                          {activeReportCardData.overall?.grade || 'N/A'}
+                          {activeReportCardData.grandPercentage}%
                         </strong>
                       </div>
                     </div>
 
-                    {/* Subject Breakdown Table */}
-                    <table style={{ width: '100%', marginTop: '30px', borderCollapse: 'collapse' }}>
-                      <thead>
-                        <tr style={{ background: '#f1f5f9' }}>
-                          <th style={{ border: '1px solid #cbd5e1', padding: '12px 16px', textAlign: 'left', fontSize: '0.85rem', fontWeight: 700 }}>Subject Syllabus Field</th>
-                          <th style={{ border: '1px solid #cbd5e1', padding: '12px 16px', textAlign: 'center', fontSize: '0.85rem', fontWeight: 700 }}>Maximum Marks</th>
-                          <th style={{ border: '1px solid #cbd5e1', padding: '12px 16px', textAlign: 'center', fontSize: '0.85rem', fontWeight: 700 }}>Marks Obtained</th>
-                          <th style={{ border: '1px solid #cbd5e1', padding: '12px 16px', textAlign: 'center', fontSize: '0.85rem', fontWeight: 700 }}>Grade Obtained</th>
-                          <th style={{ border: '1px solid #cbd5e1', padding: '12px 16px', textAlign: 'center', fontSize: '0.85rem', fontWeight: 700 }}>Remarks / Status</th>
-                        </tr>
-                      </thead>
-                      <tbody>
-                        {activeReportCardData.subjectMarks.map((m, idx) => (
-                          <tr key={idx}>
-                            <td style={{ border: '1px solid #cbd5e1', padding: '12px 16px', fontWeight: 700, fontSize: '0.85rem' }}>{m.subject}</td>
-                            <td style={{ border: '1px solid #cbd5e1', padding: '12px 16px', textAlign: 'center', fontSize: '0.85rem' }}>{m.totalMarks}</td>
-                            <td style={{ border: '1px solid #cbd5e1', padding: '12px 16px', textAlign: 'center', fontWeight: 800, fontSize: '0.85rem' }}>{m.obtainedMarks}</td>
-                            <td style={{ border: '1px solid #cbd5e1', padding: '12px 16px', textAlign: 'center', fontWeight: 700, color: m.grade === 'F' ? '#ef4444' : '#10b981', fontSize: '0.85rem' }}>{m.grade}</td>
-                            <td style={{ border: '1px solid #cbd5e1', padding: '12px 16px', fontSize: '0.8rem', color: '#475569' }}>{m.remarks || (m.percentage >= 40 ? 'Satisfactory Pass' : 'Academic Alert')}</td>
-                          </tr>
-                        ))}
-                      </tbody>
-                    </table>
+                    {/* Per-Exam Sections */}
+                    {activeReportCardData.examSections.map((section, secIdx) => (
+                      <div key={secIdx} style={{ marginTop: '30px' }}>
+                        {/* Exam Section Header */}
+                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', background: 'linear-gradient(135deg, #f1f5f9 0%, #e2e8f0 100%)', padding: '12px 18px', borderRadius: '8px 8px 0 0', borderBottom: '2px solid hsl(var(--color-primary))' }}>
+                          <div>
+                            <strong style={{ fontSize: '0.95rem', color: '#0f172a' }}>{section.exam.examName}</strong>
+                            <span style={{ fontSize: '0.78rem', color: '#64748b', marginLeft: '10px' }}>({section.exam.examType})</span>
+                          </div>
+                          <div style={{ display: 'flex', gap: '16px', alignItems: 'center' }}>
+                            <span style={{ fontSize: '0.78rem', color: '#64748b' }}>Session: <strong>{section.exam.academicSession}</strong></span>
+                            {section.overall && (
+                              <span style={{ 
+                                padding: '3px 10px', 
+                                borderRadius: '99px', 
+                                fontSize: '0.75rem', 
+                                fontWeight: 700, 
+                                background: section.overall.passStatus === 'Pass' ? 'rgba(16, 185, 129, 0.1)' : 'rgba(239, 68, 68, 0.1)', 
+                                color: section.overall.passStatus === 'Pass' ? '#10b981' : '#ef4444' 
+                              }}>
+                                {section.overall.passStatus} — {section.overall.percentage}%
+                              </span>
+                            )}
+                          </div>
+                        </div>
 
-                    {/* Overall Summary Row */}
-                    <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: '16px', border: '1px solid #cbd5e1', background: '#f8fafc', padding: '20px', borderRadius: '8px', textAlign: 'center', marginTop: '30px' }}>
+                        {/* Subject Breakdown Table */}
+                        <table style={{ width: '100%', borderCollapse: 'collapse' }}>
+                          <thead>
+                            <tr style={{ background: '#f8fafc' }}>
+                              <th style={{ border: '1px solid #cbd5e1', padding: '10px 14px', textAlign: 'left', fontSize: '0.82rem', fontWeight: 700 }}>Subject</th>
+                              <th style={{ border: '1px solid #cbd5e1', padding: '10px 14px', textAlign: 'center', fontSize: '0.82rem', fontWeight: 700 }}>Max Marks</th>
+                              <th style={{ border: '1px solid #cbd5e1', padding: '10px 14px', textAlign: 'center', fontSize: '0.82rem', fontWeight: 700 }}>Obtained</th>
+                              <th style={{ border: '1px solid #cbd5e1', padding: '10px 14px', textAlign: 'center', fontSize: '0.82rem', fontWeight: 700 }}>Grade</th>
+                              <th style={{ border: '1px solid #cbd5e1', padding: '10px 14px', textAlign: 'center', fontSize: '0.82rem', fontWeight: 700 }}>Remarks</th>
+                            </tr>
+                          </thead>
+                          <tbody>
+                            {section.subjectMarks.map((m, idx) => (
+                              <tr key={idx}>
+                                <td style={{ border: '1px solid #cbd5e1', padding: '10px 14px', fontWeight: 600, fontSize: '0.82rem' }}>{m.subject}</td>
+                                <td style={{ border: '1px solid #cbd5e1', padding: '10px 14px', textAlign: 'center', fontSize: '0.82rem' }}>{m.totalMarks}</td>
+                                <td style={{ border: '1px solid #cbd5e1', padding: '10px 14px', textAlign: 'center', fontWeight: 800, fontSize: '0.82rem' }}>{m.obtainedMarks}</td>
+                                <td style={{ border: '1px solid #cbd5e1', padding: '10px 14px', textAlign: 'center', fontWeight: 700, color: m.grade === 'F' ? '#ef4444' : '#10b981', fontSize: '0.82rem' }}>{m.grade}</td>
+                                <td style={{ border: '1px solid #cbd5e1', padding: '10px 14px', fontSize: '0.78rem', color: '#475569' }}>{m.remarks || (m.percentage >= 40 ? 'Satisfactory Pass' : 'Academic Alert')}</td>
+                              </tr>
+                            ))}
+                          </tbody>
+                          {section.overall && (
+                            <tfoot>
+                              <tr style={{ background: '#f1f5f9', fontWeight: 700 }}>
+                                <td style={{ border: '1px solid #cbd5e1', padding: '10px 14px', fontSize: '0.82rem' }}>Total</td>
+                                <td style={{ border: '1px solid #cbd5e1', padding: '10px 14px', textAlign: 'center', fontSize: '0.82rem' }}>{section.overall.totalMax}</td>
+                                <td style={{ border: '1px solid #cbd5e1', padding: '10px 14px', textAlign: 'center', fontSize: '0.82rem', fontWeight: 800 }}>{section.overall.totalObtained}</td>
+                                <td style={{ border: '1px solid #cbd5e1', padding: '10px 14px', textAlign: 'center', fontSize: '0.82rem', color: 'hsl(var(--color-primary))' }}>{section.overall.grade}</td>
+                                <td style={{ border: '1px solid #cbd5e1', padding: '10px 14px', textAlign: 'center', fontSize: '0.82rem' }}>Rank {section.overall.rank || 'N/A'}</td>
+                              </tr>
+                            </tfoot>
+                          )}
+                        </table>
+                      </div>
+                    ))}
+
+                    {/* Grand Overall Summary */}
+                    <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '16px', border: '2px solid hsl(var(--color-primary))', background: 'linear-gradient(135deg, rgba(99,102,241,0.04) 0%, rgba(79,70,229,0.08) 100%)', padding: '22px', borderRadius: '10px', textAlign: 'center', marginTop: '30px' }}>
                       <div>
-                        <span style={{ fontSize: '0.75rem', color: '#64748b', display: 'block' }}>TOTAL MARKS</span>
-                        <strong style={{ fontSize: '1.2rem', color: '#0f172a' }}>
-                          {activeReportCardData.overall?.totalObtained || '0'} / {activeReportCardData.overall?.totalMax || '0'}
+                        <span style={{ fontSize: '0.75rem', color: '#64748b', display: 'block', textTransform: 'uppercase', letterSpacing: '0.5px' }}>Grand Total Marks</span>
+                        <strong style={{ fontSize: '1.3rem', color: '#0f172a' }}>
+                          {activeReportCardData.grandTotalObtained} / {activeReportCardData.grandTotalMax}
                         </strong>
                       </div>
                       <div>
-                        <span style={{ fontSize: '0.75rem', color: '#64748b', display: 'block' }}>PERCENTAGE AVERAGE</span>
-                        <strong style={{ fontSize: '1.2rem', color: 'hsl(var(--color-primary))' }}>
-                          {activeReportCardData.overall?.percentage || '0'}%
+                        <span style={{ fontSize: '0.75rem', color: '#64748b', display: 'block', textTransform: 'uppercase', letterSpacing: '0.5px' }}>Overall Percentage</span>
+                        <strong style={{ fontSize: '1.3rem', color: 'hsl(var(--color-primary))' }}>
+                          {activeReportCardData.grandPercentage}%
                         </strong>
                       </div>
-
                       <div>
-                        <span style={{ fontSize: '0.75rem', color: '#64748b', display: 'block' }}>CLASS RANKING</span>
-                        <strong style={{ fontSize: '1.2rem', color: '#16a34a' }}>
-                          Rank {activeReportCardData.overall?.rank || 'N/A'}
+                        <span style={{ fontSize: '0.75rem', color: '#64748b', display: 'block', textTransform: 'uppercase', letterSpacing: '0.5px' }}>Total Exams</span>
+                        <strong style={{ fontSize: '1.3rem', color: '#16a34a' }}>
+                          {activeReportCardData.examSections.length}
                         </strong>
                       </div>
                     </div>
@@ -1150,7 +1654,7 @@ export default function ResultManagementPanel({ activeTab: propActiveTab = 'anal
                     <div style={{ display: 'flex', justifyContent: 'space-between', marginTop: '60px', borderTop: '1px dashed #cbd5e1', paddingTop: '20px', fontSize: '0.8rem', color: '#475569' }}>
                       <div style={{ textAlign: 'center', width: '180px' }}>
                         <div style={{ height: '35px' }} />
-                        <div style={{ borderTop: '1px solid #94a3b8', paddingTop: '4px' }}>Class Teacher</div>
+                        <div style={{ borderTop: '1px solid #94a3b8', paddingTop: '4px' }}>Class Staff</div>
                       </div>
                       <div style={{ textAlign: 'center', width: '180px' }}>
                         <div style={{ height: '35px' }} />
@@ -1161,7 +1665,7 @@ export default function ResultManagementPanel({ activeTab: propActiveTab = 'anal
                 </div>
               ) : (
                 <div className="glass-panel" style={{ padding: '80px', textAlign: 'center', color: 'var(--text-muted)' }}>
-                  Please select an Exam and a Student to preview the official Report Card layout.
+                  Please select a Grade and Student to preview the consolidated Report Card.
                 </div>
               )}
             </div>
@@ -1192,11 +1696,25 @@ export default function ResultManagementPanel({ activeTab: propActiveTab = 'anal
                     onChange={e => setHistoryClassFilter(e.target.value)}
                   >
                     <option value="">All Grades</option>
-                    {['I', 'II', 'III', 'IV', 'V', 'VI', 'VII', 'VIII', 'IX', 'X'].map(g => (
-                      <option key={g} value={g}>Grade {g}</option>
+                    {uniqueGradeNames.map(g => (
+                      <option key={g} value={g}>{g.startsWith('LKG') || g.startsWith('UKG') || g.startsWith('NURSERY') ? g : `Grade ${g}`}</option>
                     ))}
                   </select>
                 </div>
+                {historyHasDepartments && (
+                  <div style={{ minWidth: '180px' }} className="animate-scale-up">
+                    <select 
+                      className="select-custom" 
+                      style={{ width: '100%' }}
+                      value={historyDepartmentFilter} 
+                      onChange={e => setHistoryDepartmentFilter(e.target.value)}
+                    >
+                      {historyAvailableDepartments.map(dept => (
+                        <option key={dept} value={dept}>{dept}</option>
+                      ))}
+                    </select>
+                  </div>
+                )}
                 <div style={{ minWidth: '180px' }}>
                   <select 
                     className="select-custom" 
@@ -1245,15 +1763,96 @@ export default function ResultManagementPanel({ activeTab: propActiveTab = 'anal
                         {student.exams.map(exam => (
                           <div key={exam.examId} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '6px 10px', background: 'rgba(0,0,0,0.02)', borderRadius: '6px' }}>
                             <span style={{ fontSize: '0.82rem', fontWeight: 600 }}>{exam.examName}</span>
-                            <span style={{ fontSize: '0.78rem', fontWeight: 700, color: exam.passStatus === 'Pass' ? '#10b981' : '#ef4444' }}>
-                              {exam.percentage}% ({exam.grade})
-                            </span>
+                            <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                              {exam.isAbsent ? (
+                                <span style={{ fontSize: '0.78rem', fontWeight: 700, color: '#ef4444' }}>
+                                  Absent
+                                </span>
+                              ) : (
+                                <span style={{ fontSize: '0.78rem', fontWeight: 700, color: exam.passStatus === 'Pass' ? '#10b981' : '#ef4444' }}>
+                                  {exam.percentage}% ({exam.grade})
+                                </span>
+                              )}
+                              <button
+                                className="btn-secondary"
+                                style={{
+                                  padding: '4px 8px',
+                                  fontSize: '0.72rem',
+                                  borderRadius: '6px',
+                                  display: 'inline-flex',
+                                  alignItems: 'center',
+                                  gap: '4px',
+                                  border: '1px solid rgba(99, 102, 241, 0.2)',
+                                  color: 'hsl(var(--color-primary))',
+                                  cursor: 'pointer'
+                                }}
+                                onClick={() => {
+                                  const { grade, department } = parseStudentClass(student.studentClass);
+                                  setReportClass(grade);
+                                  if (department && department !== '-') {
+                                    setReportDepartment(department);
+                                  } else {
+                                    setReportDepartment('');
+                                  }
+                                  setReportStudentId(student.studentId);
+                                  setReportSearchQuery(student.studentName || '');
+                                  setActiveTab('report-cards');
+                                }}
+                                title="Print Report Card"
+                              >
+                                <Printer size={12} /> Print
+                              </button>
+                            </div>
                           </div>
                         ))}
                       </div>
 
                       {/* Footer Actions */}
                       <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '8px', marginTop: '4px' }}>
+                        {(() => {
+                          const studentPubs = publishedExams[student.studentId] || {};
+                          const isAllPublished = student.exams.length > 0 && student.exams.every(exam => studentPubs[exam.examId] === true);
+                          return isAllPublished ? (
+                            <span
+                              style={{
+                                padding: '6px 12px',
+                                  fontSize: '0.78rem',
+                                  borderRadius: '8px',
+                                  display: 'inline-flex',
+                                  alignItems: 'center',
+                                  gap: '4px',
+                                  background: 'rgba(16, 185, 129, 0.08)',
+                                  color: '#10b981',
+                                  border: '1px solid rgba(16, 185, 129, 0.15)',
+                                  fontWeight: 700
+                                }}
+                              >
+                                <Check size={12} /> Published
+                              </span>
+                            ) : (
+                              <button
+                                className="btn-primary"
+                                style={{ 
+                                  padding: '6px 14px', 
+                                  fontSize: '0.78rem', 
+                                  borderRadius: '8px', 
+                                  display: 'inline-flex', 
+                                  alignItems: 'center', 
+                                  gap: '4px',
+                                  background: 'linear-gradient(135deg, hsl(var(--color-primary)) 0%, #4f46e5 100%)',
+                                  border: 'none',
+                                  color: '#ffffff',
+                                  cursor: 'pointer',
+                                  fontWeight: 600,
+                                  boxShadow: '0 2px 8px rgba(99, 102, 241, 0.25)',
+                                  transition: 'all 0.2s ease'
+                                }}
+                                onClick={() => handlePublish(student.studentId, student.exams)}
+                              >
+                                <Share2 size={12} /> Publish
+                              </button>
+                            );
+                          })()}
                         <button
                           className="btn-primary"
                           style={{ 
@@ -1279,36 +1878,8 @@ export default function ResultManagementPanel({ activeTab: propActiveTab = 'anal
                         >
                           <Eye size={12} /> View Results
                         </button>
-                        <button
-                          className="btn-secondary"
-                          style={{ 
-                            padding: '6px 14px', 
-                            fontSize: '0.78rem', 
-                            borderRadius: '8px', 
-                            display: 'inline-flex', 
-                            alignItems: 'center', 
-                            gap: '4px',
-                            border: '1px solid rgba(239,68,68,0.3)', 
-                            color: '#ef4444'
-                          }}
-                          onClick={async () => {
-                            const sid = student.studentObj?.id || student.studentId;
-                            if (!sid) { showToast('Cannot delete: missing student data.', 'error'); return; }
-                            if (!confirm('Are you sure you want to delete all results for this student? This action cannot be undone.')) return;
-                            let allOk = true;
-                            for (const exam of student.exams) {
-                              try {
-                                const res = await fetch(`/api/academics/results/student/${sid}/exam/${exam.examId}`, { method: 'DELETE' });
-                                if (!res.ok) allOk = false;
-                              } catch (e) { allOk = false; }
-                            }
-                            if (allOk) showToast('All student results deleted successfully.', 'success');
-                            else showToast('Some results could not be deleted.', 'error');
-                            fetchAllData();
-                          }}
-                        >
-                          <Trash2 size={12} /> Delete All
-                        </button>
+
+
                       </div>
                     </div>
                   ))}
@@ -1363,11 +1934,58 @@ export default function ResultManagementPanel({ activeTab: propActiveTab = 'anal
                   </select>
                 </div>
               )}
-              <div style={{ padding: '12px', background: 'rgba(99, 102, 241, 0.06)', border: '1px solid rgba(99, 102, 241, 0.15)', borderRadius: '10px' }}>
-                <span style={{ fontSize: '0.75rem', color: 'var(--text-muted)', display: 'block' }}>Exam Target</span>
-                <strong style={{ fontSize: '0.9rem', color: 'hsl(var(--color-primary))' }}>
-                  {activeExamForModal.examName} ({activeExamForModal.examType})
-                </strong>
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', background: 'rgba(99, 102, 241, 0.06)', border: '1px solid rgba(99, 102, 241, 0.15)', borderRadius: '10px', padding: '12px 16px' }}>
+                <div>
+                  <span style={{ fontSize: '0.75rem', color: 'var(--text-muted)', display: 'block' }}>Exam Target</span>
+                  <strong style={{ fontSize: '0.9rem', color: 'hsl(var(--color-primary))' }}>
+                    {activeExamForModal.examName} ({activeExamForModal.examType})
+                  </strong>
+                </div>
+                
+                {/* Attendance Toggles */}
+                {!modalViewOnly && (
+                  <div style={{ display: 'flex', gap: '6px', alignItems: 'center' }}>
+                    <span style={{ fontSize: '0.8rem', fontWeight: 600, color: 'var(--text-muted)' }}>Status:</span>
+                    <div style={{ display: 'flex', background: 'var(--bg-glass-active)', borderRadius: '8px', padding: '2px', border: '1px solid var(--border-glass)' }}>
+                      <button
+                        type="button"
+                        style={{
+                          padding: '4px 12px',
+                          fontSize: '0.78rem',
+                          fontWeight: 600,
+                          borderRadius: '6px',
+                          cursor: modalViewOnly ? 'default' : 'pointer',
+                          background: modalAttendance === 'Present' ? '#10b981' : 'transparent',
+                          color: modalAttendance === 'Present' ? '#ffffff' : 'var(--text-muted)',
+                          border: 'none',
+                          transition: 'all 0.2s ease'
+                        }}
+                        disabled={modalViewOnly}
+                        onClick={() => setModalAttendance('Present')}
+                      >
+                        Present
+                      </button>
+                      <button
+                        type="button"
+                        style={{
+                          padding: '4px 12px',
+                          fontSize: '0.78rem',
+                          fontWeight: 600,
+                          borderRadius: '6px',
+                          cursor: modalViewOnly ? 'default' : 'pointer',
+                          background: modalAttendance === 'Absent' ? '#ef4444' : 'transparent',
+                          color: modalAttendance === 'Absent' ? '#ffffff' : 'var(--text-muted)',
+                          border: 'none',
+                          transition: 'all 0.2s ease'
+                        }}
+                        disabled={modalViewOnly}
+                        onClick={() => setModalAttendance('Absent')}
+                      >
+                        Absent
+                      </button>
+                    </div>
+                  </div>
+                )}
               </div>
 
               {(() => {
@@ -1390,6 +2008,16 @@ export default function ResultManagementPanel({ activeTab: propActiveTab = 'anal
                   }
                 });
                 const scheduledSubjects = Object.values(uniqueSubjectsMap);
+
+                if (modalAttendance === 'Absent') {
+                  return (
+                    <div style={{ padding: '40px', textAlign: 'center', color: '#ef4444', background: 'rgba(239, 68, 68, 0.05)', border: '1px dashed rgba(239, 68, 68, 0.25)', borderRadius: '12px' }}>
+                      <AlertCircle size={32} style={{ margin: '0 auto 12px', display: 'block', color: '#ef4444' }} />
+                      <strong style={{ fontSize: '1rem', display: 'block', marginBottom: '4px' }}>Absent</strong>
+                      <span style={{ fontSize: '0.82rem', color: 'var(--text-muted)' }}>Student has been marked as Absent for this exam set. {modalViewOnly ? '' : 'Click Save to persist.'}</span>
+                    </div>
+                  );
+                }
 
                 if (scheduledSubjects.length === 0) {
                   return (
@@ -1540,7 +2168,7 @@ export default function ResultManagementPanel({ activeTab: propActiveTab = 'anal
                         onClick={() => handleSaveStudentBulk('Submitted')}
                         disabled={disabled}
                       >
-                        Submit Scores
+                        Save
                       </button>
                     );
                   })()}

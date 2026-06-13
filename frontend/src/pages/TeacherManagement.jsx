@@ -140,7 +140,7 @@ export default function TeacherManagement() {
           <Search size={18} className="search-bar-icon" />
           <input 
             type="text" 
-            placeholder="Search by teacher name or specialized subject..." 
+            placeholder="Search by staff name or specialized subject..." 
             className="search-bar-input"
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
@@ -176,8 +176,8 @@ export default function TeacherManagement() {
           <table className="custom-table">
             <thead>
               <tr>
-                <th>Teacher ID</th>
-                <th>Teacher Name</th>
+                <th>Staff ID</th>
+                <th>Staff Name</th>
                 <th>Subject Specialty</th>
                 <th>Department</th>
                 <th>Classes</th>
@@ -455,7 +455,7 @@ export default function TeacherManagement() {
                 <div className="glass-panel" style={{ padding: '14px', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                   <div>
                     <span style={{ fontWeight: 600, fontSize: '0.85rem', display: 'block' }}>Mondays & Wednesdays</span>
-                    <span style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>Period 4: Parent-Teacher Syncs</span>
+                    <span style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>Period 4: Parent-Staff Syncs</span>
                   </div>
                   <span className="badge badge-success">11:30 AM - 12:15 PM</span>
                 </div>

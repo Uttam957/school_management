@@ -8,6 +8,7 @@ import {
   FolderPlus,
   ArrowRight
 } from 'lucide-react';
+import { fetchActiveGrades } from '../utils/grades';
 
 export default function StudentManager({ showToast }) {
   const [students, setStudents] = useState([]);
@@ -20,15 +21,22 @@ export default function StudentManager({ showToast }) {
   const [classFilter, setClassFilter] = useState('All');
   const [statusFilter, setStatusFilter] = useState('All');
   
-  // Grade and Section temporary values for each student in the list
+  const [gradeOptions, setGradeOptions] = useState([]);
   const [allocations, setAllocations] = useState({});
 
   const tenantSubdomain = localStorage.getItem('tenant_subdomain') || 'default';
 
-  // Standard grade options
-  const gradeOptions = [
-    'LKG', 'UKG', 'I', 'II', 'III', 'IV', 'V', 'VI', 'VII', 'VIII', 'IX', 'X'
-  ];
+  useEffect(() => {
+    const loadGrades = async () => {
+      const activeGrades = await fetchActiveGrades();
+      if (activeGrades && activeGrades.length > 0) {
+        setGradeOptions(activeGrades.map(g => g.name));
+      } else {
+        setGradeOptions([]);
+      }
+    };
+    loadGrades();
+  }, []);
 
   // Standard section options (A to E)
   const sectionOptions = ['A', 'B', 'C', 'D', 'E'];
@@ -55,7 +63,7 @@ export default function StudentManager({ showToast }) {
         const initialAllocations = {};
         fetchedStudents.forEach(s => {
           initialAllocations[s.id] = {
-            studentClass: s.studentClass || 'LKG',
+            studentClass: s.studentClass || (gradeOptions[0] || ''),
             section: s.section || '',
             rollNumber: s.rollNumber || s.roll || ''
           };
@@ -183,7 +191,7 @@ export default function StudentManager({ showToast }) {
             style={{ width: '160px', height: '38px', borderRadius: '8px', fontSize: '0.82rem', padding: '0 8px', cursor: 'pointer' }}
           >
             <option value="All">All Sessions</option>
-            {Array.from({ length: 2049 - 2026 + 1 }, (_, i) => {
+            {Array.from({ length: 2030 - 2026 + 1 }, (_, i) => {
               const s = 2026 + i;
               return `${s}-${s + 1}`;
             }).map(sy => (
@@ -257,7 +265,7 @@ export default function StudentManager({ showToast }) {
             </thead>
             <tbody>
               {filteredStudents.map(student => {
-                const allocation = allocations[student.id] || { studentClass: student.studentClass || 'LKG', section: student.section || '', rollNumber: student.rollNumber || student.roll || '' };
+                const allocation = allocations[student.id] || { studentClass: student.studentClass || (gradeOptions[0] || 'LKG'), section: student.section || '', rollNumber: student.rollNumber || student.roll || '' };
                 const isUpdating = updatingId === student.id;
 
                 return (
@@ -323,7 +331,7 @@ export default function StudentManager({ showToast }) {
 
                     <td style={{ padding: '16px' }}>
                       <span style={{ fontSize: '0.88rem', fontWeight: 600, color: 'var(--text-main)' }}>
-                        {student.studentClass || 'LKG'}
+                        {student.studentClass || (gradeOptions[0] || '')}
                       </span>
                     </td>
 

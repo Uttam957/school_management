@@ -1,4 +1,5 @@
 import { readDb, writeDb, addActivity } from '../utils/db.js';
+import * as XLSX from 'xlsx';
 
 // Conflict helper: Checks if two time slots overlap
 // e.g. "09:00 AM - 10:00 AM" and "09:30 AM - 10:30 AM"
@@ -197,6 +198,9 @@ export const updateExam = (req, res) => {
   if (subjectIncluded !== undefined) db.exams[examIndex].subjectIncluded = subjectIncluded;
   if (timetablePublished !== undefined) db.exams[examIndex].timetablePublished = timetablePublished;
 
+  if (db.publishedCalendarEvents) {
+    db.publishedCalendarEvents = db.publishedCalendarEvents.filter(eventId => eventId !== id);
+  }
   writeDb(db);
   res.json(db.exams[examIndex]);
 };
@@ -208,11 +212,16 @@ export const deleteExam = (req, res) => {
   const initialCount = db.exams.length;
   db.exams = db.exams.filter(e => e.id !== id);
   db.examTimetables = (db.examTimetables || []).filter(et => et.examId !== id);
+  db.results = (db.results || []).filter(r => r.examId !== id);
+  db.overallResults = (db.overallResults || []).filter(o => o.examId !== id);
 
   if (db.exams.length === initialCount) {
     return res.status(404).json({ error: 'Exam not found.' });
   }
 
+  if (db.publishedCalendarEvents) {
+    db.publishedCalendarEvents = db.publishedCalendarEvents.filter(eventId => eventId !== id);
+  }
   writeDb(db);
   res.json({ message: 'Exam configuration deleted successfully.' });
 };
@@ -370,41 +379,53 @@ export const publishExam = (req, res) => {
 
 export const getGradesSections = (req, res) => {
   const db = readDb();
-  const gradeSet = new Set();
-  const sectionSet = new Set();
-  const pairs = new Set();
+  const activeGrades = (db.grades || []).filter(g => g.status === 'Active');
+  const activeDepartments = (db.departments || []).filter(d => d.status === 'Active');
 
-  // From subjects
-  (db.subjects || []).forEach(s => {
-    if (s.grade) {
-      gradeSet.add(s.grade);
-      pairs.add(`${s.grade}-A`); // Ensure at least Section A is available for any grade with subjects
+  const isGrade11or12 = (name) => {
+    if (!name) return false;
+    const clean = name.trim().toUpperCase();
+    return clean.includes('11') || clean.includes('12') || clean.includes('XI') || clean.includes('XII');
+  };
+
+  const gradeOptions = [];
+  activeGrades.forEach(g => {
+    if (isGrade11or12(g.name)) {
+      if (activeDepartments.length > 0) {
+        activeDepartments.forEach(dept => {
+          gradeOptions.push(`${g.name} (${dept.name})`);
+        });
+      } else {
+        gradeOptions.push(g.name);
+      }
+    } else {
+      gradeOptions.push(g.name);
     }
   });
 
-  // From students
-  (db.students || []).forEach(s => {
-    if (s.status !== 'Active') return;
-    if (s.studentClass) gradeSet.add(s.studentClass);
-    if (s.section) sectionSet.add(s.section);
-    if (s.studentClass && s.section) pairs.add(`${s.studentClass}-${s.section}`);
-  });
+  const romanMap = { 'I': 1, 'II': 2, 'III': 3, 'IV': 4, 'V': 5, 'VI': 6, 'VII': 7, 'VIII': 8, 'IX': 9, 'X': 10, 'XI': 11, 'XII': 12, 'LKG': -2, 'UKG': -1, 'NURSERY': -3 };
+  const sortGrades = (a, b) => {
+    const aVal = a.toUpperCase();
+    const bVal = b.toUpperCase();
+    const aRoman = romanMap[aVal.split(' ')[0]];
+    const bRoman = romanMap[bVal.split(' ')[0]];
+    if (aRoman !== undefined && bRoman !== undefined) return aRoman - bRoman;
+    const aGradeNum = aVal.replace('GRADE', '').trim();
+    const bGradeNum = bVal.replace('GRADE', '').trim();
+    const aNum = parseInt(aGradeNum);
+    const bNum = parseInt(bGradeNum);
+    if (!isNaN(aNum) && !isNaN(bNum)) return aNum - bNum;
+    return aVal.localeCompare(bVal);
+  };
 
-  // From timetables
-  (db.timetables || []).forEach(t => {
-    if (t.cohort) {
-      const [g, sec] = t.cohort.split('-');
-      if (g) gradeSet.add(g);
-      if (sec) sectionSet.add(sec);
-      if (g && sec) pairs.add(`${g}-${sec}`);
-    }
-  });
-
-  const grades = [...gradeSet].sort();
-  const sections = [...sectionSet].sort();
-  const gradeSectionPairs = [...pairs].sort().map(p => {
-    const [g, s] = p.split('-');
-    return { grade: g, section: s };
+  const grades = gradeOptions.sort(sortGrades);
+  const sections = ['A', 'B', 'C', 'D', 'E'];
+  const gradeSectionPairs = [];
+  
+  grades.forEach(g => {
+    sections.forEach(s => {
+      gradeSectionPairs.push({ grade: g, section: s });
+    });
   });
 
   res.json({ grades, sections, gradeSectionPairs });
@@ -584,6 +605,9 @@ export const updateEvent = (req, res) => {
     status: status || db.events[eventIdx].status
   };
 
+  if (db.publishedCalendarEvents) {
+    db.publishedCalendarEvents = db.publishedCalendarEvents.filter(eventId => eventId !== id);
+  }
   writeDb(db);
   res.json(db.events[eventIdx]);
 };
@@ -599,6 +623,9 @@ export const deleteEvent = (req, res) => {
     return res.status(404).json({ error: 'Event not found.' });
   }
 
+  if (db.publishedCalendarEvents) {
+    db.publishedCalendarEvents = db.publishedCalendarEvents.filter(eventId => eventId !== id);
+  }
   writeDb(db);
   res.json({ message: 'Event deleted successfully.' });
 };
@@ -720,6 +747,9 @@ export const deleteHoliday = (req, res) => {
     return res.status(404).json({ error: 'Holiday not found.' });
   }
 
+  if (db.publishedCalendarEvents) {
+    db.publishedCalendarEvents = db.publishedCalendarEvents.filter(eventId => eventId !== id);
+  }
   writeDb(db);
   res.json({ message: 'Holiday schedule removed successfully.' });
 };
@@ -744,6 +774,9 @@ export const updateHoliday = (req, res) => {
     description: description !== undefined ? description : db.holidays[index].description
   };
 
+  if (db.publishedCalendarEvents) {
+    db.publishedCalendarEvents = db.publishedCalendarEvents.filter(eventId => eventId !== id);
+  }
   writeDb(db);
   res.json(db.holidays[index]);
 };
@@ -1408,6 +1441,412 @@ export const deleteStudentExamResults = (req, res) => {
   writeDb(db);
   res.json({ message: 'Student exam result record deleted successfully.' });
 };
+
+export const submitCohortResults = (req, res) => {
+  const { examId, cohort, section } = req.body;
+  if (!examId || !cohort) {
+    return res.status(400).json({ error: 'Exam ID and Cohort are required.' });
+  }
+
+  const db = readDb();
+  
+  // 1. Find all active students in this cohort and section
+  const cohortStudents = (db.students || []).filter(s => 
+    s.studentClass === cohort && 
+    (!section || s.section === section) &&
+    s.status === 'Active'
+  );
+
+  if (cohortStudents.length === 0) {
+    return res.status(404).json({ error: 'No students found in this cohort.' });
+  }
+
+  const studentIds = cohortStudents.map(s => s.id);
+
+  // 2. Find results for these students and this exam, and update their status to 'Submitted'
+  let updatedCount = 0;
+  if (db.results) {
+    db.results.forEach(r => {
+      if (r.examId === examId && studentIds.includes(r.studentId)) {
+        r.status = 'Submitted';
+        r.updatedAt = new Date().toISOString();
+        updatedCount++;
+      }
+    });
+  }
+
+  // 3. Re-calculate overall results for each student in the cohort
+  cohortStudents.forEach(student => {
+    const studentResults = (db.results || []).filter(r => r.studentId === student.id && r.examId === examId);
+    if (studentResults.length > 0) {
+      const totalObtained = studentResults.reduce((sum, r) => sum + r.obtainedMarks, 0);
+      const totalMax = studentResults.reduce((sum, r) => sum + r.totalMarks, 0);
+      const percentage = totalMax > 0 ? Math.round((totalObtained / totalMax) * 100) : 0;
+      const avgGpa = studentResults.reduce((sum, r) => sum + r.gpa, 0) / studentResults.length;
+
+      let overallGrade = 'F';
+      if (percentage >= 90) overallGrade = 'A+';
+      else if (percentage >= 80) overallGrade = 'A';
+      else if (percentage >= 70) overallGrade = 'B+';
+      else if (percentage >= 60) overallGrade = 'B';
+      else if (percentage >= 50) overallGrade = 'C';
+      else if (percentage >= 40) overallGrade = 'D';
+      else overallGrade = 'F';
+
+      const overallEntry = {
+        id: `OVR-${examId}-${student.id}`,
+        examId,
+        cohort: cohort,
+        studentId: student.id,
+        totalObtained,
+        totalMax,
+        percentage,
+        gpa: avgGpa,
+        grade: overallGrade,
+        rank: '-',
+        subjectsCount: studentResults.length,
+        passStatus: percentage >= 40 ? 'Pass' : 'Fail',
+        updatedAt: new Date().toISOString()
+      };
+
+      if (!db.overallResults) db.overallResults = [];
+      const idx = db.overallResults.findIndex(o => o.examId === examId && o.studentId === student.id);
+      if (idx !== -1) {
+        db.overallResults[idx] = { ...db.overallResults[idx], ...overallEntry };
+      } else {
+        db.overallResults.push(overallEntry);
+      }
+    }
+  });
+
+  // 4. Recalculate ranks for the cohort
+  const cohortStudentIds = (db.students || []).filter(s => s.studentClass === cohort && s.status === 'Active').map(s => s.id);
+  if (db.overallResults) {
+    const cohortOverallResults = db.overallResults.filter(o => o.examId === examId && cohortStudentIds.includes(o.studentId));
+    cohortOverallResults.sort((a, b) => b.percentage - a.percentage);
+    cohortOverallResults.forEach((ovItem, idx) => {
+      const dbIdx = db.overallResults.findIndex(o => o.id === ovItem.id);
+      if (dbIdx !== -1) {
+        db.overallResults[dbIdx].rank = idx + 1;
+      }
+    });
+  }
+
+  writeDb(db);
+  res.json({ message: 'Cohort results submitted successfully.', count: updatedCount });
+};
+
+// =============================================
+// 12. ENHANCED ACADEMIC CALENDAR CONTROLLER
+// =============================================
+
+const isValidDateString = (dateStr) => {
+  if (!dateStr) return false;
+  if (/^\d{4}-\d{2}-\d{2}$/.test(dateStr)) {
+    const d = new Date(dateStr);
+    return d instanceof Date && !isNaN(d);
+  }
+  if (/^\d{1,2}\/\d{1,2}\/\d{4}$/.test(dateStr)) {
+    const parts = dateStr.split('/');
+    const d = new Date(parts[2], parts[1] - 1, parts[0]);
+    return d instanceof Date && !isNaN(d);
+  }
+  const d = new Date(dateStr);
+  return d instanceof Date && !isNaN(d);
+};
+
+const normalizeDateString = (dateStr) => {
+  if (/^\d{4}-\d{2}-\d{2}$/.test(dateStr)) {
+    return dateStr;
+  }
+  if (/^\d{1,2}\/\d{1,2}\/\d{4}$/.test(dateStr)) {
+    const parts = dateStr.split('/');
+    let day = parseInt(parts[0]);
+    let month = parseInt(parts[1]);
+    let year = parseInt(parts[2]);
+    if (month > 12 && day <= 12) {
+      const tmp = day;
+      day = month;
+      month = tmp;
+    }
+    return `${year}-${String(month).padStart(2, '0')}-${String(day).padStart(2, '0')}`;
+  }
+  try {
+    const d = new Date(dateStr);
+    const year = d.getFullYear();
+    const month = d.getMonth() + 1;
+    const day = d.getDate();
+    return `${year}-${String(month).padStart(2, '0')}-${String(day).padStart(2, '0')}`;
+  } catch (e) {
+    return dateStr;
+  }
+};
+
+const isValidSessionString = (sessionStr) => {
+  if (!sessionStr) return false;
+  return /^\d{4}-\d{2,4}$/.test(sessionStr.trim());
+};
+
+export const getCalendarEvents = (req, res) => {
+  const db = readDb();
+  let events = db.academicCalendarEvents || [];
+  const { session } = req.query;
+  if (session) {
+    events = events.filter(e => e.session === session);
+  }
+  res.json(events);
+};
+
+export const createCalendarEvent = (req, res) => {
+  const { eventDate, title, eventType, description, applicableClasses, startTime, endTime, session } = req.body;
+  if (!eventDate || !title || !eventType || !session) {
+    return res.status(400).json({ error: 'Date, Title, Type, and Session are required.' });
+  }
+  const db = readDb();
+  const newEvent = {
+    id: `EVTCAL-${Date.now()}`,
+    eventDate,
+    title,
+    eventType,
+    description: description || '',
+    applicableClasses: applicableClasses || 'All',
+    startTime: startTime || '',
+    endTime: endTime || '',
+    session,
+    createdAt: new Date().toISOString(),
+    updatedAt: new Date().toISOString()
+  };
+  if (!db.academicCalendarEvents) db.academicCalendarEvents = [];
+  db.academicCalendarEvents.push(newEvent);
+  addActivity(db, 'alert', 'New Calendar Event', `Event "${title}" declared for ${eventDate}`, 'hsl(var(--color-primary))', 'rgba(hsl(var(--color-primary)), 0.1)');
+  writeDb(db);
+  res.status(201).json(newEvent);
+};
+
+export const updateCalendarEvent = (req, res) => {
+  const { id } = req.params;
+  const { eventDate, title, eventType, description, applicableClasses, startTime, endTime, session } = req.body;
+  const db = readDb();
+  if (!db.academicCalendarEvents) db.academicCalendarEvents = [];
+  const idx = db.academicCalendarEvents.findIndex(e => e.id === id);
+  if (idx === -1) {
+    return res.status(404).json({ error: 'Calendar event not found.' });
+  }
+  db.academicCalendarEvents[idx] = {
+    ...db.academicCalendarEvents[idx],
+    eventDate: eventDate || db.academicCalendarEvents[idx].eventDate,
+    title: title || db.academicCalendarEvents[idx].title,
+    eventType: eventType || db.academicCalendarEvents[idx].eventType,
+    description: description !== undefined ? description : db.academicCalendarEvents[idx].description,
+    applicableClasses: applicableClasses !== undefined ? applicableClasses : db.academicCalendarEvents[idx].applicableClasses,
+    startTime: startTime !== undefined ? startTime : db.academicCalendarEvents[idx].startTime,
+    endTime: endTime !== undefined ? endTime : db.academicCalendarEvents[idx].endTime,
+    session: session || db.academicCalendarEvents[idx].session,
+    updatedAt: new Date().toISOString()
+  };
+  if (db.publishedCalendarEvents) {
+    db.publishedCalendarEvents = db.publishedCalendarEvents.filter(eventId => eventId !== id);
+  }
+  writeDb(db);
+  res.json(db.academicCalendarEvents[idx]);
+};
+
+export const deleteCalendarEvent = (req, res) => {
+  const { id } = req.params;
+  const db = readDb();
+  if (!db.academicCalendarEvents) db.academicCalendarEvents = [];
+  const initialLen = db.academicCalendarEvents.length;
+  db.academicCalendarEvents = db.academicCalendarEvents.filter(e => e.id !== id);
+  if (db.academicCalendarEvents.length === initialLen) {
+    return res.status(404).json({ error: 'Calendar event not found.' });
+  }
+  if (db.publishedCalendarEvents) {
+    db.publishedCalendarEvents = db.publishedCalendarEvents.filter(eventId => eventId !== id);
+  }
+  writeDb(db);
+  res.json({ message: 'Calendar event deleted successfully.' });
+};
+
+export const getCalendarImports = (req, res) => {
+  const db = readDb();
+  res.json(db.academicCalendarImports || []);
+};
+
+export const uploadCalendarFile = (req, res) => {
+  if (!req.file) {
+    return res.status(400).json({ error: 'No file uploaded.' });
+  }
+
+  try {
+    const workbook = XLSX.read(req.file.buffer, { type: 'buffer' });
+    const sheetName = workbook.SheetNames[0];
+    const rawRows = XLSX.utils.sheet_to_json(workbook.Sheets[sheetName], { raw: false, defval: '' });
+
+    if (rawRows.length === 0) {
+      return res.status(400).json({ error: 'The uploaded file contains no data.' });
+    }
+
+    const validatedRows = rawRows.map((row, index) => {
+      const rowNum = index + 2;
+      const errors = [];
+      
+      const getVal = (possibleKeys) => {
+        for (const key of Object.keys(row)) {
+          const cleanKey = key.trim().toLowerCase().replace(/\s+/g, '');
+          if (possibleKeys.includes(cleanKey)) {
+            return String(row[key]).trim();
+          }
+        }
+        return '';
+      };
+
+      const rawDate = getVal(['date']);
+      const title = getVal(['eventtitle', 'title']);
+      const eventType = getVal(['eventtype', 'type']);
+      const description = getVal(['description', 'desc']);
+      const applicableClasses = getVal(['applicableclasses', 'classes']);
+      const startTime = getVal(['starttime']);
+      const endTime = getVal(['endtime']);
+      const session = getVal(['academicsession', 'session']);
+
+      if (!title) {
+        errors.push('Event Title is required.');
+      }
+      if (!eventType) {
+        errors.push('Event Type is required.');
+      }
+      if (!rawDate) {
+        errors.push('Date is required.');
+      } else if (!isValidDateString(rawDate)) {
+        errors.push(`Invalid Date format: "${rawDate}". Use YYYY-MM-DD or DD/MM/YYYY.`);
+      }
+      if (!session) {
+        errors.push('Academic Session is required.');
+      } else if (!isValidSessionString(session)) {
+        errors.push(`Invalid Academic Session format: "${session}". Use YYYY-YY or YYYY-YYYY.`);
+      }
+
+      const normalizedDate = rawDate && isValidDateString(rawDate) ? normalizeDateString(rawDate) : rawDate;
+
+      return {
+        rowNumber: rowNum,
+        isValid: errors.length === 0,
+        errors,
+        data: {
+          eventDate: normalizedDate,
+          title,
+          eventType,
+          description,
+          applicableClasses: applicableClasses || 'All',
+          startTime,
+          endTime,
+          session
+        }
+      };
+    });
+
+    const totalRecords = validatedRows.length;
+    const invalidRecords = validatedRows.filter(r => !r.isValid).length;
+
+    res.json({
+      fileName: req.file.originalname,
+      totalRecords,
+      invalidRecords,
+      rows: validatedRows
+    });
+  } catch (err) {
+    console.error('[Upload Parse Error]', err);
+    res.status(500).json({ error: 'Failed to process file. Ensure it is a valid CSV or Excel file.' });
+  }
+};
+
+export const confirmCalendarImport = (req, res) => {
+  const { fileName, session, events } = req.body;
+  if (!Array.isArray(events) || events.length === 0) {
+    return res.status(400).json({ error: 'No events provided for import.' });
+  }
+
+  const db = readDb();
+  if (!db.academicCalendarEvents) db.academicCalendarEvents = [];
+  if (!db.academicCalendarImports) db.academicCalendarImports = [];
+
+  const importedEvents = events.map(evt => ({
+    id: `EVTCAL-${Date.now()}-${Math.random().toString(36).substr(2, 4)}`,
+    eventDate: evt.eventDate,
+    title: evt.title,
+    eventType: evt.eventType,
+    description: evt.description || '',
+    applicableClasses: evt.applicableClasses || 'All',
+    startTime: evt.startTime || '',
+    endTime: evt.endTime || '',
+    session: evt.session,
+    createdAt: new Date().toISOString(),
+    updatedAt: new Date().toISOString()
+  }));
+
+  db.academicCalendarEvents.push(...importedEvents);
+
+  const newImport = {
+    id: `IMP-${Date.now()}`,
+    fileName: fileName || 'Uploaded_File',
+    importDate: new Date().toISOString(),
+    importedBy: 'School Admin',
+    totalRecords: importedEvents.length,
+    session: session || importedEvents[0].session || '2026-27'
+  };
+  db.academicCalendarImports.push(newImport);
+
+  addActivity(db, 'alert', 'Academic Calendar Imported', `Imported ${importedEvents.length} events from ${newImport.fileName}`, 'hsl(var(--color-primary))', 'rgba(hsl(var(--color-primary)), 0.1)');
+  
+  writeDb(db);
+  res.status(201).json({ message: 'Import confirmed successfully.', totalRecords: importedEvents.length });
+};
+
+export const downloadCalendarTemplate = (req, res) => {
+  const headers = ['Date', 'Event Title', 'Event Type', 'Description', 'Applicable Classes', 'Start Time', 'End Time', 'Academic Session'];
+  const sampleRow = ['2026-07-15', 'Annual Sports Meet', 'Sports Event', 'Annual track and field championship events', 'All', '09:00 AM', '04:00 PM', '2026-27'];
+  const sampleRow2 = ['2026-08-10', 'Mid-Term Examinations', 'Examination', 'First semester written tests', 'Grade I, Grade II, Grade III', '10:00 AM', '01:00 PM', '2026-27'];
+  const sampleRow3 = ['2026-09-05', 'Teacher Appreciation Holiday', 'Holiday', 'National teachers day celebration recess', 'All', '', '', '2026-27'];
+  
+  const csvContent = [
+    headers.join(','),
+    sampleRow.map(v => `"${v.replace(/"/g, '""')}"`).join(','),
+    sampleRow2.map(v => `"${v.replace(/"/g, '""')}"`).join(','),
+    sampleRow3.map(v => `"${v.replace(/"/g, '""')}"`).join(',')
+  ].join('\n');
+
+  res.setHeader('Content-Type', 'text/csv');
+  res.setHeader('Content-Disposition', 'attachment; filename=Academic_Calendar_Template.csv');
+  res.status(200).send(csvContent);
+};
+
+export const getPublishedEvents = (req, res) => {
+  const db = readDb();
+  res.json(db.publishedCalendarEvents || []);
+};
+
+export const publishEvent = (req, res) => {
+  const { eventId } = req.body;
+  if (!eventId) return res.status(400).json({ error: 'eventId is required' });
+  const db = readDb();
+  if (!db.publishedCalendarEvents) db.publishedCalendarEvents = [];
+  if (!db.publishedCalendarEvents.includes(eventId)) {
+    db.publishedCalendarEvents.push(eventId);
+  }
+  writeDb(db);
+  res.json({ message: 'Event published successfully', publishedEvents: db.publishedCalendarEvents });
+};
+
+export const unpublishEvent = (req, res) => {
+  const { eventId } = req.body;
+  if (!eventId) return res.status(400).json({ error: 'eventId is required' });
+  const db = readDb();
+  if (!db.publishedCalendarEvents) db.publishedCalendarEvents = [];
+  db.publishedCalendarEvents = db.publishedCalendarEvents.filter(id => id !== eventId);
+  writeDb(db);
+  res.json({ message: 'Event unpublished successfully', publishedEvents: db.publishedCalendarEvents });
+};
+
 
 
 

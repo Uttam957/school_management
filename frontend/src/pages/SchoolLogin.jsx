@@ -2,8 +2,8 @@ import React, { useState, useEffect } from 'react';
 import { Shield, Mail, Lock, Eye, EyeOff, AlertCircle, School, ChevronRight, UserCheck } from 'lucide-react';
 
 export default function SchoolLogin({ tenantSubdomain, onLoginSuccess }) {
-  const [username, setUsername] = useState(tenantSubdomain ? '' : 'uttam306115@gmail.com');
-  const [password, setPassword] = useState(tenantSubdomain ? '' : 'uttam@2004');
+  const [username, setUsername] = useState('');
+  const [password, setPassword] = useState('');
   const role = tenantSubdomain ? 'Auto' : 'Developer Admin';
   const [showPassword, setShowPassword] = useState(false);
   const [error, setError] = useState('');
@@ -178,7 +178,7 @@ export default function SchoolLogin({ tenantSubdomain, onLoginSuccess }) {
               <input
                 type="text"
                 className="form-control"
-                placeholder={tenantSubdomain ? "e.g. school_admin or teacher_user" : "uttam306115@gmail.com"}
+                placeholder={tenantSubdomain ? "e.g. school_admin or teacher_user" : "dev@admin.com"}
                 value={username}
                 onChange={(e) => setUsername(e.target.value)}
                 required

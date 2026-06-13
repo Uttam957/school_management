@@ -32,7 +32,7 @@ window.fetch = function (url, options = {}) {
       let tenant = null;
       if (!isIp) {
         const parts = host.split('.');
-        if (parts.length > 2 || (parts.length === 2 && !parts[1].startsWith('localhost'))) {
+        if (parts.length > 2 || (parts.length === 2 && parts[1] === 'localhost')) {
           tenant = parts[0];
         }
       }
@@ -97,7 +97,7 @@ export default function App() {
   const getActiveTenant = () => {
     const host = window.location.hostname;
     const parts = host.split('.');
-    if (parts.length > 2 || (parts.length === 2 && !parts[1].startsWith('localhost'))) {
+    if (parts.length > 2 || (parts.length === 2 && parts[1] === 'localhost')) {
       return parts[0];
     }
     const urlParams = new URLSearchParams(window.location.search);
@@ -209,16 +209,23 @@ export default function App() {
     if (!initialised.current) return;
     
     const tenant = getActiveTenant();
-    const query = tenant ? `?tenant=${tenant}` : '';
+    const host = window.location.hostname;
+    const parts = host.split('.');
+    const isSubdomainResolved = parts.length > 2 || (parts.length === 2 && parts[1] === 'localhost');
+    const query = (tenant && !isSubdomainResolved) ? `?tenant=${tenant}` : '';
 
-    if (isDeveloperAdmin) {
+    const isLoggedIn = isDeveloperAdmin || isAdmin || isSchoolAdmin;
+
+    if (!isLoggedIn) {
+      window.history.pushState(null, '', `/${query}`);
+    } else if (isDeveloperAdmin) {
       window.history.pushState(null, '', `/school${query}`);
     } else if (isAdmin) {
       window.history.pushState(null, '', `/admin${query}`);
     } else {
       window.history.pushState(null, '', `/${activeView}${query}`);
     }
-  }, [activeView, isDeveloperAdmin, isAdmin]);
+  }, [activeView, isDeveloperAdmin, isAdmin, isSchoolAdmin]);
 
   // URL Auto-login Hook
   useEffect(() => {
@@ -269,8 +276,11 @@ export default function App() {
               localStorage.setItem('tenant_subdomain', data.school.subdomain);
             }
 
-            // Remove username/password query params but keep the tenant
-            const cleanUrl = window.location.pathname + `?tenant=${tenantParam}`;
+            // Remove username/password query params but keep the tenant (only if not resolved from subdomain)
+            const host = window.location.hostname;
+            const parts = host.split('.');
+            const isSubdomainResolved = parts.length > 2 || (parts.length === 2 && parts[1] === 'localhost');
+            const cleanUrl = window.location.pathname + (isSubdomainResolved ? '' : `?tenant=${tenantParam}`);
             window.history.replaceState(null, '', cleanUrl);
 
             handleLoginSuccess(data.role, data.name);
@@ -317,7 +327,10 @@ export default function App() {
     
     // Clear path on logout
     const tenant = getActiveTenant();
-    const query = tenant ? `?tenant=${tenant}` : '';
+    const host = window.location.hostname;
+    const parts = host.split('.');
+    const isSubdomainResolved = parts.length > 2 || (parts.length === 2 && parts[1] === 'localhost');
+    const query = (tenant && !isSubdomainResolved) ? `?tenant=${tenant}` : '';
     window.history.pushState(null, '', `/${query}`);
   };
 
@@ -329,7 +342,7 @@ export default function App() {
     sessionStorage.setItem('portal_role', 'Main Admin');
 
     const tenant = getActiveTenant();
-    const query = tenant ? `?tenant=${tenant}` : '';
+    const query = (tenant && !isSubdomainResolved) ? `?tenant=${tenant}` : '';
     window.history.pushState(null, '', `/students${query}`);
   };
 
@@ -349,6 +362,7 @@ export default function App() {
         return <RegisterStudent setActiveView={setActiveView} />;
       case 'add-teacher':
         return <AddTeacher setActiveView={setActiveView} />;
+      case 'teachers':
       case 'teacher-list':
         return <TeacherList setActiveView={setActiveView} readOnly={true} onAddClick={() => setActiveView('add-teacher')} />;
       case 'add-staff':
@@ -386,7 +400,7 @@ export default function App() {
     const host = window.location.hostname;
     const parts = host.split('.');
     let loginTenant = null;
-    if (parts.length > 2 || (parts.length === 2 && !parts[1].startsWith('localhost'))) {
+    if (parts.length > 2 || (parts.length === 2 && parts[1] === 'localhost')) {
       loginTenant = parts[0];
     } else {
       const urlParams = new URLSearchParams(window.location.search);

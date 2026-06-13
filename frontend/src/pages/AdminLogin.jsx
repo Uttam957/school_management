@@ -14,7 +14,7 @@ export default function AdminLogin({ onLogin, onCancel }) {
     setLoading(true);
 
     setTimeout(() => {
-      if (email === 'uttam306115@gmail.com' && password === 'uttam@2004') {
+      if (email === 'dev@admin.com' && password === 'admin123') {
         onLogin();
       } else {
         setError('Invalid email or password. Please try again.');

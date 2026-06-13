@@ -28,16 +28,27 @@ import {
   Zap,
   ChevronDown,
   GripVertical,
-  Download
+  Download,
+  Upload,
+  X
 } from 'lucide-react';
 import ResultManagementPanel from './ResultManagementPanel';
 import EXAM_TYPES from '../utils/examTypes';
-import { getGradesWithSubjects, getGradeOptions, GRADE_ORDER } from '../utils/grades';
+import { getGradesWithSubjects, getGradeOptions, GRADE_ORDER, fetchActiveGrades } from '../utils/grades';
 
 
 export default function AcademicPanel({ subView, setAdminView }) {
   // Master API states
   const [timetables, setTimetables] = useState([]);
+  const [activeGrades, setActiveGrades] = useState([]);
+
+  useEffect(() => {
+    const loadGrades = async () => {
+      const grades = await fetchActiveGrades();
+      setActiveGrades(grades);
+    };
+    loadGrades();
+  }, []);
   const [teacherTimetables, setTeacherTimetables] = useState([]);
   const [exams, setExams] = useState([]);
   const [examTimetables, setExamTimetables] = useState([]);
@@ -162,6 +173,34 @@ export default function AcademicPanel({ subView, setAdminView }) {
   // Results Entry state: maps studentId -> obtainedMarks
   const [resultsEntry, setResultsEntry] = useState({});
 
+  // Academic Calendar Management System State
+  const [calendarEvents, setCalendarEvents] = useState([]);
+  const [calendarImports, setCalendarImports] = useState([]);
+  const [calendarSession, setCalendarSession] = useState('2026-27');
+  const [calendarViewMode, setCalendarViewMode] = useState('month'); // month, week, list
+  const [calendarSearchQuery, setCalendarSearchQuery] = useState('');
+  const [calendarTypeFilter, setCalendarTypeFilter] = useState('All');
+  const [calendarStartDateFilter, setCalendarStartDateFilter] = useState('');
+  const [calendarEndDateFilter, setCalendarEndDateFilter] = useState('');
+  const [showUploadModal, setShowUploadModal] = useState(false);
+  const [uploadPreviewRows, setUploadPreviewRows] = useState([]);
+  const [uploadFileName, setUploadFileName] = useState('');
+  const [uploading, setUploading] = useState(false);
+  const [uploadSession, setUploadSession] = useState('2026-27');
+  const [showImportHistoryModal, setShowImportHistoryModal] = useState(false);
+  const [showCalendarEventModal, setShowCalendarEventModal] = useState(false);
+  const [editingCalendarEventId, setEditingCalendarEventId] = useState(null);
+  const [publishedEventIds, setPublishedEventIds] = useState([]);
+  const [modalType, setModalType] = useState('');
+  const [calendarEventForm, setCalendarEventForm] = useState({
+    title: '', eventType: 'Holiday', eventDate: '', startTime: '', endTime: '', description: '', applicableClasses: 'All', session: '2026-27'
+  });
+  const [weekAnchor, setWeekAnchor] = useState(new Date());
+  const calendarEventTypes = [
+    'Holiday', 'Examination', 'Result Declaration', 'Sports Event', 'Cultural Event', 
+    'Workshop', 'Parent-Staff Meeting', 'Vacation', 'Admissions Activity', 'Other Important School Event'
+  ];
+
   const showToast = (message, type = 'success') => {
     setNotification({ message, type });
     setTimeout(() => setNotification(null), 4000);
@@ -269,7 +308,10 @@ export default function AcademicPanel({ subView, setAdminView }) {
         { url: '/api/academics/subjects', setter: setSubjects },
         { url: '/api/students?limit=10000', setter: (data) => setStudents(data.students || []) },
         { url: '/api/teachers?limit=10000', setter: (data) => setTeachers(data.teachers || []) },
-        { url: '/api/academics/grades-sections', setter: (data) => setAvailableGradeSections(data.gradeSectionPairs || []) }
+        { url: '/api/academics/grades-sections', setter: (data) => setAvailableGradeSections(data.gradeSectionPairs || []) },
+        { url: '/api/academics/calendar-events', setter: setCalendarEvents },
+        { url: '/api/academics/calendar-imports', setter: setCalendarImports },
+        { url: '/api/academics/calendar/published', setter: setPublishedEventIds }
       ];
 
       await Promise.all(
@@ -1009,6 +1051,10 @@ export default function AcademicPanel({ subView, setAdminView }) {
     WinPrint.focus();
   };
 
+  const handlePrintCalendar = () => {
+    handlePrint('printable-calendar-view');
+  };
+
   const handleExportTimetable = (cohort, format, schedules, examName) => {
     const cohortSchedules = schedules.filter(s => s.cohort === cohort);
     if (cohortSchedules.length === 0) {
@@ -1358,10 +1404,10 @@ export default function AcademicPanel({ subView, setAdminView }) {
   // SUB-VIEW RENDERERS
   // =============================================
   const renderGradeSubjects = () => {
-    const gradesList = GRADE_ORDER;
+    const gradesList = activeGrades.map(g => g.name);
     
     // Find grades that have subjects configured
-    const activeGrades = gradesList.filter(g => subjects.some(s => s.grade === g));
+    const activeGradesWithSubjects = gradesList.filter(g => subjects.some(s => s.grade === g));
 
     return (
       <div style={{ display: 'flex', flexDirection: 'column', gap: '32px' }}>
@@ -1414,14 +1460,14 @@ export default function AcademicPanel({ subView, setAdminView }) {
         </div>
 
         {/* Dynamic Grade Cards Section (Show only when subjects exist for some grades) */}
-        {activeGrades.length > 0 && (
+        {activeGradesWithSubjects.length > 0 && (
           <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
             <h4 style={{ fontSize: '0.95rem', fontWeight: 800, color: 'var(--text-main)', margin: 0 }}>
               Configured Grade Subjects
             </h4>
             
             <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(280px, 1fr))', gap: '20px' }}>
-              {activeGrades.map((g, idx) => {
+              {activeGradesWithSubjects.map((g, idx) => {
                 const gradeSubjects = subjects.filter(s => s.grade === g);
                 const gradients = [
                   'linear-gradient(135deg, #6366f1 0%, #4f46e5 100%)',
@@ -1862,13 +1908,13 @@ export default function AcademicPanel({ subView, setAdminView }) {
                 <Calendar size={20} />
               </div>
               <div>
-                <h4 style={{ fontSize: '0.95rem', fontWeight: 800, margin: 0 }}>Configure Teacher Schedule</h4>
+                <h4 style={{ fontSize: '0.95rem', fontWeight: 800, margin: 0 }}>Configure Staff Schedule</h4>
                 <p style={{ fontSize: '0.75rem', color: 'var(--text-muted)', margin: 0 }}>Setup the weekly matrix for a faculty member.</p>
               </div>
             </div>
             <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
               <div className="form-group" style={{ margin: 0 }}>
-                <label style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>Select Teacher</label>
+                <label style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>Select Staff</label>
                 <select 
                   className="select-custom" 
                   value={activeTeacher} 
@@ -1902,13 +1948,13 @@ export default function AcademicPanel({ subView, setAdminView }) {
         <div className="glass-panel" style={{ padding: '16px 20px', display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '16px' }}>
           <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
             <Search size={18} style={{ color: 'var(--text-muted)' }} />
-            <h4 style={{ fontSize: '0.9rem', fontWeight: 800, margin: 0, color: 'var(--text-main)' }}>Search Faculty Timetables</h4>
+               <h4 style={{ fontSize: '0.9rem', fontWeight: 800, margin: 0, color: 'var(--text-main)' }}>Search Staff Timetables</h4>
           </div>
           <div style={{ display: 'flex', gap: '12px', flexWrap: 'wrap', alignItems: 'center' }}>
             <input 
               type="text" 
               className="form-control" 
-              placeholder="Search teacher by name..." 
+              placeholder="Search staff by name..." 
               value={teacherSearchQuery}
               onChange={(e) => setTeacherSearchQuery(e.target.value)}
               style={{ width: '250px', padding: '6px 12px', borderRadius: '8px', fontSize: '0.82rem', background: 'var(--bg-glass-active)', border: '1px solid var(--border-glass)', color: 'var(--text-main)' }}
@@ -1946,7 +1992,7 @@ export default function AcademicPanel({ subView, setAdminView }) {
                     <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', borderBottom: '1px solid var(--border-glass)', paddingBottom: '12px' }}>
                       <div>
                         <h3 style={{ fontSize: '1.15rem', fontWeight: 800, margin: 0 }}>
-                          Teacher Timetable: <span style={{ color: 'hsl(var(--color-info))' }}>{tName}</span> <span style={{ fontSize: '0.85rem', color: 'var(--text-muted)', fontWeight: 500 }}>({deptStr})</span>
+                          Staff Timetable: <span style={{ color: 'hsl(var(--color-info))' }}>{tName}</span> <span style={{ fontSize: '0.85rem', color: 'var(--text-muted)', fontWeight: 500 }}>({deptStr})</span>
                         </h3>
                         <p style={{ fontSize: '0.8rem', color: 'var(--text-muted)', margin: '2px 0 0 0' }}>
                           Weekly matrix layout mapping classroom workloads for {tName}.
@@ -2042,7 +2088,7 @@ export default function AcademicPanel({ subView, setAdminView }) {
               })
             ) : (
               <div className="glass-panel" style={{ padding: '40px', textAlign: 'center', color: 'var(--text-muted)' }}>
-                No teacher timetables scheduled yet. Use the card above to set up a schedule for a teacher.
+                No staff timetables scheduled yet. Use the card above to set up a schedule for a staff member.
               </div>
             );
           })()}
@@ -2147,20 +2193,33 @@ export default function AcademicPanel({ subView, setAdminView }) {
         {/* Exam Cards */}
         {filteredExams.length > 0 ? (
           <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(360px, 1fr))', gap: '20px' }}>
-            {filteredExams.map(ex => {
+            {filteredExams.flatMap(ex => {
               const gsList = ex.gradeSections || [];
-              const earliestStart = gsList.length > 0 ? gsList.map(g => g.startDate).filter(Boolean).sort()[0] : '';
-              const totalSubjects = ex.scheduleCount || 0;
+              if (gsList.length === 0) return [{ ex, gs: null }];
+              return gsList.map(gs => ({ ex, gs }));
+            }).map(({ ex, gs }) => {
+              const earliestStart = gs ? gs.startDate : '';
+              const endDate = gs ? gs.endDate : ex.endDate;
+              
+              // Compute subjects specifically for this grade
+              const gradeSubs = gs ? subjects.filter(sub => sub.grade === gs.grade).map(sub => sub.subjectName) : [];
+              const uniqueGradeSubs = [...new Set(gradeSubs)];
+              const cohortSubjects = uniqueGradeSubs.filter(sub => {
+                const subKey = `${gs.grade}-${sub}`;
+                return ex.subjectIncluded ? ex.subjectIncluded[subKey] !== false : true;
+              });
+              const totalSubjects = gs ? cohortSubjects.length : (ex.scheduleCount || 0);
+
               const statusColors = { Draft: { bg: 'rgba(107,114,128,0.08)', color: '#6b7280', border: '1px solid rgba(107,114,128,0.15)' }, Scheduled: { bg: 'rgba(99,102,241,0.08)', color: 'hsl(var(--color-primary))', border: '1px solid rgba(99,102,241,0.15)' }, Published: { bg: 'rgba(16,185,129,0.08)', color: '#10b981', border: '1px solid rgba(16,185,129,0.15)' }, Completed: { bg: 'rgba(59,130,246,0.08)', color: '#3b82f6', border: '1px solid rgba(59,130,246,0.15)' } };
               const sc = statusColors[ex.status] || statusColors.Draft;
 
               const handleEditExam = (examObj) => {
                 const startDates = {};
                 const endDates = {};
-                (examObj.gradeSections || []).forEach(gs => {
-                  const key = `${gs.grade}-${gs.section}`;
-                  startDates[key] = gs.startDate;
-                  endDates[key] = gs.endDate || '';
+                (examObj.gradeSections || []).forEach(gsItem => {
+                  const key = `${gsItem.grade}-${gsItem.section}`;
+                  startDates[key] = gsItem.startDate;
+                  endDates[key] = gsItem.endDate || '';
                 });
 
                 setWizardForm({
@@ -2171,7 +2230,7 @@ export default function AcademicPanel({ subView, setAdminView }) {
                   academicSession: examObj.academicSession,
                   description: examObj.description || '',
                   totalMarks: examObj.totalMarks || 100,
-                  selectedGrades: (examObj.gradeSections || []).map(gs => ({ grade: gs.grade, section: gs.section })),
+                  selectedGrades: (examObj.gradeSections || []).map(gsItem => ({ grade: gsItem.grade, section: gsItem.section })),
                   startDates,
                   endDates,
                   subjectMarks: examObj.subjectMarks || {},
@@ -2184,7 +2243,7 @@ export default function AcademicPanel({ subView, setAdminView }) {
 
               return (
                 <div 
-                  key={ex.id} 
+                  key={`${ex.id}-${gs ? `${gs.grade}-${gs.section || ''}` : 'none'}`}
                   className="glass-panel" 
                   style={{ 
                     padding: '0', 
@@ -2199,7 +2258,7 @@ export default function AcademicPanel({ subView, setAdminView }) {
                   <div style={{ padding: '20px 20px 16px', borderBottom: '1px solid var(--border-glass)', display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
                     <div>
                       <div style={{ fontSize: '0.75rem', fontWeight: 700, color: 'hsl(var(--color-primary))', textTransform: 'uppercase', letterSpacing: '0.5px', marginBottom: '4px' }}>
-                        {gsList.length > 0 ? gsList.map(gs => gs.section ? `Grade - ${gs.grade}-${gs.section}` : `Grade - ${gs.grade}`).join(', ') : 'No Grades'}
+                        {gs ? (gs.section ? `Grade - ${gs.grade}-${gs.section}` : `Grade - ${gs.grade}`) : 'No Grades'}
                         {ex.academicSession && ` · Session ${ex.academicSession}`}
                       </div>
                       <h3 style={{ fontSize: '1.05rem', fontWeight: 800, margin: 0, color: 'var(--text-main)' }}>{ex.examName}</h3>
@@ -2220,7 +2279,7 @@ export default function AcademicPanel({ subView, setAdminView }) {
                       <div style={{ color: 'var(--text-muted)' }}>Start Date</div>
                       <div style={{ fontWeight: 600, textAlign: 'right' }}>{earliestStart || '-'}</div>
                       <div style={{ color: 'var(--text-muted)' }}>End Date</div>
-                      <div style={{ fontWeight: 600, textAlign: 'right' }}>{ex.endDate || 'Not scheduled'}</div>
+                      <div style={{ fontWeight: 600, textAlign: 'right' }}>{endDate || 'Not scheduled'}</div>
                     </div>
 
                     {/* Subjects and corresponding marks */}
@@ -2229,7 +2288,7 @@ export default function AcademicPanel({ subView, setAdminView }) {
                       <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
                         {(() => {
                           const list = [];
-                          gsList.forEach(gs => {
+                          if (gs) {
                             const gradeSubs = subjects.filter(sub => sub.grade === gs.grade).map(sub => sub.subjectName);
                             const uniqueGradeSubs = [...new Set(gradeSubs)];
                             uniqueGradeSubs.forEach(sub => {
@@ -2240,7 +2299,7 @@ export default function AcademicPanel({ subView, setAdminView }) {
                                 list.push({ grade: gs.grade, section: gs.section, subject: sub, marks });
                               }
                             });
-                          });
+                          }
                           if (list.length === 0) {
                             return <div style={{ fontSize: '0.78rem', color: 'var(--text-muted)', fontStyle: 'italic' }}>No subjects added</div>;
                           }
@@ -2310,7 +2369,12 @@ export default function AcademicPanel({ subView, setAdminView }) {
                       <Edit3 size={13} /> Edit
                     </button>
                     <button 
-                      onClick={(e) => { e.stopPropagation(); handleDelete(ex.id); }} 
+                      onClick={async (e) => { 
+                        e.stopPropagation(); 
+                        if (window.confirm('Are you sure you want to delete this exam configuration? This will permanently delete the exam, all its timetable schedules, and all related results.')) {
+                          await deleteExamConfig(ex.id);
+                        }
+                      }} 
                       className="btn-secondary" 
                       style={{ padding: '6px 10px', fontSize: '0.72rem', borderRadius: '8px', display: 'flex', alignItems: 'center', gap: '4px', border: '1px solid rgba(239,68,68,0.3)', color: '#ef4444' }}
                     >
@@ -2792,135 +2856,134 @@ export default function AcademicPanel({ subView, setAdminView }) {
           </div>
         </div>
 
-        {examsWithSchedules.length > 0 ? (
-          examsWithSchedules.map(ex => {
+        {(() => {
+          const flatSchedules = [];
+          examsWithSchedules.forEach(ex => {
             const examSchedules = examTimetables.filter(et => et.examId === ex.id);
-            const examGradeSections = ex.gradeSections || [];
-            const earliestStart = examGradeSections.length > 0 ? examGradeSections.map(g => g.startDate).filter(Boolean).sort()[0] : '';
             const examCohorts = [...new Set(examSchedules.map(s => s.cohort).filter(Boolean))].sort();
+            examCohorts.forEach(cohort => {
+              flatSchedules.push({ ex, cohort, examSchedules });
+            });
+          });
 
+          if (flatSchedules.length === 0) {
             return (
-              <div key={ex.id} className="glass-panel" style={{ padding: '24px', marginBottom: '24px' }}>
-                <div>
-                  <div style={{ borderBottom: '2px solid var(--border-glass)', paddingBottom: '16px', marginBottom: '20px', display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '12px' }}>
-                    <div>
-                      <h2 style={{ fontSize: '1.2rem', fontWeight: 800, margin: 0 }}>{ex.examName}</h2>
-                      <div style={{ display: 'flex', gap: '20px', fontSize: '0.82rem', color: 'var(--text-muted)', marginTop: '6px' }}>
-                        <span>Type: <strong>{ex.examType}</strong></span>
-                        <span>Session: <strong>{ex.academicSession || '-'}</strong></span>
-                        {earliestStart && <span>Starts: <strong>{formatDate(earliestStart)}</strong></span>}
-                        {ex.endDate && <span>Ends: <strong>{formatDate(ex.endDate)}</strong></span>}
-                        <span>Total Marks: <strong>{ex.totalMarks || '-'}</strong></span>
-                      </div>
-                    </div>
-                    {ex.timetablePublished ? (
-                      <span style={{ fontSize: '0.8rem', fontWeight: 700, color: '#10b981', display: 'flex', alignItems: 'center', gap: '4px', background: 'rgba(16,185,129,0.08)', padding: '4px 12px', borderRadius: '12px', border: '1px solid rgba(16,185,129,0.15)' }}>
-                        <CheckCircle size={14} /> Published
-                      </span>
-                    ) : (
-                      <button
-                        onClick={async () => {
-                          try {
-                            const res = await fetch(`/api/academics/exams/${ex.id}`, {
-                              method: 'PUT',
-                              headers: { 'Content-Type': 'application/json' },
-                              body: JSON.stringify({ timetablePublished: true })
-                            });
-                            if (res.ok) {
-                              showToast('Exam timetable published successfully!', 'success');
-                              fetchAllData();
-                            } else {
-                              const data = await res.json();
-                              showToast(data.error || 'Failed to publish timetable.', 'error');
-                            }
-                          } catch (err) {
-                            showToast('Network error.', 'error');
-                          }
-                        }}
-                        className="btn-primary"
-                        style={{ padding: '6px 12px', fontSize: '0.75rem', borderRadius: '8px', display: 'flex', alignItems: 'center', gap: '6px', background: 'linear-gradient(135deg, #10b981 0%, #059669 100%)', border: 'none', color: '#fff' }}
-                      >
-                        <Send size={12} /> Publish Timetable
-                      </button>
-                    )}
-                  </div>
-
-                  {examSchedules.length > 0 ? (
-                    <div style={{ display: 'flex', flexDirection: 'column', gap: '24px' }}>
-                      {examCohorts.map(cohort => {
-                        const cohortSchedules = examSchedules.filter(s => s.cohort === cohort);
-                        const [grade, section] = cohort.split('-');
-                        return (
-                          <div key={cohort} id={`printable-exam-timetable-${cohort}`} style={{ display: 'flex', flexDirection: 'column', gap: '16px', background: 'var(--bg-glass-active)', border: '1px solid var(--border-glass)', padding: '20px', borderRadius: '12px' }}>
-                            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', borderBottom: '1px solid var(--border-glass)', paddingBottom: '10px' }}>
-                              <h4 style={{ fontSize: '0.95rem', fontWeight: 700, margin: 0, color: 'hsl(var(--color-primary))' }}>
-                                Grade {grade}{section ? ` - Section ${section}` : ''}
-                              </h4>
-                              <div style={{ display: 'flex', gap: '8px', alignItems: 'center' }} className="no-print">
-                                <button 
-                                  className="btn-secondary" 
-                                  onClick={() => handleOpenManualScheduler(grade, section, ex.id)} 
-                                  style={{ padding: '4px 10px', fontSize: '0.75rem', borderRadius: '6px', display: 'flex', alignItems: 'center', gap: '4px', border: '1px solid var(--border-glass)' }}
-                                >
-                                  <Edit3 size={12} /> Edit
-                                </button>
-                                <button 
-                                  className="btn-secondary" 
-                                  onClick={() => handleDeleteCohortTimetable(ex.id, cohort)} 
-                                  style={{ padding: '4px 10px', fontSize: '0.75rem', borderRadius: '6px', display: 'flex', alignItems: 'center', gap: '4px', border: '1px solid var(--border-glass)', borderColor: 'rgb(var(--color-danger-rgb))', color: 'rgb(var(--color-danger-rgb))' }}
-                                >
-                                  <Trash2 size={12} /> Delete
-                                </button>
-                                <button 
-                                  className="btn-secondary" 
-                                  onClick={() => handleExportTimetable(cohort, 'pdf', examSchedules, ex.examName)} 
-                                  style={{ padding: '4px 10px', fontSize: '0.75rem', borderRadius: '6px', display: 'flex', alignItems: 'center', gap: '4px', border: '1px solid var(--border-glass)' }}
-                                >
-                                  <Download size={12} /> Export PDF
-                                </button>
-                              </div>
-                            </div>
-                            <table className="table-custom" style={{ width: '100%', borderCollapse: 'collapse', marginTop: '10px' }}>
-                              <thead>
-                                <tr>
-                                  <th style={{ textAlign: 'left', padding: '12px 16px' }}>Subject</th>
-                                  <th style={{ textAlign: 'left', padding: '12px 16px' }}>Exam Date</th>
-                                  <th style={{ textAlign: 'left', padding: '12px 16px' }}>Time Slot</th>
-                                </tr>
-                              </thead>
-                              <tbody>
-                                {cohortSchedules.map(slot => (
-                                  <tr key={slot.id} style={{ borderBottom: '1px solid var(--border-glass)' }}>
-                                    <td style={{ fontWeight: 700, textAlign: 'left', padding: '12px 16px' }}>{slot.subject}</td>
-                                    <td style={{ textAlign: 'left', padding: '12px 16px' }}>{formatDate(slot.examDate)}</td>
-                                    <td style={{ textAlign: 'left', padding: '12px 16px' }}>
-                                      {slot.startTime && slot.endTime ? `${slot.startTime} - ${slot.endTime}` : (slot.timeSlot || slot.duration || '-')}
-                                    </td>
-                                  </tr>
-                                ))}
-                              </tbody>
-                            </table>
-                          </div>
-                        );
-                      })}
-                    </div>
-                  ) : (
-                    <div style={{ padding: '60px 40px', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', color: 'var(--text-muted)', gap: '16px', textAlign: 'center' }}>
-                      <Calendar size={40} style={{ opacity: 0.3 }} />
-                      <span style={{ fontWeight: 600 }}>No schedule created yet</span>
-                      <p style={{ fontSize: '0.85rem', margin: 0 }}>Select the Grade and Section above, then click "Create Timetable" to configure slots manually.</p>
-                    </div>
-                  )}
-                </div>
+              <div className="glass-panel" style={{ padding: '60px 40px', textAlign: 'center', color: 'var(--text-muted)' }}>
+                <Calendar size={40} style={{ opacity: 0.3 }} />
+                <p style={{ fontWeight: 600, marginTop: '12px' }}>No active exam schedules found</p>
               </div>
             );
-          })
-        ) : (
-          <div className="glass-panel" style={{ padding: '60px 40px', textAlign: 'center', color: 'var(--text-muted)' }}>
-            <Calendar size={40} style={{ opacity: 0.3 }} />
-            <p style={{ fontWeight: 600, marginTop: '12px' }}>No active exam schedules found</p>
-          </div>
-        )}
+          }
+
+          return flatSchedules.map(({ ex, cohort, examSchedules }) => {
+            const cohortSchedules = examSchedules.filter(s => s.cohort === cohort);
+            const [grade, section] = cohort.split('-');
+            const gsObj = (ex.gradeSections || []).find(gs => gs.grade === grade && (gs.section === section || (!gs.section && !section)));
+            const earliestStart = gsObj ? gsObj.startDate : '';
+            const endDate = gsObj ? gsObj.endDate : ex.endDate;
+
+            return (
+              <div key={`${ex.id}-${cohort}`} id={`printable-exam-timetable-${cohort}`} className="glass-panel animate-scale-up" style={{ padding: '24px', marginBottom: '24px' }}>
+                <div style={{ borderBottom: '2px solid var(--border-glass)', paddingBottom: '16px', marginBottom: '20px', display: 'flex', flexDirection: 'column', gap: '12px' }}>
+                  {/* Top Row: Title on Left, Actions on Right */}
+                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', width: '100%', gap: '16px' }}>
+                    <div>
+                      <div style={{ fontSize: '0.75rem', fontWeight: 700, color: 'hsl(var(--color-primary))', textTransform: 'uppercase', letterSpacing: '0.5px', marginBottom: '4px' }}>
+                        {section ? `Grade ${grade} - Section ${section}` : `Grade ${grade}`}
+                      </div>
+                      <h2 style={{ fontSize: '1.25rem', fontWeight: 800, margin: 0, color: 'var(--text-main)' }}>{ex.examName}</h2>
+                    </div>
+                    
+                    <div style={{ display: 'flex', gap: '8px', alignItems: 'center', flexWrap: 'wrap', justifyContent: 'flex-end' }} className="no-print">
+                      <button 
+                        className="btn-secondary" 
+                        onClick={() => handleOpenManualScheduler(grade, section, ex.id)} 
+                        style={{ padding: '6px 12px', fontSize: '0.75rem', borderRadius: '8px', display: 'flex', alignItems: 'center', gap: '4px', border: '1px solid var(--border-glass)' }}
+                      >
+                        <Edit3 size={13} /> Edit
+                      </button>
+                      <button 
+                        className="btn-secondary" 
+                        onClick={() => handleDeleteCohortTimetable(ex.id, cohort)} 
+                        style={{ padding: '6px 12px', fontSize: '0.75rem', borderRadius: '8px', display: 'flex', alignItems: 'center', gap: '4px', border: '1px solid var(--border-glass)', borderColor: 'rgb(var(--color-danger-rgb))', color: 'rgb(var(--color-danger-rgb))' }}
+                      >
+                        <Trash2 size={13} /> Delete
+                      </button>
+                      <button 
+                        className="btn-secondary" 
+                        onClick={() => handleExportTimetable(cohort, 'pdf', examSchedules, ex.examName)} 
+                        style={{ padding: '6px 12px', fontSize: '0.75rem', borderRadius: '8px', display: 'flex', alignItems: 'center', gap: '4px', border: '1px solid var(--border-glass)' }}
+                      >
+                        <Download size={13} /> Export PDF
+                      </button>
+                      <div style={{ width: '1px', height: '24px', background: 'var(--border-glass)', margin: '0 4px' }} />
+                      {ex.timetablePublished ? (
+                        <span style={{ fontSize: '0.8rem', fontWeight: 700, color: '#10b981', display: 'flex', alignItems: 'center', gap: '4px', background: 'rgba(16,185,129,0.08)', padding: '6px 12px', borderRadius: '8px', border: '1px solid rgba(16,185,129,0.15)' }}>
+                          <CheckCircle size={14} /> Published
+                        </span>
+                      ) : (
+                        <button
+                          onClick={async () => {
+                            try {
+                              const res = await fetch(`/api/academics/exams/${ex.id}`, {
+                                method: 'PUT',
+                                headers: { 'Content-Type': 'application/json' },
+                                body: JSON.stringify({ timetablePublished: true })
+                              });
+                              if (res.ok) {
+                                showToast('Exam timetable published successfully!', 'success');
+                                fetchAllData();
+                              } else {
+                                const data = await res.json();
+                                showToast(data.error || 'Failed to publish timetable.', 'error');
+                              }
+                            } catch (err) {
+                              showToast('Network error.', 'error');
+                            }
+                          }}
+                          className="btn-primary"
+                          style={{ padding: '6px 12px', fontSize: '0.75rem', borderRadius: '8px', display: 'flex', alignItems: 'center', gap: '6px', background: 'linear-gradient(135deg, #10b981 0%, #059669 100%)', border: 'none', color: '#fff' }}
+                        >
+                          <Send size={12} /> Publish Timetable
+                        </button>
+                      )}
+                    </div>
+                  </div>
+
+                  {/* Bottom Row: Metadata Info */}
+                  <div style={{ display: 'flex', gap: '20px', fontSize: '0.82rem', color: 'var(--text-muted)', marginTop: '4px', flexWrap: 'wrap' }}>
+                    <span>Type: <strong>{ex.examType}</strong></span>
+                    <span>Session: <strong>{ex.academicSession || '-'}</strong></span>
+                    {earliestStart && <span>Starts: <strong>{formatDate(earliestStart)}</strong></span>}
+                    {endDate && <span>Ends: <strong>{formatDate(endDate)}</strong></span>}
+                    <span>Total Marks: <strong>{ex.totalMarks || '-'}</strong></span>
+                  </div>
+                </div>
+
+                <table className="table-custom" style={{ width: '100%', borderCollapse: 'collapse', marginTop: '10px' }}>
+                  <thead>
+                    <tr>
+                      <th style={{ textAlign: 'left', padding: '12px 16px' }}>Subject</th>
+                      <th style={{ textAlign: 'left', padding: '12px 16px' }}>Exam Date</th>
+                      <th style={{ textAlign: 'left', padding: '12px 16px' }}>Time Slot</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {cohortSchedules.map(slot => (
+                      <tr key={slot.id} style={{ borderBottom: '1px solid var(--border-glass)' }}>
+                        <td style={{ fontWeight: 700, textAlign: 'left', padding: '12px 16px' }}>{slot.subject}</td>
+                        <td style={{ textAlign: 'left', padding: '12px 16px' }}>{formatDate(slot.examDate)}</td>
+                        <td style={{ textAlign: 'left', padding: '12px 16px' }}>
+                          {slot.startTime && slot.endTime ? `${slot.startTime} - ${slot.endTime}` : (slot.timeSlot || slot.duration || '-')}
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            );
+          });
+        })()}
       </div>
     );
   };
@@ -3003,26 +3066,35 @@ export default function AcademicPanel({ subView, setAdminView }) {
               <option value="All">All Grades</option>
               {getGradesWithSubjects(subjects).map(g => <option key={g} value={g}>Grade {g}</option>)}
             </select>
-            <select className="select-custom" value={examSectionFilter} onChange={e => setExamSectionFilter(e.target.value)} style={{ padding: '6px 12px', borderRadius: '8px', fontSize: '0.82rem', background: 'var(--bg-glass-active)', border: '1px solid var(--border-glass)' }}>
-              <option value="All">All Sections</option>
-              {['A', 'B', 'C', 'D', 'E', 'F'].map(s => <option key={s} value={s}>Section {s}</option>)}
-            </select>
           </div>
         </div>
 
         {/* History Cards */}
         {filteredHistory.length > 0 ? (
           <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(360px, 1fr))', gap: '20px' }}>
-            {filteredHistory.map(ex => {
+            {filteredHistory.flatMap(ex => {
               const gsList = ex.gradeSections || [];
-              const earliestStart = gsList.length > 0 ? gsList.map(g => g.startDate).filter(Boolean).sort()[0] : '';
-              const totalSubjects = ex.scheduleCount || 0;
+              if (gsList.length === 0) return [{ ex, gs: null }];
+              return gsList.map(gs => ({ ex, gs }));
+            }).map(({ ex, gs }) => {
+              const earliestStart = gs ? gs.startDate : '';
+              const endDate = gs ? gs.endDate : ex.endDate;
+
+              // Compute subjects specifically for this grade
+              const gradeSubs = gs ? subjects.filter(sub => sub.grade === gs.grade).map(sub => sub.subjectName) : [];
+              const uniqueGradeSubs = [...new Set(gradeSubs)];
+              const cohortSubjects = uniqueGradeSubs.filter(sub => {
+                const subKey = `${gs.grade}-${sub}`;
+                return ex.subjectIncluded ? ex.subjectIncluded[subKey] !== false : true;
+              });
+              const totalSubjects = gs ? cohortSubjects.length : (ex.scheduleCount || 0);
+
               const statusColors = { Draft: { bg: 'rgba(107,114,128,0.08)', color: '#6b7280', border: '1px solid rgba(107,114,128,0.15)' }, Scheduled: { bg: 'rgba(99,102,241,0.08)', color: 'hsl(var(--color-primary))', border: '1px solid rgba(99,102,241,0.15)' }, Published: { bg: 'rgba(16,185,129,0.08)', color: '#10b981', border: '1px solid rgba(16,185,129,0.15)' }, Completed: { bg: 'rgba(59,130,246,0.08)', color: '#3b82f6', border: '1px solid rgba(59,130,246,0.15)' } };
               const sc = statusColors[ex.status] || statusColors.Draft;
 
               return (
                 <div 
-                  key={ex.id} 
+                  key={`${ex.id}-${gs ? `${gs.grade}-${gs.section || ''}` : 'none'}`}
                   className="glass-panel" 
                   style={{ 
                     padding: '0', 
@@ -3037,7 +3109,7 @@ export default function AcademicPanel({ subView, setAdminView }) {
                   <div style={{ padding: '20px 20px 16px', borderBottom: '1px solid var(--border-glass)', display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
                     <div>
                       <div style={{ fontSize: '0.75rem', fontWeight: 700, color: 'hsl(var(--color-primary))', textTransform: 'uppercase', letterSpacing: '0.5px', marginBottom: '4px' }}>
-                        {gsList.length > 0 ? gsList.map(gs => gs.section ? `Grade - ${gs.grade}-${gs.section}` : `Grade - ${gs.grade}`).join(', ') : 'No Grades'}
+                        {gs ? (gs.section ? `Grade - ${gs.grade}-${gs.section}` : `Grade - ${gs.grade}`) : 'No Grades'}
                         {ex.academicSession && ` · Session ${ex.academicSession}`}
                       </div>
                       <h3 style={{ fontSize: '1.05rem', fontWeight: 800, margin: 0, color: 'var(--text-main)' }}>{ex.examName}</h3>
@@ -3055,7 +3127,7 @@ export default function AcademicPanel({ subView, setAdminView }) {
                       <div style={{ color: 'var(--text-muted)' }}>Start Date</div>
                       <div style={{ fontWeight: 600, textAlign: 'right' }}>{earliestStart || '-'}</div>
                       <div style={{ color: 'var(--text-muted)' }}>End Date</div>
-                      <div style={{ fontWeight: 600, textAlign: 'right' }}>{ex.endDate || 'Not scheduled'}</div>
+                      <div style={{ fontWeight: 600, textAlign: 'right' }}>{endDate || 'Not scheduled'}</div>
                     </div>
 
                     {/* Subjects and corresponding marks */}
@@ -3064,7 +3136,7 @@ export default function AcademicPanel({ subView, setAdminView }) {
                       <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
                         {(() => {
                           const list = [];
-                          gsList.forEach(gs => {
+                          if (gs) {
                             const gradeSubs = subjects.filter(sub => sub.grade === gs.grade).map(sub => sub.subjectName);
                             const uniqueGradeSubs = [...new Set(gradeSubs)];
                             uniqueGradeSubs.forEach(sub => {
@@ -3075,7 +3147,7 @@ export default function AcademicPanel({ subView, setAdminView }) {
                                 list.push({ grade: gs.grade, section: gs.section, subject: sub, marks });
                               }
                             });
-                          });
+                          }
                           if (list.length === 0) {
                             return <div style={{ fontSize: '0.78rem', color: 'var(--text-muted)', fontStyle: 'italic' }}>No subjects added</div>;
                           }
@@ -3142,16 +3214,29 @@ export default function AcademicPanel({ subView, setAdminView }) {
         {/* Exam Cards */}
         {publishedExams.length > 0 ? (
           <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(360px, 1fr))', gap: '20px' }}>
-            {publishedExams.map(ex => {
+            {publishedExams.flatMap(ex => {
               const gsList = ex.gradeSections || [];
-              const earliestStart = gsList.length > 0 ? gsList.map(g => g.startDate).filter(Boolean).sort()[0] : '';
-              const totalSubjects = ex.scheduleCount || 0;
+              if (gsList.length === 0) return [{ ex, gs: null }];
+              return gsList.map(gs => ({ ex, gs }));
+            }).map(({ ex, gs }) => {
+              const earliestStart = gs ? gs.startDate : '';
+              const endDate = gs ? gs.endDate : ex.endDate;
+
+              // Compute subjects specifically for this grade
+              const gradeSubs = gs ? subjects.filter(sub => sub.grade === gs.grade).map(sub => sub.subjectName) : [];
+              const uniqueGradeSubs = [...new Set(gradeSubs)];
+              const cohortSubjects = uniqueGradeSubs.filter(sub => {
+                const subKey = `${gs.grade}-${sub}`;
+                return ex.subjectIncluded ? ex.subjectIncluded[subKey] !== false : true;
+              });
+              const totalSubjects = gs ? cohortSubjects.length : (ex.scheduleCount || 0);
+
               const statusColors = { Published: { bg: 'rgba(16,185,129,0.08)', color: '#10b981', border: '1px solid rgba(16,185,129,0.15)' } };
               const sc = statusColors.Published;
 
               return (
                 <div 
-                  key={ex.id} 
+                  key={`${ex.id}-${gs ? `${gs.grade}-${gs.section || ''}` : 'none'}`}
                   className="glass-panel" 
                   style={{ 
                     padding: '0', 
@@ -3165,7 +3250,7 @@ export default function AcademicPanel({ subView, setAdminView }) {
                   <div style={{ padding: '20px 20px 16px', borderBottom: '1px solid var(--border-glass)', display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
                     <div>
                       <div style={{ fontSize: '0.75rem', fontWeight: 700, color: 'hsl(var(--color-primary))', textTransform: 'uppercase', letterSpacing: '0.5px', marginBottom: '4px' }}>
-                        {gsList.length > 0 ? gsList.map(gs => gs.section ? `Grade - ${gs.grade}-${gs.section}` : `Grade - ${gs.grade}`).join(', ') : 'No Grades'}
+                        {gs ? (gs.section ? `Grade - ${gs.grade}-${gs.section}` : `Grade - ${gs.grade}`) : 'No Grades'}
                         {ex.academicSession && ` · Session ${ex.academicSession}`}
                       </div>
                       <h3 style={{ fontSize: '1.05rem', fontWeight: 800, margin: 0, color: 'var(--text-main)' }}>{ex.examName}</h3>
@@ -3185,7 +3270,7 @@ export default function AcademicPanel({ subView, setAdminView }) {
                       <div style={{ color: 'var(--text-muted)' }}>Start Date</div>
                       <div style={{ fontWeight: 600, textAlign: 'right' }}>{earliestStart || '-'}</div>
                       <div style={{ color: 'var(--text-muted)' }}>End Date</div>
-                      <div style={{ fontWeight: 600, textAlign: 'right' }}>{ex.endDate || 'Not scheduled'}</div>
+                      <div style={{ fontWeight: 600, textAlign: 'right' }}>{endDate || 'Not scheduled'}</div>
                     </div>
 
                     <div style={{ marginTop: '4px', paddingTop: '10px', borderTop: '1px dashed var(--border-glass)' }}>
@@ -3193,7 +3278,7 @@ export default function AcademicPanel({ subView, setAdminView }) {
                       <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
                         {(() => {
                           const list = [];
-                          gsList.forEach(gs => {
+                          if (gs) {
                             const gradeSubs = subjects.filter(sub => sub.grade === gs.grade).map(sub => sub.subjectName);
                             const uniqueGradeSubs = [...new Set(gradeSubs)];
                             uniqueGradeSubs.forEach(sub => {
@@ -3204,7 +3289,7 @@ export default function AcademicPanel({ subView, setAdminView }) {
                                 list.push({ grade: gs.grade, section: gs.section, subject: sub, marks });
                               }
                             });
-                          });
+                          }
                           if (list.length === 0) {
                             return <div style={{ fontSize: '0.78rem', color: 'var(--text-muted)', fontStyle: 'italic' }}>No subjects added</div>;
                           }
@@ -3242,6 +3327,15 @@ export default function AcademicPanel({ subView, setAdminView }) {
       return new Date(dateStr + 'T00:00:00').toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
     };
 
+    const flatPublishedSchedules = [];
+    publishedTimetableExams.forEach(ex => {
+      const examSchedules = examTimetables.filter(et => et.examId === ex.id);
+      const examCohorts = [...new Set(examSchedules.map(s => s.cohort).filter(Boolean))].sort();
+      examCohorts.forEach(cohort => {
+        flatPublishedSchedules.push({ ex, cohort, examSchedules });
+      });
+    });
+
     return (
       <div style={{ display: 'flex', flexDirection: 'column', gap: '24px' }}>
         {/* Header */}
@@ -3252,78 +3346,67 @@ export default function AcademicPanel({ subView, setAdminView }) {
           </div>
         </div>
 
-        {publishedTimetableExams.length > 0 ? (
-          publishedTimetableExams.map(ex => {
-            const examSchedules = examTimetables.filter(et => et.examId === ex.id);
-            const examGradeSections = ex.gradeSections || [];
-            const earliestStart = examGradeSections.length > 0 ? examGradeSections.map(g => g.startDate).filter(Boolean).sort()[0] : '';
-            const examCohorts = [...new Set(examSchedules.map(s => s.cohort).filter(Boolean))].sort();
+        {flatPublishedSchedules.length > 0 ? (
+          flatPublishedSchedules.map(({ ex, cohort, examSchedules }) => {
+            const cohortSchedules = examSchedules.filter(s => s.cohort === cohort);
+            const [grade, section] = cohort.split('-');
+            const gsObj = (ex.gradeSections || []).find(gs => gs.grade === grade && (gs.section === section || (!gs.section && !section)));
+            const earliestStart = gsObj ? gsObj.startDate : '';
+            const endDate = gsObj ? gsObj.endDate : ex.endDate;
 
             return (
-              <div key={ex.id} className="glass-panel" style={{ padding: '24px', marginBottom: '24px' }}>
-                <div>
-                  <div style={{ borderBottom: '2px solid var(--border-glass)', paddingBottom: '16px', marginBottom: '20px' }}>
-                    <h2 style={{ fontSize: '1.2rem', fontWeight: 800, margin: 0 }}>{ex.examName}</h2>
-                    <div style={{ display: 'flex', gap: '20px', fontSize: '0.82rem', color: 'var(--text-muted)', marginTop: '6px' }}>
-                      <span>Type: <strong>{ex.examType}</strong></span>
-                      <span>Session: <strong>{ex.academicSession || '-'}</strong></span>
-                      {earliestStart && <span>Starts: <strong>{formatDate(earliestStart)}</strong></span>}
-                      {ex.endDate && <span>Ends: <strong>{formatDate(ex.endDate)}</strong></span>}
-                      <span>Total Marks: <strong>{ex.totalMarks || '-'}</strong></span>
+              <div key={`${ex.id}-${cohort}`} id={`printable-exam-timetable-${cohort}`} className="glass-panel animate-scale-up" style={{ padding: '24px', marginBottom: '24px' }}>
+                <div style={{ borderBottom: '2px solid var(--border-glass)', paddingBottom: '16px', marginBottom: '20px', display: 'flex', flexDirection: 'column', gap: '12px' }}>
+                  {/* Top Row: Title on Left, Actions on Right */}
+                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', width: '100%', gap: '16px' }}>
+                    <div>
+                      <div style={{ fontSize: '0.75rem', fontWeight: 700, color: 'hsl(var(--color-primary))', textTransform: 'uppercase', letterSpacing: '0.5px', marginBottom: '4px' }}>
+                        {section ? `Grade ${grade} - Section ${section}` : `Grade ${grade}`}
+                      </div>
+                      <h2 style={{ fontSize: '1.25rem', fontWeight: 800, margin: 0, color: 'var(--text-main)' }}>{ex.examName}</h2>
+                    </div>
+                    
+                    <div style={{ display: 'flex', gap: '8px', alignItems: 'center', flexWrap: 'wrap', justifyContent: 'flex-end' }} className="no-print">
+                      <button 
+                        className="btn-secondary" 
+                        onClick={() => handleExportTimetable(cohort, 'pdf', examSchedules, ex.examName)} 
+                        style={{ padding: '6px 12px', fontSize: '0.75rem', borderRadius: '8px', display: 'flex', alignItems: 'center', gap: '4px', border: '1px solid var(--border-glass)' }}
+                      >
+                        <Download size={13} /> Export PDF
+                      </button>
                     </div>
                   </div>
 
-                  {examSchedules.length > 0 ? (
-                    <div style={{ display: 'flex', flexDirection: 'column', gap: '24px' }}>
-                      {examCohorts.map(cohort => {
-                        const cohortSchedules = examSchedules.filter(s => s.cohort === cohort);
-                        const [grade, section] = cohort.split('-');
-                        return (
-                          <div key={cohort} id={`printable-exam-timetable-${cohort}`} style={{ display: 'flex', flexDirection: 'column', gap: '16px', background: 'var(--bg-glass-active)', border: '1px solid var(--border-glass)', padding: '20px', borderRadius: '12px' }}>
-                            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', borderBottom: '1px solid var(--border-glass)', paddingBottom: '10px' }}>
-                              <h4 style={{ fontSize: '0.95rem', fontWeight: 700, margin: 0, color: 'hsl(var(--color-primary))' }}>
-                                Grade {grade}{section ? ` - Section ${section}` : ''}
-                              </h4>
-                              <div style={{ display: 'flex', gap: '8px', alignItems: 'center' }} className="no-print">
-                                <button 
-                                  className="btn-secondary" 
-                                  onClick={() => handleExportTimetable(cohort, 'pdf', examSchedules, ex.examName)} 
-                                  style={{ padding: '4px 10px', fontSize: '0.75rem', borderRadius: '6px', display: 'flex', alignItems: 'center', gap: '4px', border: '1px solid var(--border-glass)' }}
-                                >
-                                  <Download size={12} /> Export PDF
-                                </button>
-                              </div>
-                            </div>
-                            <table className="table-custom" style={{ width: '100%', borderCollapse: 'collapse', marginTop: '10px' }}>
-                              <thead>
-                                <tr>
-                                  <th style={{ textAlign: 'left', padding: '12px 16px' }}>Subject</th>
-                                  <th style={{ textAlign: 'left', padding: '12px 16px' }}>Exam Date</th>
-                                  <th style={{ textAlign: 'left', padding: '12px 16px' }}>Time Slot</th>
-                                </tr>
-                              </thead>
-                              <tbody>
-                                {cohortSchedules.map(slot => (
-                                  <tr key={slot.id} style={{ borderBottom: '1px solid var(--border-glass)' }}>
-                                    <td style={{ fontWeight: 700, textAlign: 'left', padding: '12px 16px' }}>{slot.subject}</td>
-                                    <td style={{ textAlign: 'left', padding: '12px 16px' }}>{formatDate(slot.examDate)}</td>
-                                    <td style={{ textAlign: 'left', padding: '12px 16px' }}>
-                                      {slot.startTime && slot.endTime ? `${slot.startTime} - ${slot.endTime}` : (slot.timeSlot || slot.duration || '-')}
-                                    </td>
-                                  </tr>
-                                ))}
-                              </tbody>
-                            </table>
-                          </div>
-                        );
-                      })}
-                    </div>
-                  ) : (
-                    <div style={{ padding: '40px', textAlign: 'center', color: 'var(--text-muted)' }}>
-                      No active schedules found for this exam.
-                    </div>
-                  )}
+                  {/* Bottom Row: Metadata Info */}
+                  <div style={{ display: 'flex', gap: '20px', fontSize: '0.82rem', color: 'var(--text-muted)', marginTop: '4px', flexWrap: 'wrap' }}>
+                    <span>Type: <strong>{ex.examType}</strong></span>
+                    <span>Session: <strong>{ex.academicSession || '-'}</strong></span>
+                    {earliestStart && <span>Starts: <strong>{formatDate(earliestStart)}</strong></span>}
+                    {endDate && <span>Ends: <strong>{formatDate(endDate)}</strong></span>}
+                    <span>Total Marks: <strong>{ex.totalMarks || '-'}</strong></span>
+                  </div>
                 </div>
+
+                <table className="table-custom" style={{ width: '100%', borderCollapse: 'collapse', marginTop: '10px' }}>
+                  <thead>
+                    <tr>
+                      <th style={{ textAlign: 'left', padding: '12px 16px' }}>Subject</th>
+                      <th style={{ textAlign: 'left', padding: '12px 16px' }}>Exam Date</th>
+                      <th style={{ textAlign: 'left', padding: '12px 16px' }}>Time Slot</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {cohortSchedules.map(slot => (
+                      <tr key={slot.id} style={{ borderBottom: '1px solid var(--border-glass)' }}>
+                        <td style={{ fontWeight: 700, textAlign: 'left', padding: '12px 16px' }}>{slot.subject}</td>
+                        <td style={{ textAlign: 'left', padding: '12px 16px' }}>{formatDate(slot.examDate)}</td>
+                        <td style={{ textAlign: 'left', padding: '12px 16px' }}>
+                          {slot.startTime && slot.endTime ? `${slot.startTime} - ${slot.endTime}` : (slot.timeSlot || slot.duration || '-')}
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
               </div>
             );
           })
@@ -3655,154 +3738,1197 @@ export default function AcademicPanel({ subView, setAdminView }) {
     );
   };
 
+  const getMergedCalendarEvents = () => {
+    const dbEvents = calendarEvents.map(e => ({
+      ...e,
+      isEditable: true,
+      source: 'Calendar Module'
+    }));
+
+    // Merge Holidays from legacy database
+    const mappedHolidays = holidays.map(h => {
+      const start = h.startDate || '';
+      return {
+        id: h.id,
+        title: h.title || h.name || 'Holiday',
+        eventType: 'Holiday',
+        eventDate: start,
+        endDate: h.endDate || start,
+        description: h.description || `Holiday break: ${h.startDate} to ${h.endDate}`,
+        applicableClasses: 'All',
+        startTime: '',
+        endTime: '',
+        session: calendarSession,
+        isEditable: false,
+        source: 'Holidays'
+      };
+    });
+
+    // Merge Exam schedules from legacy database (Consolidated parent exams)
+    const mappedExams = exams
+      .filter(ex => {
+        const name = (ex.examName || '').toLowerCase();
+        const type = (ex.examType || '').toLowerCase();
+        return name.includes('half') || name.includes('final') || name.includes('mid') ||
+               type.includes('half') || type.includes('final') || type.includes('mid');
+      })
+      .map(ex => {
+        const startDates = (ex.gradeSections || []).map(gs => gs.startDate).filter(Boolean);
+        const endDates = (ex.gradeSections || []).map(gs => gs.endDate).filter(Boolean);
+        const start = startDates.length > 0 ? startDates.sort()[0] : '';
+        const end = endDates.length > 0 ? endDates.sort().reverse()[0] : '';
+        return {
+          id: ex.id,
+          title: ex.examName || 'Examination',
+          eventType: 'Examination',
+          eventDate: start,
+          endDate: end || start,
+          description: ex.description || 'Examination period',
+          applicableClasses: ex.gradeSections ? [...new Set(ex.gradeSections.map(gs => gs.grade))].join(', ') : 'All',
+          startTime: '',
+          endTime: '',
+          session: ex.academicSession || calendarSession,
+          isEditable: false,
+          source: 'Exams'
+        };
+      });
+
+    // Merge School events from legacy database
+    const mappedEvents = events.map(evt => ({
+      id: evt.id,
+      title: evt.title || 'Event',
+      eventType: evt.type || 'Sports Event',
+      eventDate: evt.date,
+      description: evt.description || `Venue: ${evt.venue}`,
+      applicableClasses: evt.audience || 'All',
+      startTime: evt.time || '',
+      endTime: '',
+      session: calendarSession,
+      isEditable: false,
+      source: 'Events'
+    }));
+
+    const allMerged = [...dbEvents, ...mappedHolidays, ...mappedExams, ...mappedEvents];
+
+    // Filter by Session
+    let filtered = allMerged.filter(e => e.session === calendarSession);
+
+    // Filter by Event Type
+    if (calendarTypeFilter !== 'All') {
+      filtered = filtered.filter(e => e.eventType.toLowerCase().includes(calendarTypeFilter.toLowerCase()) || (calendarTypeFilter === 'Sports Event' && e.eventType.toLowerCase().includes('sport')));
+    }
+
+    // Filter by Search Query
+    if (calendarSearchQuery.trim() !== '') {
+      const q = calendarSearchQuery.toLowerCase();
+      filtered = filtered.filter(e =>
+        e.title.toLowerCase().includes(q) ||
+        (e.description && e.description.toLowerCase().includes(q))
+      );
+    }
+
+    // Filter by Date Range
+    if (calendarStartDateFilter) {
+      filtered = filtered.filter(e => e.eventDate >= calendarStartDateFilter);
+    }
+    if (calendarEndDateFilter) {
+      filtered = filtered.filter(e => e.eventDate <= calendarEndDateFilter);
+    }
+
+    // Sort chronologically
+    return filtered.sort((a, b) => a.eventDate.localeCompare(b.eventDate));
+  };
+
+  const handleCalendarEventSubmit = async (e) => {
+    e.preventDefault();
+    const isEdit = !!editingCalendarEventId;
+    const url = isEdit ? `/api/academics/calendar-events/${editingCalendarEventId}` : '/api/academics/calendar-events';
+    const method = isEdit ? 'PUT' : 'POST';
+
+    try {
+      const res = await fetch(url, {
+        method,
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ ...calendarEventForm, session: calendarSession })
+      });
+      if (res.ok) {
+        // If editing a published event, auto-unpublish so user must re-publish
+        if (isEdit && publishedEventIds.includes(editingCalendarEventId)) {
+          try {
+            await fetch('/api/academics/calendar/unpublish', {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({ eventId: editingCalendarEventId })
+            });
+          } catch (_) { /* silent */ }
+        }
+        showToast(isEdit ? 'Calendar event updated successfully!' : 'Calendar event declared successfully!', 'success');
+        setShowCalendarEventModal(false);
+        setEditingCalendarEventId(null);
+        setCalendarEventForm({
+          title: '', eventType: 'Holiday', eventDate: '', startTime: '', endTime: '', description: '', applicableClasses: 'All', session: '2026-27'
+        });
+        fetchAllData();
+      } else {
+        const data = await res.json();
+        showToast(data.error || 'Failed to save event.', 'error');
+      }
+    } catch (err) {
+      showToast('Network error during operation.', 'error');
+    }
+  };
+
+  const handleDeleteCalendarEvent = async (id) => {
+    if (!confirm('Are you sure you want to delete this calendar event?')) return;
+    try {
+      const res = await fetch(`/api/academics/calendar-events/${id}`, { method: 'DELETE' });
+      if (res.ok) {
+        showToast('Calendar event deleted successfully.', 'success');
+        fetchAllData();
+      } else {
+        const data = await res.json();
+        showToast(data.error || 'Failed to delete event.', 'error');
+      }
+    } catch (err) {
+      showToast('Network error.', 'error');
+    }
+  };
+
+  const handlePublishEvent = async (eventId) => {
+    try {
+      const res = await fetch('/api/academics/calendar/publish', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ eventId })
+      });
+      if (res.ok) {
+        showToast('Event published successfully!', 'success');
+        fetchAllData();
+      } else {
+        const data = await res.json();
+        showToast(data.error || 'Failed to publish event.', 'error');
+      }
+    } catch (err) {
+      showToast('Network error.', 'error');
+    }
+  };
+
+  const handleUnpublishEvent = async (eventId) => {
+    try {
+      const res = await fetch('/api/academics/calendar/unpublish', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ eventId })
+      });
+      if (res.ok) {
+        showToast('Event unpublished successfully.', 'success');
+        fetchAllData();
+      } else {
+        const data = await res.json();
+        showToast(data.error || 'Failed to unpublish event.', 'error');
+      }
+    } catch (err) {
+      showToast('Network error.', 'error');
+    }
+  };
+
+  const handleCalendarFileUpload = async (e) => {
+    const file = e.target.files[0];
+    if (!file) return;
+
+    setUploading(true);
+    setUploadFileName(file.name);
+
+    const formData = new FormData();
+    formData.append('file', file);
+
+    try {
+      const res = await fetch('/api/academics/calendar-upload', {
+        method: 'POST',
+        body: formData
+      });
+      const data = await res.json();
+      setUploading(false);
+      if (res.ok) {
+        setUploadPreviewRows(data.rows || []);
+      } else {
+        showToast(data.error || 'Failed to upload/validate file.', 'error');
+        setUploadPreviewRows([]);
+      }
+    } catch (err) {
+      setUploading(false);
+      showToast('Network error during file validation.', 'error');
+    }
+  };
+
+  const handleConfirmCalendarImport = async () => {
+    const validEvents = uploadPreviewRows.filter(r => r.isValid).map(r => r.data);
+    if (validEvents.length === 0) {
+      showToast('No valid events to import.', 'error');
+      return;
+    }
+
+    try {
+      const res = await fetch('/api/academics/calendar-import-confirm', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          fileName: uploadFileName,
+          session: uploadSession,
+          events: validEvents
+        })
+      });
+      if (res.ok) {
+        showToast(`Successfully imported ${validEvents.length} events!`, 'success');
+        setShowUploadModal(false);
+        setUploadPreviewRows([]);
+        setUploadFileName('');
+        fetchAllData();
+      } else {
+        const data = await res.json();
+        showToast(data.error || 'Failed to confirm import.', 'error');
+      }
+    } catch (err) {
+      showToast('Network error during confirmation.', 'error');
+    }
+  };
+
+  const handleDownloadCalendarTemplate = () => {
+    window.open('/api/academics/calendar-template', '_blank');
+  };
+
+  const handleExportCalendarCSV = (eventsToExport) => {
+    const headers = ['Date', 'Event Title', 'Event Type', 'Description', 'Applicable Classes', 'Start Time', 'End Time', 'Academic Session'];
+    const csvRows = [headers.join(',')];
+    for (const e of eventsToExport) {
+      const row = [
+        e.eventDate,
+        e.title,
+        e.eventType,
+        e.description,
+        e.applicableClasses,
+        e.startTime || '',
+        e.endTime || '',
+        e.session
+      ];
+      csvRows.push(row.map(v => `"${(v || '').replace(/"/g, '""')}"`).join(','));
+    }
+    const blob = new Blob([csvRows.join('\n')], { type: 'text/csv' });
+    const url = window.URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.setAttribute('href', url);
+    a.setAttribute('download', `Academic_Calendar_${calendarSession}.csv`);
+    a.click();
+  };
+
+  const getEventColorStyle = (type) => {
+    const t = (type || '').toLowerCase();
+    if (t.includes('holiday')) {
+      return { bg: 'rgba(245, 158, 11, 0.08)', border: 'rgba(245, 158, 11, 0.15)', text: '#f59e0b', dot: '#f59e0b' };
+    } else if (t.includes('exam')) {
+      return { bg: 'rgba(236, 72, 153, 0.08)', border: 'rgba(236, 72, 153, 0.15)', text: '#ec4899', dot: '#ec4899' };
+    } else if (t.includes('result')) {
+      return { bg: 'rgba(16, 185, 129, 0.08)', border: 'rgba(16, 185, 129, 0.15)', text: '#10b981', dot: '#10b981' };
+    } else if (t.includes('sport')) {
+      return { bg: 'rgba(59, 130, 246, 0.08)', border: 'rgba(59, 130, 246, 0.15)', text: '#3b82f6', dot: '#3b82f6' };
+    } else if (t.includes('cultural')) {
+      return { bg: 'rgba(139, 92, 246, 0.08)', border: 'rgba(139, 92, 246, 0.15)', text: '#8b5cf6', dot: '#8b5cf6' };
+    } else if (t.includes('workshop') || t.includes('seminar')) {
+      return { bg: 'rgba(6, 182, 212, 0.08)', border: 'rgba(6, 182, 212, 0.15)', text: '#06b6d4', dot: '#06b6d4' };
+    } else if (t.includes('meeting') || t.includes('parent-teacher')) {
+      return { bg: 'rgba(99, 102, 241, 0.08)', border: 'rgba(99, 102, 241, 0.15)', text: '#6366f1', dot: '#6366f1' };
+    } else if (t.includes('vacation')) {
+      return { bg: 'rgba(244, 63, 94, 0.08)', border: 'rgba(244, 63, 94, 0.15)', text: '#f43f5e', dot: '#f43f5e' };
+    } else if (t.includes('admissions') || t.includes('admission')) {
+      return { bg: 'rgba(79, 70, 229, 0.08)', border: 'rgba(79, 70, 229, 0.15)', text: '#4f46e5', dot: '#4f46e5' };
+    }
+    return { bg: 'rgba(107, 114, 128, 0.08)', border: 'rgba(107, 114, 128, 0.15)', text: '#6b7280', dot: '#6b7280' };
+  };
+
   const renderAcademicCalendar = () => {
-    // Generate monthly calendar views showing exams, events, and holidays
     const now = new Date();
     const currentYear = now.getFullYear();
     const yearsList = [];
     for (let y = currentYear - 3; y <= currentYear + 5; y++) {
       yearsList.push(y);
     }
-    
-    // Calculate days in the selected month
-    const firstDayIndex = new Date(calendarYear, activeMonth, 1).getDay(); // Sunday=0
-    const totalDays = new Date(calendarYear, activeMonth + 1, 0).getDate();
 
+    const currentWeekDays = (() => {
+      const current = new Date(weekAnchor);
+      const dayVal = current.getDay();
+      const diff = current.getDate() - dayVal;
+      const startOfWeek = new Date(current.setDate(diff));
+      const days = [];
+      for (let i = 0; i < 7; i++) {
+        const d = new Date(startOfWeek);
+        d.setDate(startOfWeek.getDate() + i);
+        days.push(d);
+      }
+      return days;
+    })();
+
+    const firstDayIndex = new Date(calendarYear, activeMonth, 1).getDay();
+    const totalDays = new Date(calendarYear, activeMonth + 1, 0).getDate();
     const calendarGrid = [];
-    // Pad days from previous month
     for (let i = 0; i < firstDayIndex; i++) {
       calendarGrid.push({ empty: true });
     }
-    // Populate calendar days
     for (let day = 1; day <= totalDays; day++) {
       const dateStr = `${calendarYear}-${String(activeMonth + 1).padStart(2, '0')}-${String(day).padStart(2, '0')}`;
-      
-      const dayEvents = events.filter(e => e.date === dateStr);
-      const dayHolidays = holidays.filter(h => dateStr >= h.startDate && dateStr <= h.endDate);
-      const dayExams = examTimetables.filter(et => et.examDate === dateStr);
-      
+      const dayEvents = getMergedCalendarEvents().filter(e => e.eventDate === dateStr);
       calendarGrid.push({
         empty: false,
         day,
         dateStr,
-        events: dayEvents,
-        holidays: dayHolidays,
-        exams: dayExams
+        events: dayEvents
       });
     }
 
+    const filteredEvents = getMergedCalendarEvents();
+
     return (
       <div style={{ display: 'flex', flexDirection: 'column', gap: '24px' }}>
-        <div className="glass-panel" style={{ padding: '20px 24px', display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '16px' }}>
-          <div>
-            <h3 style={{ fontSize: '1.1rem', fontWeight: 700 }}>Academic Master Calendar</h3>
-            <p style={{ fontSize: '0.85rem', color: 'var(--text-muted)' }}>Aggregated visualization of exam periods, holidays, and school functions.</p>
+        
+        {/* Printable View Styling Wrapper */}
+        <style>{`
+          @media print {
+            body * {
+              visibility: hidden;
+            }
+            #printable-calendar-view, #printable-calendar-view * {
+              visibility: visible;
+            }
+            #printable-calendar-view {
+              position: absolute;
+              left: 0;
+              top: 0;
+              width: 100%;
+              background: #fff !important;
+              color: #000 !important;
+              box-shadow: none !important;
+            }
+            .no-print {
+              display: none !important;
+            }
+          }
+        `}</style>
+
+        {/* Master Control Header */}
+        <div className="glass-panel no-print" style={{ padding: '20px 24px', display: 'flex', flexDirection: 'column', gap: '16px' }}>
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '16px' }}>
+            <div>
+              <h3 style={{ fontSize: '1.25rem', fontWeight: 800, color: 'var(--text-main)', margin: 0 }}>Academic Calendar Management</h3>
+              <p style={{ fontSize: '0.85rem', color: 'var(--text-muted)', margin: '4px 0 0 0' }}>Plan, validate, import, and coordinate all events and milestones across academic sessions.</p>
+            </div>
+            
+            {/* Display-only consolidated calendar panel (Holidays, Events, and Exams are managed in their respective pages) */}
           </div>
-          <div style={{ display: 'flex', gap: '12px' }}>
-            <select 
-              className="select-custom" 
-              value={calendarYear} 
-              onChange={(e) => setCalendarYear(parseInt(e.target.value))}
-              style={{
-                padding: '4px 12px',
-                fontSize: '0.85rem',
-                borderRadius: '8px',
-                background: 'var(--bg-glass-active)',
-                border: '1px solid var(--border-glass)',
-                color: 'var(--text-main)',
-                cursor: 'pointer',
-                height: '36px'
-              }}
-            >
-              {yearsList.map((y) => <option key={y} value={y}>{y}</option>)}
-            </select>
-            <select 
-              className="select-custom" 
-              value={activeMonth} 
-              onChange={(e) => setActiveMonth(parseInt(e.target.value))}
-              style={{
-                padding: '4px 12px',
-                fontSize: '0.85rem',
-                borderRadius: '8px',
-                background: 'var(--bg-glass-active)',
-                border: '1px solid var(--border-glass)',
-                color: 'var(--text-main)',
-                cursor: 'pointer',
-                height: '36px'
-              }}
-            >
-              {monthsList.map((m, idx) => <option key={idx} value={idx}>{m}</option>)}
-            </select>
+
+          <div style={{ borderTop: '1px solid var(--border-glass)', paddingTop: '16px', display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '16px' }}>
+            {/* View Switching Tab Filters */}
+            <div style={{ display: 'flex', background: 'var(--bg-glass-active)', border: '1px solid var(--border-glass)', borderRadius: '8px', padding: '3px' }}>
+              <button 
+                onClick={() => setCalendarViewMode('month')} 
+                style={{ padding: '6px 14px', fontSize: '0.85rem', fontWeight: 700, borderRadius: '6px', border: 'none', background: calendarViewMode === 'month' ? 'hsl(var(--color-primary))' : 'transparent', color: calendarViewMode === 'month' ? '#fff' : 'var(--text-muted)', cursor: 'pointer', transition: 'all 0.2s ease' }}
+              >
+                Month View
+              </button>
+              <button 
+                onClick={() => setCalendarViewMode('week')} 
+                style={{ padding: '6px 14px', fontSize: '0.85rem', fontWeight: 700, borderRadius: '6px', border: 'none', background: calendarViewMode === 'week' ? 'hsl(var(--color-primary))' : 'transparent', color: calendarViewMode === 'week' ? '#fff' : 'var(--text-muted)', cursor: 'pointer', transition: 'all 0.2s ease' }}
+              >
+                Week View
+              </button>
+              <button 
+                onClick={() => setCalendarViewMode('list')} 
+                style={{ padding: '6px 14px', fontSize: '0.85rem', fontWeight: 700, borderRadius: '6px', border: 'none', background: calendarViewMode === 'list' ? 'hsl(var(--color-primary))' : 'transparent', color: calendarViewMode === 'list' ? '#fff' : 'var(--text-muted)', cursor: 'pointer', transition: 'all 0.2s ease' }}
+              >
+                List View
+              </button>
+            </div>
+
+            {/* Advanced Filters */}
+            <div style={{ display: 'flex', gap: '12px', alignItems: 'center', flexWrap: 'wrap' }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+                <span style={{ fontSize: '0.78rem', fontWeight: 700, color: 'var(--text-muted)', textTransform: 'uppercase' }}>Session:</span>
+                <select className="select-custom" value={calendarSession} onChange={(e) => setCalendarSession(e.target.value)} style={{ padding: '6px 12px', borderRadius: '8px', height: '36px', width: '110px' }}>
+                  <option value="2026-27">2026-27</option>
+                  <option value="2027-28">2027-28</option>
+                  <option value="2028-29">2028-29</option>
+                </select>
+              </div>
+
+              <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+                <span style={{ fontSize: '0.78rem', fontWeight: 700, color: 'var(--text-muted)', textTransform: 'uppercase' }}>Type:</span>
+                <select className="select-custom" value={calendarTypeFilter} onChange={(e) => setCalendarTypeFilter(e.target.value)} style={{ padding: '6px 12px', borderRadius: '8px', height: '36px', width: '130px' }}>
+                  <option value="All">All Types</option>
+                  {calendarEventTypes.map(t => <option key={t} value={t}>{t}</option>)}
+                </select>
+              </div>
+
+              <div style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
+                <input type="date" className="form-control" value={calendarStartDateFilter} onChange={(e) => setCalendarStartDateFilter(e.target.value)} style={{ padding: '5px 8px', borderRadius: '8px', height: '36px', width: '125px', fontSize: '0.8rem' }} placeholder="Start" />
+                <span style={{ color: 'var(--text-muted)' }}>-</span>
+                <input type="date" className="form-control" value={calendarEndDateFilter} onChange={(e) => setCalendarEndDateFilter(e.target.value)} style={{ padding: '5px 8px', borderRadius: '8px', height: '36px', width: '125px', fontSize: '0.8rem' }} placeholder="End" />
+              </div>
+
+              <div style={{ position: 'relative' }}>
+                <Search size={14} style={{ position: 'absolute', left: '10px', top: '11px', color: 'var(--text-muted)' }} />
+                <input type="text" className="form-control" placeholder="Search events..." value={calendarSearchQuery} onChange={(e) => setCalendarSearchQuery(e.target.value)} style={{ padding: '6px 10px 6px 30px', borderRadius: '8px', height: '36px', width: '160px', fontSize: '0.82rem' }} />
+              </div>
+            </div>
           </div>
         </div>
 
-        <div className="glass-panel" style={{ padding: '24px' }}>
-          {/* Days of Week Header */}
-          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(7, 1fr)', gap: '10px', textAlign: 'center', fontWeight: 700, fontSize: '0.82rem', color: 'var(--text-muted)', textTransform: 'uppercase', marginBottom: '16px' }}>
-            <div>Sun</div>
-            <div>Mon</div>
-            <div>Tue</div>
-            <div>Wed</div>
-            <div>Thu</div>
-            <div>Fri</div>
-            <div>Sat</div>
+        {/* Viewport Render Block */}
+        <div id="printable-calendar-view" className="glass-panel" style={{ padding: '24px' }}>
+          
+          {/* Calendar Title (Only printed or visible at top of sheet) */}
+          <div style={{ display: 'none' }} className="print-header">
+            <h2 style={{ fontSize: '1.5rem', fontWeight: 800, textAlign: 'center', margin: '0 0 10px 0' }}>Academic Master Calendar</h2>
+            <p style={{ textAlign: 'center', margin: '0 0 20px 0', fontSize: '0.9rem', color: '#6b7280' }}>
+              Academic Session: {calendarSession} | Month: {monthsList[activeMonth]} {calendarYear}
+            </p>
           </div>
 
-          {/* Calendar Grid */}
-          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(7, 1fr)', gap: '10px', minHeight: '350px' }}>
-            {calendarGrid.map((cell, idx) => {
-              if (cell.empty) {
-                return <div key={idx} style={{ background: 'rgba(255,255,255,0.01)', borderRadius: '12px', border: '1px dashed var(--border-glass)' }} />;
-              }
+          {calendarViewMode === 'month' && (
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
+              
+              {/* Monthly Nav Toolbar */}
+              <div className="no-print" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '8px' }}>
+                <div style={{ display: 'flex', gap: '8px' }}>
+                  <button className="btn-secondary" onClick={() => {
+                    if (activeMonth === 0) {
+                      setActiveMonth(11);
+                      setCalendarYear(calendarYear - 1);
+                    } else {
+                      setActiveMonth(activeMonth - 1);
+                    }
+                  }} style={{ padding: '6px 12px', borderRadius: '8px' }}>← Prev</button>
+                  <button className="btn-secondary" onClick={() => {
+                    if (activeMonth === 11) {
+                      setActiveMonth(0);
+                      setCalendarYear(calendarYear + 1);
+                    } else {
+                      setActiveMonth(activeMonth + 1);
+                    }
+                  }} style={{ padding: '6px 12px', borderRadius: '8px' }}>Next →</button>
+                </div>
+                
+                <h4 style={{ fontSize: '1.15rem', fontWeight: 800, margin: 0, color: 'var(--text-main)' }}>
+                  {monthsList[activeMonth]} {calendarYear}
+                </h4>
 
-              const hasContent = cell.events.length > 0 || cell.holidays.length > 0 || cell.exams.length > 0;
-              return (
-                <div key={idx} style={{
-                  background: 'var(--bg-glass-active)',
-                  border: '1px solid var(--border-glass)',
-                  borderRadius: '12px',
-                  padding: '10px',
-                  display: 'flex',
-                  flexDirection: 'column',
-                  gap: '6px',
-                  minHeight: '80px',
-                  position: 'relative'
-                }}>
-                  <strong style={{ fontSize: '0.9rem', color: hasContent ? 'hsl(var(--color-primary))' : 'var(--text-main)' }}>{cell.day}</strong>
-                  
-                  <div style={{ display: 'flex', flexDirection: 'column', gap: '4px', overflow: 'hidden' }}>
-                    {cell.holidays.map(h => (
-                      <span key={h.id} style={{
-                        fontSize: '0.62rem', fontWeight: 700, padding: '2px 4px', borderRadius: '4px',
-                        background: 'rgba(245, 158, 11, 0.08)', color: '#f59e0b', border: '1px solid rgba(245, 158, 11, 0.15)',
-                        overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap'
-                      }} title={h.name}>
-                        🌴 {h.name}
-                      </span>
-                    ))}
-                    {cell.events.map(e => (
-                      <span key={e.id} style={{
-                        fontSize: '0.62rem', fontWeight: 700, padding: '2px 4px', borderRadius: '4px',
-                        background: 'rgba(99, 102, 241, 0.08)', color: 'hsl(var(--color-primary))', border: '1px solid rgba(99, 102, 241, 0.15)',
-                        overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap'
-                      }} title={e.title}>
-                        🎉 {e.title}
-                      </span>
-                    ))}
-                    {cell.exams.map(ex => (
-                      <span key={ex.id} style={{
-                        fontSize: '0.62rem', fontWeight: 700, padding: '2px 4px', borderRadius: '4px',
-                        background: 'rgba(236, 72, 153, 0.08)', color: '#ec4899', border: '1px solid rgba(236, 72, 153, 0.15)',
-                        overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap'
-                      }} title={ex.subject}>
-                        📝 {ex.subject} Exam
-                      </span>
-                    ))}
+                <div style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>
+                  <button className="btn-secondary" style={{ display: 'flex', alignItems: 'center', gap: '6px', height: '36px', padding: '0 12px', borderRadius: '8px' }} onClick={() => handleExportCalendarCSV(filteredEvents)}>
+                    Export CSV
+                  </button>
+                  <button className="btn-secondary" style={{ display: 'flex', alignItems: 'center', gap: '6px', height: '36px', padding: '0 12px', borderRadius: '8px' }} onClick={handlePrintCalendar}>
+                    <Printer size={15} /> Print Sheet
+                  </button>
+                </div>
+              </div>
+
+              {/* Days of Week Header */}
+              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(7, 1fr)', gap: '10px', textAlign: 'center', fontWeight: 700, fontSize: '0.82rem', color: 'var(--text-muted)', textTransform: 'uppercase', paddingBottom: '8px', borderBottom: '1px solid var(--border-glass)' }}>
+                <div>Sun</div>
+                <div>Mon</div>
+                <div>Tue</div>
+                <div>Wed</div>
+                <div>Thu</div>
+                <div>Fri</div>
+                <div>Sat</div>
+              </div>
+
+              {/* Monthly Days Grid */}
+              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(7, 1fr)', gap: '10px', minHeight: '400px' }}>
+                {calendarGrid.map((cell, idx) => {
+                  if (cell.empty) {
+                    return <div key={idx} style={{ background: 'rgba(255,255,255,0.01)', borderRadius: '12px', border: '1px dashed var(--border-glass)' }} />;
+                  }
+
+                  const isToday = now.getDate() === cell.day && now.getMonth() === activeMonth && now.getFullYear() === calendarYear;
+                  return (
+                    <div key={idx} style={{
+                      background: isToday ? 'var(--bg-glass-active)' : 'rgba(255,255,255,0.02)',
+                      border: isToday ? '2px solid hsl(var(--color-primary))' : '1px solid var(--border-glass)',
+                      borderRadius: '12px',
+                      padding: '10px',
+                      display: 'flex',
+                      flexDirection: 'column',
+                      gap: '6px',
+                      minHeight: '100px',
+                      transition: 'transform 0.2s ease, box-shadow 0.2s ease',
+                      position: 'relative'
+                    }}>
+                      <span style={{ fontSize: '0.85rem', fontWeight: 800, color: isToday ? 'hsl(var(--color-primary))' : 'var(--text-main)' }}>{cell.day}</span>
+                      
+                      <div style={{ display: 'flex', flexDirection: 'column', gap: '4px', overflowY: 'auto', maxHeight: '70px', paddingRight: '2px' }}>
+                        {cell.events.map(e => {
+                          const style = getEventColorStyle(e.eventType);
+                          return (
+                            <span 
+                              key={e.id} 
+                              onClick={() => {
+                                if (e.isEditable) {
+                                  setEditingCalendarEventId(e.id);
+                                  setCalendarEventForm({
+                                    title: e.title, eventType: e.eventType, eventDate: e.eventDate, startTime: e.startTime || '', endTime: e.endTime || '', description: e.description || '', applicableClasses: e.applicableClasses || 'All', session: e.session
+                                  });
+                                  setShowCalendarEventModal(true);
+                                } else {
+                                  alert(`Integrated Event:\n\nTitle: ${e.title}\nType: ${e.eventType}\nDescription: ${e.description}\nClasses: ${e.applicableClasses}`);
+                                }
+                              }}
+                              style={{
+                                fontSize: '0.62rem', 
+                                fontWeight: 700, 
+                                padding: '2px 6px', 
+                                borderRadius: '4px',
+                                background: style.bg, 
+                                color: style.text, 
+                                border: `1px solid ${style.border}`,
+                                overflow: 'hidden', 
+                                textOverflow: 'ellipsis', 
+                                whiteSpace: 'nowrap',
+                                cursor: 'pointer',
+                                transition: 'all 0.15s ease'
+                              }} 
+                              title={e.title}
+                              onMouseEnter={el => el.target.style.opacity = '0.8'}
+                              onMouseLeave={el => el.target.style.opacity = '1'}
+                            >
+                              • {e.title}
+                            </span>
+                          );
+                        })}
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+            </div>
+          )}
+
+          {calendarViewMode === 'week' && (
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
+              
+              {/* Weekly Navigation */}
+              <div className="no-print" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '8px' }}>
+                <div style={{ display: 'flex', gap: '8px' }}>
+                  <button className="btn-secondary" onClick={() => {
+                    const prev = new Date(weekAnchor);
+                    prev.setDate(prev.getDate() - 7);
+                    setWeekAnchor(prev);
+                  }} style={{ padding: '6px 12px', borderRadius: '8px' }}>← Prev Week</button>
+                  <button className="btn-secondary" onClick={() => {
+                    const next = new Date(weekAnchor);
+                    next.setDate(next.getDate() + 7);
+                    setWeekAnchor(next);
+                  }} style={{ padding: '6px 12px', borderRadius: '8px' }}>Next Week →</button>
+                </div>
+
+                <h4 style={{ fontSize: '1.1rem', fontWeight: 800, color: 'var(--text-main)', margin: 0 }}>
+                  Week Range: {currentWeekDays[0].toLocaleDateString('en-US', { month: 'short', day: 'numeric' })} - {currentWeekDays[6].toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}
+                </h4>
+
+                <div style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>
+                  <button className="btn-secondary" style={{ display: 'flex', alignItems: 'center', gap: '6px', height: '36px', padding: '0 12px', borderRadius: '8px' }} onClick={() => handleExportCalendarCSV(filteredEvents)}>
+                    Export CSV
+                  </button>
+                  <button className="btn-secondary" style={{ display: 'flex', alignItems: 'center', gap: '6px', height: '36px', padding: '0 12px', borderRadius: '8px' }} onClick={handlePrintCalendar}>
+                    <Printer size={15} /> Print Sheet
+                  </button>
+                </div>
+              </div>
+
+              {/* Weekly Days Columns */}
+              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(7, 1fr)', gap: '12px', minHeight: '300px' }}>
+                {currentWeekDays.map((date, idx) => {
+                  const dateStr = `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}-${String(date.getDate()).padStart(2, '0')}`;
+                  const dayEvents = getMergedCalendarEvents().filter(e => e.eventDate === dateStr);
+                  const isToday = now.getDate() === date.getDate() && now.getMonth() === date.getMonth() && now.getFullYear() === date.getFullYear();
+
+                  return (
+                    <div key={idx} style={{
+                      background: isToday ? 'var(--bg-glass-active)' : 'rgba(255,255,255,0.02)',
+                      border: isToday ? '2px solid hsl(var(--color-primary))' : '1px solid var(--border-glass)',
+                      borderRadius: '12px',
+                      padding: '12px',
+                      display: 'flex',
+                      flexDirection: 'column',
+                      gap: '10px',
+                      minHeight: '280px'
+                    }}>
+                      <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', borderBottom: '1px solid var(--border-glass)', paddingBottom: '8px' }}>
+                        <span style={{ fontSize: '0.75rem', textTransform: 'uppercase', fontWeight: 800, color: 'var(--text-muted)' }}>
+                          {date.toLocaleDateString('en-US', { weekday: 'short' })}
+                        </span>
+                        <span style={{ fontSize: '1.2rem', fontWeight: 900, color: isToday ? 'hsl(var(--color-primary))' : 'var(--text-main)', marginTop: '2px' }}>
+                          {date.getDate()}
+                        </span>
+                      </div>
+
+                      <div style={{ display: 'flex', flexDirection: 'column', gap: '8px', overflowY: 'auto', flex: 1 }}>
+                        {dayEvents.length > 0 ? (
+                          dayEvents.map(e => {
+                            const colors = getEventColorStyle(e.eventType);
+                            return (
+                              <div 
+                                key={e.id}
+                                onClick={() => {
+                                  if (e.isEditable) {
+                                    setEditingCalendarEventId(e.id);
+                                    setCalendarEventForm({
+                                      title: e.title, eventType: e.eventType, eventDate: e.eventDate, startTime: e.startTime || '', endTime: e.endTime || '', description: e.description || '', applicableClasses: e.applicableClasses || 'All', session: e.session
+                                    });
+                                    setShowCalendarEventModal(true);
+                                  } else {
+                                    alert(`Integrated Event:\n\nTitle: ${e.title}\nType: ${e.eventType}\nDescription: ${e.description}`);
+                                  }
+                                }}
+                                style={{
+                                  background: colors.bg,
+                                  border: `1px solid ${colors.border}`,
+                                  borderRadius: '8px',
+                                  padding: '8px',
+                                  cursor: 'pointer',
+                                  display: 'flex',
+                                  flexDirection: 'column',
+                                  gap: '4px',
+                                  transition: 'transform 0.15s ease'
+                                }}
+                                onMouseEnter={el => el.currentTarget.style.transform = 'translateY(-2px)'}
+                                onMouseLeave={el => el.currentTarget.style.transform = 'translateY(0)'}
+                              >
+                                <strong style={{ fontSize: '0.75rem', color: colors.text, display: 'block', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                                  {e.title}
+                                </strong>
+                                <span style={{ fontSize: '0.62rem', color: 'var(--text-muted)', display: 'block' }}>
+                                  {e.startTime ? `${e.startTime}` : 'All Day'}
+                                </span>
+                              </div>
+                            );
+                          })
+                        ) : (
+                          <span style={{ fontSize: '0.72rem', color: 'var(--text-muted)', fontStyle: 'italic', textAlign: 'center', marginTop: '12px' }}>No events</span>
+                        )}
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+            </div>
+          )}
+
+          {calendarViewMode === 'list' && (
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
+              
+              {/* List View Header Controls */}
+              <div className="no-print" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '8px' }}>
+                <h4 style={{ fontSize: '1.05rem', fontWeight: 800, margin: 0, color: 'var(--text-main)' }}>
+                  Chronological Events List ({filteredEvents.length} items found)
+                </h4>
+                
+                <div style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>
+                  <button className="btn-secondary" style={{ display: 'flex', alignItems: 'center', gap: '6px', height: '36px', padding: '0 12px', borderRadius: '8px' }} onClick={() => handleExportCalendarCSV(filteredEvents)}>
+                    Export CSV
+                  </button>
+                  <button className="btn-secondary" style={{ display: 'flex', alignItems: 'center', gap: '6px', height: '36px', padding: '0 12px', borderRadius: '8px' }} onClick={handlePrintCalendar}>
+                    <Printer size={15} /> Print Sheet
+                  </button>
+                </div>
+              </div>
+
+              {/* Events Table */}
+              <div style={{ overflowX: 'auto', borderRadius: '12px', border: '1px solid var(--border-glass)' }}>
+                <table className="table-custom" style={{ width: '100%', borderCollapse: 'collapse', fontSize: '0.85rem' }}>
+                  <thead>
+                    <tr style={{ background: 'var(--bg-glass-active)', borderBottom: '2px solid var(--border-glass)' }}>
+                      <th style={{ textAlign: 'left', padding: '12px 16px', fontWeight: 700, color: 'var(--text-muted)', width: '110px' }}>Date</th>
+                      <th style={{ textAlign: 'left', padding: '12px 16px', fontWeight: 700, color: 'var(--text-muted)' }}>Event Title</th>
+                      <th style={{ textAlign: 'left', padding: '12px 16px', fontWeight: 700, color: 'var(--text-muted)', width: '140px' }}>Event Type</th>
+                      <th style={{ textAlign: 'left', padding: '12px 16px', fontWeight: 700, color: 'var(--text-muted)' }}>Description</th>
+                      <th style={{ textAlign: 'left', padding: '12px 16px', fontWeight: 700, color: 'var(--text-muted)', width: '100px' }}>Source</th>
+                      <th className="no-print" style={{ textAlign: 'center', padding: '12px 16px', fontWeight: 700, color: 'var(--text-muted)', width: '200px' }}>Actions</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {filteredEvents.length > 0 ? (
+                      filteredEvents.map(e => {
+                        const style = getEventColorStyle(e.eventType);
+                        const isPublished = publishedEventIds.includes(e.id);
+                        return (
+                          <tr key={e.id} style={{ borderBottom: '1px solid var(--border-glass)', transition: 'background 0.2s' }}>
+                            <td style={{ padding: '14px 16px', fontWeight: 700, color: 'var(--text-main)' }}>
+                              {new Date(e.eventDate + 'T00:00:00').toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}
+                              {e.endDate && e.endDate !== e.eventDate && (
+                                <span style={{ display: 'block', fontSize: '0.7rem', color: 'var(--text-muted)', fontWeight: 600, marginTop: '2px' }}>
+                                  to {new Date(e.endDate + 'T00:00:00').toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}
+                                </span>
+                              )}
+                            </td>
+                            <td style={{ padding: '14px 16px', fontWeight: 600, color: 'var(--text-main)' }}>{e.title}</td>
+                            <td style={{ padding: '14px 16px' }}>
+                              <span style={{
+                                padding: '3px 8px', borderRadius: '10px', fontSize: '0.72rem', fontWeight: 700,
+                                background: style.bg, color: style.text, border: `1px solid ${style.border}`,
+                                display: 'inline-block'
+                              }}>{e.eventType}</span>
+                            </td>
+                            <td style={{ padding: '14px 16px', color: 'var(--text-muted)', fontSize: '0.8rem' }}>{e.description || '-'}</td>
+                            <td style={{ padding: '14px 16px' }}>
+                              <span style={{ fontSize: '0.72rem', color: e.isEditable ? 'hsl(var(--color-primary))' : 'var(--text-muted)', fontWeight: 600 }}>{e.source}</span>
+                            </td>
+                            <td className="no-print" style={{ padding: '10px 16px', textAlign: 'center' }}>
+                              <div style={{ display: 'flex', gap: '6px', justifyContent: 'center', alignItems: 'center', flexWrap: 'wrap' }}>
+                                {/* Edit Button */}
+                                {e.isEditable && (
+                                  <button 
+                                    onClick={() => {
+                                      setEditingCalendarEventId(e.id);
+                                      setCalendarEventForm({
+                                        title: e.title, eventType: e.eventType, eventDate: e.eventDate, startTime: e.startTime || '', endTime: e.endTime || '', description: e.description || '', applicableClasses: e.applicableClasses || 'All', session: e.session
+                                      });
+                                      setShowCalendarEventModal(true);
+                                    }}
+                                    style={{ padding: '5px 10px', borderRadius: '6px', border: '1px solid var(--border-glass)', background: 'rgba(99,102,241,0.06)', cursor: 'pointer', color: 'hsl(var(--color-primary))', fontSize: '0.72rem', fontWeight: 700, display: 'flex', alignItems: 'center', gap: '4px', transition: 'all 0.2s ease' }}
+                                    onMouseEnter={el => el.currentTarget.style.background = 'rgba(99,102,241,0.15)'}
+                                    onMouseLeave={el => el.currentTarget.style.background = 'rgba(99,102,241,0.06)'}
+                                  >
+                                    <Edit3 size={12} /> Edit
+                                  </button>
+                                )}
+                                {/* Delete Button */}
+                                {e.isEditable && (
+                                  <button 
+                                    onClick={() => handleDeleteCalendarEvent(e.id)}
+                                    style={{ padding: '5px 10px', borderRadius: '6px', border: '1px solid rgba(239,68,68,0.15)', background: 'rgba(239,68,68,0.06)', cursor: 'pointer', color: '#ef4444', fontSize: '0.72rem', fontWeight: 700, display: 'flex', alignItems: 'center', gap: '4px', transition: 'all 0.2s ease' }}
+                                    onMouseEnter={el => el.currentTarget.style.background = 'rgba(239,68,68,0.15)'}
+                                    onMouseLeave={el => el.currentTarget.style.background = 'rgba(239,68,68,0.06)'}
+                                  >
+                                    <Trash2 size={12} /> Delete
+                                  </button>
+                                )}
+                                {/* Publish / Published Badge */}
+                                {isPublished ? (
+                                  <span style={{ 
+                                    padding: '5px 10px', borderRadius: '6px', fontSize: '0.72rem', fontWeight: 700,
+                                    background: 'rgba(16,185,129,0.1)', color: '#10b981', border: '1px solid rgba(16,185,129,0.2)',
+                                    display: 'flex', alignItems: 'center', gap: '4px'
+                                  }}>
+                                    <CheckCircle size={12} /> Published
+                                  </span>
+                                ) : (
+                                  <button 
+                                    onClick={() => handlePublishEvent(e.id)}
+                                    style={{ padding: '5px 10px', borderRadius: '6px', border: '1px solid rgba(16,185,129,0.2)', background: 'rgba(16,185,129,0.06)', cursor: 'pointer', color: '#10b981', fontSize: '0.72rem', fontWeight: 700, display: 'flex', alignItems: 'center', gap: '4px', transition: 'all 0.2s ease' }}
+                                    onMouseEnter={el => el.currentTarget.style.background = 'rgba(16,185,129,0.15)'}
+                                    onMouseLeave={el => el.currentTarget.style.background = 'rgba(16,185,129,0.06)'}
+                                  >
+                                    <Send size={12} /> Publish
+                                  </button>
+                                )}
+                              </div>
+                            </td>
+                          </tr>
+                        );
+                      })
+                    ) : (
+                      <tr>
+                        <td colSpan="6" style={{ padding: '40px', textAlign: 'center', color: 'var(--text-muted)', fontStyle: 'italic' }}>
+                          No academic events found matching the active session and filters.
+                        </td>
+                      </tr>
+                    )}
+                  </tbody>
+                </table>
+              </div>
+            </div>
+          )}
+        </div>
+
+        {/* ======================================================== */}
+        {/* MODAL PORTALS (MANUAL EVENT, FILE UPLOAD WIZARD, LOGS)   */}
+        {/* ======================================================== */}
+
+        {/* Modal 1: Manual Calendar Event Add/Edit Modal */}
+        {showCalendarEventModal && createPortal(
+          <div className="modal-overlay" style={{ zIndex: 30000000 }}>
+            <div className="modal-content glass-panel animate-scale-up" style={{ maxWidth: '500px', borderRadius: '16px', padding: '24px' }}>
+              <div className="modal-header" style={{ borderBottom: '1px solid var(--border-glass)', paddingBottom: '12px', marginBottom: '16px' }}>
+                <h3 style={{ fontSize: '1.15rem', fontWeight: 800, margin: 0 }}>
+                  {editingCalendarEventId ? 'Edit Event Details' : 'Declare New Academic Event'}
+                </h3>
+                <button style={{ background: 'none', border: 'none', color: 'var(--text-muted)', cursor: 'pointer', fontSize: '1.6rem' }} onClick={() => setShowCalendarEventModal(false)}>×</button>
+              </div>
+
+              <form onSubmit={handleCalendarEventSubmit}>
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '14px', marginBottom: '20px' }}>
+                  <div className="form-group">
+                    <label style={{ fontSize: '0.78rem', fontWeight: 700, color: 'var(--text-muted)' }}>Event Title *</label>
+                    <input type="text" className="form-control" placeholder="e.g. Science Exhibition" value={calendarEventForm.title} onChange={e => setCalendarEventForm({ ...calendarEventForm, title: e.target.value })} required />
+                  </div>
+
+                  <div className="form-group">
+                    <label style={{ fontSize: '0.78rem', fontWeight: 700, color: 'var(--text-muted)' }}>Event Type *</label>
+                    <select className="form-control" value={calendarEventForm.eventType} onChange={e => setCalendarEventForm({ ...calendarEventForm, eventType: e.target.value })}>
+                      {calendarEventTypes.map(t => <option key={t} value={t}>{t}</option>)}
+                    </select>
+                  </div>
+
+                  <div className="form-group">
+                    <label style={{ fontSize: '0.78rem', fontWeight: 700, color: 'var(--text-muted)' }}>Event Date *</label>
+                    <input type="date" className="form-control" value={calendarEventForm.eventDate} onChange={e => setCalendarEventForm({ ...calendarEventForm, eventDate: e.target.value })} required />
+                  </div>
+
+                  <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px' }}>
+                    <div className="form-group">
+                      <label style={{ fontSize: '0.78rem', fontWeight: 700, color: 'var(--text-muted)' }}>Start Time (Optional)</label>
+                      <input type="text" className="form-control" placeholder="e.g. 09:30 AM" value={calendarEventForm.startTime} onChange={e => setCalendarEventForm({ ...calendarEventForm, startTime: e.target.value })} />
+                    </div>
+                    <div className="form-group">
+                      <label style={{ fontSize: '0.78rem', fontWeight: 700, color: 'var(--text-muted)' }}>End Time (Optional)</label>
+                      <input type="text" className="form-control" placeholder="e.g. 03:00 PM" value={calendarEventForm.endTime} onChange={e => setCalendarEventForm({ ...calendarEventForm, endTime: e.target.value })} />
+                    </div>
+                  </div>
+
+                  <div className="form-group">
+                    <label style={{ fontSize: '0.78rem', fontWeight: 700, color: 'var(--text-muted)' }}>Applicable Classes (Optional)</label>
+                    <input type="text" className="form-control" placeholder="e.g. All, or Grade V, Grade VI" value={calendarEventForm.applicableClasses} onChange={e => setCalendarEventForm({ ...calendarEventForm, applicableClasses: e.target.value })} />
+                  </div>
+
+                  <div className="form-group">
+                    <label style={{ fontSize: '0.78rem', fontWeight: 700, color: 'var(--text-muted)' }}>Description Details</label>
+                    <textarea className="form-control" placeholder="Additional instructions..." value={calendarEventForm.description} onChange={e => setCalendarEventForm({ ...calendarEventForm, description: e.target.value })} style={{ height: '70px', resize: 'none' }} />
                   </div>
                 </div>
-              );
-            })}
+
+                <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '12px', borderTop: '1px solid var(--border-glass)', paddingTop: '16px' }}>
+                  <button type="button" className="btn-secondary" style={{ padding: '8px 20px', borderRadius: '8px' }} onClick={() => setShowCalendarEventModal(false)}>Cancel</button>
+                  <button type="submit" className="btn-primary" style={{ padding: '8px 24px', borderRadius: '8px', fontWeight: 700 }}>Save Event</button>
+                </div>
+              </form>
+            </div>
+          </div>,
+          document.body
+        )}
+
+        {/* Modal 2: CSV/Excel Upload Validation preview Wizard */}
+        {showUploadModal && createPortal(
+          <div className="modal-overlay" style={{ zIndex: 30000000 }}>
+            <div className="modal-content glass-panel animate-scale-up" style={{ width: '90%', maxWidth: '900px', maxHeight: '85vh', overflowY: 'auto', borderRadius: '20px', padding: '32px' }}>
+              <div className="modal-header" style={{ borderBottom: '1px solid var(--border-glass)', paddingBottom: '16px', marginBottom: '20px' }}>
+                <div>
+                  <h3 style={{ fontSize: '1.25rem', fontWeight: 800, margin: 0, display: 'flex', alignItems: 'center', gap: '10px' }}>
+                    <Upload size={22} style={{ color: 'hsl(var(--color-primary))' }} /> Upload Academic Calendar
+                  </h3>
+                  <p style={{ fontSize: '0.8rem', color: 'var(--text-muted)', margin: '4px 0 0 0' }}>Supports both CSV and Excel (.xlsx) templates. Upload to validate and confirm import.</p>
+                </div>
+                <button style={{ background: 'none', border: 'none', color: 'var(--text-muted)', cursor: 'pointer', fontSize: '1.8rem', lineHeight: 1 }} onClick={() => { setShowUploadModal(false); setUploadPreviewRows([]); setUploadFileName(''); }}>×</button>
+              </div>
+
+              {uploadPreviewRows.length === 0 ? (
+                /* Stage 1: File selection drag & drop area */
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '20px', alignItems: 'center', padding: '40px 20px', border: '2px dashed var(--border-glass)', borderRadius: '16px', background: 'rgba(255,255,255,0.01)' }}>
+                  <div style={{ width: '64px', height: '64px', borderRadius: '50%', background: 'rgba(99,102,241,0.1)', display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'hsl(var(--color-primary))' }}>
+                    <Upload size={32} />
+                  </div>
+                  <div style={{ textAlign: 'center' }}>
+                    <p style={{ fontWeight: 700, fontSize: '0.95rem', margin: 0 }}>Drag and drop your template file here</p>
+                    <p style={{ fontSize: '0.8rem', color: 'var(--text-muted)', marginTop: '4px' }}>Accepts only pre-formatted CSV and .xlsx Excel files</p>
+                  </div>
+                  
+                  <label className="btn-primary" style={{ padding: '10px 24px', borderRadius: '8px', cursor: 'pointer', fontWeight: 700 }}>
+                    Choose Local File
+                    <input type="file" accept=".csv, application/vnd.openxmlformats-officedocument.spreadsheetml.sheet" onChange={handleCalendarFileUpload} style={{ display: 'none' }} />
+                  </label>
+
+                  {uploading && (
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginTop: '10px', color: 'hsl(var(--color-primary))' }}>
+                      <Loader2 size={16} className="animate-spin" />
+                      <span style={{ fontSize: '0.8rem', fontWeight: 600 }}>Reading & validating sheet...</span>
+                    </div>
+                  )}
+                </div>
+              ) : (
+                /* Stage 2: Preview table and validation highlight logs */
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '12px', background: 'var(--bg-glass-active)', padding: '12px 16px', borderRadius: '10px', border: '1px solid var(--border-glass)' }}>
+                    <div>
+                      <span style={{ fontSize: '0.85rem' }}>File Loaded: <strong>{uploadFileName}</strong></span>
+                      <span style={{ marginLeft: '20px', fontSize: '0.85rem' }}>Total Rows: <strong>{uploadPreviewRows.length}</strong></span>
+                      <span style={{ marginLeft: '20px', fontSize: '0.85rem', color: uploadPreviewRows.some(r => !r.isValid) ? '#ef4444' : '#10b981' }}>
+                        Errors: <strong>{uploadPreviewRows.filter(r => !r.isValid).length}</strong>
+                      </span>
+                    </div>
+
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                      <span style={{ fontSize: '0.8rem', fontWeight: 700, color: 'var(--text-muted)' }}>Target Session:</span>
+                      <select className="select-custom" value={uploadSession} onChange={e => setUploadSession(e.target.value)} style={{ padding: '4px 10px', borderRadius: '6px', height: '30px' }}>
+                        <option value="2026-27">2026-27</option>
+                        <option value="2027-28">2027-28</option>
+                        <option value="2028-29">2028-29</option>
+                      </select>
+                    </div>
+                  </div>
+
+                  {uploadPreviewRows.some(r => !r.isValid) && (
+                    <div style={{ padding: '12px 16px', background: 'rgba(239, 68, 68, 0.08)', border: '1px solid rgba(239, 68, 68, 0.15)', borderRadius: '10px', color: '#ef4444', fontSize: '0.8rem' }}>
+                      <strong>Validation Warnings detected:</strong> Malformed cells must be corrected in your sheet before importing to SQL database. Review the red highlighted rows below.
+                    </div>
+                  )}
+
+                  {/* Validation Table */}
+                  <div style={{ overflowX: 'auto', borderRadius: '12px', border: '1px solid var(--border-glass)', maxHeight: '350px', overflowY: 'auto' }}>
+                    <table className="table-custom" style={{ width: '100%', borderCollapse: 'collapse', fontSize: '0.8rem' }}>
+                      <thead>
+                        <tr style={{ background: 'var(--bg-glass-active)', position: 'sticky', top: 0, zIndex: 10 }}>
+                          <th style={{ padding: '10px 12px', textAlign: 'center', width: '70px' }}>Row #</th>
+                          <th style={{ padding: '10px 12px', textAlign: 'left', width: '110px' }}>Date</th>
+                          <th style={{ padding: '10px 12px', textAlign: 'left' }}>Event Title</th>
+                          <th style={{ padding: '10px 12px', textAlign: 'left', width: '120px' }}>Event Type</th>
+                          <th style={{ padding: '10px 12px', textAlign: 'left', width: '100px' }}>Session</th>
+                          <th style={{ padding: '10px 12px', textAlign: 'left', width: '100px' }}>Status</th>
+                          <th style={{ padding: '10px 12px', textAlign: 'left' }}>Validation Logs</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {uploadPreviewRows.map((row, idx) => (
+                          <tr key={idx} style={{ 
+                            borderBottom: '1px solid var(--border-glass)', 
+                            background: row.isValid ? 'transparent' : 'rgba(239, 68, 68, 0.04)',
+                            opacity: row.isValid ? 1 : 0.95
+                          }}>
+                            <td style={{ padding: '10px 12px', textAlign: 'center', fontWeight: 700 }}>{row.rowNumber}</td>
+                            <td style={{ padding: '10px 12px', color: row.isValid ? 'inherit' : '#ef4444' }}>{row.data.eventDate || '-'}</td>
+                            <td style={{ padding: '10px 12px', fontWeight: 600 }}>{row.data.title || '-'}</td>
+                            <td style={{ padding: '10px 12px' }}>{row.data.eventType || '-'}</td>
+                            <td style={{ padding: '10px 12px' }}>{row.data.session || '-'}</td>
+                            <td style={{ padding: '10px 12px' }}>
+                              <span style={{
+                                padding: '2px 6px', borderRadius: '4px', fontSize: '0.68rem', fontWeight: 700,
+                                background: row.isValid ? 'rgba(16,185,129,0.1)' : 'rgba(239,68,68,0.1)',
+                                color: row.isValid ? '#10b981' : '#ef4444'
+                              }}>{row.isValid ? 'Valid' : 'Invalid'}</span>
+                            </td>
+                            <td style={{ padding: '10px 12px', color: '#ef4444', fontStyle: 'italic', fontSize: '0.75rem' }}>
+                              {row.isValid ? '-' : row.errors.join(', ')}
+                            </td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
+
+                  <div style={{ display: 'flex', justifyContent: 'space-between', borderTop: '1px solid var(--border-glass)', paddingTop: '16px', marginTop: '10px' }}>
+                    <button className="btn-secondary" style={{ padding: '10px 20px', borderRadius: '8px' }} onClick={() => { setUploadPreviewRows([]); setUploadFileName(''); }}>
+                      ← Upload Different File
+                    </button>
+                    <div style={{ display: 'flex', gap: '12px' }}>
+                      <button className="btn-secondary" style={{ padding: '10px 20px', borderRadius: '8px' }} onClick={() => { setShowUploadModal(false); setUploadPreviewRows([]); setUploadFileName(''); }}>
+                        Cancel
+                      </button>
+                      <button 
+                        className="btn-primary" 
+                        disabled={uploadPreviewRows.some(r => !r.isValid)} 
+                        onClick={handleConfirmCalendarImport} 
+                        style={{ padding: '10px 24px', borderRadius: '8px', fontWeight: 700, opacity: uploadPreviewRows.some(r => !r.isValid) ? 0.5 : 1, cursor: uploadPreviewRows.some(r => !r.isValid) ? 'not-allowed' : 'pointer' }}
+                      >
+                        Confirm Import ({uploadPreviewRows.filter(r => r.isValid).length} Events)
+                      </button>
+                    </div>
+                  </div>
+                </div>
+              )}
+            </div>
+          </div>,
+          document.body
+        )}
+
+        {/* Modal 3: Import History Logs tracker modal */}
+        {showImportHistoryModal && createPortal(
+          <div className="modal-overlay" style={{ zIndex: 30000000 }}>
+            <div className="modal-content glass-panel animate-scale-up" style={{ width: '90%', maxWidth: '650px', borderRadius: '16px', padding: '24px' }}>
+              <div className="modal-header" style={{ borderBottom: '1px solid var(--border-glass)', paddingBottom: '12px', marginBottom: '16px' }}>
+                <h3 style={{ fontSize: '1.15rem', fontWeight: 800, margin: 0 }}>Import History & Track Logs</h3>
+                <button style={{ background: 'none', border: 'none', color: 'var(--text-muted)', cursor: 'pointer', fontSize: '1.6rem' }} onClick={() => setShowImportHistoryModal(false)}>×</button>
+              </div>
+
+              <div style={{ overflowX: 'auto', borderRadius: '12px', border: '1px solid var(--border-glass)', maxHeight: '300px', overflowY: 'auto' }}>
+                <table className="table-custom" style={{ width: '100%', borderCollapse: 'collapse', fontSize: '0.8rem' }}>
+                  <thead>
+                    <tr style={{ background: 'var(--bg-glass-active)' }}>
+                      <th style={{ padding: '10px 12px', textAlign: 'left' }}>File Name</th>
+                      <th style={{ padding: '10px 12px', textAlign: 'left', width: '150px' }}>Import Date</th>
+                      <th style={{ padding: '10px 12px', textAlign: 'center', width: '70px' }}>Records</th>
+                      <th style={{ padding: '10px 12px', textAlign: 'left', width: '80px' }}>Session</th>
+                      <th style={{ padding: '10px 12px', textAlign: 'left', width: '110px' }}>Uploaded By</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {calendarImports.length > 0 ? (
+                      calendarImports.map(log => (
+                        <tr key={log.id} style={{ borderBottom: '1px solid var(--border-glass)' }}>
+                          <td style={{ padding: '10px 12px', fontWeight: 600 }}>{log.fileName}</td>
+                          <td style={{ padding: '10px 12px', color: 'var(--text-muted)' }}>
+                            {new Date(log.importDate).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}{' '}
+                            {new Date(log.importDate).toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' })}
+                          </td>
+                          <td style={{ padding: '10px 12px', textAlign: 'center', fontWeight: 700, color: 'hsl(var(--color-primary))' }}>{log.totalRecords}</td>
+                          <td style={{ padding: '10px 12px' }}>{log.session}</td>
+                          <td style={{ padding: '10px 12px', color: 'var(--text-muted)' }}>{log.importedBy}</td>
+                        </tr>
+                      ))
+                    ) : (
+                      <tr>
+                        <td colSpan="5" style={{ padding: '30px', textAlign: 'center', color: 'var(--text-muted)', fontStyle: 'italic' }}>
+                          No calendar import files recorded in history.
+                        </td>
+                      </tr>
+                    )}
+                  </tbody>
+                </table>
+              </div>
+
+              <div style={{ display: 'flex', justifyContent: 'flex-end', borderTop: '1px solid var(--border-glass)', paddingTop: '16px', marginTop: '16px' }}>
+                <button className="btn-secondary" style={{ padding: '8px 20px', borderRadius: '8px' }} onClick={() => setShowImportHistoryModal(false)}>Close Tracker</button>
+              </div>
+            </div>
+          </div>,
+          document.body
+        )}
+
+      </div>
+    );
+  };
+
+  const renderPublishedAcademicCalendar = () => {
+    // Get all merged events and filter to only published ones
+    const allEvents = getMergedCalendarEvents();
+    const publishedEvents = allEvents.filter(e => publishedEventIds.includes(e.id));
+
+    return (
+      <div style={{ display: 'flex', flexDirection: 'column', gap: '24px' }}>
+        
+        {/* Header */}
+        <div className="glass-panel" style={{ padding: '20px 24px', display: 'flex', flexDirection: 'column', gap: '16px' }}>
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '16px' }}>
+            <div>
+              <h3 style={{ fontSize: '1.25rem', fontWeight: 800, color: 'var(--text-main)', margin: 0, display: 'flex', alignItems: 'center', gap: '10px' }}>
+                <CheckCircle size={22} style={{ color: '#10b981' }} /> Published Academic Calendar
+              </h3>
+              <p style={{ fontSize: '0.85rem', color: 'var(--text-muted)', margin: '4px 0 0 0' }}>
+                Official published academic events visible to all stakeholders. Only events published from the Academic Calendar appear here.
+              </p>
+            </div>
+            <div style={{ display: 'flex', gap: '8px' }}>
+              <button className="btn-secondary" style={{ display: 'flex', alignItems: 'center', gap: '6px', height: '36px', padding: '0 12px', borderRadius: '8px' }} onClick={() => handleExportCalendarCSV(publishedEvents)}>
+                <Download size={15} /> Export CSV
+              </button>
+              <button className="btn-secondary" style={{ display: 'flex', alignItems: 'center', gap: '6px', height: '36px', padding: '0 12px', borderRadius: '8px' }} onClick={() => window.print()}>
+                <Printer size={15} /> Print
+              </button>
+            </div>
           </div>
+
+          {/* Stats Row */}
+          <div style={{ display: 'flex', gap: '16px', flexWrap: 'wrap', borderTop: '1px solid var(--border-glass)', paddingTop: '16px' }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '8px', padding: '8px 16px', borderRadius: '10px', background: 'rgba(16,185,129,0.06)', border: '1px solid rgba(16,185,129,0.12)' }}>
+              <CheckCircle size={16} style={{ color: '#10b981' }} />
+              <span style={{ fontSize: '0.82rem', fontWeight: 700, color: '#10b981' }}>{publishedEvents.length} Published Events</span>
+            </div>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '8px', padding: '8px 16px', borderRadius: '10px', background: 'rgba(245,158,11,0.06)', border: '1px solid rgba(245,158,11,0.12)' }}>
+              <Calendar size={16} style={{ color: '#f59e0b' }} />
+              <span style={{ fontSize: '0.82rem', fontWeight: 700, color: '#f59e0b' }}>
+                {publishedEvents.filter(e => e.eventType === 'Holiday').length} Holidays
+              </span>
+            </div>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '8px', padding: '8px 16px', borderRadius: '10px', background: 'rgba(236,72,153,0.06)', border: '1px solid rgba(236,72,153,0.12)' }}>
+              <BookOpen size={16} style={{ color: '#ec4899' }} />
+              <span style={{ fontSize: '0.82rem', fontWeight: 700, color: '#ec4899' }}>
+                {publishedEvents.filter(e => e.eventType === 'Examination').length} Examinations
+              </span>
+            </div>
+          </div>
+        </div>
+
+        {/* Published Events Table */}
+        <div className="glass-panel" style={{ padding: '24px' }}>
+          {publishedEvents.length > 0 ? (
+            <div style={{ overflowX: 'auto', borderRadius: '12px', border: '1px solid var(--border-glass)' }}>
+              <table className="table-custom" style={{ width: '100%', borderCollapse: 'collapse', fontSize: '0.85rem' }}>
+                <thead>
+                  <tr style={{ background: 'var(--bg-glass-active)', borderBottom: '2px solid var(--border-glass)' }}>
+                    <th style={{ textAlign: 'left', padding: '12px 16px', fontWeight: 700, color: 'var(--text-muted)', width: '120px' }}>Date</th>
+                    <th style={{ textAlign: 'left', padding: '12px 16px', fontWeight: 700, color: 'var(--text-muted)' }}>Event Title</th>
+                    <th style={{ textAlign: 'left', padding: '12px 16px', fontWeight: 700, color: 'var(--text-muted)', width: '150px' }}>Event Type</th>
+                    <th style={{ textAlign: 'left', padding: '12px 16px', fontWeight: 700, color: 'var(--text-muted)' }}>Description</th>
+                    <th style={{ textAlign: 'left', padding: '12px 16px', fontWeight: 700, color: 'var(--text-muted)', width: '100px' }}>Classes</th>
+                    <th className="no-print" style={{ textAlign: 'center', padding: '12px 16px', fontWeight: 700, color: 'var(--text-muted)', width: '120px' }}>Actions</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {publishedEvents.map(e => {
+                    const style = getEventColorStyle(e.eventType);
+                    return (
+                      <tr key={e.id} style={{ borderBottom: '1px solid var(--border-glass)', transition: 'background 0.2s' }}>
+                        <td style={{ padding: '14px 16px', fontWeight: 700, color: 'var(--text-main)' }}>
+                          {new Date(e.eventDate + 'T00:00:00').toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}
+                          {e.endDate && e.endDate !== e.eventDate && (
+                            <span style={{ display: 'block', fontSize: '0.7rem', color: 'var(--text-muted)', fontWeight: 600, marginTop: '2px' }}>
+                              to {new Date(e.endDate + 'T00:00:00').toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}
+                            </span>
+                          )}
+                        </td>
+                        <td style={{ padding: '14px 16px', fontWeight: 600, color: 'var(--text-main)' }}>{e.title}</td>
+                        <td style={{ padding: '14px 16px' }}>
+                          <span style={{
+                            padding: '3px 8px', borderRadius: '10px', fontSize: '0.72rem', fontWeight: 700,
+                            background: style.bg, color: style.text, border: `1px solid ${style.border}`,
+                            display: 'inline-block'
+                          }}>{e.eventType}</span>
+                        </td>
+                        <td style={{ padding: '14px 16px', color: 'var(--text-muted)', fontSize: '0.8rem' }}>{e.description || '-'}</td>
+                        <td style={{ padding: '14px 16px', color: 'var(--text-main)', fontWeight: 600, fontSize: '0.8rem' }}>{e.applicableClasses || 'All'}</td>
+                        <td className="no-print" style={{ padding: '10px 16px', textAlign: 'center' }}>
+                          <button 
+                            onClick={() => handleUnpublishEvent(e.id)}
+                            style={{ padding: '5px 10px', borderRadius: '6px', border: '1px solid rgba(239,68,68,0.15)', background: 'rgba(239,68,68,0.06)', cursor: 'pointer', color: '#ef4444', fontSize: '0.72rem', fontWeight: 700, display: 'flex', alignItems: 'center', gap: '4px', transition: 'all 0.2s ease', margin: '0 auto' }}
+                            onMouseEnter={el => el.currentTarget.style.background = 'rgba(239,68,68,0.15)'}
+                            onMouseLeave={el => el.currentTarget.style.background = 'rgba(239,68,68,0.06)'}
+                          >
+                            <X size={12} /> Unpublish
+                          </button>
+                        </td>
+                      </tr>
+                    );
+                  })}
+                </tbody>
+              </table>
+            </div>
+          ) : (
+            <div style={{ 
+              padding: '60px 40px', textAlign: 'center', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '16px'
+            }}>
+              <div style={{ width: '64px', height: '64px', borderRadius: '50%', background: 'rgba(107,114,128,0.08)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                <Calendar size={28} style={{ color: 'var(--text-muted)' }} />
+              </div>
+              <div>
+                <p style={{ fontSize: '1rem', fontWeight: 700, color: 'var(--text-main)', margin: '0 0 6px 0' }}>No Published Events Yet</p>
+                <p style={{ fontSize: '0.85rem', color: 'var(--text-muted)', margin: 0, maxWidth: '420px' }}>
+                  Go to the Academic Calendar section, switch to List View, and click the <strong>Publish</strong> button on events you want to make official.
+                </p>
+              </div>
+              <button 
+                className="btn-primary" 
+                onClick={() => setAdminView('academic-calendar')}
+                style={{ padding: '10px 24px', borderRadius: '8px', fontWeight: 700, display: 'flex', alignItems: 'center', gap: '8px', marginTop: '8px' }}
+              >
+                <Calendar size={16} /> Go to Academic Calendar
+              </button>
+            </div>
+          )}
         </div>
       </div>
     );
@@ -4004,7 +5130,7 @@ export default function AcademicPanel({ subView, setAdminView }) {
                 <div style={{ display: 'flex', justifyContent: 'space-between', marginTop: '40px', borderTop: '1px dashed var(--border-glass)', paddingTop: '20px', fontSize: '0.8rem' }}>
                   <div style={{ textAlign: 'center', width: '150px' }}>
                     <div style={{ height: '40px' }} />
-                    <div style={{ borderTop: '1px solid var(--text-muted)', paddingTop: '4px' }}>Class Teacher</div>
+                    <div style={{ borderTop: '1px solid var(--text-muted)', paddingTop: '4px' }}>Class Staff</div>
                   </div>
                   <div style={{ textAlign: 'center', width: '150px' }}>
                     <div style={{ height: '40px' }} />
@@ -4067,13 +5193,13 @@ export default function AcademicPanel({ subView, setAdminView }) {
                   </select>
                 </div>
                 <div className="form-group">
-                  <label>Teacher Assignment</label>
+                  <label>Staff Assignment</label>
                   <select 
                     className="form-control" 
                     value={timetableForm.teacher} 
                     onChange={(e) => setTimetableForm({ ...timetableForm, teacher: e.target.value })}
                   >
-                    <option value="">Select Teacher</option>
+                    <option value="">Select Staff</option>
                     {Array.isArray(teachers) && teachers.map((t, idx) => (
                       <option key={idx} value={t.name}>{t.name}</option>
                     ))}
@@ -4201,8 +5327,8 @@ export default function AcademicPanel({ subView, setAdminView }) {
                 <select className="form-control" value={noticeForm.visibility} onChange={(e) => setNoticeForm({ ...noticeForm, visibility: e.target.value })}>
                   <option value="All">All School</option>
                   <option value="Students">Students Only</option>
-                  <option value="Teachers">Teachers Only</option>
-                  <option value="Staff">Staff Only</option>
+                  <option value="Teachers">Staff Only</option>
+                  <option value="Staff">Employee Only</option>
                   <option value="Parents">Parents Only</option>
                 </select>
               </div>
@@ -4283,6 +5409,8 @@ export default function AcademicPanel({ subView, setAdminView }) {
         return renderHolidays();
       case 'academic-calendar':
         return renderAcademicCalendar();
+      case 'published-academic-calendar':
+        return renderPublishedAcademicCalendar();
       case 'academic-results':
       case 'results-analytics':
         return <ResultManagementPanel activeTab="analytics" setAdminView={setAdminView} />;
@@ -4384,7 +5512,7 @@ export default function AcademicPanel({ subView, setAdminView }) {
                 <div className="form-group">
                   <label>Academic Session *</label>
                   <select className="form-control" value={wizardForm.academicSession} onChange={e => setWizardForm({ ...wizardForm, academicSession: e.target.value })} style={{ marginTop: '4px' }}>
-                    {Array.from({ length: 2049 - 2026 + 1 }, (_, i) => {
+                    {Array.from({ length: 2030 - 2026 + 1 }, (_, i) => {
   const s = 2026 + i;
   return `${s}-${s + 1}`;
 }).map(sy => <option key={sy} value={sy}>{sy}</option>)}
@@ -4428,9 +5556,41 @@ export default function AcademicPanel({ subView, setAdminView }) {
                 <h4 style={{ fontSize: '1rem', fontWeight: 700, margin: 0 }}>Select Grades</h4>
                 <p style={{ fontSize: '0.8rem', color: 'var(--text-muted)', margin: 0 }}>Select one or more grades.</p>
                 {(() => {
-                  const uniqueGradesWithSubjects = [...new Set(subjects.map(s => s.grade))].sort((a, b) => {
-                    return GRADE_ORDER.indexOf(a) - GRADE_ORDER.indexOf(b);
+                  const currentExamName = wizardForm.examType === 'Custom Exam' ? wizardForm.customExamName : wizardForm.examType;
+                  
+                  const normalizeSession = (session) => {
+                    if (!session) return '';
+                    const clean = session.replace(/\s+/g, '');
+                    const match = clean.match(/^(\d{4})-(\d{2})$/);
+                    if (match) {
+                      const century = match[1].slice(0, 2);
+                      return `${match[1]}-${century}${match[2]}`;
+                    }
+                    return clean;
+                  };
+
+                  const targetSessionNorm = normalizeSession(wizardForm.academicSession);
+                  const alreadyUsedGrades = new Set();
+                  
+                  exams.forEach(ex => {
+                    if (wizardForm.id && ex.id === wizardForm.id) return;
+                    
+                    const exNameMatch = (ex.examName || '').trim().toLowerCase() === (currentExamName || '').trim().toLowerCase();
+                    const exSessionNorm = normalizeSession(ex.academicSession);
+                    
+                    if (exNameMatch && (!exSessionNorm || exSessionNorm === targetSessionNorm)) {
+                      (ex.gradeSections || []).forEach(gs => {
+                        alreadyUsedGrades.add(gs.grade);
+                      });
+                    }
                   });
+
+                  const uniqueGradesWithSubjects = [...new Set(subjects.map(s => s.grade))]
+                    .filter(g => !alreadyUsedGrades.has(g) || wizardForm.selectedGrades.some(sg => sg.grade === g))
+                    .sort((a, b) => {
+                      const currentGradeOrder = activeGrades.map(g => g.name);
+                      return currentGradeOrder.indexOf(a) - currentGradeOrder.indexOf(b);
+                    });
                   return uniqueGradesWithSubjects.length > 0 ? (
                     <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(140px, 1fr))', gap: '10px', maxHeight: '300px', overflowY: 'auto', padding: '4px' }}>
                       {uniqueGradesWithSubjects.map((g, idx) => {
@@ -4442,12 +5602,13 @@ export default function AcademicPanel({ subView, setAdminView }) {
                               : [...wizardForm.selectedGrades, { grade: g, section: "" }];
                             const newStartDates = { ...wizardForm.startDates };
                             const newEndDates = { ...wizardForm.endDates };
+                            const key = `${g}-`;
                             if (!isSelected) {
-                              newStartDates[g] = '';
-                              newEndDates[g] = '';
+                              newStartDates[key] = '';
+                              newEndDates[key] = '';
                             } else {
-                              delete newStartDates[g];
-                              delete newEndDates[g];
+                              delete newStartDates[key];
+                              delete newEndDates[key];
                             }
                             setWizardForm({ ...wizardForm, selectedGrades: updated, startDates: newStartDates, endDates: newEndDates });
                           }} style={{
@@ -4923,8 +6084,8 @@ export default function AcademicPanel({ subView, setAdminView }) {
                 }}
                 style={{ marginTop: '4px' }}
               >
-                {GRADE_ORDER.map(g => (
-                  <option key={g} value={g}>Grade {g}</option>
+                {activeGrades.map(g => g.name).map(g => (
+                  <option key={g} value={g}>{g.startsWith('LKG') || g.startsWith('UKG') || g.startsWith('NURSERY') ? g : `Grade ${g}`}</option>
                 ))}
               </select>
             </div>
@@ -5104,7 +6265,7 @@ export default function AcademicPanel({ subView, setAdminView }) {
                                     overflow: 'hidden'
                                   }}
                                 >
-                                  <option value="">Select Teacher</option>
+                                  <option value="">Select Staff</option>
                                   {Array.isArray(teachers) && teachers.map((t, idx) => (
                                     <option key={idx} value={t.name}>{t.name}</option>
                                   ))}
@@ -5170,10 +6331,10 @@ export default function AcademicPanel({ subView, setAdminView }) {
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', borderBottom: '1px solid var(--border-glass)', paddingBottom: '16px' }}>
               <div>
                 <h3 style={{ fontSize: '1.25rem', fontWeight: 800, color: 'var(--text-main)', margin: 0, display: 'flex', alignItems: 'center', gap: '10px' }}>
-                  <Calendar size={22} style={{ color: 'hsl(var(--color-primary))' }} /> Weekly Teacher Timetable Bulk Editor
+                  <Calendar size={22} style={{ color: 'hsl(var(--color-primary))' }} /> Weekly Staff Timetable Bulk Editor
                 </h3>
                 <p style={{ fontSize: '0.85rem', color: 'var(--text-muted)', margin: '4px 0 0 0' }}>
-                  Configure the entire weekly schedule workload for teacher <strong style={{ color: 'hsl(var(--color-primary))' }}>{activeTeacher}</strong> at once.
+                   Configure the entire weekly schedule workload for staff member <strong style={{ color: 'hsl(var(--color-primary))' }}>{activeTeacher}</strong> at once.
                 </p>
               </div>
               <button 
@@ -5235,8 +6396,9 @@ export default function AcademicPanel({ subView, setAdminView }) {
                           cellCohorts.sort((a, b) => {
                             const [gA, sA] = a.split('-');
                             const [gB, sB] = b.split('-');
-                            const idxA = GRADE_ORDER.indexOf(gA);
-                            const idxB = GRADE_ORDER.indexOf(gB);
+                            const currentGradeOrder = activeGrades.map(g => g.name);
+                            const idxA = currentGradeOrder.indexOf(gA);
+                            const idxB = currentGradeOrder.indexOf(gB);
                             if (idxA !== idxB) {
                               return idxA - idxB;
                             }

@@ -37,11 +37,11 @@ export default function Header({
 
   const viewTitles = {
     students: { title: 'Student Directory', desc: 'Manage all student profiles, registrations, and academic standings.' },
-    'add-teacher': { title: 'Teacher Registration Form', desc: 'Enroll a new teacher with full professional profile, credentials, and document uploads.' },
-    'teacher-list': { title: 'Teacher Directory', desc: 'Review and manage all faculty profiles, departments, and employment records.' },
-    staff: { title: 'Staff Directory', desc: 'Manage administrative, facilities, technical, and academic support staff.' },
+    'add-teacher': { title: 'Staff Registration Form', desc: 'Enroll a new staff member with full professional profile, credentials, and document uploads.' },
+    'teacher-list': { title: 'Staff Directory', desc: 'Review and manage all staff profiles, departments, and employment records.' },
+    staff: { title: 'Employee Directory', desc: 'Manage administrative, facilities, technical, and academic support employees.' },
     finance: { title: 'Financial Operations', desc: 'Track pending tuition fees, invoices, receipts, and overhead costs.' },
-    school: { title: 'School', desc: 'View school details, modify profile variables, and monitor student and staff rollups.' },
+    school: { title: 'School', desc: 'View school details, modify profile variables, and monitor student and employee rollups.' },
     'register-student': { title: 'Student Registration Form', desc: 'Enroll a new student with full bio, parent/guardian contacts, and upload verified credentials.' }
   };
 
@@ -87,7 +87,7 @@ export default function Header({
           <Search size={18} className="search-bar-icon" />
           <input 
             type="text" 
-            placeholder="Search student, teacher ID..." 
+            placeholder="Search student, staff ID..." 
             className="search-bar-input" 
           />
         </div>

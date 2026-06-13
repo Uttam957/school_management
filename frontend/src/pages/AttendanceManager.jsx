@@ -473,7 +473,7 @@ export default function AttendanceManager() {
               {/* Teacher Summary */}
               <div className="glass-panel" style={{ padding: '16px', borderRadius: '12px', background: 'rgba(255,255,255,0.01)' }}>
                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '10px' }}>
-                  <span style={{ fontWeight: 700, fontSize: '0.88rem' }}>Teachers Summary</span>
+                  <span style={{ fontWeight: 700, fontSize: '0.88rem' }}>Staff Summary</span>
                   <span style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>Total: {analytics?.teacherSummary?.total ?? 0}</span>
                 </div>
                 <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '8px', textAlign: 'center' }}>
@@ -495,7 +495,7 @@ export default function AttendanceManager() {
               {/* Staff Summary */}
               <div className="glass-panel" style={{ padding: '16px', borderRadius: '12px', background: 'rgba(255,255,255,0.01)' }}>
                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '10px' }}>
-                  <span style={{ fontWeight: 700, fontSize: '0.88rem' }}>Non-Academic Staff Summary</span>
+                  <span style={{ fontWeight: 700, fontSize: '0.88rem' }}>Non-Academic Employee Summary</span>
                   <span style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>Total: {analytics?.staffSummary?.total ?? 0}</span>
                 </div>
                 <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '8px', textAlign: 'center' }}>
@@ -764,8 +764,8 @@ export default function AttendanceManager() {
               {/* Type */}
               <select className="select-custom" value={filterType} onChange={(e) => setFilterType(e.target.value)}>
                 <option value="All">All Roster Types</option>
-                <option value="Teacher">Teacher Only</option>
-                <option value="Staff">Staff Only</option>
+<option value="Teacher">Staff Only</option>
+<option value="Staff">Employee Only</option>
               </select>
 
               {/* Month */}

@@ -20,16 +20,15 @@ import TeacherList from './TeacherList';
 import StaffDirectory from './StaffDirectory';
 import AcademicPanel from './AcademicPanel';
 import { 
-  AttendanceTrackerView,
   StudentReportsView, 
   ClassReportsView, 
-  MonthlyCalendarView,
-  YearlyAttendanceView
+  MonthlyCalendarView
 } from './TeacherPanel';
 import {
   MarkAttendanceView,
   AttendanceHistoryView
 } from './AdminAttendanceViews';
+import { fetchActiveGrades } from '../utils/grades';
 import {
   CollectFeesView,
   FeeStructureView,
@@ -48,21 +47,31 @@ import AddStaff from './AddStaff';
 import ExpensePanel from './ExpensePanel';
 import AttendanceManager from './AttendanceManager';
 import RolesPermissions from './RolesPermissions';
+import GradeManagement from './GradeManagement';
 
 export default function AdminPanel({ setActiveView, onLogout, adminView, setAdminView, onBackToMain }) {
   const [directoryKey, setDirectoryKey] = useState(0);
   // Roster/Filter States for Admin Attendance Panel
   const [selectedDate, setSelectedDate] = useState(new Date().toISOString().split('T')[0]);
-  const [selectedClass, setSelectedClass] = useState('IX');
+  const [selectedClass, setSelectedClass] = useState('');
   const [selectedSection, setSelectedSection] = useState('A');
   const [studentSearch, setStudentSearch] = useState('');
   const [attendanceTab, setAttendanceTab] = useState('mark-attendance');
   const [notification, setNotification] = useState(null);
 
-  // Sync adminView with attendanceTab
+  // Sync adminView with attendanceTab and active grades
   useEffect(() => {
     if (adminView === 'attendance') {
       setAttendanceTab('mark-attendance');
+      const loadGrades = async () => {
+        const grades = await fetchActiveGrades();
+        if (grades.length > 0) {
+          setSelectedClass(grades[0].name);
+        } else {
+          setSelectedClass('');
+        }
+      };
+      loadGrades();
     }
   }, [adminView]);
 
@@ -98,6 +107,7 @@ export default function AdminPanel({ setActiveView, onLogout, adminView, setAdmi
       case 'academic-notices':
       case 'academic-holidays':
       case 'academic-calendar':
+      case 'published-academic-calendar':
       case 'academic-results':
       case 'academic-reports':
       case 'academic-grade-subjects':
@@ -106,6 +116,12 @@ export default function AdminPanel({ setActiveView, onLogout, adminView, setAdmi
       case 'results-report-cards':
       case 'results-history':
         return <AcademicPanel subView={adminView} setAdminView={setAdminView} />;
+      case 'grade-list':
+      case 'add-grade':
+      case 'grade-departments':
+      case 'grade-dept-mapping':
+      case 'grade-academic-settings':
+        return <GradeManagement currentSubView={adminView} setAdminView={setAdminView} showToast={showToast} />;
       case 'students':
         return <StudentDirectory key={`students-${directoryKey}`} readOnly={false} onAddClick={() => setAdminView('register-student')} />;
       case 'teachers':
@@ -138,14 +154,14 @@ export default function AdminPanel({ setActiveView, onLogout, adminView, setAdmi
       case 'student-manager':
         return <StudentManager showToast={showToast} />;
       case 'add-teacher':
-        return <AddTeacher setActiveView={(view) => { if (view === 'teachers') { setDirectoryKey(k => k + 1); setAdminView('teachers'); } else setActiveView(view); }} />;
+        return <AddTeacher setActiveView={(view) => { if (view === 'teachers' || view === 'teacher-list') { setDirectoryKey(k => k + 1); setAdminView('teachers'); } else setActiveView(view); }} />;
       case 'add-staff':
         return <AddStaff setActiveView={(view) => { if (view === 'staff') { setDirectoryKey(k => k + 1); setAdminView('staff'); } else setActiveView(view); }} />;
-      case 'attendance-tracker':
+
+      case 'attendance-history':
         return (
-          <AttendanceTrackerView 
+          <AttendanceHistoryView 
             date={selectedDate}
-            setDate={setSelectedDate}
             showToast={showToast}
           />
         );
@@ -173,22 +189,6 @@ export default function AdminPanel({ setActiveView, onLogout, adminView, setAdmi
                 }}
               >
                 <ClipboardCheck size={16} /> Mark Attendance
-              </button>
-              
-              <button 
-                onClick={() => {
-                  setAttendanceTab('attendance-history');
-                  setAdminView('attendance');
-                }}
-                className={`tab-btn-custom ${attendanceTab === 'attendance-history' ? 'active' : ''}`}
-                style={{
-                  display: 'flex', alignItems: 'center', gap: '8px', padding: '10px 16px', borderRadius: '8px', fontSize: '0.85rem', fontWeight: 600, border: 'none', cursor: 'pointer',
-                  background: attendanceTab === 'attendance-history' ? 'rgba(hsl(var(--color-warning)), 0.1)' : 'transparent',
-                  color: attendanceTab === 'attendance-history' ? 'hsl(var(--color-warning))' : 'var(--text-muted)',
-                  transition: 'all 0.2s ease'
-                }}
-              >
-                <List size={16} /> Attendance History
               </button>
               
               <button 
@@ -223,21 +223,6 @@ export default function AdminPanel({ setActiveView, onLogout, adminView, setAdmi
                 <Calendar size={16} /> Monthly Attendance
               </button>
 
-              <button 
-                onClick={() => {
-                  setAttendanceTab('yearly-attendance');
-                  setAdminView('attendance');
-                }}
-                className={`tab-btn-custom ${attendanceTab === 'yearly-attendance' ? 'active' : ''}`}
-                style={{
-                  display: 'flex', alignItems: 'center', gap: '8px', padding: '10px 16px', borderRadius: '8px', fontSize: '0.85rem', fontWeight: 600, border: 'none', cursor: 'pointer',
-                  background: attendanceTab === 'yearly-attendance' ? 'rgba(hsl(var(--color-primary)), 0.1)' : 'transparent',
-                  color: attendanceTab === 'yearly-attendance' ? 'hsl(var(--color-primary))' : 'var(--text-muted)',
-                  transition: 'all 0.2s ease'
-                }}
-              >
-                <TrendingUp size={16} /> Yearly Attendance
-              </button>
             </div>
 
             {/* Notification Toast inside View */}
@@ -278,20 +263,12 @@ export default function AdminPanel({ setActiveView, onLogout, adminView, setAdmi
               />
             )}
 
-            {attendanceTab === 'attendance-history' && (
-              <AttendanceHistoryView showToast={showToast} />
-            )}
-
             {attendanceTab === 'student-reports' && (
               <StudentReportsView showToast={showToast} />
             )}
 
             {attendanceTab === 'monthly-calendar' && (
               <MonthlyCalendarView showToast={showToast} />
-            )}
-
-            {attendanceTab === 'yearly-attendance' && (
-              <YearlyAttendanceView showToast={showToast} />
             )}
           </div>
         );
@@ -320,23 +297,23 @@ export default function AdminPanel({ setActiveView, onLogout, adminView, setAdmi
             <p style={{ fontSize: '0.85rem', color: 'var(--text-muted)' }}>
               {adminView === 'students' ? 'Viewing Registered Students Directory' :
                adminView === 'teachers' ? 'Viewing Faculty Registry' :
-               adminView === 'staff' ? 'Viewing Non-Academic Staff Directory' :
-               adminView === 'attendance-tracker' ? 'Tracking Schoolwide Attendance Cohorts' :
+               adminView === 'staff' ? 'Viewing Non-Academic Employee Directory' :
+               adminView === 'attendance-history' ? 'Evaluating Schoolwide Attendance History Log' :
                adminView === 'class-reports' ? 'Evaluating Class-wise Attendance Reports' :
                adminView === 'attendance' ? 'Managing Schoolwide Attendance' :
                adminView === 'collect-fees' ? 'Collecting Student Fees' :
                adminView === 'fee-structure' ? 'Configuring Student Fee Structures' :
-               adminView === 'payroll' ? 'Processing Teacher Payroll' :
-               adminView === 'teacher-pay-structure' ? 'Configuring Teacher Salary Tiers' :
-               adminView === 'staff-pay' ? 'Processing Staff Payments' :
-               adminView === 'staff-pay-structure' ? 'Configuring Staff Salary Tiers' :
+               adminView === 'payroll' ? 'Processing Staff Payroll' :
+               adminView === 'teacher-pay-structure' ? 'Configuring Staff Salary Tiers' :
+               adminView === 'staff-pay' ? 'Processing Employee Payments' :
+               adminView === 'staff-pay-structure' ? 'Configuring Employee Salary Tiers' :
                adminView === 'expenses' ? 'Tracking School Expenditures' :
                adminView === 'income' ? 'Tracking School Other Revenue Sources' :
                adminView === 'reports' ? 'Viewing Visual Financial Statements' :
                adminView === 'register-student' ? 'Admitting a New Student' :
                adminView === 'student-manager' ? 'Allocating Grade/Class & Section for Pending Students' :
-               adminView === 'add-teacher' ? 'Registering a New Teacher' :
-               adminView === 'add-staff' ? 'Registering a New Staff Member' :
+               adminView === 'add-teacher' ? 'Registering a New Staff Member' :
+               adminView === 'add-staff' ? 'Registering a New Employee' :
                adminView === 'roles-permissions' ? 'Configuring System Roles, RBAC permissions, and Audit Logs' : `Managing ${adminView}`}
             </p>
           </div>

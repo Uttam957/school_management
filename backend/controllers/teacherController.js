@@ -1,7 +1,7 @@
 import { readDb, writeDb, addActivity, getDefaultRoles } from '../utils/db.js';
 
 const mapDesignationToRoleId = (designation, dbRoles = []) => {
-  if (!designation) return 'role-teacher';
+  if (!designation) return 'role-subject-teacher';
   
   // Try to find matching role name in dbRoles (case insensitive)
   const matchedRole = dbRoles.find(r => r.name.toLowerCase() === designation.toLowerCase());
@@ -26,14 +26,17 @@ const mapDesignationToRoleId = (designation, dbRoles = []) => {
     case 'Receptionist':
     case 'role-receptionist':
       return 'role-receptionist';
+    case 'Subject Teacher':
+    case 'role-subject-teacher':
+      return 'role-subject-teacher';
     case 'Teacher':
     case 'role-teacher':
-      return 'role-teacher';
-    case 'Expense':
-    case 'role-expense':
-      return 'role-transport-manager';
+      return 'role-subject-teacher';
+    case 'Expense Manager':
+    case 'role-expense-manager':
+      return 'role-expense-manager';
     default:
-      return 'role-teacher';
+      return 'role-subject-teacher';
   }
 };
 
@@ -485,7 +488,20 @@ export const deleteTeacher = async (req, res) => {
     }
 
     const teacherName = db.teachers[teacherIndex].name;
+    const deletedId = db.teachers[teacherIndex].id || db.teachers[teacherIndex].employeeId;
     db.teachers.splice(teacherIndex, 1);
+
+    // Clean up QR codes and attendance records from in-memory database to prevent foreign key errors on sync
+    if (db.employeeQrCodes) {
+      db.employeeQrCodes = db.employeeQrCodes.filter(q => q.employeeId !== deletedId && q.teacherId !== deletedId);
+    }
+    if (db.attendanceRecords) {
+      db.attendanceRecords = db.attendanceRecords.filter(a => a.employeeId !== deletedId && a.teacherId !== deletedId);
+    }
+    if (db.attendanceLogs) {
+      db.attendanceLogs = db.attendanceLogs.filter(l => l.employeeId !== deletedId && l.teacherId !== deletedId);
+    }
+
     addActivity(db, 'alert', 'Faculty Dismissed', `${teacherName} was removed from the roster`, 'rgb(var(--color-danger-rgb))', 'rgba(var(--color-danger-rgb), 0.1)');
     writeDb(db);
 

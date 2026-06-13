@@ -10,6 +10,7 @@ import employeeAttendanceRoutes from './routes/employeeAttendanceRoutes.js';
 import financeRoutes from './routes/financeRoutes.js';
 import academicRoutes from './routes/academicRoutes.js';
 import rbacRoutes from './routes/rbacRoutes.js';
+import gradeRoutes from './routes/gradeRoutes.js';
 import upload from './middleware/upload.js';
 import { readDb, writeDb, addActivity, tenantStorage, slugify, restoreTenantContext, ensureTenantSqlLoaded } from './utils/db.js';
 import { generateToken } from './middleware/auth.js';
@@ -39,7 +40,7 @@ app.use((req, res, next) => {
     const isIp = /^(?:[0-9]{1,3}\.){3}[0-9]{1,3}$/.test(host);
     if (!isIp) {
       const parts = host.split('.');
-      if (parts.length > 2 || (parts.length === 2 && !parts[1].startsWith('localhost'))) {
+      if (parts.length > 2 || (parts.length === 2 && parts[1] === 'localhost')) {
         tenantId = parts[0];
       }
     }
@@ -73,8 +74,8 @@ app.post('/api/auth/login', (req, res) => {
 
   // 1. If role is Developer Admin, authenticate immediately as the Platform Owner
   if (role === 'Developer Admin') {
-    if ((username === 'uttam306115' || username === 'uttam306115@gmail.com' || username === 'owner') && password === 'uttam@2004') {
-      const token = generateToken({ role: 'Developer Admin', username: 'uttam306115' });
+    if (username === 'dev@admin.com' && password === 'admin123') {
+      const token = generateToken({ role: 'Developer Admin', username: 'dev@admin.com' });
       return res.json({ token, role: 'Developer Admin', name: 'Platform Owner' });
     }
     return res.status(401).json({ error: 'Invalid Developer Admin credentials.' });
@@ -141,7 +142,7 @@ app.post('/api/auth/login', (req, res) => {
         const access = (db.userAccess || []).find(ua => ua.userId === teacher.id && ua.userType === 'Teacher');
         let roleRecord = access ? (db.roles || []).find(r => r.id === access.roleId) : null;
         if (!roleRecord) {
-          roleRecord = (db.roles || []).find(r => r.id === 'role-teacher' || r.name === 'Teacher');
+          roleRecord = (db.roles || []).find(r => r.id === 'role-subject-teacher' || r.id === 'role-teacher' || r.name === 'Subject Teacher' || r.name === 'Teacher');
         }
         const roleName = roleRecord ? roleRecord.name : 'Teacher';
         const permissions = roleRecord ? roleRecord.permissions : {};
@@ -593,6 +594,11 @@ app.use('/api/academics', academicRoutes);
 app.use('/api/rbac', rbacRoutes);
 
 // ==========================================
+// 2E. GRADE MANAGEMENT ROUTER
+// ==========================================
+app.use('/api/grades', gradeRoutes);
+
+// ==========================================
 // 2B. STAFF ENDPOINTS (Complete Module)
 // ==========================================
 app.get('/api/staff', (req, res) => {
@@ -823,7 +829,20 @@ app.delete('/api/staff/:id', (req, res) => {
   }
 
   const staffName = db.staff[staffIndex].name;
+  const deletedId = db.staff[staffIndex].id;
   db.staff.splice(staffIndex, 1);
+
+  // Clean up QR codes and attendance records from in-memory database to prevent foreign key errors on sync
+  if (db.employeeQrCodes) {
+    db.employeeQrCodes = db.employeeQrCodes.filter(q => q.employeeId !== deletedId && q.staffId !== deletedId);
+  }
+  if (db.attendanceRecords) {
+    db.attendanceRecords = db.attendanceRecords.filter(a => a.employeeId !== deletedId && a.staffId !== deletedId);
+  }
+  if (db.attendanceLogs) {
+    db.attendanceLogs = db.attendanceLogs.filter(l => l.employeeId !== deletedId && l.staffId !== deletedId);
+  }
+
   addActivity(db, 'alert', 'Staff Dismissed', `${staffName} was removed from the roster`, 'rgb(var(--color-danger-rgb))', 'rgba(var(--color-danger-rgb), 0.1)');
   writeDb(db);
 
@@ -1340,3 +1359,5 @@ app.use((err, req, res, next) => {
 app.listen(PORT, () => {
   console.log(`Aether Server running at http://localhost:${PORT}`);
 });
+// Trigger restart to sync platform database cache
+

@@ -118,6 +118,11 @@ export const registerStudent = async (req, res) => {
 
     const newStudent = {
       id: `STU-${Math.floor(1000 + Math.random() * 9000)}`,
+      enrollmentId: `ENR-${Math.floor(100000 + Math.random() * 900000)}`,
+      parentId: `PAR-${Math.floor(100000 + Math.random() * 900000)}`,
+      addressId: `ADD-${Math.floor(100000 + Math.random() * 900000)}`,
+      medicalId: `MED-${Math.floor(100000 + Math.random() * 900000)}`,
+      feeAssignmentId: `FEE-ASN-${Math.floor(100000 + Math.random() * 900000)}`,
       name: calculatedFullName,
       fullName: calculatedFullName,
       firstName: calculatedFirstName,

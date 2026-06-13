@@ -12,6 +12,25 @@ const slugify = (text) => {
     .replace(/[^\w\-]+/g, '')
     .replace(/\-\-+/g, '-');
 };
+
+const getSchoolSubdomainUrl = (subdomain, path = '') => {
+  const { protocol, hostname, port } = window.location;
+  const isIp = /^(?:[0-9]{1,3}\.){3}[0-9]{1,3}$/.test(hostname);
+  if (isIp) {
+    const queryJoin = path.includes('?') ? '&' : '?';
+    return `${protocol}//${hostname}${port ? `:${port}` : ''}${path}${queryJoin}tenant=${subdomain}`;
+  }
+  if (hostname === 'localhost') {
+    return `${protocol}//${subdomain}.localhost${port ? `:${port}` : ''}${path}`;
+  }
+  const parts = hostname.split('.');
+  if (parts.length > 2) {
+    parts[0] = subdomain;
+    return `${protocol}//${parts.join('.')}${port ? `:${port}` : ''}${path}`;
+  } else {
+    return `${protocol}//${subdomain}.${hostname}${port ? `:${port}` : ''}${path}`;
+  }
+};
 import { 
   School as SchoolIcon,
   Users,
@@ -338,7 +357,7 @@ export default function SchoolProfile({ schoolDetails, fetchSchoolDetails, isDev
         fetchPlatformData();
         if (fetchSchoolDetails) fetchSchoolDetails();
         if (modalMode === 'add') {
-          const localUrl = `${window.location.origin}/?tenant=${resultData.subdomain}`;
+          const localUrl = getSchoolSubdomainUrl(resultData.subdomain);
           showToast(
             `School "${resultData.name}" onboarded! Portal: ${localUrl}`,
             'success'
@@ -424,20 +443,14 @@ export default function SchoolProfile({ schoolDetails, fetchSchoolDetails, isDev
     }
   };
 
-  // Launch School Portal - navigates to the school's login page
+  // Launch School Portal - opens in a new tab without ending superadmin session
   const handleLaunchPortal = (school) => {
-    // Clear current session so the user lands on the school's login page
-    sessionStorage.clear();
     sessionStorage.setItem('from_dev_admin', 'true');
-    localStorage.setItem('tenant_subdomain', school.subdomain);
-    window.location.href = `/?tenant=${school.subdomain}&username=${encodeURIComponent(school.adminUsername)}&password=${encodeURIComponent(school.adminPassword)}&from_dev_admin=true`;
+    const targetUrl = getSchoolSubdomainUrl(school.subdomain, `/?username=${encodeURIComponent(school.adminUsername)}&password=${encodeURIComponent(school.adminPassword)}&from_dev_admin=true`);
+    window.open(targetUrl, '_blank');
   };
 
-  // Inspect School Portal - opens in a new tab
-  const handleInspectPortal = (school) => {
-    sessionStorage.setItem('from_dev_admin', 'true');
-    window.open(`/?tenant=${school.subdomain}&username=${encodeURIComponent(school.adminUsername)}&password=${encodeURIComponent(school.adminPassword)}&from_dev_admin=true`, '_blank');
-  };
+
 
   // Filtered list
   const filteredSchools = schools.filter(s => {
@@ -835,7 +848,7 @@ export default function SchoolProfile({ schoolDetails, fetchSchoolDetails, isDev
                   <div style={{ display: 'flex', gap: '12px', fontSize: '0.76rem', padding: '10px 12px', background: 'var(--bg-glass-active)', borderRadius: '8px' }}>
                     <span style={{ color: 'var(--text-main)' }}>Students: <strong>{school.studentCount || 0}</strong></span>
                     <span style={{ color: 'var(--text-muted)' }}>Teachers: <strong>{school.teacherCount || 0}</strong></span>
-                    <span style={{ color: 'var(--text-muted)' }}>Staff: <strong>{school.staffCount || 0}</strong></span>
+                    <span style={{ color: 'var(--text-muted)' }}>Employees: <strong>{school.staffCount || 0}</strong></span>
                   </div>
 
                   {/* Credentials Utility */}
@@ -875,7 +888,7 @@ export default function SchoolProfile({ schoolDetails, fetchSchoolDetails, isDev
                   <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '8px' }}>
                     <div style={{ display: 'flex', alignItems: 'center', gap: '4px', flex: 1, minWidth: 0 }}>
                       <a 
-                        href={`/?tenant=${school.subdomain}`}
+                        href={getSchoolSubdomainUrl(school.subdomain)}
                         onClick={(e) => { e.preventDefault(); handleLaunchPortal(school); }}
                         title="Open Login Portal"
                         style={{ 
@@ -887,12 +900,12 @@ export default function SchoolProfile({ schoolDetails, fetchSchoolDetails, isDev
                           flex: 1
                         }}
                       >
-                        {`${window.location.origin}/?tenant=${school.subdomain}`}
+                        {getSchoolSubdomainUrl(school.subdomain)}
                       </a>
                       <button 
                         type="button"
                         onClick={() => {
-                          navigator.clipboard.writeText(`${window.location.origin}/?tenant=${school.subdomain}`);
+                          navigator.clipboard.writeText(getSchoolSubdomainUrl(school.subdomain));
                           showToast('Login URL copied to clipboard!', 'success');
                         }}
                         className="btn-secondary" 
@@ -903,9 +916,6 @@ export default function SchoolProfile({ schoolDetails, fetchSchoolDetails, isDev
                       </button>
                     </div>
                     <div style={{ display: 'flex', gap: '4px' }}>
-                      <button onClick={() => handleInspectPortal(school)} className="btn-secondary" title="View / Inspect Portal" style={{ padding: '5px', border: 'none', background: 'none', cursor: 'pointer', color: 'hsl(var(--color-info))' }}>
-                        <Eye size={15} />
-                      </button>
                       <button onClick={() => handleOpenEditModal(school)} className="btn-secondary" title="Edit School" style={{ padding: '5px', border: 'none', background: 'none', cursor: 'pointer', color: 'var(--text-muted)' }}>
                         <Edit2 size={15} />
                       </button>
