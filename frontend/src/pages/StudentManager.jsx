@@ -18,7 +18,7 @@ export default function StudentManager({ showToast }) {
   
   // Dropdown filter states
   const [sessionFilter, setSessionFilter] = useState('All');
-  const [classFilter, setClassFilter] = useState('All');
+  const [classFilter, setClassFilter] = useState('');
   const [statusFilter, setStatusFilter] = useState('All');
   
   const [gradeOptions, setGradeOptions] = useState([]);
@@ -42,11 +42,15 @@ export default function StudentManager({ showToast }) {
   const sectionOptions = ['A', 'B', 'C', 'D', 'E'];
 
   const fetchStudents = async () => {
+    if (!classFilter) {
+      setStudents([]);
+      setLoading(false);
+      return;
+    }
     setLoading(true);
     try {
       const queryParams = new URLSearchParams({
         status: statusFilter,
-        class: classFilter,
         academicYear: sessionFilter,
         limit: 1000
       }).toString();
@@ -63,7 +67,7 @@ export default function StudentManager({ showToast }) {
         const initialAllocations = {};
         fetchedStudents.forEach(s => {
           initialAllocations[s.id] = {
-            studentClass: s.studentClass || (gradeOptions[0] || ''),
+            studentClass: s.studentClass || classFilter || (gradeOptions[0] || ''),
             section: s.section || '',
             rollNumber: s.rollNumber || s.roll || ''
           };
@@ -143,14 +147,22 @@ export default function StudentManager({ showToast }) {
     }
   };
 
-  // Filter local state based on search bar
+  // Filter local state based on search bar and class selection
   const filteredStudents = students.filter(s => {
     const query = searchQuery.toLowerCase();
-    return (
+    const matchesSearch = (
       (s.name || '').toLowerCase().includes(query) ||
       (s.admissionNumber || '').toLowerCase().includes(query) ||
       (s.id || '').toLowerCase().includes(query)
     );
+    if (!matchesSearch) return false;
+
+    // Show student if they already belong to the selected class/grade, OR if they are newly added (Pending/No grade/class assigned)
+    const matchesClass = s.studentClass === classFilter || 
+                         (s.grade && s.grade.split('-')[0] === classFilter) ||
+                         (!s.studentClass && !s.grade);
+
+    return matchesClass;
   });
 
   return (
@@ -208,7 +220,7 @@ export default function StudentManager({ showToast }) {
             onChange={(e) => setClassFilter(e.target.value)}
             style={{ width: '160px', height: '38px', borderRadius: '8px', fontSize: '0.82rem', padding: '0 8px', cursor: 'pointer' }}
           >
-            <option value="All">All Classes</option>
+            <option value="">Select Grade</option>
             {gradeOptions.map(g => (
               <option key={g} value={g}>{g}</option>
             ))}
@@ -235,6 +247,16 @@ export default function StudentManager({ showToast }) {
         <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', padding: '60px 0', gap: '12px' }}>
           <Loader2 size={36} className="animate-spin" style={{ color: 'hsl(var(--color-primary))' }} />
           <span style={{ fontSize: '0.9rem', color: 'var(--text-muted)', fontWeight: 500 }}>Retrieving student entries...</span>
+        </div>
+      ) : !classFilter ? (
+        <div className="glass-panel" style={{ padding: '48px', borderRadius: '12px', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', border: '1px dashed var(--border-glass)', textAlign: 'center' }}>
+          <div style={{ padding: '16px', borderRadius: '50%', background: 'rgba(99, 102, 241, 0.08)', color: 'hsl(var(--color-primary))', marginBottom: '16px' }}>
+            <Users size={32} />
+          </div>
+          <h4 style={{ fontSize: '1rem', fontWeight: 700 }}>Please Select a Grade / Class</h4>
+          <p style={{ fontSize: '0.8rem', color: 'var(--text-muted)', maxWidth: '380px', marginTop: '6px' }}>
+            Select a specific grade from the dropdown filter to manage and allocate students.
+          </p>
         </div>
       ) : filteredStudents.length === 0 ? (
         <div className="glass-panel" style={{ padding: '48px', borderRadius: '12px', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', border: '1px dashed var(--border-glass)', textAlign: 'center' }}>
@@ -331,7 +353,7 @@ export default function StudentManager({ showToast }) {
 
                     <td style={{ padding: '16px' }}>
                       <span style={{ fontSize: '0.88rem', fontWeight: 600, color: 'var(--text-main)' }}>
-                        {student.studentClass || (gradeOptions[0] || '')}
+                        {student.studentClass || classFilter || (gradeOptions[0] || '')}
                       </span>
                     </td>
 
