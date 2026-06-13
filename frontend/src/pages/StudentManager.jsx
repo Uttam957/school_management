@@ -42,7 +42,7 @@ export default function StudentManager({ showToast }) {
   const sectionOptions = ['A', 'B', 'C', 'D', 'E'];
 
   const fetchStudents = async () => {
-    if (!classFilter) {
+    if (!classFilter && !searchQuery) {
       setStudents([]);
       setLoading(false);
       return;
@@ -51,6 +51,7 @@ export default function StudentManager({ showToast }) {
     try {
       const queryParams = new URLSearchParams({
         status: statusFilter,
+        search: searchQuery,
         academicYear: sessionFilter,
         limit: 1000
       }).toString();
@@ -83,10 +84,10 @@ export default function StudentManager({ showToast }) {
     }
   };
 
-  // Trigger fetch whenever filter dropdowns change
+  // Trigger fetch whenever filter dropdowns or search query change
   useEffect(() => {
     fetchStudents();
-  }, [sessionFilter, classFilter, statusFilter]);
+  }, [sessionFilter, classFilter, statusFilter, searchQuery]);
 
   const handleAllocationChange = (studentId, field, value) => {
     setAllocations(prev => ({
@@ -156,6 +157,9 @@ export default function StudentManager({ showToast }) {
       (s.id || '').toLowerCase().includes(query)
     );
     if (!matchesSearch) return false;
+
+    // If there is a search query, bypass the grade/class filter to show the search results globally
+    if (searchQuery) return true;
 
     // Show student if they already belong to the selected class/grade, OR if they are newly added (Pending/No grade/class assigned)
     const matchesClass = s.studentClass === classFilter || 
@@ -248,14 +252,14 @@ export default function StudentManager({ showToast }) {
           <Loader2 size={36} className="animate-spin" style={{ color: 'hsl(var(--color-primary))' }} />
           <span style={{ fontSize: '0.9rem', color: 'var(--text-muted)', fontWeight: 500 }}>Retrieving student entries...</span>
         </div>
-      ) : !classFilter ? (
+      ) : (!classFilter && !searchQuery) ? (
         <div className="glass-panel" style={{ padding: '48px', borderRadius: '12px', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', border: '1px dashed var(--border-glass)', textAlign: 'center' }}>
           <div style={{ padding: '16px', borderRadius: '50%', background: 'rgba(99, 102, 241, 0.08)', color: 'hsl(var(--color-primary))', marginBottom: '16px' }}>
             <Users size={32} />
           </div>
           <h4 style={{ fontSize: '1rem', fontWeight: 700 }}>Please Select a Grade / Class</h4>
           <p style={{ fontSize: '0.8rem', color: 'var(--text-muted)', maxWidth: '380px', marginTop: '6px' }}>
-            Select a specific grade from the dropdown filter to manage and allocate students.
+            Select a specific grade from the dropdown filter, or search globally by name or ID to manage and allocate students.
           </p>
         </div>
       ) : filteredStudents.length === 0 ? (
