@@ -220,7 +220,29 @@ const createTablesFromSchema = async () => {
       "ALTER TABLE exams ADD COLUMN subjectMarks JSON",
       "ALTER TABLE exams ADD COLUMN createdAt VARCHAR(100)",
       "ALTER TABLE exams ADD COLUMN timetablePublished TINYINT(1) DEFAULT 0",
-      "ALTER TABLE results ADD COLUMN status VARCHAR(50) DEFAULT 'Draft'"
+      "ALTER TABLE results ADD COLUMN status VARCHAR(50) DEFAULT 'Draft'",
+      "ALTER TABLE fee_structures ADD COLUMN studentClass VARCHAR(100)",
+      "ALTER TABLE fee_structures ADD COLUMN admissionFee DECIMAL(10,2) DEFAULT 0.00",
+      "ALTER TABLE fee_structures ADD COLUMN tuitionFee DECIMAL(10,2) DEFAULT 0.00",
+      "ALTER TABLE fee_structures ADD COLUMN examFee DECIMAL(10,2) DEFAULT 0.00",
+      "ALTER TABLE fee_structures ADD COLUMN transportFee DECIMAL(10,2) DEFAULT 0.00",
+      "ALTER TABLE fee_structures ADD COLUMN hostelFee DECIMAL(10,2) DEFAULT 0.00",
+      "ALTER TABLE fee_structures ADD COLUMN libraryFee DECIMAL(10,2) DEFAULT 0.00",
+      "ALTER TABLE fee_structures ADD COLUMN otherCharges DECIMAL(10,2) DEFAULT 0.00",
+      "ALTER TABLE fee_structures ADD COLUMN totalFee DECIMAL(10,2) DEFAULT 0.00",
+      "ALTER TABLE salary_structures ADD COLUMN designation VARCHAR(255)",
+      "ALTER TABLE salary_structures ADD COLUMN pfDeduction DECIMAL(10,2) DEFAULT 0.00",
+      "ALTER TABLE salary_structures ADD COLUMN taxDeduction DECIMAL(10,2) DEFAULT 0.00",
+      "ALTER TABLE salary_structures ADD COLUMN netSalary DECIMAL(10,2) DEFAULT 0.00",
+      "ALTER TABLE salary_structures MODIFY COLUMN allowances DECIMAL(10,2) DEFAULT 0.00",
+      "ALTER TABLE salary_structures MODIFY COLUMN deductions DECIMAL(10,2) DEFAULT 0.00",
+      "ALTER TABLE staff_salary_structures ADD COLUMN designation VARCHAR(255)",
+      "ALTER TABLE staff_salary_structures ADD COLUMN bonus DECIMAL(10,2) DEFAULT 0.00",
+      "ALTER TABLE staff_salary_structures ADD COLUMN pfDeduction DECIMAL(10,2) DEFAULT 0.00",
+      "ALTER TABLE staff_salary_structures ADD COLUMN taxDeduction DECIMAL(10,2) DEFAULT 0.00",
+      "ALTER TABLE staff_salary_structures ADD COLUMN netSalary DECIMAL(10,2) DEFAULT 0.00",
+      "ALTER TABLE staff_salary_structures MODIFY COLUMN allowances DECIMAL(10,2) DEFAULT 0.00",
+      "ALTER TABLE staff_salary_structures MODIFY COLUMN deductions DECIMAL(10,2) DEFAULT 0.00"
     ];
 
     for (const sql of extraSchemaAlters) {
@@ -1199,26 +1221,44 @@ export const loadTenantSqlIntoMemory = async (tenantId) => {
     const dbSalary = await sqlDb.query('SELECT * FROM salary_structures WHERE tenantId = ?', [tId]);
     data.salaryStructures = dbSalary.map(ss => ({
       id: ss.id,
-      gradeName: ss.gradeName,
+      gradeName: ss.gradeName || ss.designation,
+      designation: ss.designation || ss.gradeName,
       basicSalary: parseFloat(ss.basicSalary || 0),
-      allowances: typeof ss.allowances === 'string' ? JSON.parse(ss.allowances) : (ss.allowances || []),
-      deductions: typeof ss.deductions === 'string' ? JSON.parse(ss.deductions) : (ss.deductions || [])
+      allowances: parseFloat(ss.allowances || 0),
+      deductions: parseFloat(ss.deductions || 0),
+      pfDeduction: parseFloat(ss.pfDeduction || 0),
+      taxDeduction: parseFloat(ss.taxDeduction || 0),
+      netSalary: parseFloat(ss.netSalary || 0)
     }));
 
     const dbStaffSalary = await sqlDb.query('SELECT * FROM staff_salary_structures WHERE tenantId = ?', [tId]);
     data.staffSalaryStructures = dbStaffSalary.map(sss => ({
       id: sss.id,
-      position: sss.position,
+      position: sss.position || sss.designation,
+      designation: sss.designation || sss.position,
       basicSalary: parseFloat(sss.basicSalary || 0),
-      allowances: typeof sss.allowances === 'string' ? JSON.parse(sss.allowances) : (sss.allowances || []),
-      deductions: typeof sss.deductions === 'string' ? JSON.parse(sss.deductions) : (sss.deductions || [])
+      allowances: parseFloat(sss.allowances || 0),
+      bonus: parseFloat(sss.bonus || 0),
+      deductions: parseFloat(sss.deductions || 0),
+      pfDeduction: parseFloat(sss.pfDeduction || 0),
+      taxDeduction: parseFloat(sss.taxDeduction || 0),
+      netSalary: parseFloat(sss.netSalary || 0)
     }));
 
     const dbFeeStructures = await sqlDb.query('SELECT * FROM fee_structures WHERE tenantId = ?', [tId]);
     data.feeStructures = dbFeeStructures.map(fsItem => ({
       id: fsItem.id,
-      grade: fsItem.classId,
-      amount: parseFloat(fsItem.amount || 0),
+      grade: fsItem.classId || fsItem.studentClass,
+      studentClass: fsItem.studentClass || fsItem.classId,
+      admissionFee: parseFloat(fsItem.admissionFee || 0),
+      tuitionFee: parseFloat(fsItem.tuitionFee || 0),
+      examFee: parseFloat(fsItem.examFee || 0),
+      transportFee: parseFloat(fsItem.transportFee || 0),
+      hostelFee: parseFloat(fsItem.hostelFee || 0),
+      libraryFee: parseFloat(fsItem.libraryFee || 0),
+      otherCharges: parseFloat(fsItem.otherCharges || 0),
+      totalFee: parseFloat(fsItem.totalFee || fsItem.amount || 0),
+      amount: parseFloat(fsItem.amount || fsItem.totalFee || 0),
       frequency: fsItem.frequency
     }));
 
@@ -2288,7 +2328,7 @@ export const saveMemoryDbToSql = async (tenantId, db) => {
 
     // 16. Sync structures: feeStructures, salaryStructures, staffSalaryStructures, income, attendance
     if (db.feeStructures && Array.isArray(db.feeStructures)) {
-      const activeFsIds = db.feeStructures.map(fsItem => fsItem.id || `FS-${fsItem.grade}`);
+      const activeFsIds = db.feeStructures.map(fsItem => fsItem.id || `FS-${fsItem.grade || fsItem.studentClass}`);
       if (activeFsIds.length > 0) {
         await sqlDb.query(`DELETE FROM fee_structures WHERE tenantId = ? AND id NOT IN (${activeFsIds.map(() => '?').join(',')})`, [tId, ...activeFsIds]);
       } else {
@@ -2296,16 +2336,36 @@ export const saveMemoryDbToSql = async (tenantId, db) => {
       }
 
       for (const fsItem of db.feeStructures) {
+        const classVal = fsItem.grade || fsItem.studentClass;
+        const totalVal = parseFloat(fsItem.totalFee || fsItem.amount || 0);
         await sqlDb.query(
-          `INSERT INTO fee_structures (id, classId, amount, frequency, tenantId) VALUES (?, ?, ?, ?, ?)
-           ON DUPLICATE KEY UPDATE amount=VALUES(amount), frequency=VALUES(frequency)`,
-          [fsItem.id || `FS-${fsItem.grade}`, fsItem.grade, parseFloat(fsItem.amount || 0), fsItem.frequency || 'Yearly', tId]
+          `INSERT INTO fee_structures (
+             id, classId, amount, frequency, tenantId,
+             studentClass, admissionFee, tuitionFee, examFee, transportFee, hostelFee, libraryFee, otherCharges, totalFee
+           ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+           ON DUPLICATE KEY UPDATE 
+             amount=VALUES(amount), frequency=VALUES(frequency),
+             studentClass=VALUES(studentClass), admissionFee=VALUES(admissionFee), tuitionFee=VALUES(tuitionFee),
+             examFee=VALUES(examFee), transportFee=VALUES(transportFee), hostelFee=VALUES(hostelFee),
+             libraryFee=VALUES(libraryFee), otherCharges=VALUES(otherCharges), totalFee=VALUES(totalFee)`,
+          [
+            fsItem.id || `FS-${classVal}`, classVal, totalVal, fsItem.frequency || 'Yearly', tId,
+            fsItem.studentClass || classVal,
+            parseFloat(fsItem.admissionFee || 0),
+            parseFloat(fsItem.tuitionFee || 0),
+            parseFloat(fsItem.examFee || 0),
+            parseFloat(fsItem.transportFee || 0),
+            parseFloat(fsItem.hostelFee || 0),
+            parseFloat(fsItem.libraryFee || 0),
+            parseFloat(fsItem.otherCharges || 0),
+            totalVal
+          ]
         );
       }
     }
 
     if (db.salaryStructures && Array.isArray(db.salaryStructures)) {
-      const activeSsIds = db.salaryStructures.map(ss => ss.id || `SS-${ss.gradeName}`);
+      const activeSsIds = db.salaryStructures.map(ss => ss.id || `SS-${ss.gradeName || ss.designation}`);
       if (activeSsIds.length > 0) {
         await sqlDb.query(`DELETE FROM salary_structures WHERE tenantId = ? AND id NOT IN (${activeSsIds.map(() => '?').join(',')})`, [tId, ...activeSsIds]);
       } else {
@@ -2313,16 +2373,32 @@ export const saveMemoryDbToSql = async (tenantId, db) => {
       }
 
       for (const ss of db.salaryStructures) {
+        const gradeVal = ss.gradeName || ss.designation;
+        const basicVal = parseFloat(ss.basicSalary || 0);
+        const allowVal = parseFloat(ss.allowances || 0);
+        const dedVal = parseFloat(ss.deductions || 0);
+        const netVal = parseFloat(ss.netSalary || (basicVal + allowVal - dedVal));
         await sqlDb.query(
-          `INSERT INTO salary_structures (id, gradeName, basicSalary, allowances, deductions, tenantId) VALUES (?, ?, ?, ?, ?, ?)
-           ON DUPLICATE KEY UPDATE basicSalary=VALUES(basicSalary), allowances=VALUES(allowances), deductions=VALUES(deductions)`,
-          [ss.id || `SS-${ss.gradeName}`, ss.gradeName, parseFloat(ss.basicSalary || 0), JSON.stringify(ss.allowances || []), JSON.stringify(ss.deductions || []), tId]
+          `INSERT INTO salary_structures (
+             id, gradeName, basicSalary, allowances, deductions, tenantId,
+             designation, pfDeduction, taxDeduction, netSalary
+           ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+           ON DUPLICATE KEY UPDATE 
+             basicSalary=VALUES(basicSalary), allowances=VALUES(allowances), deductions=VALUES(deductions),
+             designation=VALUES(designation), pfDeduction=VALUES(pfDeduction), taxDeduction=VALUES(taxDeduction), netSalary=VALUES(netSalary)`,
+          [
+            ss.id || `SS-${gradeVal}`, gradeVal, basicVal, allowVal, dedVal, tId,
+            ss.designation || gradeVal,
+            parseFloat(ss.pfDeduction || 0),
+            parseFloat(ss.taxDeduction || 0),
+            netVal
+          ]
         );
       }
     }
 
     if (db.staffSalaryStructures && Array.isArray(db.staffSalaryStructures)) {
-      const activeSssIds = db.staffSalaryStructures.map(sss => sss.id || `SSS-${sss.position}`);
+      const activeSssIds = db.staffSalaryStructures.map(sss => sss.id || `SSS-${sss.position || sss.designation}`);
       if (activeSssIds.length > 0) {
         await sqlDb.query(`DELETE FROM staff_salary_structures WHERE tenantId = ? AND id NOT IN (${activeSssIds.map(() => '?').join(',')})`, [tId, ...activeSssIds]);
       } else {
@@ -2330,10 +2406,28 @@ export const saveMemoryDbToSql = async (tenantId, db) => {
       }
 
       for (const sss of db.staffSalaryStructures) {
+        const posVal = sss.position || sss.designation;
+        const basicVal = parseFloat(sss.basicSalary || 0);
+        const allowVal = parseFloat(sss.allowances || 0);
+        const dedVal = parseFloat(sss.deductions || 0);
+        const bonusVal = parseFloat(sss.bonus || 0);
+        const netVal = parseFloat(sss.netSalary || (basicVal + allowVal + bonusVal - dedVal));
         await sqlDb.query(
-          `INSERT INTO staff_salary_structures (id, position, basicSalary, allowances, deductions, tenantId) VALUES (?, ?, ?, ?, ?, ?)
-           ON DUPLICATE KEY UPDATE basicSalary=VALUES(basicSalary), allowances=VALUES(allowances), deductions=VALUES(deductions)`,
-          [sss.id || `SSS-${sss.position}`, sss.position, parseFloat(sss.basicSalary || 0), JSON.stringify(sss.allowances || []), JSON.stringify(sss.deductions || []), tId]
+          `INSERT INTO staff_salary_structures (
+             id, position, basicSalary, allowances, deductions, tenantId,
+             designation, bonus, pfDeduction, taxDeduction, netSalary
+           ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+           ON DUPLICATE KEY UPDATE 
+             basicSalary=VALUES(basicSalary), allowances=VALUES(allowances), deductions=VALUES(deductions),
+             designation=VALUES(designation), bonus=VALUES(bonus), pfDeduction=VALUES(pfDeduction), taxDeduction=VALUES(taxDeduction), netSalary=VALUES(netSalary)`,
+          [
+            sss.id || `SSS-${posVal}`, posVal, basicVal, allowVal, dedVal, tId,
+            sss.designation || posVal,
+            bonusVal,
+            parseFloat(sss.pfDeduction || 0),
+            parseFloat(sss.taxDeduction || 0),
+            netVal
+          ]
         );
       }
     }
