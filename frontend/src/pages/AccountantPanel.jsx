@@ -502,6 +502,10 @@ export function CollectFeesView({ showToast }) {
 
   const handleSubmit = async (e) => {
     e.preventDefault();
+    if (!form.studentId) {
+      showToast('Please select a student from the search results dropdown list.', 'error');
+      return;
+    }
     try {
       const res = await fetch('/api/finance/fees', {
         method: 'POST',
@@ -629,8 +633,7 @@ export function CollectFeesView({ showToast }) {
         <div className="modal-overlay" onClick={() => setShowForm(false)}>
           <div onClick={e => e.stopPropagation()} className="animate-scale-up" style={{
             width: '100%', maxWidth: '650px', background: 'var(--bg-elevated)', borderRadius: '20px',
-            border: '1px solid var(--border-glass)', padding: '32px', boxShadow: 'var(--shadow-lg)',
-            maxHeight: '90vh', overflowY: 'auto'
+            border: '1px solid var(--border-glass)', padding: '32px', boxShadow: 'var(--shadow-lg)'
           }}>
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '24px' }}>
               <h3 style={{ fontSize: '1.25rem', fontWeight: 800, color: 'var(--text-main)', display: 'flex', alignItems: 'center', gap: '10px', margin: 0 }}>
@@ -732,7 +735,10 @@ export function CollectFeesView({ showToast }) {
                         filteredStudentsForSelect.slice(0, 10).map(s => (
                           <div 
                             key={s.id} 
-                            onClick={() => selectStudent(s)}
+                            onMouseDown={(e) => {
+                              e.preventDefault();
+                              selectStudent(s);
+                            }}
                             style={{
                               padding: '10px 14px',
                               fontSize: '0.85rem',

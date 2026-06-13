@@ -1964,7 +1964,7 @@ export const saveMemoryDbToSql = async (tenantId, db) => {
 
     // 8. Sync Fees
     if (db.fees && Array.isArray(db.fees)) {
-      const activeFeeIds = db.fees.map(f => f.id).filter(Boolean);
+      const activeFeeIds = db.fees.map(f => f.id || f.feeId).filter(Boolean);
       if (activeFeeIds.length > 0) {
         await sqlDb.query(`DELETE FROM fees WHERE tenantId = ? AND id NOT IN (${activeFeeIds.map(() => '?').join(',')})`, [tId, ...activeFeeIds]);
       } else {
@@ -1972,14 +1972,18 @@ export const saveMemoryDbToSql = async (tenantId, db) => {
       }
 
       for (const f of db.fees) {
-        if (!f.id) continue;
+        const id = f.id || f.feeId;
+        if (!id) continue;
+        const classId = f.classId || f.studentClass || '';
+        const sectionId = f.sectionId || f.section || '';
+        const status = f.status || f.paymentStatus || 'Pending';
         await sqlDb.query(
           `INSERT INTO fees (
             id, studentId, studentName, classId, sectionId, feeType, totalAmount, paidAmount, dueAmount, status, paymentDate, paymentMethod, remarks, createdAt, tenantId
           ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
           ON DUPLICATE KEY UPDATE
             paidAmount=VALUES(paidAmount), dueAmount=VALUES(dueAmount), status=VALUES(status), paymentDate=VALUES(paymentDate), paymentMethod=VALUES(paymentMethod)`,
-          [f.id, f.studentId || '', f.studentName || '', f.classId || '', f.sectionId || '', f.feeType || '', parseFloat(f.totalAmount || 0), parseFloat(f.paidAmount || 0), parseFloat(f.dueAmount || 0), f.status || 'Pending', f.paymentDate || '', f.paymentMethod || '', f.remarks || '', f.createdAt || '', tId]
+          [id, f.studentId || '', f.studentName || '', classId, sectionId, f.feeType || '', parseFloat(f.totalAmount || 0), parseFloat(f.paidAmount || 0), parseFloat(f.dueAmount || 0), status, f.paymentDate || '', f.paymentMethod || '', f.remarks || '', f.createdAt || '', tId]
         );
       }
     }
