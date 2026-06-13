@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import { createPortal } from 'react-dom';
 import {
   LayoutDashboard, DollarSign, CreditCard, Users, UserCheck, TrendingUp, TrendingDown,
   PieChart, FileText, Download, Search, Filter, Plus, CheckCircle, AlertCircle,
@@ -104,21 +105,21 @@ export default function AccountantPanel({ setActiveView, onLogout, accountantVie
           </div>
           <div>
             <h2 style={{ fontSize: '1.25rem', fontWeight: 700 }}>{accountantView === 'dashboard' ? 'Finance Panel' :
-             accountantView === 'collect-fees' ? 'Student Fee Collection' :
-             accountantView === 'fee-structure' ? 'Fee Structure Configuration' :
-              accountantView === 'payroll' ? 'Staff Payroll Management' :
-             accountantView === 'teacher-pay-structure' ? 'Staff Pay Structure' :
-             accountantView === 'expenses' ? 'Expense Tracker' :
-             accountantView === 'income' ? 'Income Tracker' :
-             accountantView === 'reports' ? 'Financial Reports' :
-              accountantView === 'staff-pay' ? 'Employee Salary Payments' :
-             accountantView === 'staff-pay-structure' ? 'Employee Payment Structure' :
-             accountantView === 'students' ? 'Student Directory' :
-                           accountantView === 'teacher-list' ? 'Staff Directory' :
-             accountantView === 'staff' ? 'Employee Directory' :
-             accountantView === 'register-student' ? 'Register Student' :
-             accountantView === 'add-teacher' ? 'Add Staff' :
-             accountantView === 'add-staff' ? 'Add Employee' : 'Student Fee Collection'}</h2>
+              accountantView === 'collect-fees' ? 'Student Fee Collection' :
+              accountantView === 'fee-structure' ? 'Fee Structure Configuration' :
+               accountantView === 'payroll' ? 'Staff Payroll Management' :
+               accountantView === 'teacher-pay-structure' ? 'Staff Pay Structure' :
+               accountantView === 'expenses' ? 'Expense Tracker' :
+               accountantView === 'income' ? 'Income Tracker' :
+               accountantView === 'reports' ? 'Financial Reports' :
+               accountantView === 'staff-pay' ? 'Employee Salary Payments' :
+               accountantView === 'staff-pay-structure' ? 'Employee Pay Structure' :
+               accountantView === 'students' ? 'Student Directory' :
+               accountantView === 'teacher-list' ? 'Staff Directory' :
+               accountantView === 'staff' ? 'Employee Directory' :
+               accountantView === 'register-student' ? 'Register Student' :
+               accountantView === 'add-teacher' ? 'Add Staff' :
+               accountantView === 'add-staff' ? 'Add Employee' : 'Student Fee Collection'}</h2>
             <p style={{ fontSize: '0.85rem', color: 'var(--text-muted)' }}>
               Comprehensive financial management and accounting portal
             </p>
@@ -166,7 +167,7 @@ function DashboardView({ setAccountantView }) {
     { label: 'Pending Fees', value: `₹${(data?.totalPendingFees || 0).toLocaleString()}`, icon: AlertCircle, color: '#f59e0b', bg: 'rgba(245,158,11,0.08)', trend: `0 records`, up: false },
     { label: 'Monthly Expenses', value: `₹${(data?.totalExpenses || 0).toLocaleString()}`, icon: TrendingDown, color: '#ef4444', bg: 'rgba(239,68,68,0.08)', trend: '0.0%', up: false },
     { label: 'Net Profit', value: `₹${(data?.netProfit || 0).toLocaleString()}`, icon: TrendingUp, color: '#8b5cf6', bg: 'rgba(139,92,246,0.08)', trend: '0.0%', up: true },
-    { label: 'Total Payroll Paid', value: `₹${(data?.totalPayrollPaid || 0).toLocaleString()}`, icon: Banknote, color: '#06b6d4', bg: 'rgba(6,182,212,0.08)', trend: `0 teachers`, up: true },
+    { label: 'Total Payroll Paid', value: `₹${(data?.totalPayrollPaid || 0).toLocaleString()}`, icon: Banknote, color: '#06b6d4', bg: 'rgba(6,182,212,0.08)', trend: `0 staff`, up: true },
     { label: 'Other Income', value: `₹${(data?.totalIncome || 0).toLocaleString()}`, icon: HandCoins, color: '#ec4899', bg: 'rgba(236,72,153,0.08)', trend: '0 records', up: true },
   ];
 
@@ -329,6 +330,7 @@ export function CollectFeesView({ showToast }) {
   const [showForm, setShowForm] = useState(false);
   const [feeStructures, setFeeStructures] = useState([]);
   const [filterClass, setFilterClass] = useState('All');
+  const [filterDept, setFilterDept] = useState('All');
   const [filterStatus, setFilterStatus] = useState('All');
   const [search, setSearch] = useState('');
   const [form, setForm] = useState({
@@ -341,6 +343,9 @@ export function CollectFeesView({ showToast }) {
   const [selectedFormGrade, setSelectedFormGrade] = useState('');
   const [selectedFormSection, setSelectedFormSection] = useState('');
   const [selectedFormDept, setSelectedFormDept] = useState('');
+  const [editingId, setEditingId] = useState(null);
+  const [showConfirmDelete, setShowConfirmDelete] = useState(null);
+  const [isPaidAmountEdited, setIsPaidAmountEdited] = useState(false);
 
   useEffect(() => {
     if (!showForm) {
@@ -349,6 +354,12 @@ export function CollectFeesView({ showToast }) {
       setSelectedFormGrade('');
       setSelectedFormSection('');
       setSelectedFormDept('');
+      setEditingId(null);
+      setIsPaidAmountEdited(false);
+      setForm({
+        studentId: '', studentName: '', admissionNumber: '', studentClass: '', section: '',
+        feeType: 'Tuition Fee', amount: '', discount: '0', fine: '0', paidAmount: '', paymentMethod: 'Cash', remarks: ''
+      });
     }
   }, [showForm]);
 
@@ -373,12 +384,27 @@ export function CollectFeesView({ showToast }) {
 
   const fetchFees = () => {
     const params = new URLSearchParams();
-    if (filterClass !== 'All') params.set('studentClass', filterClass);
+    if (filterClass !== 'All') {
+      if (isGrade11or12(filterClass)) {
+        if (filterDept !== 'All') {
+          params.set('studentClass', `${filterClass} (${filterDept})`);
+        }
+      } else {
+        params.set('studentClass', filterClass);
+      }
+    }
     if (filterStatus !== 'All') params.set('status', filterStatus);
     if (search) params.set('search', search);
     fetch(`/api/finance/fees?${params}`)
       .then(r => r.json())
-      .then(d => { setFees(d); setLoading(false); })
+      .then(d => {
+        let filtered = d;
+        if (filterClass !== 'All' && isGrade11or12(filterClass) && filterDept === 'All') {
+          filtered = d.filter(f => parseGradeName(f.studentClass || f.classId).baseGrade === filterClass);
+        }
+        setFees(filtered);
+        setLoading(false);
+      })
       .catch(() => setLoading(false));
   };
 
@@ -394,7 +420,7 @@ export function CollectFeesView({ showToast }) {
       .catch(() => {});
   };
 
-  useEffect(() => { fetchFees(); fetchStudents(); }, [filterClass, filterStatus, search]);
+  useEffect(() => { fetchFees(); fetchStudents(); }, [filterClass, filterDept, filterStatus, search]);
 
   const selectStudent = (stu) => {
     if (stu) {
@@ -423,6 +449,7 @@ export function CollectFeesView({ showToast }) {
         amount: defaultAmount ? String(defaultAmount) : '',
         paidAmount: defaultAmount ? String(defaultAmount) : ''
       }));
+      setIsPaidAmountEdited(false);
       setStudentSearchQuery(stu.fullName || stu.name);
       setShowStudentDropdown(false);
     } else {
@@ -436,6 +463,7 @@ export function CollectFeesView({ showToast }) {
         amount: '',
         paidAmount: ''
       }));
+      setIsPaidAmountEdited(false);
       setStudentSearchQuery('');
     }
   };
@@ -465,6 +493,7 @@ export function CollectFeesView({ showToast }) {
         amount: defaultAmount ? String(defaultAmount) : '',
         paidAmount: defaultAmount ? String(defaultAmount) : ''
       }));
+      setIsPaidAmountEdited(false);
     } else {
       setForm(prev => ({
         ...prev,
@@ -476,6 +505,7 @@ export function CollectFeesView({ showToast }) {
         amount: '',
         paidAmount: ''
       }));
+      setIsPaidAmountEdited(false);
     }
   };
 
@@ -498,6 +528,53 @@ export function CollectFeesView({ showToast }) {
       amount: defaultAmount ? String(defaultAmount) : prev.amount,
       paidAmount: defaultAmount ? String(defaultAmount) : prev.paidAmount
     }));
+    setIsPaidAmountEdited(false);
+  };
+
+  const updateFormFields = (updates) => {
+    setForm(prev => {
+      const currentAmount = updates.amount !== undefined ? updates.amount : prev.amount;
+      const currentDiscount = updates.discount !== undefined ? updates.discount : prev.discount;
+      const currentFine = updates.fine !== undefined ? updates.fine : prev.fine;
+      
+      const newTotal = (Number(currentAmount) || 0) - (Number(currentDiscount) || 0) + (Number(currentFine) || 0);
+      
+      let newPaidAmount = prev.paidAmount;
+      if (!isPaidAmountEdited || prev.paidAmount === '' || prev.paidAmount === '0') {
+        newPaidAmount = String(newTotal);
+      }
+      
+      return {
+        ...prev,
+        ...updates,
+        paidAmount: newPaidAmount
+      };
+    });
+  };
+
+  const handleEdit = (fee) => {
+    setEditingId(fee.id || fee.feeId);
+    setForm({
+      studentId: fee.studentId,
+      studentName: fee.studentName,
+      admissionNumber: fee.admissionNumber || '',
+      studentClass: fee.studentClass || fee.classId || '',
+      section: fee.section || fee.sectionId || '',
+      feeType: fee.feeType,
+      amount: String(fee.amount || fee.totalAmount || ''),
+      discount: String(fee.discount || 0),
+      fine: String(fee.fine || 0),
+      paidAmount: String(fee.paidAmount || ''),
+      paymentMethod: fee.paymentMethod || 'Cash',
+      remarks: fee.remarks || ''
+    });
+    setStudentSearchQuery(fee.studentName);
+    const parsed = parseGradeName(fee.studentClass || fee.classId);
+    setSelectedFormGrade(parsed.baseGrade);
+    setSelectedFormSection(fee.section || fee.sectionId || '');
+    setSelectedFormDept(parsed.department);
+    setIsPaidAmountEdited(true);
+    setShowForm(true);
   };
 
   const handleSubmit = async (e) => {
@@ -507,22 +584,29 @@ export function CollectFeesView({ showToast }) {
       return;
     }
     try {
-      const res = await fetch('/api/finance/fees', {
-        method: 'POST',
+      const url = editingId ? `/api/finance/fees/${editingId}` : '/api/finance/fees';
+      const method = editingId ? 'PUT' : 'POST';
+      const res = await fetch(url, {
+        method: method,
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(form)
       });
       if (res.ok) {
         const data = await res.json();
-        showToast(`Fee collected successfully! Receipt: ${data.receiptNumber}`);
-        setReceiptData(data);
+        if (editingId) {
+          showToast(`Fee record updated successfully!`);
+        } else {
+          showToast(`Fee collected successfully! Receipt: ${data.receiptNumber}`);
+          setReceiptData(data);
+        }
         setShowForm(false);
         setForm({ studentId: '', studentName: '', admissionNumber: '', studentClass: '', section: '',
           feeType: 'Tuition Fee', amount: '', discount: '0', fine: '0', paidAmount: '', paymentMethod: 'Cash', remarks: '' });
+        setEditingId(null);
         fetchFees();
       } else {
         const err = await res.json();
-        showToast(err.error || 'Failed to collect fee', 'error');
+        showToast(err.error || 'Failed to submit fee record', 'error');
       }
     } catch { showToast('Network error', 'error'); }
   };
@@ -552,7 +636,7 @@ export function CollectFeesView({ showToast }) {
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: '24px' }}>
       {/* Receipt Modal */}
-      {receiptData && (
+      {receiptData && createPortal(
         <div className="modal-overlay" onClick={() => setReceiptData(null)}>
           <div onClick={e => e.stopPropagation()} style={{
             width: '100%', maxWidth: '440px', background: 'var(--bg-elevated)', borderRadius: '20px',
@@ -598,7 +682,8 @@ export function CollectFeesView({ showToast }) {
               }}>Close</button>
             </div>
           </div>
-        </div>
+        </div>,
+        document.body
       )}
 
       {/* Toolbar */}
@@ -616,10 +701,33 @@ export function CollectFeesView({ showToast }) {
           <input value={search} onChange={e => setSearch(e.target.value)} placeholder="Search student, receipt..."
             style={{ ...inputStyle, paddingLeft: '36px', width: '220px' }} />
         </div>
-        <select value={filterClass} onChange={e => setFilterClass(e.target.value)} style={{ ...inputStyle, width: '120px', cursor: 'pointer' }}>
+        <select 
+          value={filterClass} 
+          onChange={e => {
+            setFilterClass(e.target.value);
+            setFilterDept('All');
+          }} 
+          style={{ ...inputStyle, width: '120px', cursor: 'pointer' }}
+        >
           <option value="All" style={optionStyle}>All Classes</option>
-          {classes.map(c => <option key={c} value={c} style={optionStyle}>Grade {c}</option>)}
+          {uniqueBaseGrades.map(c => <option key={c} value={c} style={optionStyle}>Grade {c}</option>)}
         </select>
+        {isGrade11or12(filterClass) && (
+          <select 
+            value={filterDept} 
+            onChange={e => setFilterDept(e.target.value)} 
+            style={{ ...inputStyle, width: '150px', cursor: 'pointer' }}
+          >
+            <option value="All" style={optionStyle}>All Departments</option>
+            {[...new Set(activeGrades
+              .filter(g => parseGradeName(g.name).baseGrade === filterClass)
+              .map(g => parseGradeName(g.name).department)
+              .filter(Boolean)
+            )].map(d => (
+              <option key={d} value={d} style={optionStyle}>{d}</option>
+            ))}
+          </select>
+        )}
         <select value={filterStatus} onChange={e => setFilterStatus(e.target.value)} style={{ ...inputStyle, width: '120px', cursor: 'pointer' }}>
           <option value="All" style={optionStyle}>All Status</option>
           <option value="Paid" style={optionStyle}>Paid</option>
@@ -629,15 +737,16 @@ export function CollectFeesView({ showToast }) {
       </div>
 
       {/* Collection Form Modal */}
-      {showForm && (
+      {showForm && createPortal(
         <div className="modal-overlay" onClick={() => setShowForm(false)}>
           <div onClick={e => e.stopPropagation()} className="animate-scale-up" style={{
             width: '100%', maxWidth: '650px', background: 'var(--bg-elevated)', borderRadius: '20px',
-            border: '1px solid var(--border-glass)', padding: '32px', boxShadow: 'var(--shadow-lg)'
+            border: '1px solid var(--border-glass)', padding: '32px', boxShadow: 'var(--shadow-lg)',
+            maxHeight: '90vh', overflowY: 'auto'
           }}>
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '24px' }}>
               <h3 style={{ fontSize: '1.25rem', fontWeight: 800, color: 'var(--text-main)', display: 'flex', alignItems: 'center', gap: '10px', margin: 0 }}>
-                <Receipt size={22} style={{ color: '#10b981' }} /> New Fee Collection
+                <Receipt size={22} style={{ color: '#10b981' }} /> {editingId ? 'Edit Fee Collection' : 'New Fee Collection'}
               </h3>
             </div>
 
@@ -769,19 +878,22 @@ export function CollectFeesView({ showToast }) {
                 </div>
                 <div>
                   <label style={labelStyle}>Amount (₹)</label>
-                  <input type="number" value={form.amount} onChange={e => setForm({ ...form, amount: e.target.value })} required placeholder="12000" style={inputStyle} />
+                  <input type="number" value={form.amount} onChange={e => updateFormFields({ amount: e.target.value })} required placeholder="12000" style={inputStyle} />
                 </div>
                 <div>
                   <label style={labelStyle}>Discount (₹)</label>
-                  <input type="number" value={form.discount} onChange={e => setForm({ ...form, discount: e.target.value })} placeholder="0" style={inputStyle} />
+                  <input type="number" value={form.discount} onChange={e => updateFormFields({ discount: e.target.value })} placeholder="0" style={inputStyle} />
                 </div>
                 <div>
                   <label style={labelStyle}>Fine (₹)</label>
-                  <input type="number" value={form.fine} onChange={e => setForm({ ...form, fine: e.target.value })} placeholder="0" style={inputStyle} />
+                  <input type="number" value={form.fine} onChange={e => updateFormFields({ fine: e.target.value })} placeholder="0" style={inputStyle} />
                 </div>
                 <div>
                   <label style={labelStyle}>Paid Amount (₹)</label>
-                  <input type="number" value={form.paidAmount} onChange={e => setForm({ ...form, paidAmount: e.target.value })} placeholder="Full amount" style={inputStyle} />
+                  <input type="number" value={form.paidAmount} onChange={e => {
+                    setIsPaidAmountEdited(true);
+                    setForm({ ...form, paidAmount: e.target.value });
+                  }} placeholder="Full amount" style={inputStyle} />
                 </div>
                 <div>
                   <label style={labelStyle}>Payment Method</label>
@@ -794,6 +906,36 @@ export function CollectFeesView({ showToast }) {
                   <input value={form.remarks} onChange={e => setForm({ ...form, remarks: e.target.value })} placeholder="Optional note" style={inputStyle} />
                 </div>
               </div>
+
+              {(() => {
+                const totalAmount = (Number(form.amount) || 0) - (Number(form.discount) || 0) + (Number(form.fine) || 0);
+                const dueAmount = totalAmount - (form.paidAmount !== '' ? (Number(form.paidAmount) || 0) : totalAmount);
+                return (
+                  <div style={{ padding: '16px', background: 'rgba(255,255,255,0.02)', borderRadius: '12px', border: '1px solid var(--border-glass)', display: 'flex', flexDirection: 'column', gap: '8px' }}>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.8rem' }}>
+                      <span style={{ color: 'var(--text-muted)' }}>Base Amount</span>
+                      <span style={{ color: 'var(--text-main)', fontWeight: 600 }}>₹{Number(form.amount || 0).toLocaleString()}</span>
+                    </div>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.8rem' }}>
+                      <span style={{ color: 'var(--text-muted)' }}>Discount</span>
+                      <span style={{ color: '#ef4444' }}>- ₹{Number(form.discount || 0).toLocaleString()}</span>
+                    </div>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.8rem' }}>
+                      <span style={{ color: 'var(--text-muted)' }}>Fine</span>
+                      <span style={{ color: '#10b981' }}>+ ₹{Number(form.fine || 0).toLocaleString()}</span>
+                    </div>
+                    <div style={{ height: '1px', background: 'var(--border-glass)' }} />
+                    <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.85rem', fontWeight: 700 }}>
+                      <span style={{ color: 'var(--text-main)' }}>Total Payable</span>
+                      <span style={{ color: '#10b981' }}>₹{totalAmount.toLocaleString()}</span>
+                    </div>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.85rem', fontWeight: 700 }}>
+                      <span style={{ color: 'var(--text-main)' }}>Balance Due</span>
+                      <span style={{ color: dueAmount > 0 ? '#ef4444' : '#10b981' }}>₹{dueAmount.toLocaleString()}</span>
+                    </div>
+                  </div>
+                );
+              })()}
               <div style={{ display: 'flex', gap: '12px', marginTop: '10px', justifyContent: 'flex-end' }}>
                 <button type="button" onClick={() => setShowForm(false)} style={{
                   padding: '12px 24px', background: 'var(--bg-card-subtle)', border: '1px solid var(--border-subtle)',
@@ -806,11 +948,12 @@ export function CollectFeesView({ showToast }) {
                   border: 'none', borderRadius: '10px', color: '#fff', fontWeight: 700, cursor: 'pointer',
                   display: 'flex', alignItems: 'center', gap: '8px', fontSize: '0.85rem', transition: 'transform 0.15s, opacity 0.2s'
                 }} onMouseEnter={e => e.currentTarget.style.transform = 'translateY(-1px)'}
-                   onMouseLeave={e => e.currentTarget.style.transform = 'translateY(0)'}><CheckCircle size={16} /> Collect & Generate Receipt</button>
+                   onMouseLeave={e => e.currentTarget.style.transform = 'translateY(0)'}><CheckCircle size={16} /> {editingId ? 'Update Record' : 'Collect & Generate Receipt'}</button>
               </div>
             </form>
           </div>
-        </div>
+        </div>,
+        document.body
       )}
 
       {/* Fees Table */}
@@ -819,48 +962,87 @@ export function CollectFeesView({ showToast }) {
           <table style={{ width: '100%', borderCollapse: 'collapse' }}>
             <thead>
               <tr style={{ background: 'rgba(255,255,255,0.02)' }}>
-                {['Receipt #', 'Student', 'Class', 'Fee Type', 'Amount', 'Paid', 'Due', 'Status', 'Method', 'Date'].map(h => (
-                  <th key={h} style={{ padding: '14px 16px', textAlign: 'left', fontSize: '0.7rem', fontWeight: 700, color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.04em', borderBottom: '1px solid rgba(255,255,255,0.04)' }}>{h}</th>
+                {['Receipt #', 'Student', 'Class', 'Fee Type', 'Amount', 'Discount', 'Fine', 'Paid', 'Due', 'Status', 'Method', 'Date', 'Actions'].map(h => (
+                  <th key={h} style={{ padding: '14px 16px', textAlign: 'left', fontSize: '0.7rem', fontWeight: 700, color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.04em', borderBottom: '1px solid rgba(255,255,255,0.04)', whiteSpace: 'nowrap' }}>{h}</th>
                 ))}
               </tr>
             </thead>
             <tbody>
               {loading ? (
-                <tr><td colSpan={10} style={{ textAlign: 'center', padding: '40px', color: 'var(--text-muted)' }}>
+                <tr><td colSpan={13} style={{ textAlign: 'center', padding: '40px', color: 'var(--text-muted)', whiteSpace: 'nowrap' }}>
                   <Loader2 className="animate-spin" size={20} style={{ marginRight: '8px' }} /> Loading...
                 </td></tr>
               ) : fees.length === 0 ? (
-                <tr><td colSpan={10} style={{ textAlign: 'center', padding: '40px', color: 'var(--text-muted)', fontSize: '0.85rem' }}>
+                <tr><td colSpan={13} style={{ textAlign: 'center', padding: '40px', color: 'var(--text-muted)', fontSize: '0.85rem', whiteSpace: 'nowrap' }}>
                   No fee records found. Click "Collect New Fee" to get started.
                 </td></tr>
               ) : (
-                fees.slice(0, 50).map((fee, i) => (
-                  <tr key={i} style={{ borderBottom: '1px solid rgba(255,255,255,0.03)', transition: 'background 0.15s' }}
-                    onMouseEnter={e => e.currentTarget.style.background = 'rgba(255,255,255,0.02)'}
-                    onMouseLeave={e => e.currentTarget.style.background = 'transparent'}>
-                    <td style={{ padding: '12px 16px', fontSize: '0.8rem', fontWeight: 600, color: '#10b981' }}>{fee.receiptNumber}</td>
-                    <td style={{ padding: '12px 16px', fontSize: '0.8rem', fontWeight: 600, color: 'var(--text-main)' }}>{fee.studentName}</td>
-                    <td style={{ padding: '12px 16px', fontSize: '0.8rem', color: 'var(--text-muted)' }}>{fee.studentClass}-{fee.section}</td>
-                    <td style={{ padding: '12px 16px', fontSize: '0.8rem', color: 'var(--text-muted)' }}>{fee.feeType}</td>
-                    <td style={{ padding: '12px 16px', fontSize: '0.8rem', fontWeight: 600, color: 'var(--text-main)' }}>₹{fee.totalAmount?.toLocaleString()}</td>
-                    <td style={{ padding: '12px 16px', fontSize: '0.8rem', fontWeight: 600, color: '#10b981' }}>₹{fee.paidAmount?.toLocaleString()}</td>
-                    <td style={{ padding: '12px 16px', fontSize: '0.8rem', fontWeight: 600, color: fee.dueAmount > 0 ? '#ef4444' : 'var(--text-muted)' }}>₹{fee.dueAmount?.toLocaleString()}</td>
-                    <td style={{ padding: '12px 16px' }}>
-                      <span style={{
-                        padding: '4px 10px', borderRadius: '20px', fontSize: '0.7rem', fontWeight: 700,
-                        background: fee.paymentStatus === 'Paid' ? 'rgba(16,185,129,0.1)' : fee.paymentStatus === 'Partial' ? 'rgba(245,158,11,0.1)' : 'rgba(239,68,68,0.1)',
-                        color: fee.paymentStatus === 'Paid' ? '#10b981' : fee.paymentStatus === 'Partial' ? '#f59e0b' : '#ef4444'
-                      }}>{fee.paymentStatus}</span>
-                    </td>
-                    <td style={{ padding: '12px 16px', fontSize: '0.8rem', color: 'var(--text-muted)' }}>{fee.paymentMethod}</td>
-                    <td style={{ padding: '12px 16px', fontSize: '0.8rem', color: 'var(--text-muted)' }}>{fee.paymentDate}</td>
-                  </tr>
-                ))
+                fees.slice(0, 50).map((fee, i) => {
+                  const baseAmt = fee.amount !== undefined && fee.amount !== null ? fee.amount : (fee.totalAmount - (fee.fine || 0) + (fee.discount || 0));
+                  return (
+                    <tr key={i} style={{ borderBottom: '1px solid rgba(255,255,255,0.03)', transition: 'background 0.15s' }}
+                      onMouseEnter={e => e.currentTarget.style.background = 'rgba(255,255,255,0.02)'}
+                      onMouseLeave={e => e.currentTarget.style.background = 'transparent'}>
+                      <td style={{ padding: '12px 16px', fontSize: '0.8rem', fontWeight: 600, color: '#10b981', whiteSpace: 'nowrap' }}>{fee.receiptNumber}</td>
+                      <td style={{ padding: '12px 16px', fontSize: '0.8rem', fontWeight: 600, color: 'var(--text-main)', whiteSpace: 'nowrap' }}>{fee.studentName}</td>
+                      <td style={{ padding: '12px 16px', fontSize: '0.8rem', color: 'var(--text-muted)', whiteSpace: 'nowrap' }}>{fee.studentClass}-{fee.section}</td>
+                      <td style={{ padding: '12px 16px', fontSize: '0.8rem', color: 'var(--text-muted)', whiteSpace: 'nowrap' }}>{fee.feeType}</td>
+                      <td style={{ padding: '12px 16px', fontSize: '0.8rem', fontWeight: 600, color: 'var(--text-main)', whiteSpace: 'nowrap' }}>₹{baseAmt?.toLocaleString()}</td>
+                      <td style={{ padding: '12px 16px', fontSize: '0.8rem', fontWeight: 600, color: '#ef4444', whiteSpace: 'nowrap' }}>₹{fee.discount?.toLocaleString()}</td>
+                      <td style={{ padding: '12px 16px', fontSize: '0.8rem', fontWeight: 600, color: '#10b981', whiteSpace: 'nowrap' }}>₹{fee.fine?.toLocaleString()}</td>
+                      <td style={{ padding: '12px 16px', fontSize: '0.8rem', fontWeight: 600, color: '#10b981', whiteSpace: 'nowrap' }}>₹{fee.paidAmount?.toLocaleString()}</td>
+                      <td style={{ padding: '12px 16px', fontSize: '0.8rem', fontWeight: 600, color: fee.dueAmount > 0 ? '#ef4444' : 'var(--text-muted)', whiteSpace: 'nowrap' }}>₹{fee.dueAmount?.toLocaleString()}</td>
+                      <td style={{ padding: '12px 16px', whiteSpace: 'nowrap' }}>
+                        <span style={{
+                          padding: '4px 10px', borderRadius: '20px', fontSize: '0.7rem', fontWeight: 700,
+                          background: fee.paymentStatus === 'Paid' ? 'rgba(16,185,129,0.1)' : fee.paymentStatus === 'Partial' ? 'rgba(245,158,11,0.1)' : 'rgba(239,68,68,0.1)',
+                          color: fee.paymentStatus === 'Paid' ? '#10b981' : fee.paymentStatus === 'Partial' ? '#f59e0b' : '#ef4444'
+                        }}>{fee.paymentStatus}</span>
+                      </td>
+                      <td style={{ padding: '12px 16px', fontSize: '0.8rem', color: 'var(--text-muted)', whiteSpace: 'nowrap' }}>{fee.paymentMethod}</td>
+                      <td style={{ padding: '12px 16px', fontSize: '0.8rem', color: 'var(--text-muted)', whiteSpace: 'nowrap' }}>{fee.paymentDate}</td>
+                      <td style={{ padding: '12px 16px', whiteSpace: 'nowrap' }}>
+                        <div style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>
+                          <button onClick={() => handleEdit(fee)} style={{
+                            background: 'transparent', border: 'none', color: '#3b82f6', cursor: 'pointer', padding: '4px', display: 'flex', alignItems: 'center'
+                          }} title="Edit"><Pencil size={14} /></button>
+                          <button onClick={() => setShowConfirmDelete(fee)} style={{
+                            background: 'transparent', border: 'none', color: '#ef4444', cursor: 'pointer', padding: '4px', display: 'flex', alignItems: 'center'
+                          }} title="Delete"><Trash2 size={14} /></button>
+                        </div>
+                      </td>
+                    </tr>
+                  );
+                })
               )}
             </tbody>
           </table>
         </div>
       </div>
+
+      <ConfirmDialog 
+        show={!!showConfirmDelete} 
+        message={`Are you sure you want to delete the fee record for ${showConfirmDelete?.studentName}?`}
+        onConfirm={async () => {
+          if (showConfirmDelete) {
+            try {
+              const res = await fetch(`/api/finance/fees/${showConfirmDelete.id || showConfirmDelete.feeId}`, {
+                method: 'DELETE'
+              });
+              if (res.ok) {
+                showToast('Fee record deleted successfully!');
+                fetchFees();
+              } else {
+                showToast('Failed to delete fee record', 'error');
+              }
+            } catch {
+              showToast('Network error', 'error');
+            }
+            setShowConfirmDelete(null);
+          }
+        }}
+        onCancel={() => setShowConfirmDelete(null)}
+      />
     </div>
   );
 }
@@ -1167,11 +1349,28 @@ export function FeeStructureView({ showToast }) {
    ============================================================ */
 const defaultStaffDesignations = [
   'Administrative Officer',
-  'Registrar Officer',
-  'Librarian Keeper',
-  'IT System Analyst',
-  'Security Commander',
-  'Facilities Specialist'
+  'Office Assistant',
+  'Data Entry Operator',
+  'IT Administrator',
+  'Computer Operator',
+  'Transport Coordinator',
+  'Driver',
+  'Hostel Warden',
+  'Security Supervisor',
+  'Security Guard',
+  'Maintenance Staff',
+  'Electrician',
+  'Plumber',
+  'Housekeeping Supervisor',
+  'Housekeeping Staff',
+  'Cleaner',
+  'School Nurse',
+  'Store Keeper',
+  'Peon',
+  'Attendant',
+  'Office Boy',
+  'Gardener',
+  'Other'
 ];
 
 export function StaffPaymentStructureView({ showToast }) {
@@ -1275,7 +1474,7 @@ export function StaffPaymentStructureView({ showToast }) {
         </button>
       </div>
 
-      {showForm && (
+      {showForm && createPortal(
         <div className="modal-overlay" onClick={() => { setEditingId(null); setShowForm(false); }}>
           <div onClick={e => e.stopPropagation()} className="animate-scale-up" style={{
             width: '100%', maxWidth: '650px', background: 'var(--bg-elevated)', borderRadius: '20px',
@@ -1332,7 +1531,8 @@ export function StaffPaymentStructureView({ showToast }) {
               </div>
             </form>
           </div>
-        </div>
+        </div>,
+        document.body
       )}
 
       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(300px, 1fr))', gap: '16px' }}>
@@ -1502,7 +1702,7 @@ export function StaffPaymentsView({ showToast }) {
         ...prev,
         staffId: '',
         staffName: '',
-        staffRole: '',
+        staffRole: prev.staffRole,
         department: ''
       }));
       setStaffSearchQuery('');
@@ -1568,11 +1768,19 @@ export function StaffPaymentsView({ showToast }) {
   const optionStyle = { background: 'var(--bg-form)', color: 'var(--text-main)' };
 
   const filteredStaffForSelect = staff.filter(s => {
-    const name = (s.name || '').toLowerCase();
-    const role = (s.role || '').toLowerCase();
-    const dept = (s.department || '').toLowerCase();
-    const query = staffSearchQuery.toLowerCase();
-    return name.includes(query) || role.includes(query) || dept.includes(query);
+    if (form.staffRole) {
+      if ((s.role || '').toLowerCase() !== form.staffRole.toLowerCase()) {
+        return false;
+      }
+    }
+    if (staffSearchQuery.trim()) {
+      const name = (s.name || '').toLowerCase();
+      const role = (s.role || '').toLowerCase();
+      const dept = (s.department || '').toLowerCase();
+      const query = staffSearchQuery.toLowerCase();
+      return name.includes(query) || role.includes(query) || dept.includes(query);
+    }
+    return true;
   });
 
   return (
@@ -1598,7 +1806,7 @@ export function StaffPaymentsView({ showToast }) {
         </select>
       </div>
 
-      {showForm && (
+      {showForm && createPortal(
         <div className="modal-overlay" onClick={() => setShowForm(false)}>
           <div onClick={e => e.stopPropagation()} className="animate-scale-up" style={{
             width: '100%', maxWidth: '650px', background: 'var(--bg-elevated)', borderRadius: '20px',
@@ -1628,8 +1836,9 @@ export function StaffPaymentsView({ showToast }) {
                     onFocus={() => setShowStaffDropdown(true)}
                     onBlur={() => setTimeout(() => setShowStaffDropdown(false), 250)}
                     style={inputStyle}
+                    required
                   />
-                  {showStaffDropdown && staffSearchQuery && (
+                  {showStaffDropdown && (
                     <div style={{
                       position: 'absolute',
                       top: '100%',
@@ -1650,7 +1859,10 @@ export function StaffPaymentsView({ showToast }) {
                         filteredStaffForSelect.slice(0, 10).map(s => (
                           <div 
                             key={s.id} 
-                            onClick={() => selectStaff(s)}
+                            onMouseDown={(e) => {
+                              e.preventDefault();
+                              selectStaff(s);
+                            }}
                             style={{
                               padding: '10px 14px',
                               fontSize: '0.85rem',
@@ -1672,6 +1884,55 @@ export function StaffPaymentsView({ showToast }) {
                       )}
                     </div>
                   )}
+                </div>
+                <div>
+                  <label style={labelStyle}>Designation</label>
+                  <select
+                    value={form.staffRole}
+                    onChange={e => {
+                      const selectedRole = e.target.value;
+                      fetch('/api/finance/staff-salary-structures')
+                        .then(r => r.json())
+                        .then(structures => {
+                          const sstr = structures.find(st => st.designation === selectedRole);
+                          setForm(prev => ({
+                            ...prev,
+                            staffRole: selectedRole,
+                            staffId: '',
+                            staffName: '',
+                            department: '',
+                            basicSalary: sstr ? String(sstr.basicSalary) : '30000',
+                            allowances: sstr ? String(sstr.allowances) : '6000',
+                            bonus: sstr ? String(sstr.bonus || 0) : '0',
+                            deductions: sstr ? String(sstr.deductions) : '1500',
+                            pfDeduction: sstr ? String(sstr.pfDeduction) : '1500',
+                            taxDeduction: sstr ? String(sstr.taxDeduction) : '1000'
+                          }));
+                        })
+                        .catch(() => {
+                          setForm(prev => ({
+                            ...prev,
+                            staffRole: selectedRole,
+                            staffId: '',
+                            staffName: '',
+                            department: '',
+                            basicSalary: '30000',
+                            allowances: '6000',
+                            bonus: '0',
+                            deductions: '1500',
+                            pfDeduction: '1500',
+                            taxDeduction: '1000'
+                          }));
+                        });
+                      setStaffSearchQuery('');
+                    }}
+                    style={{ ...inputStyle, cursor: 'pointer' }}
+                  >
+                    <option value="" style={optionStyle}>Select designation</option>
+                    {defaultStaffDesignations.map(designation => (
+                      <option key={designation} value={designation} style={optionStyle}>{designation}</option>
+                    ))}
+                  </select>
                 </div>
                 {[
                   ['Basic Salary', 'basicSalary'], ['Allowances', 'allowances'], ['Bonus', 'bonus'],
@@ -1708,7 +1969,8 @@ export function StaffPaymentsView({ showToast }) {
               </div>
             </form>
           </div>
-        </div>
+        </div>,
+        document.body
       )}
 
       <div className="glass-panel" style={{ borderRadius: '16px', overflow: 'hidden' }}>
@@ -1817,11 +2079,40 @@ export function PayrollView({ showToast }) {
 
   const selectTeacher = (t) => {
     if (t) {
+      const isStandardRole = [
+        'Principal', 'Vice Principal', 'Academic Coordinator',
+        'Librarian', 'Receptionist', 'Accountant', 'Expense Manager'
+      ].includes(t.designation);
+
+      let basicSalary = '45000';
+      let allowances = '5000';
+      let deductions = '2000';
+      let pfDeduction = '1800';
+      let taxDeduction = '1200';
+
+      if (isStandardRole) {
+        const matchingStructure = salaryStructures.find(s => s.designation === t.designation);
+        if (matchingStructure) {
+          basicSalary = String(matchingStructure.basicSalary || '0');
+          allowances = String(matchingStructure.allowances || '0');
+          deductions = String(matchingStructure.deductions || '0');
+          pfDeduction = String(matchingStructure.pfDeduction || '0');
+          taxDeduction = String(matchingStructure.taxDeduction || '0');
+        }
+      }
+
       setForm(prev => ({
-        ...prev, teacherId: t.id, teacherName: t.name,
+        ...prev,
+        teacherId: t.id,
+        teacherName: t.name,
         employeeId: t.employeeId || `EMP-${t.id}`,
         designation: t.designation || 'Teacher',
-        department: t.department || 'General'
+        department: t.department || 'General',
+        basicSalary,
+        allowances,
+        deductions,
+        pfDeduction,
+        taxDeduction
       }));
       setTeacherSearchQuery(t.name);
       setShowTeacherDropdown(false);
@@ -1832,7 +2123,12 @@ export function PayrollView({ showToast }) {
         teacherName: '',
         employeeId: '',
         designation: '',
-        department: ''
+        department: '',
+        basicSalary: '45000',
+        allowances: '5000',
+        deductions: '2000',
+        pfDeduction: '1800',
+        taxDeduction: '1200'
       }));
       setTeacherSearchQuery('');
     }
@@ -1884,12 +2180,22 @@ export function PayrollView({ showToast }) {
   const optionStyle = { background: 'var(--bg-form)', color: 'var(--text-main)' };
 
   const filteredTeachersForSelect = teachers.filter(t => {
-    const name = (t.name || '').toLowerCase();
-    const dept = (t.department || '').toLowerCase();
-    const desg = (t.designation || '').toLowerCase();
-    const empId = (t.employeeId || '').toLowerCase();
-    const query = teacherSearchQuery.toLowerCase();
-    return name.includes(query) || dept.includes(query) || desg.includes(query) || empId.includes(query);
+    if (form.designation) {
+      const formDesg = form.designation.toLowerCase();
+      const teacherDesg = (t.designation || '').toLowerCase();
+      const isMatch = (formDesg === 'subject teacher' && (teacherDesg === 'subject teacher' || teacherDesg === 'teacher')) ||
+                      (formDesg === teacherDesg);
+      if (!isMatch) return false;
+    }
+    if (teacherSearchQuery.trim()) {
+      const q = teacherSearchQuery.toLowerCase();
+      const name = (t.name || '').toLowerCase();
+      const dept = (t.department || '').toLowerCase();
+      const desg = (t.designation || '').toLowerCase();
+      const empId = (t.employeeId || '').toLowerCase();
+      return name.includes(q) || dept.includes(q) || desg.includes(q) || empId.includes(q);
+    }
+    return true;
   });
 
   return (
@@ -1915,7 +2221,7 @@ export function PayrollView({ showToast }) {
         </select>
       </div>
 
-      {showForm && (
+      {showForm && createPortal(
         <div className="modal-overlay" onClick={() => setShowForm(false)}>
           <div onClick={e => e.stopPropagation()} className="animate-scale-up" style={{
             width: '100%', maxWidth: '650px', background: 'var(--bg-elevated)', borderRadius: '20px',
@@ -1945,8 +2251,9 @@ export function PayrollView({ showToast }) {
                     onFocus={() => setShowTeacherDropdown(true)}
                     onBlur={() => setTimeout(() => setShowTeacherDropdown(false), 250)}
                     style={inputStyle}
+                    required
                   />
-                  {showTeacherDropdown && teacherSearchQuery && (
+                  {showTeacherDropdown && (
                     <div style={{
                       position: 'absolute',
                       top: '100%',
@@ -1967,7 +2274,10 @@ export function PayrollView({ showToast }) {
                         filteredTeachersForSelect.slice(0, 10).map(t => (
                           <div 
                             key={t.id} 
-                            onClick={() => selectTeacher(t)}
+                            onMouseDown={(e) => {
+                              e.preventDefault();
+                              selectTeacher(t);
+                            }}
                             style={{
                               padding: '10px 14px',
                               fontSize: '0.85rem',
@@ -1991,34 +2301,57 @@ export function PayrollView({ showToast }) {
                   )}
                 </div>
                 <div>
-                  <label style={labelStyle}>Grade Range Pay Tier</label>
+                  <label style={labelStyle}>Designation</label>
                   <select
-                    value={selectedStructureId}
+                    value={form.designation}
                     onChange={e => {
-                      const id = e.target.value;
-                      setSelectedStructureId(id);
-                      const selectedStr = salaryStructures.find(s => s.id === id);
-                      if (selectedStr) {
-                        setForm(prev => ({
-                          ...prev,
-                          basicSalary: String(selectedStr.basicSalary || '0'),
-                          allowances: String(selectedStr.allowances || '0'),
-                          deductions: String(selectedStr.deductions || '0'),
-                          pfDeduction: String(selectedStr.pfDeduction || '0'),
-                          taxDeduction: String(selectedStr.taxDeduction || '0')
-                        }));
-                      }
+                      setForm({ ...form, designation: e.target.value });
                     }}
+                    required
                     style={{ ...inputStyle, cursor: 'pointer' }}
                   >
-                    <option value="" style={optionStyle}>Select a configured grade/tier to pre-fill</option>
-                    {salaryStructures.map(s => (
-                      <option key={s.id} value={s.id} style={optionStyle}>
-                        {s.designation} (Net: ₹{(s.netSalary || 0).toLocaleString()})
-                      </option>
-                    ))}
+                    <option value="" style={optionStyle}>Select designation</option>
+                    <option value="Subject Teacher" style={optionStyle}>Subject Teacher</option>
+                    <option value="Principal" style={optionStyle}>Principal</option>
+                    <option value="Vice Principal" style={optionStyle}>Vice Principal</option>
+                    <option value="Academic Coordinator" style={optionStyle}>Academic Coordinator</option>
+                    <option value="Librarian" style={optionStyle}>Librarian</option>
+                    <option value="Receptionist" style={optionStyle}>Receptionist</option>
+                    <option value="Accountant" style={optionStyle}>Accountant</option>
+                    <option value="Expense Manager" style={optionStyle}>Expense Manager</option>
                   </select>
                 </div>
+                {form.designation === 'Subject Teacher' && (
+                  <div>
+                    <label style={labelStyle}>Grade Range Pay Tier</label>
+                    <select
+                      value={selectedStructureId}
+                      onChange={e => {
+                        const id = e.target.value;
+                        setSelectedStructureId(id);
+                        const selectedStr = salaryStructures.find(s => s.id === id);
+                        if (selectedStr) {
+                          setForm(prev => ({
+                            ...prev,
+                            basicSalary: String(selectedStr.basicSalary || '0'),
+                            allowances: String(selectedStr.allowances || '0'),
+                            deductions: String(selectedStr.deductions || '0'),
+                            pfDeduction: String(selectedStr.pfDeduction || '0'),
+                            taxDeduction: String(selectedStr.taxDeduction || '0')
+                          }));
+                        }
+                      }}
+                      style={{ ...inputStyle, cursor: 'pointer' }}
+                    >
+                      <option value="" style={optionStyle}>Select a configured grade/tier to pre-fill</option>
+                      {salaryStructures.map(s => (
+                        <option key={s.id} value={s.id} style={optionStyle}>
+                          {s.designation} (Net: ₹{(s.netSalary || 0).toLocaleString()})
+                        </option>
+                      ))}
+                    </select>
+                  </div>
+                )}
                 {[
                   ['Basic Salary', 'basicSalary'], ['Allowances', 'allowances'], ['Bonus', 'bonus'],
                   ['Deductions', 'deductions'], ['PF Deduction', 'pfDeduction'], ['Tax Deduction', 'taxDeduction']
@@ -2054,7 +2387,8 @@ export function PayrollView({ showToast }) {
               </div>
             </form>
           </div>
-        </div>
+        </div>,
+        document.body
       )}
 
       {/* Payroll Table */}
@@ -2781,6 +3115,8 @@ export function TeacherSalaryStructureView({ showToast }) {
     designation: '', basicSalary: '', allowances: '',
     deductions: '0', pfDeduction: '0', taxDeduction: '0'
   });
+  const [selectedRole, setSelectedRole] = useState('');
+  const [gradeRange, setGradeRange] = useState('');
 
   const fetchStructures = () => {
     fetch('/api/finance/salary-structures')
@@ -2795,21 +3131,32 @@ export function TeacherSalaryStructureView({ showToast }) {
 
   const handleSubmit = async (e) => {
     e.preventDefault();
+    const finalDesignation = selectedRole === 'Subject Teacher' ? gradeRange : selectedRole;
+    if (!finalDesignation) {
+      showToast('Please specify a designation or grade range.', 'error');
+      return;
+    }
+    const formData = {
+      ...form,
+      designation: finalDesignation
+    };
     try {
       const isEdit = !!editingId;
       const url = isEdit ? `/api/finance/salary-structures/${editingId}` : '/api/finance/salary-structures';
       const res = await fetch(url, {
         method: isEdit ? 'PUT' : 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(form)
+        body: JSON.stringify(formData)
       });
       if (res.ok) {
-        showToast(`Salary structure for ${form.designation} saved!`);
+        showToast(`Salary structure for ${finalDesignation} saved!`);
         setEditingId(null);
         setForm({
           designation: '', basicSalary: '', allowances: '',
           deductions: '0', pfDeduction: '0', taxDeduction: '0'
         });
+        setSelectedRole('');
+        setGradeRange('');
         setShowForm(false);
         fetchStructures();
       } else {
@@ -2824,6 +3171,19 @@ export function TeacherSalaryStructureView({ showToast }) {
   };
 
   const handleEdit = (s) => {
+    const isStandardRole = [
+      'Principal', 'Vice Principal', 'Academic Coordinator',
+      'Librarian', 'Receptionist', 'Accountant', 'Expense Manager'
+    ].includes(s.designation);
+
+    if (isStandardRole) {
+      setSelectedRole(s.designation);
+      setGradeRange('');
+    } else {
+      setSelectedRole('Subject Teacher');
+      setGradeRange(s.designation || '');
+    }
+
     setForm({
       designation: s.designation || '',
       basicSalary: String(s.basicSalary || ''),
@@ -2850,7 +3210,7 @@ export function TeacherSalaryStructureView({ showToast }) {
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: '24px' }}>
       <div style={{ display: 'flex', gap: '12px', flexWrap: 'wrap' }}>
-        <button onClick={() => { setEditingId(null); setShowForm(true); }} style={{
+        <button onClick={() => { setEditingId(null); setSelectedRole(''); setGradeRange(''); setShowForm(true); }} style={{
           padding: '10px 20px', background: 'linear-gradient(135deg, #10b981, #059669)', border: 'none',
           borderRadius: '10px', color: '#fff', fontWeight: 700, cursor: 'pointer', display: 'flex',
           alignItems: 'center', gap: '6px', fontSize: '0.85rem'
@@ -2859,8 +3219,8 @@ export function TeacherSalaryStructureView({ showToast }) {
         </button>
       </div>
 
-      {showForm && (
-        <div className="modal-overlay" onClick={() => { setEditingId(null); setShowForm(false); }}>
+      {showForm && createPortal(
+        <div className="modal-overlay" onClick={() => { setEditingId(null); setSelectedRole(''); setGradeRange(''); setShowForm(false); }}>
           <div onClick={e => e.stopPropagation()} className="animate-scale-up" style={{
             width: '100%', maxWidth: '650px', background: 'var(--bg-elevated)', borderRadius: '20px',
             border: '1px solid var(--border-glass)', padding: '32px', boxShadow: 'var(--shadow-lg)',
@@ -2874,22 +3234,42 @@ export function TeacherSalaryStructureView({ showToast }) {
               </div>
               <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(180px, 1fr))', gap: '16px' }}>
                 <div>
-                  <label style={labelStyle}>Grade Range / Designation</label>
+                  <label style={labelStyle}>Designation</label>
                   <select
-                    value={form.designation}
-                    onChange={e => setForm({ ...form, designation: e.target.value })}
+                    value={selectedRole}
+                    onChange={e => {
+                      setSelectedRole(e.target.value);
+                      if (e.target.value !== 'Subject Teacher') {
+                        setGradeRange('');
+                      }
+                    }}
                     required
                     style={{ ...inputStyle, cursor: 'pointer' }}
                   >
-                    <option value="" style={optionStyle}>Select Grade Range / Designation</option>
-                    <option value="Grades 1-5" style={optionStyle}>Grades 1-5</option>
-                    <option value="Grades 6-10" style={optionStyle}>Grades 6-10</option>
+                    <option value="" style={optionStyle}>Select designation</option>
+                    <option value="Subject Teacher" style={optionStyle}>Subject Teacher</option>
                     <option value="Principal" style={optionStyle}>Principal</option>
-                    <option value="Senior Teacher" style={optionStyle}>Senior Staff</option>
-                    <option value="Teacher" style={optionStyle}>Staff</option>
-                    <option value="Assistant Teacher" style={optionStyle}>Assistant Staff</option>
+                    <option value="Vice Principal" style={optionStyle}>Vice Principal</option>
+                    <option value="Academic Coordinator" style={optionStyle}>Academic Coordinator</option>
+                    <option value="Librarian" style={optionStyle}>Librarian</option>
+                    <option value="Receptionist" style={optionStyle}>Receptionist</option>
+                    <option value="Accountant" style={optionStyle}>Accountant</option>
+                    <option value="Expense Manager" style={optionStyle}>Expense Manager</option>
                   </select>
                 </div>
+                {selectedRole === 'Subject Teacher' && (
+                  <div>
+                    <label style={labelStyle}>Create Range / Grade Range</label>
+                    <input
+                      type="text"
+                      placeholder="e.g. Grades 11-12, Grades 1-5..."
+                      value={gradeRange}
+                      onChange={e => setGradeRange(e.target.value)}
+                      required
+                      style={inputStyle}
+                    />
+                  </div>
+                )}
                 {[
                   ['Basic Salary', 'basicSalary'], ['Allowances', 'allowances'],
                   ['Deductions', 'deductions'], ['PF Deduction', 'pfDeduction'], ['Tax Deduction', 'taxDeduction']
@@ -2910,7 +3290,7 @@ export function TeacherSalaryStructureView({ showToast }) {
                   borderRadius: '10px', color: '#fff', fontWeight: 700, cursor: 'pointer',
                   display: 'flex', alignItems: 'center', gap: '6px', fontSize: '0.85rem'
                 }}><CheckCircle size={16} /> Save Structure</button>
-                <button type="button" onClick={() => { setEditingId(null); setShowForm(false); }} style={{
+                <button type="button" onClick={() => { setEditingId(null); setSelectedRole(''); setGradeRange(''); setShowForm(false); }} style={{
                   padding: '12px 24px', background: 'var(--bg-card-subtle)', border: '1px solid var(--border-subtle)',
                   borderRadius: '10px', color: 'var(--text-main)', fontWeight: 600, cursor: 'pointer', fontSize: '0.85rem', transition: 'background 0.2s',
                   display: 'flex', alignItems: 'center', gap: '6px'
@@ -2919,7 +3299,8 @@ export function TeacherSalaryStructureView({ showToast }) {
               </div>
             </form>
           </div>
-        </div>
+        </div>,
+        document.body
       )}
 
       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(300px, 1fr))', gap: '16px' }}>
@@ -2946,7 +3327,12 @@ export function TeacherSalaryStructureView({ showToast }) {
                 boxShadow: '0 4px 20px rgba(0, 0, 0, 0.08)'
               }}>
                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', borderBottom: '1px solid rgba(0,0,0,0.06)', paddingBottom: '10px' }}>
-                  <h4 style={{ fontSize: '1rem', fontWeight: 800, color: '#10b981' }}>{s.designation}</h4>
+                  <h4 style={{ fontSize: '1rem', fontWeight: 800, color: '#10b981' }}>
+                    {[
+                      'Principal', 'Vice Principal', 'Academic Coordinator',
+                      'Librarian', 'Receptionist', 'Accountant', 'Expense Manager'
+                    ].includes(s.designation) ? s.designation : `Subject Teacher (${s.designation})`}
+                  </h4>
                 </div>
                 <div style={{ display: 'flex', flexDirection: 'column', gap: '2px' }}>
                   {[

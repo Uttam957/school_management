@@ -24,8 +24,60 @@ import { hasPermission } from '../utils/permissions';
 
 const STAFF_CATEGORIES = [
   'All', 'Administration', 'Accounts & Finance', 'IT Department', 'Transport', 'Hostel', 
-  'Security', 'Maintenance', 'Housekeeping', 'Health & Medical', 'Store & Inventory', 'Campus Support'
+  'Security', 'Maintenance', 'Housekeeping', 'Health & Medical', 'Store & Inventory', 'Campus Support', 'Other'
 ];
+
+const DESIGNATIONS = [
+  'Administrative Officer',
+  'Office Assistant',
+  'Data Entry Operator',
+  'IT Administrator',
+  'Computer Operator',
+  'Transport Coordinator',
+  'Driver',
+  'Hostel Warden',
+  'Security Supervisor',
+  'Security Guard',
+  'Maintenance Staff',
+  'Electrician',
+  'Plumber',
+  'Housekeeping Supervisor',
+  'Housekeeping Staff',
+  'Cleaner',
+  'School Nurse',
+  'Store Keeper',
+  'Peon',
+  'Attendant',
+  'Office Boy',
+  'Gardener',
+  'Other'
+];
+
+const DESIGNATION_DETAILS = {
+  'Administrative Officer': { category: 'Administration', department: 'Administration' },
+  'Office Assistant': { category: 'Administration', department: 'Administration' },
+  'Data Entry Operator': { category: 'Administration', department: 'Administration' },
+  'IT Administrator': { category: 'IT Department', department: 'Information Technology' },
+  'Computer Operator': { category: 'IT Department', department: 'Information Technology' },
+  'Transport Coordinator': { category: 'Transport', department: 'Transport' },
+  'Driver': { category: 'Transport', department: 'Transport' },
+  'Hostel Warden': { category: 'Hostel', department: 'Hostel' },
+  'Security Supervisor': { category: 'Security', department: 'Security' },
+  'Security Guard': { category: 'Security', department: 'Security' },
+  'Maintenance Staff': { category: 'Maintenance', department: 'Maintenance' },
+  'Electrician': { category: 'Maintenance', department: 'Maintenance' },
+  'Plumber': { category: 'Maintenance', department: 'Maintenance' },
+  'Housekeeping Supervisor': { category: 'Housekeeping', department: 'Housekeeping' },
+  'Housekeeping Staff': { category: 'Housekeeping', department: 'Housekeeping' },
+  'Cleaner': { category: 'Housekeeping', department: 'Housekeeping' },
+  'School Nurse': { category: 'Health & Medical', department: 'Medical Services' },
+  'Store Keeper': { category: 'Store & Inventory', department: 'Store & Inventory' },
+  'Peon': { category: 'Campus Support', department: 'Campus Operations' },
+  'Attendant': { category: 'Campus Support', department: 'Campus Operations' },
+  'Office Boy': { category: 'Campus Support', department: 'Campus Operations' },
+  'Gardener': { category: 'Campus Support', department: 'Campus Operations' },
+  'Other': { category: 'Other', department: 'Other' }
+};
 
 export default function StaffDirectory({ readOnly = true, onAddClick }) {
   const [staffList, setStaffList] = useState([]);
@@ -173,7 +225,7 @@ export default function StaffDirectory({ readOnly = true, onAddClick }) {
   useEffect(() => { fetchStaff(); }, []);
 
   const handleDeleteStaff = async (staffId) => {
-    if (window.confirm('Are you sure you want to dismiss this staff member?')) {
+    if (window.confirm('Are you sure you want to dismiss this employee?')) {
       try {
         const res = await fetch(`/api/staff/${staffId}`, { method: 'DELETE' });
         if (res.ok) {
@@ -195,6 +247,18 @@ export default function StaffDirectory({ readOnly = true, onAddClick }) {
   const handleEditChange = (e) => {
     const { name, value } = e.target;
     setEditData(prev => ({ ...prev, [name]: value }));
+  };
+
+  const handleEditDesignationChange = (e) => {
+    const { value } = e.target;
+    const mapping = DESIGNATION_DETAILS[value] || { category: '', department: '' };
+    setEditData(prev => ({
+      ...prev,
+      designation: value,
+      staffCategory: mapping.category,
+      role: mapping.category,
+      department: mapping.department
+    }));
   };
 
   const handleEditSave = async () => {
@@ -436,20 +500,6 @@ export default function StaffDirectory({ readOnly = true, onAddClick }) {
                   <input type="text" name="fullName" value={editData.fullName || editData.name || ''} onChange={(e) => setEditData(p => ({ ...p, fullName: e.target.value, name: e.target.value }))} className="form-control" style={inputStyle} />
                 </div>
                 <div className="form-group">
-                  <label style={{ fontSize: '0.8rem', fontWeight: 600 }}>Employee Category</label>
-                  <select name="staffCategory" value={editData.staffCategory || editData.role || ''} onChange={(e) => setEditData(p => ({ ...p, staffCategory: e.target.value, role: e.target.value }))} className="form-control" style={inputStyle}>
-                    <option value="">Select</option>
-                    {['Administration', 'Accounts & Finance', 'IT Department', 'Transport', 'Hostel', 'Security', 'Maintenance', 'Housekeeping', 'Health & Medical', 'Store & Inventory', 'Campus Support'].map(c => <option key={c} value={c}>{c}</option>)}
-                  </select>
-                </div>
-                <div className="form-group">
-                  <label style={{ fontSize: '0.8rem', fontWeight: 600 }}>Department</label>
-                  <select name="department" value={editData.department || ''} onChange={handleEditChange} className="form-control" style={inputStyle}>
-                    <option value="">Select</option>
-                    {['Administration', 'Accounts & Finance', 'Information Technology', 'Transport', 'Hostel', 'Security', 'Maintenance', 'Housekeeping', 'Medical Services', 'Store & Inventory', 'Campus Operations'].map(d => <option key={d} value={d}>{d}</option>)}
-                  </select>
-                </div>
-                <div className="form-group">
                   <label style={{ fontSize: '0.8rem', fontWeight: 600 }}>Email</label>
                   <input type="email" name="email" value={editData.email || ''} onChange={handleEditChange} className="form-control" style={inputStyle} />
                 </div>
@@ -466,7 +516,10 @@ export default function StaffDirectory({ readOnly = true, onAddClick }) {
                 </div>
                 <div className="form-group">
                   <label style={{ fontSize: '0.8rem', fontWeight: 600 }}>Designation</label>
-                  <input type="text" name="designation" value={editData.designation || ''} onChange={handleEditChange} className="form-control" style={inputStyle} />
+                  <select name="designation" value={editData.designation || ''} onChange={handleEditDesignationChange} className="form-control" style={inputStyle}>
+                    <option value="">Select Designation</option>
+                    {DESIGNATIONS.map(d => <option key={d} value={d}>{d}</option>)}
+                  </select>
                 </div>
                 <div className="form-group">
                   <label style={{ fontSize: '0.8rem', fontWeight: 600 }}>Employment Type</label>

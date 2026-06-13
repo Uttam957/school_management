@@ -140,43 +140,43 @@ const createTablesFromSchema = async () => {
       }
     }
 
-    // Ensure new teacher columns exist in teachers table
+    // Ensure new teacher columns exist in staff table
     const teacherAlters = [
-      "ALTER TABLE teachers MODIFY COLUMN qualification TEXT",
-      "ALTER TABLE teachers MODIFY COLUMN experience TEXT",
-      "ALTER TABLE teachers ADD COLUMN firstName VARCHAR(100)",
-      "ALTER TABLE teachers ADD COLUMN middleName VARCHAR(100)",
-      "ALTER TABLE teachers ADD COLUMN lastName VARCHAR(100)",
-      "ALTER TABLE teachers ADD COLUMN fullName VARCHAR(255)",
-      "ALTER TABLE teachers ADD COLUMN dob VARCHAR(50)",
-      "ALTER TABLE teachers ADD COLUMN bloodGroup VARCHAR(20)",
-      "ALTER TABLE teachers ADD COLUMN nationality VARCHAR(100) DEFAULT 'Indian'",
-      "ALTER TABLE teachers ADD COLUMN maritalStatus VARCHAR(50)",
-      "ALTER TABLE teachers ADD COLUMN aadhaarNumber VARCHAR(100)",
-      "ALTER TABLE teachers ADD COLUMN panNumber VARCHAR(100)",
-      "ALTER TABLE teachers ADD COLUMN joiningDate VARCHAR(50)",
-      "ALTER TABLE teachers ADD COLUMN employmentType VARCHAR(50)",
-      "ALTER TABLE teachers ADD COLUMN designation VARCHAR(100)",
-      "ALTER TABLE teachers ADD COLUMN department VARCHAR(100)",
-      "ALTER TABLE teachers ADD COLUMN primarySubject VARCHAR(100)",
-      "ALTER TABLE teachers ADD COLUMN secondarySubject VARCHAR(100)",
-      "ALTER TABLE teachers ADD COLUMN alternateMobile VARCHAR(50)",
-      "ALTER TABLE teachers ADD COLUMN currentAddress TEXT",
-      "ALTER TABLE teachers ADD COLUMN currentCity VARCHAR(100)",
-      "ALTER TABLE teachers ADD COLUMN currentState VARCHAR(100)",
-      "ALTER TABLE teachers ADD COLUMN currentCountry VARCHAR(100) DEFAULT 'India'",
-      "ALTER TABLE teachers ADD COLUMN currentPostalCode VARCHAR(50)",
-      "ALTER TABLE teachers ADD COLUMN permanentAddress TEXT",
-      "ALTER TABLE teachers ADD COLUMN permanentCity VARCHAR(100)",
-      "ALTER TABLE teachers ADD COLUMN permanentState VARCHAR(100)",
-      "ALTER TABLE teachers ADD COLUMN permanentCountry VARCHAR(100) DEFAULT 'India'",
-      "ALTER TABLE teachers ADD COLUMN permanentPostalCode VARCHAR(50)",
-      "ALTER TABLE teachers ADD COLUMN sameAsPermanent VARCHAR(10) DEFAULT 'No'",
-      "ALTER TABLE teachers ADD COLUMN panFile TEXT",
-      "ALTER TABLE teachers ADD COLUMN resumeFile TEXT",
-      "ALTER TABLE teachers ADD COLUMN joiningLetterFile TEXT",
-      "ALTER TABLE teachers ADD COLUMN otherFile TEXT",
-      "ALTER TABLE teachers ADD COLUMN experiences TEXT"
+      "ALTER TABLE staff MODIFY COLUMN qualification TEXT",
+      "ALTER TABLE staff MODIFY COLUMN experience TEXT",
+      "ALTER TABLE staff ADD COLUMN firstName VARCHAR(100)",
+      "ALTER TABLE staff ADD COLUMN middleName VARCHAR(100)",
+      "ALTER TABLE staff ADD COLUMN lastName VARCHAR(100)",
+      "ALTER TABLE staff ADD COLUMN fullName VARCHAR(255)",
+      "ALTER TABLE staff ADD COLUMN dob VARCHAR(50)",
+      "ALTER TABLE staff ADD COLUMN bloodGroup VARCHAR(20)",
+      "ALTER TABLE staff ADD COLUMN nationality VARCHAR(100) DEFAULT 'Indian'",
+      "ALTER TABLE staff ADD COLUMN maritalStatus VARCHAR(50)",
+      "ALTER TABLE staff ADD COLUMN aadhaarNumber VARCHAR(100)",
+      "ALTER TABLE staff ADD COLUMN panNumber VARCHAR(100)",
+      "ALTER TABLE staff ADD COLUMN joiningDate VARCHAR(50)",
+      "ALTER TABLE staff ADD COLUMN employmentType VARCHAR(50)",
+      "ALTER TABLE staff ADD COLUMN designation VARCHAR(100)",
+      "ALTER TABLE staff ADD COLUMN department VARCHAR(100)",
+      "ALTER TABLE staff ADD COLUMN primarySubject VARCHAR(100)",
+      "ALTER TABLE staff ADD COLUMN secondarySubject VARCHAR(100)",
+      "ALTER TABLE staff ADD COLUMN alternateMobile VARCHAR(50)",
+      "ALTER TABLE staff ADD COLUMN currentAddress TEXT",
+      "ALTER TABLE staff ADD COLUMN currentCity VARCHAR(100)",
+      "ALTER TABLE staff ADD COLUMN currentState VARCHAR(100)",
+      "ALTER TABLE staff ADD COLUMN currentCountry VARCHAR(100) DEFAULT 'India'",
+      "ALTER TABLE staff ADD COLUMN currentPostalCode VARCHAR(50)",
+      "ALTER TABLE staff ADD COLUMN permanentAddress TEXT",
+      "ALTER TABLE staff ADD COLUMN permanentCity VARCHAR(100)",
+      "ALTER TABLE staff ADD COLUMN permanentState VARCHAR(100)",
+      "ALTER TABLE staff ADD COLUMN permanentCountry VARCHAR(100) DEFAULT 'India'",
+      "ALTER TABLE staff ADD COLUMN permanentPostalCode VARCHAR(50)",
+      "ALTER TABLE staff ADD COLUMN sameAsPermanent VARCHAR(10) DEFAULT 'No'",
+      "ALTER TABLE staff ADD COLUMN panFile TEXT",
+      "ALTER TABLE staff ADD COLUMN resumeFile TEXT",
+      "ALTER TABLE staff ADD COLUMN joiningLetterFile TEXT",
+      "ALTER TABLE staff ADD COLUMN otherFile TEXT",
+      "ALTER TABLE staff ADD COLUMN experiences TEXT"
     ];
 
     for (const sql of teacherAlters) {
@@ -191,7 +191,7 @@ const createTablesFromSchema = async () => {
 
     // Dynamic alters to align schema with memory data models
     const extraSchemaAlters = [
-      "ALTER TABLE staff ADD COLUMN designation VARCHAR(100)",
+      "ALTER TABLE employees ADD COLUMN designation VARCHAR(100)",
       "ALTER TABLE timetables ADD COLUMN sat JSON",
       "ALTER TABLE exam_timetables ADD COLUMN startTime VARCHAR(50)",
       "ALTER TABLE exam_timetables ADD COLUMN endTime VARCHAR(50)",
@@ -242,7 +242,15 @@ const createTablesFromSchema = async () => {
       "ALTER TABLE staff_salary_structures ADD COLUMN taxDeduction DECIMAL(10,2) DEFAULT 0.00",
       "ALTER TABLE staff_salary_structures ADD COLUMN netSalary DECIMAL(10,2) DEFAULT 0.00",
       "ALTER TABLE staff_salary_structures MODIFY COLUMN allowances DECIMAL(10,2) DEFAULT 0.00",
-      "ALTER TABLE staff_salary_structures MODIFY COLUMN deductions DECIMAL(10,2) DEFAULT 0.00"
+      "ALTER TABLE staff_salary_structures MODIFY COLUMN deductions DECIMAL(10,2) DEFAULT 0.00",
+      "ALTER TABLE fees ADD COLUMN receiptNumber VARCHAR(100)",
+      "ALTER TABLE fees ADD COLUMN transactionId VARCHAR(100)",
+      "ALTER TABLE fees ADD COLUMN discount DECIMAL(10,2) DEFAULT 0.00",
+      "ALTER TABLE fees ADD COLUMN fine DECIMAL(10,2) DEFAULT 0.00",
+      "ALTER TABLE fees ADD COLUMN amount DECIMAL(10,2) DEFAULT 0.00",
+      "ALTER TABLE fees ADD COLUMN studentClass VARCHAR(100)",
+      "ALTER TABLE fees ADD COLUMN section VARCHAR(50)",
+      "ALTER TABLE fees ADD COLUMN paymentStatus VARCHAR(50)"
     ];
 
     for (const sql of extraSchemaAlters) {
@@ -328,7 +336,7 @@ const migrateJsonToSql = async () => {
           const teachers = tenantDb.teachers || [];
           for (const t of teachers) {
             await sqlDb.query(
-              `INSERT INTO teachers (
+              `INSERT INTO staff (
                 id, name, email, phone, username, password, gender, qualification, experience, dateOfJoining, 
                 salaryGrade, address, city, state, pincode, emergencyContact, emergencyPhone, photo, aadharFile, 
                 certificateFile, status, avatarBg, tenantId
@@ -345,7 +353,7 @@ const migrateJsonToSql = async () => {
           const staff = tenantDb.staff || [];
           for (const s of staff) {
             await sqlDb.query(
-              `INSERT INTO staff (
+              `INSERT INTO employees (
                 id, name, fullName, role, department, email, phone, gender, qualification, experience, 
                 dateOfJoining, salaryGrade, reportingTo, address, city, state, pincode, emergencyContact, 
                 emergencyPhone, photo, aadharFile, certificateFile, status, avatarBg, password, tenantId, designation
@@ -484,9 +492,13 @@ const migrateJsonToSql = async () => {
           for (const f of fees) {
             await sqlDb.query(
               `INSERT INTO fees (
-                id, studentId, studentName, classId, sectionId, feeType, totalAmount, paidAmount, dueAmount, status, paymentDate, paymentMethod, remarks, createdAt, tenantId
-              ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
-              [f.id, f.studentId, f.studentName, f.classId, f.sectionId, f.feeType, f.totalAmount, f.paidAmount, f.dueAmount, f.status, f.paymentDate, f.paymentMethod, f.remarks, f.createdAt, tenantId]
+                id, studentId, studentName, classId, sectionId, feeType, totalAmount, paidAmount, dueAmount, status, paymentDate, paymentMethod, remarks, createdAt, tenantId,
+                receiptNumber, transactionId, discount, fine, amount, studentClass, section, paymentStatus
+              ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+              [
+                f.id || f.feeId, f.studentId, f.studentName, f.classId || f.studentClass || '', f.sectionId || f.section || '', f.feeType, f.totalAmount, f.paidAmount, f.dueAmount, f.status || f.paymentStatus || 'Pending', f.paymentDate, f.paymentMethod, f.remarks, f.createdAt, tenantId,
+                f.receiptNumber || '', f.transactionId || '', parseFloat(f.discount || 0), parseFloat(f.fine || 0), parseFloat(f.amount || 0), f.studentClass || '', f.section || '', f.paymentStatus || f.status || 'Pending'
+              ]
             );
           }
 
@@ -1084,7 +1096,7 @@ export const loadTenantSqlIntoMemory = async (tenantId) => {
     const tId = queryTenantId;
 
     // Load simple fields
-    const dbTeachers = await sqlDb.query('SELECT * FROM teachers WHERE tenantId = ?', [tId]);
+    const dbTeachers = await sqlDb.query('SELECT * FROM staff WHERE tenantId = ?', [tId]);
     data.teachers = dbTeachers.map(t => {
       let qual = t.qualification;
       if (qual && (qual.startsWith('[') || qual.startsWith('{'))) {
@@ -1105,7 +1117,7 @@ export const loadTenantSqlIntoMemory = async (tenantId) => {
         sameAsPermanent: t.sameAsPermanent === 'Yes' ? true : (t.sameAsPermanent === 'No' ? false : t.sameAsPermanent)
       };
     });
-    data.staff = await sqlDb.query('SELECT * FROM staff WHERE tenantId = ?', [tId]);
+    data.staff = await sqlDb.query('SELECT * FROM employees WHERE tenantId = ?', [tId]);
     data.invoices = await sqlDb.query('SELECT * FROM invoices WHERE tenantId = ?', [tId]);
     
     // Parse decimals back to floats for finance metrics
@@ -1114,7 +1126,10 @@ export const loadTenantSqlIntoMemory = async (tenantId) => {
       ...f,
       totalAmount: parseFloat(f.totalAmount || 0),
       paidAmount: parseFloat(f.paidAmount || 0),
-      dueAmount: parseFloat(f.dueAmount || 0)
+      dueAmount: parseFloat(f.dueAmount || 0),
+      discount: parseFloat(f.discount || 0),
+      fine: parseFloat(f.fine || 0),
+      amount: parseFloat(f.amount || 0)
     }));
 
     const rawExpenses = await sqlDb.query('SELECT * FROM expenses WHERE tenantId = ?', [tId]);
@@ -1573,7 +1588,7 @@ export const saveMemoryDbToSql = async (tenantId, db) => {
       // Cleanup deleted tenant subdomains data completely in MySQL
       if (deletedSubdomains.length > 0) {
         const tenantTables = [
-          'teachers', 'staff', 'students', 'invoices', 'fees', 'expenses', 'payroll',
+          'employees', 'staff', 'students', 'invoices', 'fees', 'expenses', 'payroll',
           'staff_payments', 'activities', 'exams', 'exam_timetables', 'notices',
           'holidays', 'events', 'results', 'overall_results', 'subjects', 'timeslots',
           'fee_structures', 'salary_structures', 'staff_salary_structures', 'income',
@@ -1635,14 +1650,14 @@ export const saveMemoryDbToSql = async (tenantId, db) => {
       // Clean deleted
       const activeTeacherIds = db.teachers.map(t => t.id).filter(Boolean);
       if (activeTeacherIds.length > 0) {
-        await sqlDb.query(`DELETE FROM teachers WHERE tenantId = ? AND id NOT IN (${activeTeacherIds.map(() => '?').join(',')})`, [tId, ...activeTeacherIds]);
+        await sqlDb.query(`DELETE FROM staff WHERE tenantId = ? AND id NOT IN (${activeTeacherIds.map(() => '?').join(',')})`, [tId, ...activeTeacherIds]);
       } else {
-        await sqlDb.query('DELETE FROM teachers WHERE tenantId = ?', [tId]);
+        await sqlDb.query('DELETE FROM staff WHERE tenantId = ?', [tId]);
       }
 
       for (const t of db.teachers) {
         await sqlDb.query(
-          `INSERT INTO teachers (
+          `INSERT INTO staff (
             id, name, email, phone, username, password, gender, qualification, experience, dateOfJoining, 
             salaryGrade, address, city, state, pincode, emergencyContact, emergencyPhone, photo, aadharFile, 
             certificateFile, status, avatarBg, tenantId,
@@ -1691,9 +1706,9 @@ export const saveMemoryDbToSql = async (tenantId, db) => {
     if (db.staff && Array.isArray(db.staff)) {
       const activeStaffIds = db.staff.map(s => s.id).filter(Boolean);
       if (activeStaffIds.length > 0) {
-        await sqlDb.query(`DELETE FROM staff WHERE tenantId = ? AND id NOT IN (${activeStaffIds.map(() => '?').join(',')})`, [tId, ...activeStaffIds]);
+        await sqlDb.query(`DELETE FROM employees WHERE tenantId = ? AND id NOT IN (${activeStaffIds.map(() => '?').join(',')})`, [tId, ...activeStaffIds]);
       } else {
-        await sqlDb.query('DELETE FROM staff WHERE tenantId = ?', [tId]);
+        await sqlDb.query('DELETE FROM employees WHERE tenantId = ?', [tId]);
       }
 
       for (const s of db.staff) {
@@ -1705,7 +1720,7 @@ export const saveMemoryDbToSql = async (tenantId, db) => {
           s.avatarBg, s.password, tId, s.designation || ''
         ].map(v => v === undefined ? null : v);
         await sqlDb.query(
-          `INSERT INTO staff (
+          `INSERT INTO employees (
             id, name, fullName, role, department, email, phone, gender, qualification, experience, 
             dateOfJoining, salaryGrade, reportingTo, address, city, state, pincode, emergencyContact, 
             emergencyPhone, photo, aadharFile, certificateFile, status, avatarBg, password, tenantId, designation
@@ -1979,11 +1994,17 @@ export const saveMemoryDbToSql = async (tenantId, db) => {
         const status = f.status || f.paymentStatus || 'Pending';
         await sqlDb.query(
           `INSERT INTO fees (
-            id, studentId, studentName, classId, sectionId, feeType, totalAmount, paidAmount, dueAmount, status, paymentDate, paymentMethod, remarks, createdAt, tenantId
-          ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+            id, studentId, studentName, classId, sectionId, feeType, totalAmount, paidAmount, dueAmount, status, paymentDate, paymentMethod, remarks, createdAt, tenantId,
+            receiptNumber, transactionId, discount, fine, amount, studentClass, section, paymentStatus
+          ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
           ON DUPLICATE KEY UPDATE
-            paidAmount=VALUES(paidAmount), dueAmount=VALUES(dueAmount), status=VALUES(status), paymentDate=VALUES(paymentDate), paymentMethod=VALUES(paymentMethod)`,
-          [id, f.studentId || '', f.studentName || '', classId, sectionId, f.feeType || '', parseFloat(f.totalAmount || 0), parseFloat(f.paidAmount || 0), parseFloat(f.dueAmount || 0), status, f.paymentDate || '', f.paymentMethod || '', f.remarks || '', f.createdAt || '', tId]
+            paidAmount=VALUES(paidAmount), dueAmount=VALUES(dueAmount), status=VALUES(status), paymentDate=VALUES(paymentDate), paymentMethod=VALUES(paymentMethod),
+            receiptNumber=VALUES(receiptNumber), transactionId=VALUES(transactionId), discount=VALUES(discount), fine=VALUES(fine), amount=VALUES(amount),
+            studentClass=VALUES(studentClass), section=VALUES(section), paymentStatus=VALUES(paymentStatus)`,
+          [
+            id, f.studentId || '', f.studentName || '', classId, sectionId, f.feeType || '', parseFloat(f.totalAmount || 0), parseFloat(f.paidAmount || 0), parseFloat(f.dueAmount || 0), status, f.paymentDate || '', f.paymentMethod || '', f.remarks || '', f.createdAt || '', tId,
+            f.receiptNumber || '', f.transactionId || '', parseFloat(f.discount || 0), parseFloat(f.fine || 0), parseFloat(f.amount || 0), f.studentClass || '', f.section || '', f.paymentStatus || status
+          ]
         );
       }
     }

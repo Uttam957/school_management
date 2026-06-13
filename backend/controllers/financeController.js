@@ -47,8 +47,7 @@ const removeDefaultStaffSalaryStructures = (db) => {
 const removeDefaultTeacherSalaryStructures = (db) => {
   const initialCount = db.salaryStructures?.length || 0;
   db.salaryStructures = (db.salaryStructures || []).filter(
-    structure => !DEFAULT_TEACHER_SALARY_STRUCTURE_IDS.has(structure.id) &&
-                 !DEFAULT_TEACHER_DESIGNATIONS.has(structure.designation)
+    structure => !DEFAULT_TEACHER_SALARY_STRUCTURE_IDS.has(structure.id)
   );
 
   return db.salaryStructures.length !== initialCount;
@@ -298,13 +297,14 @@ export const collectFee = (req, res) => {
     const disc = Number(discount) || 0;
     const fn = Number(fine) || 0;
     const totalAmount = amt - disc + fn;
-    const paid = Number(paidAmount) || totalAmount;
+    const paid = (paidAmount !== undefined && paidAmount !== null && paidAmount !== '') ? Number(paidAmount) : totalAmount;
     const due = totalAmount - paid;
 
     const receiptNumber = `RCP-${new Date().getFullYear()}-${Math.floor(10000 + Math.random() * 90000)}`;
-
+    const feeId = `FEE-${Date.now()}`;
     const newFee = {
-      feeId: `FEE-${Date.now()}`,
+      id: feeId,
+      feeId,
       studentId,
       studentName: studentName || 'Unknown',
       admissionNumber: admissionNumber || '',
@@ -335,6 +335,74 @@ export const collectFee = (req, res) => {
   } catch (err) {
     console.error('Error collecting fee:', err);
     res.status(500).json({ error: 'Server error recording fee.' });
+  }
+};
+
+export const updateFee = (req, res) => {
+  try {
+    const { id } = req.params;
+    const { studentId, studentName, admissionNumber, studentClass, section, feeType, amount, discount, fine, paidAmount, paymentMethod, remarks } = req.body;
+
+    const db = readDb();
+    const idx = db.fees.findIndex(f => (f.id === id || f.feeId === id));
+    if (idx === -1) {
+      return res.status(404).json({ error: 'Fee record not found.' });
+    }
+
+    const amt = Number(amount) || 0;
+    const disc = Number(discount) || 0;
+    const fn = Number(fine) || 0;
+    const totalAmount = amt - disc + fn;
+    const paid = (paidAmount !== undefined && paidAmount !== null && paidAmount !== '') ? Number(paidAmount) : totalAmount;
+    const due = totalAmount - paid;
+
+    db.fees[idx] = {
+      ...db.fees[idx],
+      studentId: studentId || db.fees[idx].studentId,
+      studentName: studentName || db.fees[idx].studentName,
+      admissionNumber: admissionNumber || db.fees[idx].admissionNumber,
+      studentClass: studentClass || db.fees[idx].studentClass,
+      section: section || db.fees[idx].section,
+      feeType: feeType || db.fees[idx].feeType,
+      amount: amt,
+      discount: disc,
+      fine: fn,
+      totalAmount,
+      paidAmount: paid,
+      dueAmount: due,
+      paymentStatus: due <= 0 ? 'Paid' : (paid > 0 ? 'Partial' : 'Pending'),
+      paymentMethod: paymentMethod || db.fees[idx].paymentMethod,
+      remarks: remarks || '',
+      updatedAt: new Date().toISOString()
+    };
+
+    addActivity(db, 'finance', 'Fee Collection Updated', `Fee record for ${db.fees[idx].studentName} updated`, 'rgb(var(--color-success-rgb))', 'rgba(var(--color-success-rgb), 0.1)');
+    writeDb(db);
+
+    res.json(db.fees[idx]);
+  } catch (err) {
+    console.error('Error updating fee:', err);
+    res.status(500).json({ error: 'Server error updating fee.' });
+  }
+};
+
+export const deleteFee = (req, res) => {
+  try {
+    const { id } = req.params;
+    const db = readDb();
+    const idx = db.fees.findIndex(f => (f.id === id || f.feeId === id));
+    if (idx === -1) {
+      return res.status(404).json({ error: 'Fee record not found.' });
+    }
+
+    const removed = db.fees.splice(idx, 1)[0];
+    addActivity(db, 'alert', 'Fee Record Deleted', `Deleted fee record of ${removed.studentName} for ${removed.feeType}`, 'rgb(var(--color-danger-rgb))', 'rgba(var(--color-danger-rgb), 0.1)');
+    writeDb(db);
+
+    res.json({ success: true, message: `Deleted fee record for ${removed.studentName}` });
+  } catch (err) {
+    console.error('Error deleting fee:', err);
+    res.status(500).json({ error: 'Server error deleting fee.' });
   }
 };
 

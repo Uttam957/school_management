@@ -192,8 +192,39 @@ CREATE TABLE IF NOT EXISTS parent_accounts (
   FOREIGN KEY (studentId) REFERENCES students(id) ON DELETE CASCADE
 );
 
--- 11. Teachers Table
-CREATE TABLE IF NOT EXISTS teachers (
+-- 11. Employees Table
+CREATE TABLE IF NOT EXISTS employees (
+  id VARCHAR(50) PRIMARY KEY,
+  name VARCHAR(255) NOT NULL,
+  fullName VARCHAR(255),
+  role VARCHAR(255) NOT NULL,
+  department VARCHAR(255) NOT NULL,
+  email VARCHAR(255) NOT NULL,
+  phone VARCHAR(50),
+  gender VARCHAR(50),
+  qualification VARCHAR(255),
+  experience VARCHAR(100),
+  dateOfJoining VARCHAR(50),
+  salaryGrade VARCHAR(100),
+  reportingTo VARCHAR(255),
+  address TEXT,
+  city VARCHAR(100),
+  state VARCHAR(100),
+  pincode VARCHAR(50),
+  emergencyContact VARCHAR(255),
+  emergencyPhone VARCHAR(50),
+  photo TEXT,
+  aadharFile TEXT,
+  certificateFile TEXT,
+  status VARCHAR(50) DEFAULT 'Active',
+  avatarBg TEXT,
+  password VARCHAR(255),
+  tenantId VARCHAR(100),
+  designation VARCHAR(100)
+);
+
+-- 12. Staff Table
+CREATE TABLE IF NOT EXISTS staff (
   id VARCHAR(50) PRIMARY KEY,
   name VARCHAR(255) NOT NULL,
   email VARCHAR(255) NOT NULL,
@@ -252,37 +283,6 @@ CREATE TABLE IF NOT EXISTS teachers (
   experiences TEXT
 );
 
--- 12. Staff Table
-CREATE TABLE IF NOT EXISTS staff (
-  id VARCHAR(50) PRIMARY KEY,
-  name VARCHAR(255) NOT NULL,
-  fullName VARCHAR(255),
-  role VARCHAR(255) NOT NULL,
-  department VARCHAR(255) NOT NULL,
-  email VARCHAR(255) NOT NULL,
-  phone VARCHAR(50),
-  gender VARCHAR(50),
-  qualification VARCHAR(255),
-  experience VARCHAR(100),
-  dateOfJoining VARCHAR(50),
-  salaryGrade VARCHAR(100),
-  reportingTo VARCHAR(255),
-  address TEXT,
-  city VARCHAR(100),
-  state VARCHAR(100),
-  pincode VARCHAR(50),
-  emergencyContact VARCHAR(255),
-  emergencyPhone VARCHAR(50),
-  photo TEXT,
-  aadharFile TEXT,
-  certificateFile TEXT,
-  status VARCHAR(50) DEFAULT 'Active',
-  avatarBg TEXT,
-  password VARCHAR(255),
-  tenantId VARCHAR(100),
-  designation VARCHAR(100)
-);
-
 -- 13. Timetables Table
 CREATE TABLE IF NOT EXISTS timetables (
   id INT AUTO_INCREMENT PRIMARY KEY,
@@ -325,7 +325,15 @@ CREATE TABLE IF NOT EXISTS fees (
   paymentMethod VARCHAR(100),
   remarks TEXT,
   createdAt VARCHAR(100),
-  tenantId VARCHAR(100)
+  tenantId VARCHAR(100),
+  receiptNumber VARCHAR(100),
+  transactionId VARCHAR(100),
+  discount DECIMAL(10,2) DEFAULT 0.00,
+  fine DECIMAL(10,2) DEFAULT 0.00,
+  amount DECIMAL(10,2) DEFAULT 0.00,
+  studentClass VARCHAR(100),
+  section VARCHAR(50),
+  paymentStatus VARCHAR(50)
 );
 
 -- 16. Expenses Table
@@ -630,8 +638,8 @@ CREATE TABLE IF NOT EXISTS employee_qr_codes (
   tenantId VARCHAR(100),
   teacherId VARCHAR(50) NULL,
   staffId VARCHAR(50) NULL,
-  FOREIGN KEY (teacherId) REFERENCES teachers(id) ON DELETE CASCADE,
-  FOREIGN KEY (staffId) REFERENCES staff(id) ON DELETE CASCADE,
+  FOREIGN KEY (teacherId) REFERENCES staff(id) ON DELETE CASCADE,
+  FOREIGN KEY (staffId) REFERENCES employees(id) ON DELETE CASCADE,
   UNIQUE KEY unique_employee_qr (employeeId, tenantId)
 );
 
@@ -652,8 +660,8 @@ CREATE TABLE IF NOT EXISTS attendance_records (
   tenantId VARCHAR(100),
   teacherId VARCHAR(50) NULL,
   staffId VARCHAR(50) NULL,
-  FOREIGN KEY (teacherId) REFERENCES teachers(id) ON DELETE CASCADE,
-  FOREIGN KEY (staffId) REFERENCES staff(id) ON DELETE CASCADE,
+  FOREIGN KEY (teacherId) REFERENCES staff(id) ON DELETE CASCADE,
+  FOREIGN KEY (staffId) REFERENCES employees(id) ON DELETE CASCADE,
   INDEX idx_att_emp (employeeId),
   INDEX idx_att_date (date),
   INDEX idx_att_tenant (tenantId),
@@ -671,8 +679,8 @@ CREATE TABLE IF NOT EXISTS attendance_logs (
   tenantId VARCHAR(100),
   teacherId VARCHAR(50) NULL,
   staffId VARCHAR(50) NULL,
-  FOREIGN KEY (teacherId) REFERENCES teachers(id) ON DELETE CASCADE,
-  FOREIGN KEY (staffId) REFERENCES staff(id) ON DELETE CASCADE,
+  FOREIGN KEY (teacherId) REFERENCES staff(id) ON DELETE CASCADE,
+  FOREIGN KEY (staffId) REFERENCES employees(id) ON DELETE CASCADE,
   INDEX idx_log_emp (employeeId),
   INDEX idx_log_tenant (tenantId)
 );
