@@ -86,7 +86,7 @@ async function seed() {
     const plans = [
       { id: 'PLAN-001', name: 'Starter', price: '$99/mo', features: ['Up to 100 Students', 'Basic Analytics', 'Standard Support'] },
       { id: 'PLAN-002', name: 'Growth', price: '$249/mo', features: ['Up to 500 Students', 'Full Reports', 'Priority Support'] },
-      { id: 'PLAN-003', name: 'Premium', price: '$499/mo', features: ['Unlimited Students', 'Advanced Finance', '24/7 Dedicated Support'] }
+      { id: 'PLAN-003', name: 'Premium', price: '$499/mo', features: ['Unlimited Students', 'Advanced Account Management', '24/7 Dedicated Support'] }
     ];
     for (const plan of plans) {
       await connection.query(
@@ -169,7 +169,7 @@ async function seed() {
     ];
     for (const stf of staffList) {
       await connection.query(
-        `INSERT INTO staff (
+        `INSERT INTO employees (
           id, name, fullName, role, department, email, phone, gender, qualification, experience,
           dateOfJoining, salaryGrade, reportingTo, address, city, state, pincode, emergencyContact,
           emergencyPhone, photo, aadharFile, certificateFile, status, avatarBg, password, tenantId
@@ -380,7 +380,7 @@ async function seed() {
     console.log(`[Seeder] Seeding activities ledger...`);
     const activities = [
       { id: 'ACT-001', type: 'registration', title: 'Admissions Opened', description: 'Academic year 2026-27 admission registrations opened.', time: '1 week ago', timestamp: new Date(Date.now() - 7*24*3600*1000).toISOString(), color: 'hsl(var(--color-primary))', bg: 'rgba(99, 102, 241, 0.1)', tenantId },
-      { id: 'ACT-002', type: 'finance', title: 'Fee Schedule Configured', description: 'Assigned Yearly fee schedules for Classes I-X.', time: '5 days ago', timestamp: new Date(Date.now() - 5*24*3600*1000).toISOString(), color: 'rgb(245, 158, 11)', bg: 'rgba(245, 158, 11, 0.1)', tenantId }
+      { id: 'ACT-002', type: 'account_management', title: 'Fee Schedule Configured', description: 'Assigned Yearly fee schedules for Classes I-X.', time: '5 days ago', timestamp: new Date(Date.now() - 5*24*3600*1000).toISOString(), color: 'rgb(245, 158, 11)', bg: 'rgba(245, 158, 11, 0.1)', tenantId }
     ];
     for (const act of activities) {
       await connection.query(

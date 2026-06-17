@@ -83,6 +83,58 @@ const EMPLOYEE_STATUSES = ['Active', 'Inactive'];
 const BLOOD_GROUPS = ['A+', 'A-', 'B+', 'B-', 'AB+', 'AB-', 'O+', 'O-'];
 const DESIGNATION_LEVELS = ['Trainee', 'Junior', 'Associate', 'Senior', 'Lead', 'Supervisor', 'Coordinator', 'Manager', 'Head', 'Director'];
 
+const DESIGNATIONS = [
+  'Administrative Officer',
+  'Office Assistant',
+  'Data Entry Operator',
+  'IT Administrator',
+  'Computer Operator',
+  'Transport Coordinator',
+  'Driver',
+  'Hostel Warden',
+  'Security Supervisor',
+  'Security Guard',
+  'Maintenance Staff',
+  'Electrician',
+  'Plumber',
+  'Housekeeping Supervisor',
+  'Housekeeping Staff',
+  'Cleaner',
+  'School Nurse',
+  'Store Keeper',
+  'Peon',
+  'Attendant',
+  'Office Boy',
+  'Gardener',
+  'Other'
+];
+
+const DESIGNATION_DETAILS = {
+  'Administrative Officer': { category: 'Administration', department: 'Administration' },
+  'Office Assistant': { category: 'Administration', department: 'Administration' },
+  'Data Entry Operator': { category: 'Administration', department: 'Administration' },
+  'IT Administrator': { category: 'IT Department', department: 'Information Technology' },
+  'Computer Operator': { category: 'IT Department', department: 'Information Technology' },
+  'Transport Coordinator': { category: 'Transport', department: 'Transport' },
+  'Driver': { category: 'Transport', department: 'Transport' },
+  'Hostel Warden': { category: 'Hostel', department: 'Hostel' },
+  'Security Supervisor': { category: 'Security', department: 'Security' },
+  'Security Guard': { category: 'Security', department: 'Security' },
+  'Maintenance Staff': { category: 'Maintenance', department: 'Maintenance' },
+  'Electrician': { category: 'Maintenance', department: 'Maintenance' },
+  'Plumber': { category: 'Maintenance', department: 'Maintenance' },
+  'Housekeeping Supervisor': { category: 'Housekeeping', department: 'Housekeeping' },
+  'Housekeeping Staff': { category: 'Housekeeping', department: 'Housekeeping' },
+  'Cleaner': { category: 'Housekeeping', department: 'Housekeeping' },
+  'School Nurse': { category: 'Health & Medical', department: 'Medical Services' },
+  'Store Keeper': { category: 'Store & Inventory', department: 'Store & Inventory' },
+  'Peon': { category: 'Campus Support', department: 'Campus Operations' },
+  'Attendant': { category: 'Campus Support', department: 'Campus Operations' },
+  'Office Boy': { category: 'Campus Support', department: 'Campus Operations' },
+  'Gardener': { category: 'Campus Support', department: 'Campus Operations' },
+  'Other': { category: 'Other', department: 'Other' }
+};
+
 // ============================================================
 // STEP DEFINITIONS
 // ============================================================
@@ -173,19 +225,44 @@ function CustomSelect({ options, value, onChange, placeholder, name, className, 
   );
 }
 
-export default function AddStaff({ setActiveView }) {
+let staffFilesCache = {
+  photo: null,
+  aadhaarFile: null,
+  panFile: null,
+  resumeFile: null,
+  qualificationFile: null,
+  experienceFile: null,
+  otherFile: null
+};
+
+let staffPreviewsCache = {
+  photo: ''
+};
+
+export default function AddStaff({ setActiveView, editData }) {
   const [currentStep, setCurrentStep] = useState(1);
   const [loading, setLoading] = useState(false);
   const [successToast, setSuccessToast] = useState(false);
   const [staffId, setStaffId] = useState('');
   const [validationErrors, setValidationErrors] = useState({});
+  const [roles, setRoles] = useState([]);
   const isSubmitting = React.useRef(false);
+
+  useEffect(() => {
+    fetch('/api/rbac/roles')
+      .then(res => res.json())
+      .then(data => {
+        setRoles(data.filter(r => r.active));
+      })
+      .catch(err => console.error('Error fetching roles in AddStaff:', err));
+  }, []);
 
   // Generate Staff ID on mount
   useEffect(() => {
+    if (editData) return;
     const rand = Math.floor(1000 + Math.random() * 9000);
     setStaffId(`STF-${new Date().getFullYear()}-${rand}`);
-  }, []);
+  }, [editData]);
 
   // ============================================================
   // FORM STATE
@@ -196,7 +273,7 @@ export default function AddStaff({ setActiveView }) {
     dob: '', bloodGroup: '', nationality: 'Indian', maritalStatus: '',
     aadhaarNumber: '', panNumber: '',
     // Step 2: Employment
-    joiningDate: '', staffCategory: '', designation: '', designationLevel: '', department: '',
+    joiningDate: new Date().toISOString().split('T')[0], staffCategory: '', designation: '', designationLevel: '', department: '',
     employmentType: '', employeeStatus: 'Active',
     // Step 3: Contact
     mobile: '', alternateMobile: '', email: '', emergencyContactNumber: '',
@@ -217,11 +294,131 @@ export default function AddStaff({ setActiveView }) {
   ]);
 
   // File uploads
-  const [files, setFiles] = useState({
-    photo: null, aadhaarFile: null, panFile: null,
-    resumeFile: null, qualificationFile: null, experienceFile: null, otherFile: null
-  });
-  const [filePreviews, setFilePreviews] = useState({ photo: '' });
+  const [files, setFiles] = useState(staffFilesCache);
+  const [filePreviews, setFilePreviews] = useState(staffPreviewsCache);
+
+  useEffect(() => {
+    Object.assign(staffFilesCache, files);
+  }, [files]);
+
+  useEffect(() => {
+    Object.assign(staffPreviewsCache, filePreviews);
+  }, [filePreviews]);
+
+  const [existingFiles, setExistingFiles] = useState({});
+
+  useEffect(() => {
+    if (editData) {
+      setExistingFiles({
+        photo: editData.photo || '',
+        aadhaarFile: editData.aadhaarFile || '',
+        panFile: editData.panFile || '',
+        resumeFile: editData.resumeFile || '',
+        qualificationFile: editData.qualificationFile || '',
+        experienceFile: editData.experienceFile || '',
+        otherFile: editData.otherFile || ''
+      });
+      if (editData.photo) {
+        setFilePreviews({ photo: editData.photo });
+      }
+    }
+  }, [editData]);
+
+  useEffect(() => {
+    if (editData && Object.keys(editData).length > 0) {
+      setStaffId(editData.staffId || editData.id || '');
+
+      let parsedQualifications = editData.qualification || editData.qualifications || [];
+      if (typeof parsedQualifications === 'string') {
+        try {
+          parsedQualifications = JSON.parse(parsedQualifications);
+        } catch (e) {
+          parsedQualifications = [];
+        }
+      }
+      if (!Array.isArray(parsedQualifications)) {
+        parsedQualifications = [];
+      }
+      if (parsedQualifications.length === 0) {
+        parsedQualifications = [
+          { degree: '', institution: '', boardUniversity: '', year: '', percentage: '' }
+        ];
+      }
+
+      let parsedExperiences = editData.experiences || [];
+      if (typeof parsedExperiences === 'string') {
+        try {
+          parsedExperiences = JSON.parse(parsedExperiences);
+        } catch (e) {
+          parsedExperiences = [];
+        }
+      }
+      if (!Array.isArray(parsedExperiences)) {
+        parsedExperiences = [];
+      }
+      if (parsedExperiences.length === 0) {
+        parsedExperiences = [
+          { organization: '', designation: '', fromDate: '', toDate: '', responsibilities: '' }
+        ];
+      }
+
+      setFormData({
+        firstName: editData.firstName || '',
+        middleName: editData.middleName || '',
+        lastName: editData.lastName || '',
+        gender: editData.gender || '',
+        dob: editData.dob ? editData.dob.split('T')[0] : '',
+        bloodGroup: editData.bloodGroup || '',
+        nationality: editData.nationality || 'Indian',
+        maritalStatus: editData.maritalStatus || '',
+        aadhaarNumber: editData.aadhaarNumber || '',
+        panNumber: editData.panNumber || '',
+        joiningDate: editData.joiningDate ? editData.joiningDate.split('T')[0] : '',
+        staffCategory: editData.staffCategory || editData.role || '',
+        designation: editData.designation || '',
+        designationLevel: editData.designationLevel || '',
+        department: editData.department || '',
+        employmentType: editData.employmentType || '',
+        employeeStatus: editData.employeeStatus || editData.status || 'Active',
+        mobile: editData.mobile || editData.phone || '',
+        alternateMobile: editData.alternateMobile || '',
+        email: editData.email || '',
+        emergencyContactNumber: editData.emergencyContactNumber || '',
+        currentAddress: editData.currentAddress || '',
+        currentCity: editData.currentCity || '',
+        currentState: editData.currentState || '',
+        currentCountry: editData.currentCountry || 'India',
+        currentPostalCode: editData.currentPostalCode || '',
+        permanentAddress: editData.permanentAddress || '',
+        permanentCity: editData.permanentCity || '',
+        permanentState: editData.permanentState || '',
+        permanentCountry: editData.permanentCountry || 'India',
+        permanentPostalCode: editData.permanentPostalCode || '',
+        sameAsPermanent: editData.sameAsPermanent === true || editData.sameAsPermanent === 'true' || editData.sameAsPermanent === 'Yes'
+      });
+
+      setQualifications(parsedQualifications);
+      setExperiences(parsedExperiences);
+    }
+  }, [editData]);
+
+  const handleDesignationChange = (e) => {
+    const { value } = e.target;
+    const details = DESIGNATION_DETAILS[value] || { category: '', department: '' };
+    
+    setFormData(prev => ({
+      ...prev,
+      designation: value,
+      department: details.department || prev.department
+    }));
+    
+    if (validationErrors.designation) {
+      setValidationErrors(prev => ({
+        ...prev,
+        designation: ''
+      }));
+    }
+  };
 
   // ============================================================
   // HANDLERS
@@ -241,7 +438,11 @@ export default function AddStaff({ setActiveView }) {
         return updated;
       });
     } else {
-      setFormData(prev => ({ ...prev, [name]: value }));
+      let val = value;
+      if (name === 'panNumber') {
+        val = val.toUpperCase().slice(0, 10);
+      }
+      setFormData(prev => ({ ...prev, [name]: val }));
       if (validationErrors[name]) {
         setValidationErrors(prev => ({ ...prev, [name]: '' }));
       }
@@ -276,10 +477,20 @@ export default function AddStaff({ setActiveView }) {
 
   const validateStep = (step) => {
     const errors = {};
+    if (step === 1) {
+      if (!formData.firstName.trim()) errors.firstName = 'First name is required';
+      if (!formData.lastName.trim()) errors.lastName = 'Last name is required';
+      
+      if (formData.aadhaarNumber && !/^\d{12}$/.test(formData.aadhaarNumber.replace(/\s/g, ''))) {
+        errors.aadhaarNumber = 'Aadhaar number must be exactly 12 digits';
+      }
+      if (formData.panNumber && !/^[A-Z]{5}[0-9]{4}[A-Z]{1}$/.test(formData.panNumber.toUpperCase())) {
+        errors.panNumber = 'PAN number must be in ABCDE1234F format';
+      }
+    }
     if (step === 2) {
-      if (!formData.staffCategory) errors.staffCategory = 'Staff Category is required';
+      if (!formData.staffCategory) errors.staffCategory = 'Role is required';
       if (!formData.designation) errors.designation = 'Designation is required';
-      if (!formData.department) errors.department = 'Department is required';
     }
     setValidationErrors(errors);
     return Object.keys(errors).length === 0;
@@ -288,6 +499,12 @@ export default function AddStaff({ setActiveView }) {
   const handleNumericChange = (e, maxLen = 10) => {
     const { name, value } = e.target;
     const cleaned = value.replace(/[^0-9]/g, '').slice(0, maxLen);
+    setFormData(prev => ({ ...prev, [name]: cleaned }));
+  };
+
+  const handleNameChange = (e) => {
+    const { name, value } = e.target;
+    const cleaned = value.replace(/[^A-Za-z\s]/g, '').slice(0, 50);
     setFormData(prev => ({ ...prev, [name]: cleaned }));
   };
 
@@ -307,6 +524,7 @@ export default function AddStaff({ setActiveView }) {
 
   const removeFile = (fieldName) => {
     setFiles(prev => ({ ...prev, [fieldName]: null }));
+    setExistingFiles(prev => ({ ...prev, [fieldName]: '' }));
     if (fieldName === 'photo') setFilePreviews(prev => ({ ...prev, photo: '' }));
     const el = document.getElementById(fieldName);
     if (el) el.value = '';
@@ -331,7 +549,7 @@ export default function AddStaff({ setActiveView }) {
       firstName: '', middleName: '', lastName: '', gender: '',
       dob: '', bloodGroup: '', nationality: 'Indian', maritalStatus: '',
       aadhaarNumber: '', panNumber: '',
-      joiningDate: '', staffCategory: '', designation: '', designationLevel: '', department: '',
+      joiningDate: new Date().toISOString().split('T')[0], staffCategory: '', designation: '', designationLevel: '', department: '',
       employmentType: '', employeeStatus: 'Active',
       mobile: '', alternateMobile: '', email: '', emergencyContactNumber: '',
       currentAddress: '', currentCity: '', currentState: '', currentCountry: 'India', currentPostalCode: '',
@@ -354,7 +572,7 @@ export default function AddStaff({ setActiveView }) {
     if (isSubmitting.current) return;
     if (!validateStep(2)) {
       setCurrentStep(2);
-      alert('Please fill in all mandatory fields on Step 2 (Staff Category, Designation, and Department).');
+      alert('Please fill in all mandatory fields on Step 2 (Designation).');
       return;
     }
     isSubmitting.current = true;
@@ -373,15 +591,17 @@ export default function AddStaff({ setActiveView }) {
       // Append files
       Object.keys(files).forEach(k => { if (files[k]) fd.append(k, files[k]); });
 
-      const res = await fetch('/api/staff', { method: 'POST', body: fd });
+      const url = editData ? `/api/staff/${editData.id}` : '/api/staff';
+      const method = editData ? 'PUT' : 'POST';
+
+      const res = await fetch(url, { method: method, body: fd });
       if (res.ok) {
+        resetForm();
+        setCurrentStep(1);
+        setLoading(false);
+        isSubmitting.current = false;
         setSuccessToast(true);
         setTimeout(() => setSuccessToast(false), 5000);
-        setTimeout(() => {
-          resetForm();
-          setLoading(false);
-          isSubmitting.current = false;
-        }, 1500);
       } else {
         const err = await res.json();
         alert(err.error || 'Failed to register staff.');
@@ -468,23 +688,21 @@ export default function AddStaff({ setActiveView }) {
       <div style={gridStyle}>
         <div className="form-group">
           <label>First Name</label>
-          <input type="text" name="firstName" value={formData.firstName} onChange={handleChange} className="form-control" style={inputStyle} placeholder="First name" />
+          <input type="text" name="firstName" value={formData.firstName} onChange={handleNameChange} className="form-control" style={{...inputStyle, border: validationErrors.firstName ? '1.5px solid #ef4444' : inputStyle.border}} placeholder="First name" />
+          {validationErrors.firstName && <span style={{ color: '#ef4444', fontSize: '0.75rem', marginTop: '4px', display: 'block' }}>{validationErrors.firstName}</span>}
         </div>
         <div className="form-group">
           <label>Middle Name <span style={{ color: 'var(--text-muted)', fontSize: '0.75rem' }}>(Optional)</span></label>
-          <input type="text" name="middleName" value={formData.middleName} onChange={handleChange} className="form-control" style={inputStyle} placeholder="Middle name" />
+          <input type="text" name="middleName" value={formData.middleName} onChange={handleNameChange} className="form-control" style={inputStyle} placeholder="Middle name" />
         </div>
         <div className="form-group">
           <label>Last Name</label>
-          <input type="text" name="lastName" value={formData.lastName} onChange={handleChange} className="form-control" style={inputStyle} placeholder="Last name" />
+          <input type="text" name="lastName" value={formData.lastName} onChange={handleNameChange} className="form-control" style={{...inputStyle, border: validationErrors.lastName ? '1.5px solid #ef4444' : inputStyle.border}} placeholder="Last name" />
+          {validationErrors.lastName && <span style={{ color: '#ef4444', fontSize: '0.75rem', marginTop: '4px', display: 'block' }}>{validationErrors.lastName}</span>}
         </div>
         <div className="form-group">
           <label>Gender</label>
           <CustomSelect name="gender" value={formData.gender} onChange={handleChange} options={['Male', 'Female', 'Other']} placeholder="Select Gender" className="form-control" style={inputStyle} />
-        </div>
-        <div className="form-group">
-          <label>Date of Birth</label>
-          <input type="date" name="dob" value={formData.dob} onChange={handleChange} className="form-control" style={inputStyle} />
         </div>
         <div className="form-group">
           <label>Blood Group</label>
@@ -500,11 +718,30 @@ export default function AddStaff({ setActiveView }) {
         </div>
         <div className="form-group">
           <label>Aadhaar Number <span style={{ color: 'var(--text-muted)', fontSize: '0.75rem' }}>(Optional)</span></label>
-          <input type="text" name="aadhaarNumber" value={formData.aadhaarNumber} onChange={(e) => handleNumericChange(e, 12)} className="form-control" style={inputStyle} placeholder="12-digit Aadhaar" />
+          <input 
+            type="text" 
+            name="aadhaarNumber" 
+            value={formData.aadhaarNumber} 
+            onChange={(e) => handleNumericChange(e, 12)} 
+            className="form-control" 
+            style={{...inputStyle, border: validationErrors.aadhaarNumber ? '1.5px solid #ef4444' : inputStyle.border}} 
+            placeholder="12-digit Aadhaar" 
+          />
+          {validationErrors.aadhaarNumber && <span style={{ color: '#ef4444', fontSize: '0.75rem', marginTop: '4px', display: 'block' }}>{validationErrors.aadhaarNumber}</span>}
         </div>
         <div className="form-group">
           <label>PAN Number <span style={{ color: 'var(--text-muted)', fontSize: '0.75rem' }}>(Optional)</span></label>
-          <input type="text" name="panNumber" value={formData.panNumber} onChange={handleChange} className="form-control" style={inputStyle} placeholder="e.g. ABCDE1234F" maxLength={10} />
+          <input 
+            type="text" 
+            name="panNumber" 
+            value={formData.panNumber} 
+            onChange={handleChange} 
+            className="form-control" 
+            style={{...inputStyle, border: validationErrors.panNumber ? '1.5px solid #ef4444' : inputStyle.border}} 
+            placeholder="e.g. ABCDE1234F" 
+            maxLength={10} 
+          />
+          {validationErrors.panNumber && <span style={{ color: '#ef4444', fontSize: '0.75rem', marginTop: '4px', display: 'block' }}>{validationErrors.panNumber}</span>}
         </div>
       </div>
     </div>
@@ -518,17 +755,8 @@ export default function AddStaff({ setActiveView }) {
       </h3>
       <div style={gridStyle}>
         <div className="form-group">
-          <label>Joining Date</label>
-          <input type="date" name="joiningDate" value={formData.joiningDate} onChange={handleChange} className="form-control" style={inputStyle} />
-        </div>
-        <div className="form-group">
-          <label>Staff Category *</label>
-          <CustomSelect name="staffCategory" value={formData.staffCategory} onChange={handleCategoryChange} options={STAFF_CATEGORIES} placeholder="Select Category" className="form-control" style={{...inputStyle, border: validationErrors.staffCategory ? '1.5px solid #ef4444' : '1.5px solid #cbd5e1'}} />
-          {validationErrors.staffCategory && <span style={{ color: '#ef4444', fontSize: '0.75rem', marginTop: '4px', display: 'block' }}>{validationErrors.staffCategory}</span>}
-        </div>
-        <div className="form-group">
           <label>Designation *</label>
-          <CustomSelect name="designation" value={formData.designation} onChange={handleChange} options={formData.staffCategory ? (STAFF_CATEGORY_MAPPING[formData.staffCategory]?.designations || []) : []} placeholder={formData.staffCategory ? "Select Designation" : "Select Category First"} className="form-control" style={{...inputStyle, border: validationErrors.designation ? '1.5px solid #ef4444' : '1.5px solid #cbd5e1'}} />
+          <CustomSelect name="designation" value={formData.designation} onChange={handleDesignationChange} options={DESIGNATIONS} placeholder="Select Designation" className="form-control" style={{...inputStyle, border: validationErrors.designation ? '1.5px solid #ef4444' : '1.5px solid #cbd5e1'}} />
           {validationErrors.designation && <span style={{ color: '#ef4444', fontSize: '0.75rem', marginTop: '4px', display: 'block' }}>{validationErrors.designation}</span>}
         </div>
         <div className="form-group">
@@ -536,13 +764,12 @@ export default function AddStaff({ setActiveView }) {
           <CustomSelect name="designationLevel" value={formData.designationLevel} onChange={handleChange} options={DESIGNATION_LEVELS} placeholder="Select Level" className="form-control" style={inputStyle} />
         </div>
         <div className="form-group">
-          <label>Department *</label>
-          <CustomSelect name="department" value={formData.department} onChange={handleChange} options={DEPARTMENTS} placeholder="Select Department" className="form-control" style={{...inputStyle, border: validationErrors.department ? '1.5px solid #ef4444' : '1.5px solid #cbd5e1'}} />
-          {validationErrors.department && <span style={{ color: '#ef4444', fontSize: '0.75rem', marginTop: '4px', display: 'block' }}>{validationErrors.department}</span>}
-        </div>
-        <div className="form-group">
           <label>Employment Type</label>
           <CustomSelect name="employmentType" value={formData.employmentType} onChange={handleChange} options={EMPLOYMENT_TYPES} placeholder="Select Type" className="form-control" style={inputStyle} />
+        </div>
+        <div className="form-group">
+          <label>Date of Birth</label>
+          <input type="date" name="dob" value={formData.dob} onChange={handleChange} max={new Date().toLocaleDateString('en-CA')} className="form-control" style={inputStyle} />
         </div>
         <div className="form-group">
           <label>Employee Status</label>
@@ -730,11 +957,11 @@ export default function AddStaff({ setActiveView }) {
             </div>
             <div className="form-group">
               <label>From Date</label>
-              <input type="date" value={exp.fromDate} onChange={(e) => updateExperience(i, 'fromDate', e.target.value)} className="form-control" style={inputStyle} />
+              <input type="date" value={exp.fromDate} onChange={(e) => updateExperience(i, 'fromDate', e.target.value)} max={new Date().toLocaleDateString('en-CA')} className="form-control" style={inputStyle} />
             </div>
             <div className="form-group">
               <label>To Date</label>
-              <input type="date" value={exp.toDate} onChange={(e) => updateExperience(i, 'toDate', e.target.value)} className="form-control" style={inputStyle} />
+              <input type="date" value={exp.toDate} onChange={(e) => updateExperience(i, 'toDate', e.target.value)} max={new Date().toLocaleDateString('en-CA')} className="form-control" style={inputStyle} />
             </div>
             <div className="form-group" style={{ gridColumn: '1 / -1' }}>
               <label>Key Responsibilities</label>
@@ -770,27 +997,31 @@ export default function AddStaff({ setActiveView }) {
             Document Uploads (Optional)
           </h3>
           <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))', gap: '16px' }}>
-            {docUploads.map(doc => (
-              <div key={doc.key} className="glass-panel" style={{ padding: '16px', borderRadius: '12px', display: 'flex', flexDirection: 'column', gap: '10px', background: 'rgba(255,255,255,0.01)' }}>
-                <span style={{ fontSize: '0.85rem', fontWeight: 700, color: 'var(--text-main)' }}>{doc.label}</span>
-                <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
-                  <label htmlFor={doc.key} className="btn-secondary" style={{ display: 'flex', alignItems: 'center', gap: '6px', cursor: 'pointer', fontSize: '0.8rem', padding: '8px 12px', borderRadius: '8px' }}>
-                    <Upload size={14} /> Upload
-                  </label>
-                  <input type="file" id={doc.key} accept="image/*,application/pdf" onChange={(e) => handleFileChange(e, doc.key)} style={{ display: 'none' }} />
-                </div>
-                {files[doc.key] && (
-                  <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '6px 10px', background: 'rgba(255,255,255,0.03)', borderRadius: '8px', border: '1px solid var(--border-glass)' }}>
-                    <span style={{ fontSize: '0.75rem', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', maxWidth: '160px', display: 'flex', alignItems: 'center', gap: '4px' }}>
-                      <FileText size={12} /> {files[doc.key].name}
-                    </span>
-                    <button type="button" onClick={() => removeFile(doc.key)} style={{ background: 'none', border: 'none', color: '#ef4444', cursor: 'pointer', padding: '2px' }}>
-                      <X size={14} />
-                    </button>
+            {docUploads.map(doc => {
+              const fileObj = files[doc.key] || (existingFiles[doc.key] ? { name: existingFiles[doc.key].split('/').pop(), isExisting: true } : null);
+              return (
+                <div key={doc.key} className="glass-panel" style={{ padding: '16px', borderRadius: '12px', display: 'flex', flexDirection: 'column', gap: '10px', background: 'rgba(255,255,255,0.01)' }}>
+                  <span style={{ fontSize: '0.85rem', fontWeight: 700, color: 'var(--text-main)' }}>{doc.label}</span>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+                    <label htmlFor={doc.key} className="btn-secondary" style={{ display: 'flex', alignItems: 'center', gap: '6px', cursor: 'pointer', fontSize: '0.8rem', padding: '8px 12px', borderRadius: '8px' }}>
+                      <Upload size={14} /> Upload
+                    </label>
+                    <input type="file" id={doc.key} accept="image/*,application/pdf" onChange={(e) => handleFileChange(e, doc.key)} style={{ display: 'none' }} />
                   </div>
-                )}
-              </div>
-            ))}
+                  {fileObj && (
+                    <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '6px 10px', background: 'rgba(255,255,255,0.03)', borderRadius: '8px', border: '1px solid var(--border-glass)' }}>
+                      <span style={{ fontSize: '0.75rem', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', maxWidth: '160px', display: 'flex', alignItems: 'center', gap: '4px' }}>
+                        <FileText size={12} style={{ color: fileObj.isExisting ? 'rgb(16, 185, 129)' : 'inherit' }} /> 
+                        {fileObj.isExisting ? `Existing: ${fileObj.name}` : fileObj.name}
+                      </span>
+                      <button type="button" onClick={() => removeFile(doc.key)} style={{ background: 'none', border: 'none', color: '#ef4444', cursor: 'pointer', padding: '2px' }}>
+                        <X size={14} />
+                      </button>
+                    </div>
+                  )}
+                </div>
+              );
+            })}
           </div>
         </div>
 
@@ -870,8 +1101,8 @@ export default function AddStaff({ setActiveView }) {
         }}>
           <CheckCircle size={24} />
           <div>
-            <strong style={{ display: 'block' }}>Staff Registered!</strong>
-            <span style={{ fontSize: '0.8rem' }}>Staff member added to the directory.</span>
+            <strong style={{ display: 'block' }}>{editData ? 'Changes Saved!' : 'Staff Registered!'}</strong>
+            <span style={{ fontSize: '0.8rem' }}>{editData ? 'Staff profile updated successfully.' : 'Staff member added to the directory.'}</span>
           </div>
         </div>
       )}
@@ -932,9 +1163,11 @@ export default function AddStaff({ setActiveView }) {
                 <ChevronLeft size={16} /> Back
               </button>
             )}
-            <button type="button" onClick={resetForm} className="btn-secondary" style={{ padding: '12px 24px', borderRadius: '10px', display: 'flex', alignItems: 'center', gap: '8px', fontWeight: 600, cursor: 'pointer' }}>
-              <RotateCcw size={16} /> Reset
-            </button>
+            {!editData && (
+              <button type="button" onClick={resetForm} className="btn-secondary" style={{ padding: '12px 24px', borderRadius: '10px', display: 'flex', alignItems: 'center', gap: '8px', fontWeight: 600, cursor: 'pointer' }}>
+                <RotateCcw size={16} /> Reset
+              </button>
+            )}
             <button type="button" onClick={() => setActiveView('staff')} className="btn-secondary" style={{ padding: '12px 24px', borderRadius: '10px', display: 'flex', alignItems: 'center', gap: '8px', fontWeight: 600, cursor: 'pointer' }}>
               Cancel
             </button>
@@ -946,7 +1179,7 @@ export default function AddStaff({ setActiveView }) {
               </button>
             ) : (
               <button type="button" onClick={handleSubmit} className="btn-primary" disabled={loading} style={{ padding: '12px 28px', borderRadius: '10px', display: 'flex', alignItems: 'center', gap: '8px', fontWeight: 600, cursor: 'pointer', minWidth: '180px', justifyContent: 'center' }}>
-                {loading ? (<><Loader2 size={16} className="animate-spin" /> Registering...</>) : (<><Save size={16} /> Register Staff</>)}
+                {loading ? (<><Loader2 size={16} className="animate-spin" /> {editData ? 'Saving...' : 'Submitting...'}</>) : (<><Save size={16} /> {editData ? 'Save Changes' : 'Submit'}</>)}
               </button>
             )}
           </div>

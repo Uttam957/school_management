@@ -8,7 +8,7 @@ import {
   Edit3,
   Calendar 
 } from 'lucide-react';
-import { fetchActiveGrades } from '../utils/grades';
+import { fetchActiveGrades, fetchActiveSections } from '../utils/grades';
 
 const parseGradeName = (fullName) => {
   if (!fullName) return { baseGrade: '', department: '' };
@@ -57,6 +57,7 @@ export function MarkAttendanceView({ date, setDate, studentClass, setClass, sect
   const [loading, setLoading] = useState(false);
   const [submitting, setSubmitting] = useState(false);
   const [activeGrades, setActiveGrades] = useState([]);
+  const [activeSections, setActiveSections] = useState([]);
 
   const [editingId, setEditingId] = useState(null); // Student ID being edited
   const [editStatus, setEditStatus] = useState('');
@@ -173,16 +174,20 @@ export function MarkAttendanceView({ date, setDate, studentClass, setClass, sect
   };
 
   useEffect(() => {
-    const loadGrades = async () => {
-      const grades = await fetchActiveGrades();
+    const loadGradesAndSections = async () => {
+      const [grades, secs] = await Promise.all([
+        fetchActiveGrades(),
+        fetchActiveSections()
+      ]);
       setActiveGrades(grades);
       if (grades.length > 0) {
         if (!studentClass) setClass(grades[0].name);
       } else {
         setClass('');
       }
+      setActiveSections(secs);
     };
-    loadGrades();
+    loadGradesAndSections();
   }, []);
 
   useEffect(() => {
@@ -344,10 +349,9 @@ export function MarkAttendanceView({ date, setDate, studentClass, setClass, sect
                 onChange={(e) => setSection(e.target.value)}
                 style={{ height: '38px', borderRadius: '8px' }}
               >
-                <option value="A">Section A</option>
-                <option value="B">Section B</option>
-                <option value="C">Section C</option>
-                <option value="D">Section D</option>
+                {activeSections.map(s => (
+                  <option key={s.id || s.name} value={s.name}>Section {s.name}</option>
+                ))}
               </select>
             </div>
 
@@ -747,6 +751,7 @@ export function AttendanceHistoryView({ date, showToast }) {
   const [roster, setRoster] = useState([]);
   const [loading, setLoading] = useState(false);
   const [activeGrades, setActiveGrades] = useState([]);
+  const [activeSections, setActiveSections] = useState([]);
 
   const { baseGrade: baseClass, department: selectedDept } = parseGradeName(studentClass);
   const isHighGrade = isGrade11or12(baseClass);
@@ -820,16 +825,23 @@ export function AttendanceHistoryView({ date, showToast }) {
   };
 
   useEffect(() => {
-    const loadGrades = async () => {
-      const grades = await fetchActiveGrades();
+    const loadGradesAndSections = async () => {
+      const [grades, secs] = await Promise.all([
+        fetchActiveGrades(),
+        fetchActiveSections()
+      ]);
       setActiveGrades(grades);
       if (grades.length > 0) {
         setClass(grades[0].name);
       } else {
         setClass('');
       }
+      setActiveSections(secs);
+      if (secs.length > 0) {
+        setSection(secs[0].name);
+      }
     };
-    loadGrades();
+    loadGradesAndSections();
   }, []);
 
   useEffect(() => {
@@ -929,10 +941,9 @@ export function AttendanceHistoryView({ date, showToast }) {
               onChange={(e) => setSection(e.target.value)}
               style={{ height: '38px', borderRadius: '8px' }}
             >
-              <option value="A">Section A</option>
-              <option value="B">Section B</option>
-              <option value="C">Section C</option>
-              <option value="D">Section D</option>
+              {activeSections.map(s => (
+                <option key={s.id || s.name} value={s.name}>Section {s.name}</option>
+              ))}
             </select>
           </div>
 

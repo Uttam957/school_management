@@ -6,13 +6,16 @@ import AddTeacher from './pages/AddTeacher';
 import TeacherList from './pages/TeacherList';
 import AddStaff from './pages/AddStaff';
 import StaffDirectory from './pages/StaffDirectory';
-import FinancePortal from './pages/FinancePortal';
+import AccountManagementPortal from './pages/AccountManagementPortal';
 import SchoolProfile from './pages/SchoolProfile';
 import AttendanceManager from './pages/AttendanceManager';
 import RegisterStudent from './pages/RegisterStudent';
 import AdminPanel from './pages/AdminPanel';
 import SchoolLogin from './pages/SchoolLogin';
 import AdminLogin from './pages/AdminLogin';
+import AcademicPanel from './pages/AcademicPanel';
+import UserProfile from './pages/UserProfile';
+import { CheckCircle, AlertCircle } from 'lucide-react';
 
 import './App.css';
 
@@ -70,6 +73,12 @@ const getInitialAuthState = (targetRole) => {
 export default function App() {
   const [activeView, setActiveViewState] = useState('students');
   const [activeSubadminLogin, setActiveSubadminLogin] = useState(null);
+  const [notification, setNotification] = useState(null);
+
+  const showToast = (message, type = 'success') => {
+    setNotification({ message, type });
+    setTimeout(() => setNotification(null), 3500);
+  };
 
   const setActiveView = (view) => {
     if (view === 'admin-login') {
@@ -84,13 +93,43 @@ export default function App() {
   const [theme, setTheme] = useState('light');
   const [schoolDetails, setSchoolDetails] = useState({ name: 'Aether Academy', principal: 'Alex Devlin' });
   
+  const [userProfile, setUserProfile] = useState({
+    name: sessionStorage.getItem('name') || 'User',
+    role: sessionStorage.getItem('role') || sessionStorage.getItem('portal_role') || 'Guest',
+    photo: sessionStorage.getItem('photo') || '',
+    username: sessionStorage.getItem('username') || ''
+  });
+
+  const fetchUserProfile = async () => {
+    try {
+      const token = sessionStorage.getItem('token');
+      if (!token) return;
+      const res = await fetch('/api/auth/profile');
+      if (res.ok) {
+        const data = await res.json();
+        setUserProfile(data);
+        sessionStorage.setItem('name', data.name);
+        sessionStorage.setItem('role', data.role);
+        if (data.photo) {
+          sessionStorage.setItem('photo', data.photo);
+        }
+      }
+    } catch (err) {
+      console.error('Error fetching user profile:', err);
+    }
+  };
+  
   // Authentication states
   const [isDeveloperAdmin, setIsDeveloperAdmin] = useState(() => getInitialAuthState('Developer'));
   const [isAdmin, setIsAdmin] = useState(() => getInitialAuthState('Admin'));
   const [isSchoolAdmin, setIsSchoolAdmin] = useState(() => getInitialAuthState('SchoolAdmin'));
 
-  // Active view states for sub-dashboards
-  const [adminView, setAdminView] = useState('students');
+  // Active view states for sub-dashboards with persistence
+  const [adminView, setAdminViewState] = useState(() => sessionStorage.getItem('admin_view') || 'overview');
+  const setAdminView = (view) => {
+    sessionStorage.setItem('admin_view', view);
+    setAdminViewState(view);
+  };
 
   const initialised = useRef(false);
 
@@ -148,22 +187,25 @@ export default function App() {
   // Restore session & path on mount
   useEffect(() => {
     fetchSchoolDetails();
+    fetchUserProfile();
 
     const savedRole = sessionStorage.getItem('role') || sessionStorage.getItem('portal_role');
     if (savedRole) {
       switch (savedRole) {
         case 'Developer Admin':
           setIsDeveloperAdmin(true);
-          setActiveView('school');
+          setActiveView('dashboard');
           break;
-        case 'Main Admin':
-        case 'admin':
-        case 'Admin Dashboard':
-          setIsAdmin(true);
+        case 'Student':
+        case 'Parent':
+          setIsAdmin(false);
           setIsSchoolAdmin(false);
-          setAdminView('students');
+          setActiveView('students');
           break;
         default:
+          // Any other role is admin/staff level (Teacher, Accountant, Clerk, etc.)
+          setIsAdmin(true);
+          setIsSchoolAdmin(false);
           break;
       }
     }
@@ -182,17 +224,18 @@ export default function App() {
         switch (savedRole) {
           case 'Developer Admin':
             setIsDeveloperAdmin(true);
-            setActiveView('school');
+            setActiveView('dashboard');
             break;
-          case 'Main Admin':
-          case 'admin':
-          case 'Admin Dashboard':
-            setIsAdmin(true);
+          case 'Student':
+          case 'Parent':
+            setIsAdmin(false);
             setIsSchoolAdmin(false);
-            setAdminView('students');
+            setActiveView('students');
             break;
           default:
-            setActiveView('students');
+            // Any other role is admin/staff level (Teacher, Accountant, Clerk, etc.)
+            setIsAdmin(true);
+            setIsSchoolAdmin(false);
             break;
         }
       } else {
@@ -226,6 +269,46 @@ export default function App() {
       window.history.pushState(null, '', `/${activeView}${query}`);
     }
   }, [activeView, isDeveloperAdmin, isAdmin, isSchoolAdmin]);
+
+  // Dynamic Browser Tab Title and Favicon Manager
+  useEffect(() => {
+    const faviconLink = document.getElementById('favicon-link');
+    const tenant = getActiveTenant();
+    
+    // 1. Platform Level (No active school tenant)
+    if (!tenant) {
+      document.title = 'School ERP | Dev Admin';
+      if (faviconLink) {
+        faviconLink.setAttribute('href', '/favicon.svg');
+      }
+      return;
+    }
+
+    // 2. School Tenant Level
+    const schoolName = schoolDetails?.name || 'School';
+    const logoUrl = schoolDetails?.logo || '/favicon.svg';
+
+    if (faviconLink) {
+      faviconLink.setAttribute('href', logoUrl);
+    }
+
+    // Determine current user context/role
+    const isLoggedIn = isDeveloperAdmin || isAdmin || isSchoolAdmin;
+    if (!isLoggedIn) {
+      document.title = `${schoolName} | Login`;
+      return;
+    }
+
+    // Logged-in user role
+    const role = userProfile?.role || sessionStorage.getItem('role') || sessionStorage.getItem('portal_role');
+    if (role === 'Main Admin' || role === 'Admin Dashboard' || role === 'Principal') {
+      document.title = `${schoolName} | Admin`;
+    } else if (role) {
+      document.title = `${schoolName} | ${role}`;
+    } else {
+      document.title = `${schoolName} | Portal`;
+    }
+  }, [schoolDetails, userProfile, isDeveloperAdmin, isAdmin, isSchoolAdmin]);
 
   // URL Auto-login Hook
   useEffect(() => {
@@ -297,7 +380,7 @@ export default function App() {
     sessionStorage.setItem('portal_role', role);
     if (role === 'Developer Admin') {
       setIsDeveloperAdmin(true);
-      setActiveView('school');
+      setActiveView('dashboard');
     } else if (role === 'Student') {
       setIsAdmin(false);
       setIsSchoolAdmin(false);
@@ -315,6 +398,7 @@ export default function App() {
       setAdminView('overview');
     }
     fetchSchoolDetails();
+    fetchUserProfile();
   };
 
   const handleLogout = () => {
@@ -348,14 +432,19 @@ export default function App() {
 
   const renderCurrentView = () => {
     if (isDeveloperAdmin) {
-      return <SchoolProfile schoolDetails={schoolDetails} fetchSchoolDetails={fetchSchoolDetails} isDeveloperAdmin={isDeveloperAdmin} />;
+      if (activeView === 'profile') {
+        return <UserProfile onProfileUpdate={setUserProfile} showToast={showToast} onLogout={handleLogout} />;
+      }
+      return <SchoolProfile schoolDetails={schoolDetails} fetchSchoolDetails={fetchSchoolDetails} isDeveloperAdmin={isDeveloperAdmin} devActiveTab={activeView === 'school' ? 'schools' : 'dashboard'} />;
     }
 
     if (isAdmin) {
-      return <AdminPanel setActiveView={setActiveView} onLogout={handleLogout} adminView={adminView} setAdminView={setAdminView} onBackToMain={handleBackToMain} />;
+      return <AdminPanel setActiveView={setActiveView} onLogout={handleLogout} adminView={adminView} setAdminView={setAdminView} onBackToMain={handleBackToMain} userProfile={userProfile} setUserProfile={setUserProfile} />;
     }
 
     switch (activeView) {
+      case 'profile':
+        return <UserProfile onProfileUpdate={setUserProfile} showToast={showToast} onLogout={handleLogout} />;
       case 'students':
         return <StudentDirectory readOnly={true} onAddClick={() => setActiveView('register-student')} />;
       case 'register-student':
@@ -370,11 +459,13 @@ export default function App() {
       case 'staff':
         return <StaffDirectory readOnly={true} onAddClick={() => setActiveView('add-staff')} />;
       case 'finance':
-        return <FinancePortal />;
+        return <AccountManagementPortal />;
       case 'employee-attendance':
         return <AttendanceManager />;
       case 'school':
         return <SchoolProfile schoolDetails={schoolDetails} fetchSchoolDetails={fetchSchoolDetails} isDeveloperAdmin={isDeveloperAdmin} />;
+      case 'academic-calendar':
+        return <AcademicPanel subView="academic-calendar" setAdminView={setActiveView} />;
       case 'admin-login':
         return (
           <AdminLogin 
@@ -465,6 +556,7 @@ export default function App() {
         isDeveloperAdmin={isDeveloperAdmin}
         onDeveloperAdminLogout={handleLogout}
         onBackToMain={handleBackToMain}
+        userProfile={userProfile}
       />
 
       {mobileOpen && (
@@ -485,7 +577,7 @@ export default function App() {
 
       <div className="app-content">
         <Header
-          activeView={activeView}
+          activeView={isAdmin ? adminView : activeView}
           isCollapsed={isCollapsed}
           setIsCollapsed={setIsCollapsed}
           mobileOpen={mobileOpen}
@@ -496,13 +588,37 @@ export default function App() {
           isAdmin={isAdmin}
           isDeveloperAdmin={isDeveloperAdmin}
           setActiveView={setActiveView}
+          setAdminView={setAdminView}
           onLogout={handleLogout}
+          userProfile={userProfile}
         />
 
         <main style={{ flex: 1, marginTop: '10px' }}>
           {renderCurrentView()}
         </main>
       </div>
+
+      {/* Toast Notification helper */}
+      {notification && (
+        <div style={{
+          position: 'fixed',
+          top: '20px',
+          right: '20px',
+          padding: '16px 24px',
+          borderRadius: '12px',
+          background: notification.type === 'success' ? '#10b981' : '#ef4444',
+          color: '#ffffff',
+          boxShadow: '0 10px 25px -5px rgba(0,0,0,0.3)',
+          display: 'flex',
+          alignItems: 'center',
+          gap: '10px',
+          zIndex: 999999,
+          fontWeight: 600
+        }}>
+          {notification.type === 'success' ? <CheckCircle size={20} /> : <AlertCircle size={20} />}
+          <span>{notification.message}</span>
+        </div>
+      )}
     </div>
   );
 }

@@ -99,6 +99,10 @@ export const registerStudent = async (req, res) => {
       return res.status(400).json({ error: 'Missing required student details.' });
     }
 
+    if (aadhaarNumber && !/^\d{12}$/.test(String(aadhaarNumber).replace(/\s/g, ''))) {
+      return res.status(400).json({ error: 'Invalid Aadhaar number. Must be exactly 12 digits.' });
+    }
+
     // Map uploaded file path indicators
     const files = req.files || {};
     const photoPath = files.photo ? `/uploads/${files.photo[0].filename}` : '';
@@ -314,6 +318,10 @@ export const updateStudent = async (req, res) => {
 
     const currentStudent = db.students[studentIndex];
     const updateData = req.body;
+
+    if (updateData.aadhaarNumber && !/^\d{12}$/.test(String(updateData.aadhaarNumber).replace(/\s/g, ''))) {
+      return res.status(400).json({ error: 'Invalid Aadhaar number. Must be exactly 12 digits.' });
+    }
 
     const files = req.files || {};
     const photoPath = files.photo ? `/uploads/${files.photo[0].filename}` : currentStudent.photo;

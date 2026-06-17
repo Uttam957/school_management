@@ -138,7 +138,6 @@
       "id": "EMP-2026-1003",
       "employeeId": "EMP-2026-1003",
       "qrCodePath": "/uploads/qrcodes/EMP-2026-1003.png",
-      "teacherId": "TCH-991162",
       "name": "Ciaran Flavia Lara Carver",
       "fullName": "Ciaran Flavia Lara Carver",
       "firstName": "Ciaran",
@@ -286,7 +285,7 @@
       "price": "$499/mo",
       "features": [
         "Unlimited Students",
-        "Advanced Finance",
+        "Advanced Account Management",
         "24/7 Dedicated Support"
       ]
     }

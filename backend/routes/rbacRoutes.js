@@ -42,43 +42,15 @@ router.use(checkSuperAdmin);
 router.get('/roles', (req, res) => {
   try {
     const db = readDb();
-    const defaultRoles = getDefaultRoles();
-    
-    if (!db.roles || db.roles.length === 0) {
-      // No roles at all — seed all defaults
-      db.roles = defaultRoles;
-      writeDb(db);
-    } else {
-      // Filter out old system-default roles that are no longer part of getDefaultRoles
-      const defaultRoleIds = defaultRoles.map(r => r.id);
-      let filteredRoles = db.roles.filter(r => {
-        // Keep if it's not a system role, OR if it's a current default system role
-        return !r.isSystem || defaultRoleIds.includes(r.id);
-      });
-      
-      // Ensure all current default system roles are present; add any missing ones
-      // Also refresh system role permissions to pick up new module IDs
-      const existingIds = filteredRoles.map(r => r.id);
-      let changed = db.roles.length !== filteredRoles.length;
-      
-      for (const defRole of defaultRoles) {
-        const existingIdx = filteredRoles.findIndex(r => r.id === defRole.id);
-        if (existingIdx === -1) {
-          filteredRoles.push(defRole);
-          changed = true;
-        } else if (filteredRoles[existingIdx].isSystem) {
-          // Refresh system role permissions from defaults to pick up module ID changes
-          filteredRoles[existingIdx].permissions = defRole.permissions;
-          changed = true;
-        }
-      }
-      
-      if (changed) {
-        db.roles = filteredRoles;
-        writeDb(db);
-      }
+    if (!db.roles) {
+      db.roles = [];
     }
-    
+    // Auto-seed default roles if no roles exist in the database
+    if (db.roles.length === 0) {
+      db.roles = getDefaultRoles();
+      writeDb(db);
+      console.log('[RBAC] Seeded default roles and permissions for this tenant.');
+    }
     res.json(db.roles);
   } catch (error) {
     res.status(500).json({ error: 'Failed to fetch roles: ' + error.message });
@@ -137,14 +109,28 @@ router.put('/roles/:id', (req, res) => {
     }
 
     const existingRole = db.roles[roleIndex];
+    const oldName = existingRole.name;
 
-    // System roles can be edited in terms of permissions and descriptions, but name should remain constant
-    if (existingRole.isSystem && name && name !== existingRole.name) {
-      return res.status(400).json({ error: 'System default role names cannot be renamed.' });
+    // Propagate role name updates to teachers and staff
+    if (name && name !== oldName) {
+      existingRole.name = name;
+      if (db.staff) {
+        db.staff.forEach(s => {
+          if (s.role === oldName) s.role = name;
+          if (s.staffCategory === oldName) s.staffCategory = name;
+          if (s.position === oldName) s.position = name;
+        });
+      }
+      if (db.teachers) {
+        db.teachers.forEach(t => {
+          if (t.role === oldName) t.role = name;
+          if (t.staffCategory === oldName) t.staffCategory = name;
+          if (t.designation === oldName) t.designation = name;
+        });
+      }
     }
 
     // Update fields
-    if (name) existingRole.name = name;
     if (description !== undefined) existingRole.description = description;
     if (active !== undefined) existingRole.active = active;
     if (permissions) existingRole.permissions = permissions;
@@ -171,17 +157,34 @@ router.delete('/roles/:id', (req, res) => {
       return res.status(404).json({ error: 'Role not found.' });
     }
 
-    if (role.isSystem) {
-      return res.status(400).json({ error: 'Default system roles cannot be deleted.' });
-    }
-
-    // Check if any user is currently assigned to this role in userAccess
-    const isAssigned = (db.userAccess || []).some(ua => ua.roleId === id);
-    if (isAssigned) {
-      return res.status(400).json({ error: 'This role is currently assigned to one or more users and cannot be deleted.' });
-    }
-
+    const deletedRoleName = role.name;
     db.roles = db.roles.filter(r => r.id !== id);
+
+    // Clean up matching userAccess entries (by roleId)
+    if (db.userAccess) {
+      db.userAccess = db.userAccess.filter(ua => ua.roleId !== id);
+    }
+    // Clean up staff matching roles
+    if (db.staff) {
+      db.staff.forEach(s => {
+        if (s.role === deletedRoleName || s.staffCategory === deletedRoleName) {
+          s.role = '';
+          s.staffCategory = '';
+          s.position = '';
+        }
+      });
+    }
+    // Clean up teachers matching roles
+    if (db.teachers) {
+      db.teachers.forEach(t => {
+        if (t.role === deletedRoleName || t.staffCategory === deletedRoleName || t.designation === deletedRoleName) {
+          t.role = '';
+          t.staffCategory = '';
+          t.designation = '';
+        }
+      });
+    }
+
     logAudit(db, req, 'Delete Role', `Deleted role: ${role.name}`);
     writeDb(db);
 

@@ -59,7 +59,7 @@ import {
   Copy
 } from 'lucide-react';
 
-export default function SchoolProfile({ schoolDetails, fetchSchoolDetails, isDeveloperAdmin }) {
+export default function SchoolProfile({ schoolDetails, fetchSchoolDetails, isDeveloperAdmin, devActiveTab }) {
   if (!isDeveloperAdmin) {
     return (
       <div className="animate-slide-up" style={{ display: 'flex', flexDirection: 'column', gap: '24px', paddingBottom: '40px' }}>
@@ -172,7 +172,7 @@ export default function SchoolProfile({ schoolDetails, fetchSchoolDetails, isDev
     );
   }
 
-  const [activeTab, setActiveTab] = useState('dashboard');
+  const activeTab = devActiveTab || 'dashboard';
   const [schools, setSchools] = useState([]);
   const [analytics, setAnalytics] = useState({
     totalSchools: 0,
@@ -519,45 +519,11 @@ export default function SchoolProfile({ schoolDetails, fetchSchoolDetails, isDev
             <Shield size={24} />
           </div>
           <div>
-            <h2 style={{ fontSize: '1.6rem', fontWeight: 800, margin: 0, color: 'var(--text-main)' }}>Platform Owner Panel</h2>
+            <h2 style={{ fontSize: '1.6rem', fontWeight: 800, margin: 0, color: 'var(--text-main)' }}>Developer Admin Panel</h2>
             <p style={{ fontSize: '0.82rem', color: 'var(--text-muted)', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.05em' }}>
               Multi-Tenant ERP Master Registry
             </p>
           </div>
-        </div>
-
-        {/* View Toggle Tabs */}
-        <div style={{ display: 'flex', gap: '8px', background: 'var(--bg-glass-active)', padding: '6px', borderRadius: '12px', border: '1px solid var(--border-glass)' }}>
-          <button 
-            onClick={() => setActiveTab('dashboard')}
-            className={`btn-secondary ${activeTab === 'dashboard' ? 'active' : ''}`}
-            style={{ 
-              padding: '8px 16px', 
-              fontSize: '0.85rem', 
-              borderRadius: '8px', 
-              border: 'none',
-              cursor: 'pointer',
-              background: activeTab === 'dashboard' ? 'hsl(var(--color-primary))' : 'transparent',
-              color: activeTab === 'dashboard' ? 'white' : 'var(--text-muted)'
-            }}
-          >
-            <Activity size={14} style={{ marginRight: '6px' }} /> Dashboard
-          </button>
-          <button 
-            onClick={() => setActiveTab('schools')}
-            className={`btn-secondary ${activeTab === 'schools' ? 'active' : ''}`}
-            style={{ 
-              padding: '8px 16px', 
-              fontSize: '0.85rem', 
-              borderRadius: '8px', 
-              border: 'none',
-              cursor: 'pointer',
-              background: activeTab === 'schools' ? 'hsl(var(--color-primary))' : 'transparent',
-              color: activeTab === 'schools' ? 'white' : 'var(--text-muted)'
-            }}
-          >
-            <SchoolIcon size={14} style={{ marginRight: '6px' }} /> Schools Registry
-          </button>
         </div>
       </div>
 
@@ -1055,8 +1021,8 @@ export default function SchoolProfile({ schoolDetails, fetchSchoolDetails, isDev
                   <div className="form-group">
                     <label>School Phone Number</label>
                     <input 
-                      type="text" name="phone" className="form-control" placeholder="+1 (555) 123-4567"
-                      value={formData.phone} onChange={handleInputChange}
+                      type="text" name="phone" className="form-control" placeholder="10-digit phone number"
+                      value={formData.phone} onChange={(e) => { const v = e.target.value.replace(/[^0-9]/g, '').slice(0, 10); setFormData(p => ({ ...p, phone: v })); }}
                     />
                   </div>
                 </div>

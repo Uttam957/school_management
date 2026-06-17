@@ -63,7 +63,7 @@
       "price": "$499/mo",
       "features": [
         "Unlimited Students",
-        "Advanced Finance",
+        "Advanced Account Management",
         "24/7 Dedicated Support"
       ]
     }
@@ -1687,5 +1687,13 @@
   "employeeQrCodes": [],
   "attendanceRecords": [],
   "attendanceLogs": [],
-  "attendanceReports": []
+  "attendanceReports": [],
+  "platformOwner": {
+    "name": "User",
+    "username": "dev@admin.com",
+    "password": "admin123",
+    "email": "dev@admin.com",
+    "phone": "",
+    "photo": ""
+  }
 }

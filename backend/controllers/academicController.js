@@ -1,5 +1,6 @@
 import { readDb, writeDb, addActivity } from '../utils/db.js';
 import * as XLSX from 'xlsx';
+import { PDFParse } from 'pdf-parse';
 
 // Conflict helper: Checks if two time slots overlap
 // e.g. "09:00 AM - 10:00 AM" and "09:30 AM - 10:30 AM"
@@ -419,7 +420,8 @@ export const getGradesSections = (req, res) => {
   };
 
   const grades = gradeOptions.sort(sortGrades);
-  const sections = ['A', 'B', 'C', 'D', 'E'];
+  const activeSections = (db.sections || []).filter(s => s.status === 'Active');
+  const sections = activeSections.map(s => s.name);
   const gradeSectionPairs = [];
   
   grades.forEach(g => {
@@ -1066,6 +1068,11 @@ export const createTimetableBulk = (req, res) => {
 
   // Remove existing entries for this cohort
   db.timetables = db.timetables.filter(t => t.cohort !== cohort);
+  if (timetables.length === 0) {
+    if (db.publishedClassTimetables) {
+      db.publishedClassTimetables = db.publishedClassTimetables.filter(pt => pt.cohort !== cohort);
+    }
+  }
 
   // Push new valid timetable entries
   timetables.forEach((slot, index) => {
@@ -1098,6 +1105,11 @@ export const createTimetableBulkTeacher = (req, res) => {
 
   // Remove existing entries for this teacher from teacherTimetables
   db.teacherTimetables = db.teacherTimetables.filter(t => !t.teacher || t.teacher.toLowerCase() !== teacher.toLowerCase());
+  if (timetables.length === 0) {
+    if (db.publishedTeacherTimetables) {
+      db.publishedTeacherTimetables = db.publishedTeacherTimetables.filter(pt => !pt.teacher || pt.teacher.toLowerCase() !== teacher.toLowerCase());
+    }
+  }
 
   // Push new valid timetable entries
   timetables.forEach((slot, index) => {
@@ -1122,6 +1134,69 @@ export const createTimetableBulkTeacher = (req, res) => {
 export const getTeacherTimetables = (req, res) => {
   const db = readDb();
   res.json(db.teacherTimetables || []);
+};
+
+export const getPublishedTimetables = (req, res) => {
+  const db = readDb();
+  res.json({
+    classTimetables: db.publishedClassTimetables || [],
+    teacherTimetables: db.publishedTeacherTimetables || []
+  });
+};
+
+export const publishTimetable = (req, res) => {
+  const { type, identifier } = req.body;
+  if (!type || !identifier) {
+    return res.status(400).json({ error: 'Type (class/teacher) and identifier are required.' });
+  }
+
+  const db = readDb();
+  if (!db.publishedClassTimetables) db.publishedClassTimetables = [];
+  if (!db.publishedTeacherTimetables) db.publishedTeacherTimetables = [];
+
+  if (type === 'class') {
+    const slots = db.timetables.filter(t => t.cohort === identifier);
+    if (slots.length === 0) {
+      return res.status(400).json({ error: `No timetable slots found for cohort ${identifier}.` });
+    }
+
+    const existingIdx = db.publishedClassTimetables.findIndex(pt => pt.cohort === identifier);
+    const newEntry = {
+      cohort: identifier,
+      slots: slots.map(s => ({ day: s.day, time: s.time, subject: s.subject, teacher: s.teacher, room: s.room })),
+      publishedAt: new Date().toISOString()
+    };
+
+    if (existingIdx !== -1) {
+      db.publishedClassTimetables[existingIdx] = newEntry;
+    } else {
+      db.publishedClassTimetables.push(newEntry);
+    }
+  } else if (type === 'teacher') {
+    const slots = db.teacherTimetables.filter(t => t.teacher && t.teacher.toLowerCase() === identifier.toLowerCase());
+    if (slots.length === 0) {
+      return res.status(400).json({ error: `No timetable slots found for teacher ${identifier}.` });
+    }
+
+    const teacherName = slots[0].teacher;
+    const existingIdx = db.publishedTeacherTimetables.findIndex(pt => pt.teacher.toLowerCase() === identifier.toLowerCase());
+    const newEntry = {
+      teacher: teacherName,
+      slots: slots.map(s => ({ cohort: s.cohort, day: s.day, time: s.time, subject: s.subject })),
+      publishedAt: new Date().toISOString()
+    };
+
+    if (existingIdx !== -1) {
+      db.publishedTeacherTimetables[existingIdx] = newEntry;
+    } else {
+      db.publishedTeacherTimetables.push(newEntry);
+    }
+  } else {
+    return res.status(400).json({ error: 'Invalid type. Must be class or teacher.' });
+  }
+
+  writeDb(db);
+  res.json({ message: 'Timetable published successfully.' });
 };
 
 export const createExamTimetableBulk = (req, res) => {
@@ -1587,6 +1662,165 @@ const isValidSessionString = (sessionStr) => {
   return /^\d{4}-\d{2,4}$/.test(sessionStr.trim());
 };
 
+// iCalendar (.ics) Parser Helper
+const parseIcsData = (icsText) => {
+  const events = [];
+  const lines = icsText.split(/\r?\n/);
+  let currentEvent = null;
+
+  for (let line of lines) {
+    line = line.trim();
+    if (line.startsWith('BEGIN:VEVENT')) {
+      currentEvent = {};
+    } else if (line.startsWith('END:VEVENT') && currentEvent) {
+      events.push(currentEvent);
+      currentEvent = null;
+    } else if (currentEvent) {
+      if (line.startsWith('SUMMARY:')) {
+        currentEvent.title = line.substring(8).trim();
+      } else if (line.startsWith('DESCRIPTION:')) {
+        currentEvent.description = line.substring(12).trim();
+      } else if (line.startsWith('CATEGORIES:')) {
+        currentEvent.eventType = line.substring(11).trim();
+      } else if (line.startsWith('COLOR:')) {
+        currentEvent.color = line.substring(6).trim();
+      } else if (line.startsWith('DTSTART')) {
+        const parts = line.split(':');
+        const val = parts.slice(1).join(':');
+        if (val) {
+          const cleanVal = val.replace(/[^0-9T]/g, '');
+          const y = cleanVal.substring(0, 4);
+          const m = cleanVal.substring(4, 6);
+          const d = cleanVal.substring(6, 8);
+          currentEvent.eventDate = `${y}-${m}-${d}`;
+          if (cleanVal.includes('T')) {
+            const timePart = cleanVal.split('T')[1];
+            const hh = parseInt(timePart.substring(0, 2));
+            const mm = timePart.substring(2, 4);
+            const period = hh >= 12 ? 'PM' : 'AM';
+            const displayHour = hh % 12 || 12;
+            currentEvent.startTime = `${String(displayHour).padStart(2, '0')}:${mm} ${period}`;
+          }
+        }
+      } else if (line.startsWith('DTEND')) {
+        const parts = line.split(':');
+        const val = parts.slice(1).join(':');
+        if (val) {
+          const cleanVal = val.replace(/[^0-9T]/g, '');
+          if (cleanVal.includes('T')) {
+            const timePart = cleanVal.split('T')[1];
+            const hh = parseInt(timePart.substring(0, 2));
+            const mm = timePart.substring(2, 4);
+            const period = hh >= 12 ? 'PM' : 'AM';
+            const displayHour = hh % 12 || 12;
+            currentEvent.endTime = `${String(displayHour).padStart(2, '0')}:${mm} ${period}`;
+          }
+        }
+      }
+    }
+  }
+  return events;
+};
+
+// PDF Text Calendar Heuristic Extractor Helper
+const parsePdfText = (text) => {
+  const events = [];
+  const lines = text.split('\n').map(l => l.trim()).filter(l => l.length > 0);
+  
+  const regexYMD = /\b(\d{4})-(\d{2})-(\d{2})\b/;
+  const regexDMY = /\b(\d{1,2})[\/\-](\d{1,2})[\/\-](\d{4})\b/;
+  const regexMonthDayYear = /\b(january|february|march|april|may|june|july|august|september|october|november|december)\s+(\d{1,2}),?\s+(\d{4})\b/i;
+
+  const monthMap = {
+    january: '01', february: '02', march: '03', april: '04', may: '05', june: '06',
+    july: '07', august: '08', september: '09', october: '10', november: '11', december: '12'
+  };
+
+  for (let i = 0; i < lines.length; i++) {
+    const line = lines[i];
+    let matchedDate = null;
+    let title = '';
+    let eventType = 'Event';
+    let description = '';
+    let match;
+
+    if ((match = line.match(regexYMD))) {
+      matchedDate = `${match[1]}-${match[2]}-${match[3]}`;
+    } else if ((match = line.match(regexDMY))) {
+      let d = match[1].padStart(2, '0');
+      let m = match[2].padStart(2, '0');
+      let y = match[3];
+      if (parseInt(m) > 12) {
+        const tmp = d;
+        d = m;
+        m = tmp;
+      }
+      matchedDate = `${y}-${m}-${d}`;
+    } else if ((match = line.match(regexMonthDayYear))) {
+      const monthStr = match[1].toLowerCase();
+      const m = monthMap[monthStr];
+      const d = match[2].padStart(2, '0');
+      const y = match[3];
+      matchedDate = `${y}-${m}-${d}`;
+    }
+
+    if (matchedDate) {
+      let cleanLine = line
+        .replace(regexYMD, '')
+        .replace(regexDMY, '')
+        .replace(regexMonthDayYear, '')
+        .trim();
+      
+      cleanLine = cleanLine.replace(/^[:\-\s\t|,]+/, '').trim();
+      
+      if (cleanLine.length > 0) {
+        const lower = cleanLine.toLowerCase();
+        if (lower.includes('holiday')) eventType = 'Holiday';
+        else if (lower.includes('exam') || lower.includes('test')) eventType = 'Examination';
+        else if (lower.includes('admission')) eventType = 'Admission';
+        else if (lower.includes('fee') || lower.includes('deadline')) eventType = 'Fee Deadline';
+        else if (lower.includes('meeting')) eventType = 'Meeting';
+        
+        const splitParts = cleanLine.split(/[:\-]/);
+        if (splitParts.length > 1) {
+          title = splitParts[0].trim();
+          description = splitParts.slice(1).join('-').trim();
+        } else {
+          title = cleanLine;
+        }
+      } else {
+        if (i + 1 < lines.length) {
+          title = lines[i + 1].trim();
+          i++;
+        } else {
+          title = 'Scheduled Event';
+        }
+      }
+
+      if (!description && i + 1 < lines.length) {
+        const nextLine = lines[i + 1];
+        if (!nextLine.match(regexYMD) && !nextLine.match(regexDMY) && !nextLine.match(regexMonthDayYear)) {
+          description = nextLine.trim();
+          i++;
+        }
+      }
+
+      events.push({
+        eventDate: matchedDate,
+        title: title || 'Academic Event',
+        eventType,
+        description: description || 'Imported from PDF document',
+        applicableClasses: 'All',
+        session: '2026-27',
+        color: '#6366f1',
+        audience: 'All',
+        recurring: 'None'
+      });
+    }
+  }
+  return events;
+};
+
 export const getCalendarEvents = (req, res) => {
   const db = readDb();
   let events = db.academicCalendarEvents || [];
@@ -1598,7 +1832,10 @@ export const getCalendarEvents = (req, res) => {
 };
 
 export const createCalendarEvent = (req, res) => {
-  const { eventDate, title, eventType, description, applicableClasses, startTime, endTime, session } = req.body;
+  const { 
+    eventDate, title, eventType, description, applicableClasses, startTime, endTime, session,
+    color, audience, recurring, reminders, attachments, notifications 
+  } = req.body;
   if (!eventDate || !title || !eventType || !session) {
     return res.status(400).json({ error: 'Date, Title, Type, and Session are required.' });
   }
@@ -1613,6 +1850,12 @@ export const createCalendarEvent = (req, res) => {
     startTime: startTime || '',
     endTime: endTime || '',
     session,
+    color: color || '#6366f1',
+    audience: audience || 'All',
+    recurring: recurring || 'None',
+    reminders: reminders || null,
+    attachments: attachments || null,
+    notifications: notifications || null,
     createdAt: new Date().toISOString(),
     updatedAt: new Date().toISOString()
   };
@@ -1625,7 +1868,10 @@ export const createCalendarEvent = (req, res) => {
 
 export const updateCalendarEvent = (req, res) => {
   const { id } = req.params;
-  const { eventDate, title, eventType, description, applicableClasses, startTime, endTime, session } = req.body;
+  const { 
+    eventDate, title, eventType, description, applicableClasses, startTime, endTime, session,
+    color, audience, recurring, reminders, attachments, notifications 
+  } = req.body;
   const db = readDb();
   if (!db.academicCalendarEvents) db.academicCalendarEvents = [];
   const idx = db.academicCalendarEvents.findIndex(e => e.id === id);
@@ -1642,6 +1888,12 @@ export const updateCalendarEvent = (req, res) => {
     startTime: startTime !== undefined ? startTime : db.academicCalendarEvents[idx].startTime,
     endTime: endTime !== undefined ? endTime : db.academicCalendarEvents[idx].endTime,
     session: session || db.academicCalendarEvents[idx].session,
+    color: color || db.academicCalendarEvents[idx].color || '#6366f1',
+    audience: audience || db.academicCalendarEvents[idx].audience || 'All',
+    recurring: recurring || db.academicCalendarEvents[idx].recurring || 'None',
+    reminders: reminders !== undefined ? reminders : db.academicCalendarEvents[idx].reminders,
+    attachments: attachments !== undefined ? attachments : db.academicCalendarEvents[idx].attachments,
+    notifications: notifications !== undefined ? notifications : db.academicCalendarEvents[idx].notifications,
     updatedAt: new Date().toISOString()
   };
   if (db.publishedCalendarEvents) {
@@ -1672,25 +1924,30 @@ export const getCalendarImports = (req, res) => {
   res.json(db.academicCalendarImports || []);
 };
 
-export const uploadCalendarFile = (req, res) => {
+export const uploadCalendarFile = async (req, res) => {
   if (!req.file) {
     return res.status(400).json({ error: 'No file uploaded.' });
   }
 
+  const fileName = req.file.originalname;
+  const lowerName = fileName.toLowerCase();
+
   try {
-    const workbook = XLSX.read(req.file.buffer, { type: 'buffer' });
-    const sheetName = workbook.SheetNames[0];
-    const rawRows = XLSX.utils.sheet_to_json(workbook.Sheets[sheetName], { raw: false, defval: '' });
+    let rawEvents = [];
 
-    if (rawRows.length === 0) {
-      return res.status(400).json({ error: 'The uploaded file contains no data.' });
-    }
+    if (lowerName.endsWith('.ics')) {
+      const icsText = req.file.buffer.toString('utf8');
+      rawEvents = parseIcsData(icsText);
+    } else if (lowerName.endsWith('.pdf')) {
+      const parser = new PDFParse({ data: req.file.buffer });
+      const parsedPdf = await parser.getText();
+      rawEvents = parsePdfText(parsedPdf.text);
+    } else {
+      const workbook = XLSX.read(req.file.buffer, { type: 'buffer' });
+      const sheetName = workbook.SheetNames[0];
+      const rawRows = XLSX.utils.sheet_to_json(workbook.Sheets[sheetName], { raw: false, defval: '' });
 
-    const validatedRows = rawRows.map((row, index) => {
-      const rowNum = index + 2;
-      const errors = [];
-      
-      const getVal = (possibleKeys) => {
+      const getVal = (row, possibleKeys) => {
         for (const key of Object.keys(row)) {
           const cleanKey = key.trim().toLowerCase().replace(/\s+/g, '');
           if (possibleKeys.includes(cleanKey)) {
@@ -1700,14 +1957,29 @@ export const uploadCalendarFile = (req, res) => {
         return '';
       };
 
-      const rawDate = getVal(['date']);
-      const title = getVal(['eventtitle', 'title']);
-      const eventType = getVal(['eventtype', 'type']);
-      const description = getVal(['description', 'desc']);
-      const applicableClasses = getVal(['applicableclasses', 'classes']);
-      const startTime = getVal(['starttime']);
-      const endTime = getVal(['endtime']);
-      const session = getVal(['academicsession', 'session']);
+      rawEvents = rawRows.map(row => ({
+        eventDate: getVal(row, ['date']),
+        title: getVal(row, ['eventtitle', 'title']),
+        eventType: getVal(row, ['eventtype', 'type']),
+        description: getVal(row, ['description', 'desc']),
+        applicableClasses: getVal(row, ['applicableclasses', 'classes']) || 'All',
+        startTime: getVal(row, ['starttime']),
+        endTime: getVal(row, ['endtime']),
+        session: getVal(row, ['academicsession', 'session']),
+        color: getVal(row, ['color']) || '#6366f1',
+        audience: getVal(row, ['audience']) || 'All',
+        recurring: getVal(row, ['recurring', 'repeat']) || 'None'
+      }));
+    }
+
+    const validatedRows = rawEvents.map((evt, index) => {
+      const rowNum = index + 1;
+      const errors = [];
+      
+      const rawDate = evt.eventDate;
+      const title = evt.title;
+      const eventType = evt.eventType;
+      const session = evt.session || '2026-27';
 
       if (!title) {
         errors.push('Event Title is required.');
@@ -1734,13 +2006,19 @@ export const uploadCalendarFile = (req, res) => {
         errors,
         data: {
           eventDate: normalizedDate,
-          title,
-          eventType,
-          description,
-          applicableClasses: applicableClasses || 'All',
-          startTime,
-          endTime,
-          session
+          title: title || 'Academic Event',
+          eventType: eventType || 'Custom Event',
+          description: evt.description || '',
+          applicableClasses: evt.applicableClasses || 'All',
+          startTime: evt.startTime || '',
+          endTime: evt.endTime || '',
+          session,
+          color: evt.color || '#6366f1',
+          audience: evt.audience || 'All',
+          recurring: evt.recurring || 'None',
+          reminders: evt.reminders || null,
+          attachments: evt.attachments || null,
+          notifications: evt.notifications || null
         }
       };
     });
@@ -1749,19 +2027,19 @@ export const uploadCalendarFile = (req, res) => {
     const invalidRecords = validatedRows.filter(r => !r.isValid).length;
 
     res.json({
-      fileName: req.file.originalname,
+      fileName,
       totalRecords,
       invalidRecords,
       rows: validatedRows
     });
   } catch (err) {
     console.error('[Upload Parse Error]', err);
-    res.status(500).json({ error: 'Failed to process file. Ensure it is a valid CSV or Excel file.' });
+    res.status(500).json({ error: 'Failed to process file. Ensure it is a valid format (Excel, CSV, ICS, or PDF).' });
   }
 };
 
 export const confirmCalendarImport = (req, res) => {
-  const { fileName, session, events } = req.body;
+  const { fileName, session, events, replaceExisting } = req.body;
   if (!Array.isArray(events) || events.length === 0) {
     return res.status(400).json({ error: 'No events provided for import.' });
   }
@@ -1769,6 +2047,12 @@ export const confirmCalendarImport = (req, res) => {
   const db = readDb();
   if (!db.academicCalendarEvents) db.academicCalendarEvents = [];
   if (!db.academicCalendarImports) db.academicCalendarImports = [];
+
+  const targetSession = session || events[0].session || '2026-27';
+
+  if (replaceExisting) {
+    db.academicCalendarEvents = db.academicCalendarEvents.filter(e => e.session !== targetSession);
+  }
 
   const importedEvents = events.map(evt => ({
     id: `EVTCAL-${Date.now()}-${Math.random().toString(36).substr(2, 4)}`,
@@ -1780,6 +2064,12 @@ export const confirmCalendarImport = (req, res) => {
     startTime: evt.startTime || '',
     endTime: evt.endTime || '',
     session: evt.session,
+    color: evt.color || '#6366f1',
+    audience: evt.audience || 'All',
+    recurring: evt.recurring || 'None',
+    reminders: evt.reminders || null,
+    attachments: evt.attachments || null,
+    notifications: evt.notifications || null,
     createdAt: new Date().toISOString(),
     updatedAt: new Date().toISOString()
   }));
@@ -1803,21 +2093,84 @@ export const confirmCalendarImport = (req, res) => {
 };
 
 export const downloadCalendarTemplate = (req, res) => {
-  const headers = ['Date', 'Event Title', 'Event Type', 'Description', 'Applicable Classes', 'Start Time', 'End Time', 'Academic Session'];
-  const sampleRow = ['2026-07-15', 'Annual Sports Meet', 'Sports Event', 'Annual track and field championship events', 'All', '09:00 AM', '04:00 PM', '2026-27'];
-  const sampleRow2 = ['2026-08-10', 'Mid-Term Examinations', 'Examination', 'First semester written tests', 'Grade I, Grade II, Grade III', '10:00 AM', '01:00 PM', '2026-27'];
-  const sampleRow3 = ['2026-09-05', 'Teacher Appreciation Holiday', 'Holiday', 'National teachers day celebration recess', 'All', '', '', '2026-27'];
+  const headers = ['Date', 'Event Title', 'Event Type', 'Description', 'Applicable Classes', 'Start Time', 'End Time', 'Academic Session', 'Color', 'Audience', 'Recurring'];
+  const sampleRow = ['2026-07-15', 'Annual Sports Meet', 'Sports Event', 'Annual track and field championship events', 'All', '09:00 AM', '04:00 PM', '2026-27', '#3b82f6', 'All', 'None'];
+  const sampleRow2 = ['2026-08-10', 'Mid-Term Examinations', 'Examination', 'First semester written tests', 'Grade I, Grade II', '10:00 AM', '01:00 PM', '2026-27', '#ec4899', 'Student,Parent', 'None'];
   
   const csvContent = [
     headers.join(','),
     sampleRow.map(v => `"${v.replace(/"/g, '""')}"`).join(','),
-    sampleRow2.map(v => `"${v.replace(/"/g, '""')}"`).join(','),
-    sampleRow3.map(v => `"${v.replace(/"/g, '""')}"`).join(',')
+    sampleRow2.map(v => `"${v.replace(/"/g, '""')}"`).join(',')
   ].join('\n');
 
   res.setHeader('Content-Type', 'text/csv');
   res.setHeader('Content-Disposition', 'attachment; filename=Academic_Calendar_Template.csv');
   res.status(200).send(csvContent);
+};
+
+export const exportCalendarEvents = (req, res) => {
+  const db = readDb();
+  let events = db.academicCalendarEvents || [];
+  const { session, format = 'ics' } = req.query;
+
+  if (session) {
+    events = events.filter(e => e.session === session);
+  }
+
+  if (format === 'ics') {
+    let icsContent = 'BEGIN:VCALENDAR\nVERSION:2.0\nPRODID:-//School Management ERP//Academic Calendar//EN\nCALSCALE:GREGORIAN\n';
+    
+    events.forEach(e => {
+      icsContent += 'BEGIN:VEVENT\n';
+      icsContent += `UID:EVT-${e.id}@school-erp.com\n`;
+      icsContent += `DTSTAMP:${new Date(e.createdAt || Date.now()).toISOString().replace(/[-:]/g, '').split('.')[0] + 'Z'}\n`;
+      
+      const dateNoDash = e.eventDate.replace(/-/g, '');
+      icsContent += `DTSTART;VALUE=DATE:${dateNoDash}\n`;
+      const nextDay = new Date(new Date(e.eventDate).getTime() + 24 * 60 * 60 * 1000);
+      const nextDayStr = nextDay.toISOString().split('T')[0].replace(/-/g, '');
+      icsContent += `DTEND;VALUE=DATE:${nextDayStr}\n`;
+      
+      icsContent += `SUMMARY:${e.title}\n`;
+      icsContent += `DESCRIPTION:${(e.description || '').replace(/\n/g, '\\n')}\n`;
+      icsContent += `CATEGORIES:${e.eventType}\n`;
+      icsContent += `COLOR:${e.color || '#6366f1'}\n`;
+      icsContent += 'END:VEVENT\n';
+    });
+    
+    icsContent += 'END:VCALENDAR';
+    
+    res.setHeader('Content-Type', 'text/calendar');
+    res.setHeader('Content-Disposition', `attachment; filename=Academic_Calendar_${session || 'All'}.ics`);
+    return res.status(200).send(icsContent);
+  } else if (format === 'excel' || format === 'csv') {
+    const headers = [
+      'Date', 'Event Title', 'Event Type', 'Description', 'Applicable Classes', 
+      'Start Time', 'End Time', 'Academic Session', 'Color', 'Audience', 'Recurring'
+    ];
+    const dataRows = events.map(e => [
+      e.eventDate, e.title, e.eventType, e.description || '', e.applicableClasses || 'All',
+      e.startTime || '', e.endTime || '', e.session, e.color || '#6366f1', e.audience || 'All', e.recurring || 'None'
+    ]);
+    
+    const ws = XLSX.utils.aoa_to_sheet([headers, ...dataRows]);
+    const wb = XLSX.utils.book_new();
+    XLSX.utils.book_append_sheet(wb, ws, 'Academic Calendar');
+    
+    if (format === 'csv') {
+      const csv = XLSX.utils.sheet_to_csv(ws);
+      res.setHeader('Content-Type', 'text/csv');
+      res.setHeader('Content-Disposition', `attachment; filename=Academic_Calendar_${session || 'All'}.csv`);
+      return res.status(200).send(csv);
+    } else {
+      const buffer = XLSX.write(wb, { type: 'buffer', bookType: 'xlsx' });
+      res.setHeader('Content-Type', 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
+      res.setHeader('Content-Disposition', `attachment; filename=Academic_Calendar_${session || 'All'}.xlsx`);
+      return res.status(200).send(buffer);
+    }
+  } else {
+    return res.status(400).json({ error: 'Unsupported format. Use ics, excel, or csv.' });
+  }
 };
 
 export const getPublishedEvents = (req, res) => {

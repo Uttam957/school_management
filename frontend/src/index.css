@@ -553,16 +553,20 @@ textarea.form-control::placeholder,
   color: var(--text-main);
 }
 
-/* Form disabled state */
+/* Form disabled and readonly states */
 .form-control:disabled,
-textarea.form-control:disabled {
+.form-control[readonly],
+textarea.form-control:disabled,
+textarea.form-control[readonly] {
   background: #f0f4f8;
   opacity: 0.6;
   cursor: not-allowed;
 }
 
 [data-theme='dark'] .form-control:disabled,
-[data-theme='dark'] textarea.form-control:disabled {
+[data-theme='dark'] .form-control[readonly],
+[data-theme='dark'] textarea.form-control:disabled,
+[data-theme='dark'] textarea.form-control[readonly] {
   background: rgba(15, 17, 34, 0.5);
   opacity: 0.6;
   cursor: not-allowed;
@@ -760,4 +764,8 @@ textarea.form-control:disabled {
 
 .search-item-hover:hover {
   background: rgba(var(--color-primary-rgb), 0.08) !important;
+}
+
+.print-only {
+  display: none !important;
 }

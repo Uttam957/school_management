@@ -8,7 +8,7 @@ import {
   FolderPlus,
   ArrowRight
 } from 'lucide-react';
-import { fetchActiveGrades } from '../utils/grades';
+import { fetchActiveGrades, fetchActiveSections } from '../utils/grades';
 
 export default function StudentManager({ showToast }) {
   const [students, setStudents] = useState([]);
@@ -22,24 +22,30 @@ export default function StudentManager({ showToast }) {
   const [statusFilter, setStatusFilter] = useState('All');
   
   const [gradeOptions, setGradeOptions] = useState([]);
+  const [sectionOptions, setSectionOptions] = useState([]);
   const [allocations, setAllocations] = useState({});
 
   const tenantSubdomain = localStorage.getItem('tenant_subdomain') || 'default';
 
   useEffect(() => {
-    const loadGrades = async () => {
-      const activeGrades = await fetchActiveGrades();
+    const loadGradesAndSections = async () => {
+      const [activeGrades, activeSections] = await Promise.all([
+        fetchActiveGrades(),
+        fetchActiveSections()
+      ]);
       if (activeGrades && activeGrades.length > 0) {
         setGradeOptions(activeGrades.map(g => g.name));
       } else {
         setGradeOptions([]);
       }
+      if (activeSections && activeSections.length > 0) {
+        setSectionOptions(activeSections.map(s => s.name));
+      } else {
+        setSectionOptions([]);
+      }
     };
-    loadGrades();
+    loadGradesAndSections();
   }, []);
-
-  // Standard section options (A to E)
-  const sectionOptions = ['A', 'B', 'C', 'D', 'E'];
 
   const fetchStudents = async () => {
     if (!classFilter && !searchQuery) {

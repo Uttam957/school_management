@@ -9,7 +9,7 @@ import {
 } from 'lucide-react';
 
 import StudentDirectory from './StudentDirectory';
-import { fetchActiveGrades } from '../utils/grades';
+import { fetchActiveGrades, fetchActiveSections } from '../utils/grades';
 
 function ConfirmDialog({ show, message, onConfirm, onCancel }) {
   if (!show) return null;
@@ -364,13 +364,18 @@ export function CollectFeesView({ showToast }) {
   }, [showForm]);
 
   const [activeGrades, setActiveGrades] = useState([]);
+  const [activeSections, setActiveSections] = useState([]);
 
   useEffect(() => {
-    const loadGrades = async () => {
-      const grades = await fetchActiveGrades();
+    const loadGradesAndSections = async () => {
+      const [grades, secs] = await Promise.all([
+        fetchActiveGrades(),
+        fetchActiveSections()
+      ]);
       setActiveGrades(grades);
+      setActiveSections(secs);
     };
-    loadGrades();
+    loadGradesAndSections();
   }, []);
 
   const classes = activeGrades.map(g => g.name);
@@ -781,7 +786,7 @@ export function CollectFeesView({ showToast }) {
                     style={{ ...inputStyle, cursor: 'pointer' }}
                   >
                     <option value="" style={optionStyle}>All Sections</option>
-                    {['A', 'B', 'C', 'D'].map(sec => (
+                    {activeSections.map(s => s.name).map(sec => (
                       <option key={sec} value={sec} style={optionStyle}>Section {sec}</option>
                     ))}
                   </select>
@@ -2536,28 +2541,16 @@ export function ExpensesView({ showToast }) {
     <div style={{ display: 'flex', flexDirection: 'column', gap: '28px' }}>
       
       {/* KPI Cards Grid */}
-      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))', gap: '20px' }}>
-        <div className="glass-panel" style={{ padding: '20px 24px', borderRadius: '14px', borderLeft: '4px solid #ef4444' }}>
-          <p style={{ fontSize: '0.7rem', color: 'var(--text-muted)', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.05em' }}>Total Expenses (Outflow)</p>
-          <h3 style={{ fontSize: '1.6rem', fontWeight: 800, color: '#ef4444', marginTop: '6px' }}>₹{calculatedTotalExpenses.toLocaleString()}</h3>
-          <span style={{ fontSize: '0.72rem', color: 'var(--text-muted)' }}>Salary + Operating overheads</span>
+      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, 1fr)', gap: '20px' }}>
+        <div className="glass-panel" style={{ padding: '24px 28px', borderRadius: '16px', borderLeft: '4px solid #ef4444' }}>
+          <p style={{ fontSize: '0.68rem', color: 'var(--text-muted)', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.06em', marginBottom: '8px' }}>Total Expenses (Outflow)</p>
+          <h3 style={{ fontSize: '1.8rem', fontWeight: 800, color: '#ef4444', margin: 0 }}>₹{calculatedTotalExpenses.toLocaleString()}</h3>
+          <span style={{ fontSize: '0.75rem', color: 'var(--text-muted)', marginTop: '6px', display: 'block' }}>Salary + Operating overheads</span>
         </div>
-        <div className="glass-panel" style={{ padding: '20px 24px', borderRadius: '14px', borderLeft: '4px solid #10b981' }}>
-          <p style={{ fontSize: '0.7rem', color: 'var(--text-muted)', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.05em' }}>Total Income (Revenue)</p>
-          <h3 style={{ fontSize: '1.6rem', fontWeight: 800, color: '#10b981', marginTop: '6px' }}>₹{calculatedTotalIncome.toLocaleString()}</h3>
-          <span style={{ fontSize: '0.72rem', color: 'var(--text-muted)' }}>Fees + Auxiliary Income</span>
-        </div>
-        <div className="glass-panel" style={{ padding: '20px 24px', borderRadius: '14px', borderLeft: `4px solid ${netBalance >= 0 ? '#10b981' : '#ef4444'}` }}>
-          <p style={{ fontSize: '0.7rem', color: 'var(--text-muted)', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.05em' }}>Net balance</p>
-          <h3 style={{ fontSize: '1.6rem', fontWeight: 800, color: netBalance >= 0 ? '#10b981' : '#ef4444', marginTop: '6px' }}>
-            {netBalance >= 0 ? '+' : ''}₹{netBalance.toLocaleString()}
-          </h3>
-          <span style={{ fontSize: '0.72rem', color: 'var(--text-muted)' }}>{netBalance >= 0 ? 'Surplus Reserve' : 'Deficit Shortfall'}</span>
-        </div>
-        <div className="glass-panel" style={{ padding: '20px 24px', borderRadius: '14px', borderLeft: '4px solid #f59e0b' }}>
-          <p style={{ fontSize: '0.7rem', color: 'var(--text-muted)', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.05em' }}>Operating Overhead</p>
-          <h3 style={{ fontSize: '1.6rem', fontWeight: 800, color: '#f59e0b', marginTop: '6px' }}>₹{operatingOverhead.toLocaleString()}</h3>
-          <span style={{ fontSize: '0.72rem', color: 'var(--text-muted)' }}>Utilities, Supplies & Renovations</span>
+        <div className="glass-panel" style={{ padding: '24px 28px', borderRadius: '16px', borderLeft: '4px solid #f59e0b' }}>
+          <p style={{ fontSize: '0.68rem', color: 'var(--text-muted)', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.06em', marginBottom: '8px' }}>Operating Overhead</p>
+          <h3 style={{ fontSize: '1.8rem', fontWeight: 800, color: '#f59e0b', margin: 0 }}>₹{operatingOverhead.toLocaleString()}</h3>
+          <span style={{ fontSize: '0.75rem', color: 'var(--text-muted)', marginTop: '6px', display: 'block' }}>Utilities, Supplies & Renovations</span>
         </div>
       </div>
 
@@ -2746,6 +2739,12 @@ export function IncomeView({ showToast }) {
   const [overview, setOverview] = useState(null);
   const [loading, setLoading] = useState(true);
 
+  // Tab and Filter states
+  const [activeTab, setActiveTab] = useState('fees');
+  const [feeSearch, setFeeSearch] = useState('');
+  const [feeClassFilter, setFeeClassFilter] = useState('All');
+  const [feeTypeFilter, setFeeTypeFilter] = useState('All');
+  const [receiptData, setReceiptData] = useState(null);
 
   const sources = ['Donations', 'Grants', 'Event Revenue', 'Canteen', 'Rental', 'Sponsorship', 'Other'];
 
@@ -2772,14 +2771,26 @@ export function IncomeView({ showToast }) {
     fetchData();
   }, []);
 
-
-
   // Aggregations
-  const totalTuitionFees = fees.filter(f => f.paymentStatus === 'Paid').reduce((sum, f) => sum + (f.paidAmount || 0), 0);
+  const totalTuitionFees = fees.reduce((sum, f) => sum + (f.paidAmount || 0), 0);
   const totalOtherIncome = income.reduce((sum, i) => sum + (i.amount || 0), 0);
   const calculatedTotalIncome = totalTuitionFees + totalOtherIncome;
   const calculatedTotalExpenses = expenses.reduce((sum, e) => sum + (e.amount || 0), 0);
   const netBalance = calculatedTotalIncome - calculatedTotalExpenses;
+  const totalPendingFees = fees.reduce((sum, f) => sum + (f.dueAmount || 0), 0);
+
+  // Breakdown of student fees by category
+  const feeTypeTotals = {
+    'Tuition Fee': 0,
+    'Admission Fee': 0,
+    'Exam Fee': 0,
+    'Transport Fee': 0,
+    'Other Charges': 0
+  };
+  fees.forEach(f => {
+    const type = f.feeType || 'Other Charges';
+    feeTypeTotals[type] = (feeTypeTotals[type] || 0) + (f.paidAmount || 0);
+  });
 
   // Breakdown of other income sources
   const sourceTotals = {};
@@ -2789,6 +2800,22 @@ export function IncomeView({ showToast }) {
     sourceTotals[s] = (sourceTotals[s] || 0) + (i.amount || 0);
   });
   const tuitionFeesSharePercent = calculatedTotalIncome > 0 ? Math.round((totalTuitionFees / calculatedTotalIncome) * 100) : 0;
+  const otherIncomeSharePercent = calculatedTotalIncome > 0 ? Math.round((totalOtherIncome / calculatedTotalIncome) * 100) : 0;
+
+  const classesList = [...new Set(fees.map(f => f.studentClass).filter(Boolean))].sort();
+  const feeTypesList = ['Tuition Fee', 'Admission Fee', 'Exam Fee', 'Transport Fee', 'Other Charges'];
+
+  const filteredFees = fees.filter(f => {
+    const matchesSearch = !feeSearch || 
+      f.studentName?.toLowerCase().includes(feeSearch.toLowerCase()) ||
+      f.admissionNumber?.toLowerCase().includes(feeSearch.toLowerCase()) ||
+      f.receiptNumber?.toLowerCase().includes(feeSearch.toLowerCase());
+      
+    const matchesClass = feeClassFilter === 'All' || f.studentClass === feeClassFilter;
+    const matchesType = feeTypeFilter === 'All' || f.feeType === feeTypeFilter;
+    
+    return matchesSearch && matchesClass && matchesType;
+  });
 
   const inputStyle = {
     width: '100%', padding: '10px 14px', background: 'var(--bg-form)',
@@ -2809,6 +2836,57 @@ export function IncomeView({ showToast }) {
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: '28px' }}>
       
+      {/* Receipt Modal */}
+      {receiptData && createPortal(
+        <div className="modal-overlay" onClick={() => setReceiptData(null)}>
+          <div onClick={e => e.stopPropagation()} style={{
+            width: '100%', maxWidth: '440px', background: 'var(--bg-elevated)', borderRadius: '20px',
+            border: '1px solid var(--border-glass)', padding: '32px', boxShadow: 'var(--shadow-lg)'
+          }}>
+            <div style={{ textAlign: 'center', marginBottom: '24px' }}>
+              <CheckCircle size={40} style={{ color: '#10b981', marginBottom: '12px' }} />
+              <h3 style={{ fontSize: '1.2rem', fontWeight: 800, color: 'var(--text-main)' }}>Payment Receipt</h3>
+              <p style={{ fontSize: '0.8rem', color: 'var(--text-muted)' }}>{receiptData.receiptNumber}</p>
+            </div>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '10px', padding: '16px', background: 'var(--bg-card-subtle)', borderRadius: '12px', border: '1px solid var(--border-subtle)' }}>
+              {[
+                ['Student', receiptData.studentName],
+                ['Class', `${receiptData.studentClass}-${receiptData.section}`],
+                ['Fee Type', receiptData.feeType],
+                ['Amount', `₹${receiptData.amount?.toLocaleString()}`],
+                ['Discount', `₹${receiptData.discount?.toLocaleString()}`],
+                ['Fine', `₹${receiptData.fine?.toLocaleString()}`],
+                ['Total', `₹${receiptData.totalAmount?.toLocaleString()}`],
+                ['Paid', `₹${receiptData.paidAmount?.toLocaleString()}`],
+                ['Due', `₹${receiptData.dueAmount?.toLocaleString()}`],
+                ['Method', receiptData.paymentMethod],
+                ['Date', receiptData.paymentDate],
+                ['Transaction', receiptData.transactionId],
+              ].map(([k, v], i) => (
+                <div key={i} style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.8rem' }}>
+                  <span style={{ color: 'var(--text-muted)', fontWeight: 600 }}>{k}</span>
+                  <span style={{ color: 'var(--text-main)', fontWeight: 700 }}>{v}</span>
+                </div>
+              ))}
+            </div>
+            <div style={{ display: 'flex', gap: '10px', marginTop: '20px' }}>
+              <button onClick={() => window.print()} style={{
+                flex: 1, padding: '12px', background: 'linear-gradient(135deg, #10b981, #059669)',
+                border: 'none', borderRadius: '10px', color: '#fff', fontWeight: 700, cursor: 'pointer',
+                display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '6px', fontSize: '0.85rem'
+              }}>
+                <Printer size={16} /> Print Receipt
+              </button>
+              <button onClick={() => setReceiptData(null)} style={{
+                padding: '12px 20px', background: 'var(--bg-card-subtle)', border: '1px solid var(--border-subtle)',
+                borderRadius: '10px', color: 'var(--text-main)', fontWeight: 600, cursor: 'pointer', fontSize: '0.85rem'
+              }}>Close</button>
+            </div>
+          </div>
+        </div>,
+        document.body
+      )}
+
       {/* KPI Cards Grid */}
       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))', gap: '20px' }}>
         <div className="glass-panel" style={{ padding: '20px 24px', borderRadius: '14px', borderLeft: '4px solid #10b981' }}>
@@ -2816,22 +2894,20 @@ export function IncomeView({ showToast }) {
           <h3 style={{ fontSize: '1.6rem', fontWeight: 800, color: '#10b981', marginTop: '6px' }}>₹{calculatedTotalIncome.toLocaleString()}</h3>
           <span style={{ fontSize: '0.72rem', color: 'var(--text-muted)' }}>Student Fees + Auxiliary Income</span>
         </div>
-        <div className="glass-panel" style={{ padding: '20px 24px', borderRadius: '14px', borderLeft: '4px solid #ef4444' }}>
-          <p style={{ fontSize: '0.7rem', color: 'var(--text-muted)', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.05em' }}>Total Expenses (Outflow)</p>
-          <h3 style={{ fontSize: '1.6rem', fontWeight: 800, color: '#ef4444', marginTop: '6px' }}>₹{calculatedTotalExpenses.toLocaleString()}</h3>
-          <span style={{ fontSize: '0.72rem', color: 'var(--text-muted)' }}>Payroll + Operating expenses</span>
-        </div>
-        <div className="glass-panel" style={{ padding: '20px 24px', borderRadius: '14px', borderLeft: `4px solid ${netBalance >= 0 ? '#10b981' : '#ef4444'}` }}>
-          <p style={{ fontSize: '0.7rem', color: 'var(--text-muted)', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.05em' }}>Net Balance</p>
-          <h3 style={{ fontSize: '1.6rem', fontWeight: 800, color: netBalance >= 0 ? '#10b981' : '#ef4444', marginTop: '6px' }}>
-            {netBalance >= 0 ? '+' : ''}₹{netBalance.toLocaleString()}
-          </h3>
-          <span style={{ fontSize: '0.72rem', color: 'var(--text-muted)' }}>{netBalance >= 0 ? 'Surplus Reserve' : 'Deficit Shortfall'}</span>
-        </div>
         <div className="glass-panel" style={{ padding: '20px 24px', borderRadius: '14px', borderLeft: '4px solid #3b82f6' }}>
-          <p style={{ fontSize: '0.7rem', color: 'var(--text-muted)', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.05em' }}>Tuition fees portion</p>
+          <p style={{ fontSize: '0.7rem', color: 'var(--text-muted)', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.05em' }}>Student Fee Collections</p>
           <h3 style={{ fontSize: '1.6rem', fontWeight: 800, color: '#3b82f6', marginTop: '6px' }}>₹{totalTuitionFees.toLocaleString()}</h3>
           <span style={{ fontSize: '0.72rem', color: 'var(--text-muted)' }}>{tuitionFeesSharePercent}% of total revenue</span>
+        </div>
+        <div className="glass-panel" style={{ padding: '20px 24px', borderRadius: '14px', borderLeft: '4px solid #06b6d4' }}>
+          <p style={{ fontSize: '0.7rem', color: 'var(--text-muted)', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.05em' }}>Auxiliary & Other Income</p>
+          <h3 style={{ fontSize: '1.6rem', fontWeight: 800, color: '#06b6d4', marginTop: '6px' }}>₹{totalOtherIncome.toLocaleString()}</h3>
+          <span style={{ fontSize: '0.72rem', color: 'var(--text-muted)' }}>{otherIncomeSharePercent}% of total revenue</span>
+        </div>
+        <div className="glass-panel" style={{ padding: '20px 24px', borderRadius: '14px', borderLeft: '4px solid #ef4444' }}>
+          <p style={{ fontSize: '0.7rem', color: 'var(--text-muted)', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.05em' }}>Outstanding Dues (Pending)</p>
+          <h3 style={{ fontSize: '1.6rem', fontWeight: 800, color: '#ef4444', marginTop: '6px' }}>₹{totalPendingFees.toLocaleString()}</h3>
+          <span style={{ fontSize: '0.72rem', color: 'var(--text-muted)' }}>Uncollected student balances</span>
         </div>
       </div>
 
@@ -2882,12 +2958,12 @@ export function IncomeView({ showToast }) {
           </div>
         </div>
 
-        {/* Income Sources Distribution */}
+        {/* Revenue Source Breakdown */}
         <div className="glass-panel" style={{ padding: '24px', borderRadius: '16px' }}>
           <h3 style={{ fontSize: '0.92rem', fontWeight: 700, color: 'var(--text-main)', marginBottom: '20px', display: 'flex', alignItems: 'center', gap: '8px' }}>
             <PieChart size={18} style={{ color: '#3b82f6' }} /> Revenue Source Breakdown
           </h3>
-          <div style={{ display: 'flex', flexDirection: 'column', gap: '14px' }}>
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '14px', maxHeight: '380px', overflowY: 'auto', paddingRight: '4px' }}>
             {calculatedTotalIncome === 0 ? (
               <div style={{ textAlign: 'center', padding: '40px 10px', color: 'var(--text-muted)', fontSize: '0.82rem', display: 'flex', flexDirection: 'column', gap: '4px', alignItems: 'center', justifyContent: 'center' }}>
                 <span style={{ fontWeight: 600, color: 'var(--text-main)' }}>No data available</span>
@@ -2895,29 +2971,44 @@ export function IncomeView({ showToast }) {
               </div>
             ) : (
               <>
-                {/* Tuition Fees */}
-                <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
-                  <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.78rem' }}>
-                    <span style={{ fontWeight: 600, color: 'var(--text-main)' }}>Student Tuition Fees</span>
-                    <span style={{ fontWeight: 700, color: 'var(--text-muted)' }}>₹{totalTuitionFees.toLocaleString()} ({tuitionFeesSharePercent}%)</span>
-                  </div>
-                  <div style={{ width: '100%', height: '8px', background: 'rgba(255,255,255,0.03)', borderRadius: '4px', overflow: 'hidden' }}>
-                    <div style={{ width: `${tuitionFeesSharePercent}%`, height: '100%', background: '#3b82f6', borderRadius: '4px' }} />
-                  </div>
-                </div>
+                {/* Student Fee categories (only show if they have collections) */}
+                {Object.entries(feeTypeTotals).map(([type, val]) => {
+                  if (val === 0) return null;
+                  const percent = calculatedTotalIncome > 0 ? Math.round((val / calculatedTotalIncome) * 100) : 0;
+                  const feeColors = {
+                    'Tuition Fee': '#3b82f6',
+                    'Admission Fee': '#8b5cf6',
+                    'Exam Fee': '#6366f1',
+                    'Transport Fee': '#06b6d4',
+                    'Other Charges': '#64748b'
+                  };
+                  const color = feeColors[type] || '#3b82f6';
+                  return (
+                    <div key={type} style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
+                      <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.78rem' }}>
+                        <span style={{ fontWeight: 600, color: 'var(--text-main)' }}>Student {type}s</span>
+                        <span style={{ fontWeight: 700, color: 'var(--text-muted)' }}>₹{val.toLocaleString()} ({percent}%)</span>
+                      </div>
+                      <div style={{ width: '100%', height: '8px', background: 'rgba(255,255,255,0.03)', borderRadius: '4px', overflow: 'hidden' }}>
+                        <div style={{ width: `${percent}%`, height: '100%', background: color, borderRadius: '4px' }} />
+                      </div>
+                    </div>
+                  );
+                })}
                 
-                {/* Other sources */}
+                {/* Auxiliary sources */}
                 {Object.entries(sourceTotals).map(([source, val]) => {
+                  if (val === 0) return null;
                   const percent = calculatedTotalIncome > 0 ? Math.round((val / calculatedTotalIncome) * 100) : 0;
                   const sourceColors = {
-                    Donations: '#10b981', Grants: '#8b5cf6', 'Event Revenue': '#f59e0b',
+                    Donations: '#10b981', Grants: '#14b8a6', 'Event Revenue': '#f59e0b',
                     Canteen: '#ec4899', Rental: '#06b6d4', Sponsorship: '#f97316', Other: '#6b7280'
                   };
                   const color = sourceColors[source] || '#10b981';
                   return (
                     <div key={source} style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
                       <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.78rem' }}>
-                        <span style={{ fontWeight: 600, color: 'var(--text-main)' }}>{source}</span>
+                        <span style={{ fontWeight: 600, color: 'var(--text-main)' }}>Auxiliary: {source}</span>
                         <span style={{ fontWeight: 700, color: 'var(--text-muted)' }}>₹{val.toLocaleString()} ({percent}%)</span>
                       </div>
                       <div style={{ width: '100%', height: '8px', background: 'rgba(255,255,255,0.03)', borderRadius: '4px', overflow: 'hidden' }}>
@@ -2933,37 +3024,213 @@ export function IncomeView({ showToast }) {
 
       </div>
 
-      {/* Action buttons */}
-      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-        <h3 style={{ fontSize: '1rem', fontWeight: 800, color: 'var(--text-main)', margin: 0 }}>Auxiliary Revenue Entries</h3>
+      {/* Tabs Switcher for Collections History & Auxiliary entries */}
+      <div style={{ display: 'flex', gap: '16px', borderBottom: '1px solid var(--border-glass)', paddingBottom: '10px', marginTop: '20px' }}>
+        <button 
+          onClick={() => setActiveTab('fees')}
+          style={{
+            background: 'none', border: 'none', padding: '8px 16px', cursor: 'pointer',
+            fontSize: '0.9rem', fontWeight: 700, 
+            color: activeTab === 'fees' ? '#10b981' : 'var(--text-muted)',
+            borderBottom: activeTab === 'fees' ? '3px solid #10b981' : 'none',
+            display: 'flex', alignItems: 'center', gap: '8px', transition: 'all 0.2s'
+          }}
+        >
+          <Receipt size={16} /> Student Fee Collections History
+        </button>
+        <button 
+          onClick={() => setActiveTab('auxiliary')}
+          style={{
+            background: 'none', border: 'none', padding: '8px 16px', cursor: 'pointer',
+            fontSize: '0.9rem', fontWeight: 700, 
+            color: activeTab === 'auxiliary' ? '#10b981' : 'var(--text-muted)',
+            borderBottom: activeTab === 'auxiliary' ? '3px solid #10b981' : 'none',
+            display: 'flex', alignItems: 'center', gap: '8px', transition: 'all 0.2s'
+          }}
+        >
+          <TrendingUp size={16} /> Auxiliary & Other Income
+        </button>
       </div>
 
-      {/* Income Cards Grid instead of plain table */}
-      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))', gap: '16px' }}>
-        {income.length === 0 ? (
-          <div className="glass-panel" style={{ padding: '40px', textAlign: 'center', color: 'var(--text-muted)', gridColumn: '1 / -1' }}>
-            No revenue entries recorded yet.
-          </div>
-        ) : (
-          income.map((inc, i) => (
-            <div key={i} className="glass-panel" style={{ padding: '20px', borderRadius: '12px', border: '1px solid rgba(255,255,255,0.04)', display: 'flex', flexDirection: 'column', gap: '12px', position: 'relative' }}>
-              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
-                <span style={{ fontSize: '0.68rem', fontWeight: 700, color: '#f59e0b', background: 'rgba(245,158,11,0.08)', padding: '2px 8px', borderRadius: '10px' }}>{inc.source}</span>
-                <span style={{ fontSize: '0.78rem', color: 'var(--text-muted)' }}>{inc.date}</span>
-              </div>
-              <div>
-                <h4 style={{ fontSize: '1.25rem', fontWeight: 800, color: '#10b981', margin: 0 }}>₹{inc.amount?.toLocaleString()}</h4>
-                <p style={{ fontSize: '0.8rem', color: 'var(--text-main)', marginTop: '6px', minHeight: '36px' }}>{inc.description || 'No description provided'}</p>
-              </div>
-              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', paddingTop: '10px', borderTop: '1px solid rgba(255,255,255,0.03)', fontSize: '0.72rem', color: 'var(--text-muted)' }}>
-                <span>Received: {inc.receivedBy || 'Finance Dept'}</span>
-                <span>ID: {inc.incomeId}</span>
-              </div>
+      {activeTab === 'fees' ? (
+        <div className="glass-panel" style={{ padding: '24px', borderRadius: '16px', display: 'flex', flexDirection: 'column', gap: '20px' }}>
+          
+          {/* Filter Toolbar */}
+          <div style={{ display: 'flex', gap: '12px', flexWrap: 'wrap', alignItems: 'center' }}>
+            <div style={{ position: 'relative', flex: 1, minWidth: '240px' }}>
+              <Search size={16} style={{ position: 'absolute', left: '12px', top: '50%', transform: 'translateY(-50%)', color: 'var(--text-muted)' }} />
+              <input 
+                value={feeSearch} 
+                onChange={e => setFeeSearch(e.target.value)} 
+                placeholder="Search student, receipt number or admission number..." 
+                style={{ ...inputStyle, paddingLeft: '38px' }}
+              />
             </div>
-          ))
-        )}
-      </div>
+            <select 
+              value={feeClassFilter} 
+              onChange={e => setFeeClassFilter(e.target.value)} 
+              style={{ ...inputStyle, width: 'auto', minWidth: '150px' }}
+            >
+              <option value="All" style={optionStyle}>All Classes</option>
+              {classesList.map(c => (
+                <option key={c} value={c} style={optionStyle}>{c}</option>
+              ))}
+            </select>
+            <select 
+              value={feeTypeFilter} 
+              onChange={e => setFeeTypeFilter(e.target.value)} 
+              style={{ ...inputStyle, width: 'auto', minWidth: '160px' }}
+            >
+              <option value="All" style={optionStyle}>All Fee Types</option>
+              {feeTypesList.map(t => (
+                <option key={t} value={t} style={optionStyle}>{t}</option>
+              ))}
+            </select>
+            <button 
+              onClick={() => {
+                const rows = filteredFees.map(f => ({
+                  'Receipt Number': f.receiptNumber,
+                  'Student Name': f.studentName,
+                  'Admission Number': f.admissionNumber,
+                  'Class': f.studentClass,
+                  'Section': f.section,
+                  'Fee Type': f.feeType,
+                  'Paid Amount': f.paidAmount,
+                  'Due Amount': f.dueAmount,
+                  'Payment Method': f.paymentMethod,
+                  'Payment Date': f.paymentDate,
+                  'Transaction ID': f.transactionId
+                }));
+                const headers = Object.keys(rows[0] || {});
+                if (!rows.length) return showToast('No data to export', 'error');
+                const csv = [headers.join(','), ...rows.map(r => headers.map(h => `"${r[h] ?? ''}"`).join(','))].join('\n');
+                const blob = new Blob([csv], { type: 'text/csv' });
+                const url = URL.createObjectURL(blob);
+                const a = document.createElement('a');
+                a.href = url; a.download = 'student_fee_collections.csv'; a.click();
+                URL.revokeObjectURL(url);
+                showToast('Fee Collections CSV downloaded!');
+              }}
+              style={{
+                padding: '10px 18px', background: 'rgba(255,255,255,0.02)', border: '1px solid rgba(255,255,255,0.06)',
+                borderRadius: '10px', color: 'var(--text-main)', fontWeight: 600, cursor: 'pointer',
+                display: 'flex', alignItems: 'center', gap: '8px', fontSize: '0.85rem', transition: 'all 0.2s',
+                height: '42px', boxSizing: 'border-box'
+              }}
+              onMouseEnter={e => { e.currentTarget.style.borderColor = '#10b98144'; e.currentTarget.style.background = '#10b98108'; }}
+              onMouseLeave={e => { e.currentTarget.style.borderColor = 'rgba(255,255,255,0.06)'; e.currentTarget.style.background = 'rgba(255,255,255,0.02)'; }}
+            >
+              <Download size={16} /> Export CSV
+            </button>
+          </div>
 
+          {/* Data Table */}
+          <div style={{ overflowX: 'auto', borderRadius: '12px', border: '1px solid var(--border-glass)' }}>
+            <table style={{ width: '100%', borderCollapse: 'collapse', textAlign: 'left' }}>
+              <thead>
+                <tr style={{ background: 'var(--bg-card-subtle)', borderBottom: '1px solid var(--border-glass)' }}>
+                  <th style={{ padding: '14px 16px', fontSize: '0.72rem', fontWeight: 700, color: 'var(--text-muted)', textTransform: 'uppercase', whiteSpace: 'nowrap' }}>Receipt No</th>
+                  <th style={{ padding: '14px 16px', fontSize: '0.72rem', fontWeight: 700, color: 'var(--text-muted)', textTransform: 'uppercase', whiteSpace: 'nowrap' }}>Student</th>
+                  <th style={{ padding: '14px 16px', fontSize: '0.72rem', fontWeight: 700, color: 'var(--text-muted)', textTransform: 'uppercase', whiteSpace: 'nowrap' }}>Class</th>
+                  <th style={{ padding: '14px 16px', fontSize: '0.72rem', fontWeight: 700, color: 'var(--text-muted)', textTransform: 'uppercase', whiteSpace: 'nowrap' }}>Fee Category</th>
+                  <th style={{ padding: '14px 16px', fontSize: '0.72rem', fontWeight: 700, color: 'var(--text-muted)', textTransform: 'uppercase', whiteSpace: 'nowrap' }}>Amount Paid</th>
+                  <th style={{ padding: '14px 16px', fontSize: '0.72rem', fontWeight: 700, color: 'var(--text-muted)', textTransform: 'uppercase', whiteSpace: 'nowrap' }}>Due Balance</th>
+                  <th style={{ padding: '14px 16px', fontSize: '0.72rem', fontWeight: 700, color: 'var(--text-muted)', textTransform: 'uppercase', whiteSpace: 'nowrap' }}>Status</th>
+                  <th style={{ padding: '14px 16px', fontSize: '0.72rem', fontWeight: 700, color: 'var(--text-muted)', textTransform: 'uppercase', whiteSpace: 'nowrap' }}>Date</th>
+                  <th style={{ padding: '14px 16px', fontSize: '0.72rem', fontWeight: 700, color: 'var(--text-muted)', textTransform: 'uppercase', textAlign: 'center', whiteSpace: 'nowrap' }}>Action</th>
+                </tr>
+              </thead>
+              <tbody>
+                {filteredFees.length === 0 ? (
+                  <tr>
+                    <td colSpan={9} style={{ padding: '40px', textAlign: 'center', color: 'var(--text-muted)', fontSize: '0.85rem' }}>
+                      No fee records found matching filter criteria.
+                    </td>
+                  </tr>
+                ) : (
+                  filteredFees.map((fee, idx) => {
+                    const statusColors = {
+                      Paid: { text: '#10b981', bg: 'rgba(16,185,129,0.08)' },
+                      Partial: { text: '#f59e0b', bg: 'rgba(245,158,11,0.08)' },
+                      Pending: { text: '#ef4444', bg: 'rgba(239,68,68,0.08)' }
+                    };
+                    const status = fee.paymentStatus || 'Paid';
+                    const colors = statusColors[status] || statusColors.Paid;
+                    return (
+                      <tr key={idx} style={{ borderBottom: '1px solid rgba(255,255,255,0.02)', transition: 'background 0.2s' }}
+                        onMouseEnter={e => e.currentTarget.style.background = 'rgba(255,255,255,0.02)'}
+                        onMouseLeave={e => e.currentTarget.style.background = 'transparent'}>
+                        <td style={{ padding: '14px 16px', fontSize: '0.8rem', fontWeight: 700, color: '#10b981', whiteSpace: 'nowrap' }}>{fee.receiptNumber}</td>
+                        <td style={{ padding: '14px 16px', fontSize: '0.82rem', fontWeight: 600, color: 'var(--text-main)', whiteSpace: 'nowrap' }}>
+                          <div>{fee.studentName}</div>
+                          <div style={{ fontSize: '0.7rem', color: 'var(--text-muted)', fontWeight: 500 }}>Adm: {fee.admissionNumber}</div>
+                        </td>
+                        <td style={{ padding: '14px 16px', fontSize: '0.8rem', color: 'var(--text-main)', fontWeight: 600, whiteSpace: 'nowrap' }}>{fee.studentClass}-{fee.section}</td>
+                        <td style={{ padding: '14px 16px', fontSize: '0.8rem', color: 'var(--text-muted)', fontWeight: 600, whiteSpace: 'nowrap' }}>{fee.feeType}</td>
+                        <td style={{ padding: '14px 16px', fontSize: '0.82rem', fontWeight: 700, color: '#10b981', whiteSpace: 'nowrap' }}>₹{fee.paidAmount?.toLocaleString()}</td>
+                        <td style={{ padding: '14px 16px', fontSize: '0.82rem', fontWeight: 700, color: fee.dueAmount > 0 ? '#f59e0b' : 'var(--text-muted)', whiteSpace: 'nowrap' }}>₹{fee.dueAmount?.toLocaleString()}</td>
+                        <td style={{ padding: '14px 16px', whiteSpace: 'nowrap' }}>
+                          <span style={{
+                            padding: '4px 10px', borderRadius: '20px', fontSize: '0.7rem', fontWeight: 700,
+                            color: colors.text, background: colors.bg, display: 'inline-block'
+                          }}>{status}</span>
+                        </td>
+                        <td style={{ padding: '14px 16px', fontSize: '0.8rem', color: 'var(--text-muted)', whiteSpace: 'nowrap' }}>{fee.paymentDate}</td>
+                        <td style={{ padding: '14px 16px', textAlign: 'center', whiteSpace: 'nowrap' }}>
+                          <button 
+                            onClick={() => setReceiptData(fee)}
+                            style={{
+                              background: 'rgba(16,185,129,0.1)', border: 'none', padding: '6px',
+                              borderRadius: '8px', color: '#10b981', cursor: 'pointer',
+                              display: 'inline-flex', alignItems: 'center', justifyContent: 'center', transition: 'all 0.2s'
+                            }}
+                            title="View Receipt"
+                            onMouseEnter={e => { e.currentTarget.style.background = '#10b981'; e.currentTarget.style.color = '#fff'; }}
+                            onMouseLeave={e => { e.currentTarget.style.background = 'rgba(16,185,129,0.1)'; e.currentTarget.style.color = '#10b981'; }}
+                          >
+                            <Eye size={15} />
+                          </button>
+                        </td>
+                      </tr>
+                    );
+                  })
+                )}
+              </tbody>
+            </table>
+          </div>
+        </div>
+      ) : (
+        <div style={{ display: 'flex', flexDirection: 'column', gap: '28px' }}>
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+            <h3 style={{ fontSize: '1rem', fontWeight: 800, color: 'var(--text-main)', margin: 0 }}>Auxiliary Revenue Entries</h3>
+          </div>
+          {/* Income Cards Grid */}
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))', gap: '16px' }}>
+            {income.length === 0 ? (
+              <div className="glass-panel" style={{ padding: '40px', textAlign: 'center', color: 'var(--text-muted)', gridColumn: '1 / -1' }}>
+                No revenue entries recorded yet.
+              </div>
+            ) : (
+              income.map((inc, i) => (
+                <div key={i} className="glass-panel" style={{ padding: '20px', borderRadius: '12px', border: '1px solid rgba(255,255,255,0.04)', display: 'flex', flexDirection: 'column', gap: '12px', position: 'relative' }}>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
+                    <span style={{ fontSize: '0.68rem', fontWeight: 700, color: '#f59e0b', background: 'rgba(245,158,11,0.08)', padding: '2px 8px', borderRadius: '10px' }}>{inc.source}</span>
+                    <span style={{ fontSize: '0.78rem', color: 'var(--text-muted)' }}>{inc.date}</span>
+                  </div>
+                  <div>
+                    <h4 style={{ fontSize: '1.25rem', fontWeight: 800, color: '#10b981', margin: 0 }}>₹{inc.amount?.toLocaleString()}</h4>
+                    <p style={{ fontSize: '0.8rem', color: 'var(--text-main)', marginTop: '6px', minHeight: '36px' }}>{inc.description || 'No description provided'}</p>
+                  </div>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', paddingTop: '10px', borderTop: '1px solid rgba(255,255,255,0.03)', fontSize: '0.72rem', color: 'var(--text-muted)' }}>
+                    <span>Received: {inc.receivedBy || 'Finance Dept'}</span>
+                    <span>ID: {inc.incomeId}</span>
+                  </div>
+                </div>
+              ))
+            )}
+          </div>
+        </div>
+      )}
 
     </div>
   );
@@ -2973,25 +3240,40 @@ export function IncomeView({ showToast }) {
    REPORTS VIEW
    ============================================================ */
 export function ReportsView({ showToast }) {
-  const [data, setData] = useState(null);
+  const [overview, setOverview] = useState(null);
   const [loading, setLoading] = useState(true);
   const [fees, setFees] = useState([]);
   const [payroll, setPayroll] = useState([]);
+  const [staffPayments, setStaffPayments] = useState([]);
   const [expenses, setExpenses] = useState([]);
+  const [income, setIncome] = useState([]);
+
+  // States
+  const [activeLedgerTab, setActiveLedgerTab] = useState('fees');
+  const [ledgerSearch, setLedgerSearch] = useState('');
+  const [breakdownType, setBreakdownType] = useState('inflow'); // 'inflow' | 'outflow'
+  const [trendPeriod, setTrendPeriod] = useState('daily'); // 'daily' | 'monthly' | 'yearly'
 
   useEffect(() => {
     Promise.all([
-      fetch('/api/finance/overview').then(r => r.json()),
-      fetch('/api/finance/fees').then(r => r.json()),
-      fetch('/api/finance/payroll').then(r => r.json()),
-      fetch('/api/finance/expenses').then(r => r.json()),
-    ]).then(([overview, feesData, payrollData, expensesData]) => {
-      setData(overview);
+      fetch('/api/finance/overview').then(r => r.ok ? r.json() : null),
+      fetch('/api/finance/fees').then(r => r.ok ? r.json() : []),
+      fetch('/api/finance/payroll').then(r => r.ok ? r.json() : []),
+      fetch('/api/finance/staff-payments').then(r => r.ok ? r.json() : []),
+      fetch('/api/finance/expenses').then(r => r.ok ? r.json() : []),
+      fetch('/api/finance/income').then(r => r.ok ? r.json() : []),
+    ]).then(([overviewData, feesData, payrollData, staffPaymentsData, expensesData, incomeData]) => {
+      setOverview(overviewData);
       setFees(feesData);
       setPayroll(payrollData);
+      setStaffPayments(staffPaymentsData);
       setExpenses(expensesData);
+      setIncome(incomeData);
       setLoading(false);
-    }).catch(() => setLoading(false));
+    }).catch(err => {
+      console.error(err);
+      setLoading(false);
+    });
   }, []);
 
   const exportCSV = (rows, filename) => {
@@ -3006,98 +3288,561 @@ export function ReportsView({ showToast }) {
     showToast(`${filename} downloaded!`);
   };
 
+  const handleExport = () => {
+    let rows = [];
+    let filename = '';
+    if (activeLedgerTab === 'fees') {
+      rows = fees.map(f => ({
+        ReceiptNo: f.receiptNumber, Student: f.studentName, Class: f.studentClass, Type: f.feeType, Paid: f.paidAmount, Due: f.dueAmount, Status: f.paymentStatus, Date: f.paymentDate
+      }));
+      filename = 'fees_report.csv';
+    } else if (activeLedgerTab === 'expenses') {
+      rows = expenses.filter(e => !e.deleted && e.category !== 'Salary').map(e => ({
+        ID: e.expenseId, Title: e.title, Category: e.category, Amount: e.amount, Date: e.date, PaidBy: e.paidBy
+      }));
+      filename = 'expenses_report.csv';
+    } else if (activeLedgerTab === 'salaries') {
+      rows = [
+        ...payroll.map(p => ({ ID: p.payrollId, Name: p.teacherName, Role: p.designation, Amount: p.netSalary, Method: p.paymentMethod, Date: p.paymentDate })),
+        ...staffPayments.map(s => ({ ID: s.paymentId, Name: s.staffName, Role: s.staffRole, Amount: s.netSalary, Method: s.paymentMethod, Date: s.paymentDate }))
+      ];
+      filename = 'salaries_report.csv';
+    } else if (activeLedgerTab === 'auxiliary') {
+      rows = income.map(i => ({
+        ID: i.incomeId, Source: i.source, Description: i.description, Amount: i.amount, Date: i.date
+      }));
+      filename = 'auxiliary_income_report.csv';
+    }
+    exportCSV(rows, filename);
+  };
+
   if (loading) return (
     <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', minHeight: '300px' }}>
       <Loader2 className="animate-spin" size={32} style={{ color: '#10b981' }} />
     </div>
   );
 
-  const summaryItems = [
-    { label: 'Total Fee Collection', value: `₹${(data?.totalFeeCollected || 0).toLocaleString()}`, color: '#10b981' },
-    { label: 'Pending Fees', value: `₹${(data?.totalPendingFees || 0).toLocaleString()}`, color: '#f59e0b' },
-    { label: 'Total Expenses', value: `₹${(data?.totalExpenses || 0).toLocaleString()}`, color: '#ef4444' },
-    { label: 'Total Payroll', value: `₹${(data?.totalPayrollPaid || 0).toLocaleString()}`, color: '#8b5cf6' },
-    { label: 'Other Income', value: `₹${(data?.totalIncome || 0).toLocaleString()}`, color: '#06b6d4' },
-    { label: 'Net Profit/Loss', value: `₹${(data?.netProfit || 0).toLocaleString()}`, color: data?.netProfit >= 0 ? '#10b981' : '#ef4444' },
-  ];
+  // Real-time calculations
+  const totalFeeCollections = fees.reduce((sum, f) => sum + (f.paidAmount || 0), 0);
+  const totalPayrollPaid = expenses.filter(e => !e.deleted && e.category === 'Salary').reduce((sum, e) => sum + (e.amount || 0), 0);
+  const totalOperationalExpenses = expenses.filter(e => !e.deleted && e.category !== 'Salary').reduce((sum, e) => sum + (e.amount || 0), 0);
+  const totalPendingFees = fees.reduce((sum, f) => sum + (f.dueAmount || 0), 0);
+
+  const totalInflow = totalFeeCollections + income.reduce((sum, i) => sum + (i.amount || 0), 0);
+  const totalOutflow = totalPayrollPaid + totalOperationalExpenses;
+
+  // Breakdown Calculations
+  const inflowBreakdown = {
+    'Tuition Fee': 0,
+    'Admission Fee': 0,
+    'Exam Fee': 0,
+    'Transport Fee': 0,
+    'Other Charges': 0
+  };
+  fees.forEach(f => {
+    const type = f.feeType || 'Other Charges';
+    inflowBreakdown[type] = (inflowBreakdown[type] || 0) + (f.paidAmount || 0);
+  });
+  income.forEach(i => {
+    const src = `Auxiliary: ${i.source || 'Other'}`;
+    inflowBreakdown[src] = (inflowBreakdown[src] || 0) + (i.amount || 0);
+  });
+
+  const outflowBreakdown = {};
+  expenses.filter(e => !e.deleted).forEach(e => {
+    if (e.category === 'Salary') {
+      const sub = e.subcategory || 'Teacher Salary';
+      outflowBreakdown[sub] = (outflowBreakdown[sub] || 0) + (e.amount || 0);
+    } else {
+      outflowBreakdown[e.category] = (outflowBreakdown[e.category] || 0) + (e.amount || 0);
+    }
+  });
+
+  const breakdownData = breakdownType === 'inflow' ? inflowBreakdown : outflowBreakdown;
+  const totalBreakdownSum = Object.values(breakdownData).reduce((sum, v) => sum + v, 0);
+  const sortedBreakdown = Object.entries(breakdownData)
+    .filter(([_, val]) => val > 0)
+    .sort((a, b) => b[1] - a[1]);
+
+  // Unified salaries list
+  const salariesList = [
+    ...payroll.map(p => ({ id: p.payrollId, name: p.teacherName, role: p.designation, amount: p.netSalary, method: p.paymentMethod, date: p.paymentDate })),
+    ...staffPayments.map(s => ({ id: s.paymentId, name: s.staffName, role: s.staffRole, amount: s.netSalary, method: s.paymentMethod, date: s.paymentDate }))
+  ].sort((a,b) => b.date.localeCompare(a.date));
+
+  // Styles
+  const inputStyle = {
+    width: '100%', padding: '10px 14px', background: 'var(--bg-form)',
+    border: '1.5px solid var(--border-glass)', borderRadius: '10px', color: 'var(--text-main)',
+    fontSize: '0.85rem', outline: 'none', boxSizing: 'border-box'
+  };
+  const optionStyle = { background: 'var(--bg-form)', color: 'var(--text-main)' };
+
+  const categoryColors = {
+    'Tuition Fee': '#3b82f6',
+    'Admission Fee': '#8b5cf6',
+    'Exam Fee': '#6366f1',
+    'Transport Fee': '#06b6d4',
+    'Other Charges': '#64748b',
+    'Teacher Salary': '#8b5cf6',
+    'Staff Salary': '#a855f7',
+    Maintenance: '#f59e0b',
+    Stationery: '#10b981',
+    Transport: '#06b6d4',
+    Utilities: '#ec4899',
+    Infrastructure: '#14b8a6',
+    Events: '#f97316',
+    Other: '#6b7280'
+  };
+
+  const getFilteredData = () => {
+    const q = ledgerSearch.toLowerCase();
+    if (activeLedgerTab === 'fees') {
+      return fees.filter(f => !ledgerSearch || f.studentName?.toLowerCase().includes(q) || f.receiptNumber?.toLowerCase().includes(q) || f.admissionNumber?.toLowerCase().includes(q));
+    }
+    if (activeLedgerTab === 'expenses') {
+      return expenses.filter(e => !e.deleted && e.category !== 'Salary').filter(e => !ledgerSearch || e.title?.toLowerCase().includes(q) || e.category?.toLowerCase().includes(q) || e.expenseId?.toLowerCase().includes(q));
+    }
+    if (activeLedgerTab === 'salaries') {
+      return salariesList.filter(s => !ledgerSearch || s.name?.toLowerCase().includes(q) || s.role?.toLowerCase().includes(q) || s.id?.toLowerCase().includes(q));
+    }
+    if (activeLedgerTab === 'auxiliary') {
+      return income.filter(i => !ledgerSearch || i.source?.toLowerCase().includes(q) || i.description?.toLowerCase().includes(q) || i.incomeId?.toLowerCase().includes(q));
+    }
+    return [];
+  };
+
+  const filteredItems = getFilteredData();
+
+  // Dynamic Trend calculations
+  // 1. Daily cash flow trend (June 2026)
+  const currentYearMonth = '2026-06';
+  const daysInMonth = 30; // June has 30 days
+  const dailyData = [];
+  for (let d = 1; d <= daysInMonth; d++) {
+    const dayStr = String(d).padStart(2, '0');
+    const dateStr = `${currentYearMonth}-${dayStr}`;
+    
+    const dayFees = fees
+      .filter(f => f.paymentDate === dateStr)
+      .reduce((sum, f) => sum + (f.paidAmount || 0), 0);
+      
+    const dayIncome = income
+      .filter(i => i.date === dateStr)
+      .reduce((sum, i) => sum + (i.amount || 0), 0);
+      
+    const dayExpenses = expenses
+      .filter(e => !e.deleted && e.date === dateStr)
+      .reduce((sum, e) => sum + (e.amount || 0), 0);
+
+    const dayInflow = dayFees + dayIncome;
+    const dayOutflow = dayExpenses;
+    
+    if (dayInflow > 0 || dayOutflow > 0) {
+      dailyData.push({
+        label: `Jun ${dayStr}`,
+        inflow: dayInflow,
+        outflow: dayOutflow
+      });
+    }
+  }
+
+  // 2. Monthly cash flow trend (Current Year 2026)
+  const months = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+  const monthlyData = months.map((mName, mIdx) => {
+    const yearMonth = `2026-${String(mIdx + 1).padStart(2, '0')}`;
+    
+    const monthFees = fees
+      .filter(f => f.paymentDate?.startsWith(yearMonth))
+      .reduce((sum, f) => sum + (f.paidAmount || 0), 0);
+      
+    const monthIncome = income
+      .filter(i => i.date?.startsWith(yearMonth))
+      .reduce((sum, i) => sum + (i.amount || 0), 0);
+      
+    const monthExpenses = expenses
+      .filter(e => !e.deleted && e.date?.startsWith(yearMonth))
+      .reduce((sum, e) => sum + (e.amount || 0), 0);
+      
+    return {
+      label: `${mName} 2026`,
+      inflow: monthFees + monthIncome,
+      outflow: monthExpenses
+    };
+  }).filter(m => m.inflow > 0 || m.outflow > 0);
+
+  // 3. Yearly cash flow trend
+  const yearlyMap = {};
+  fees.forEach(f => {
+    const year = f.paymentDate ? f.paymentDate.substring(0, 4) : '2026';
+    if (!yearlyMap[year]) yearlyMap[year] = { label: year, inflow: 0, outflow: 0 };
+    yearlyMap[year].inflow += (f.paidAmount || 0);
+  });
+  income.forEach(i => {
+    const year = i.date ? i.date.substring(0, 4) : '2026';
+    if (!yearlyMap[year]) yearlyMap[year] = { label: year, inflow: 0, outflow: 0 };
+    yearlyMap[year].inflow += (i.amount || 0);
+  });
+  expenses.filter(e => !e.deleted).forEach(e => {
+    const year = e.date ? e.date.substring(0, 4) : '2026';
+    if (!yearlyMap[year]) yearlyMap[year] = { label: year, inflow: 0, outflow: 0 };
+    yearlyMap[year].outflow += (e.amount || 0);
+  });
+  const yearlyData = Object.values(yearlyMap).sort((a, b) => a.label.localeCompare(b.label));
+
+  // Determine active trend list
+  let trendData = [];
+  if (trendPeriod === 'daily') {
+    trendData = dailyData;
+  } else if (trendPeriod === 'monthly') {
+    trendData = monthlyData;
+  } else {
+    trendData = yearlyData;
+  }
+
+  // Calculate scaling max
+  const maxInflow = Math.max(...trendData.map(t => t.inflow), 1);
+  const maxOutflow = Math.max(...trendData.map(t => t.outflow), 1);
+  const maxOverall = Math.max(maxInflow, maxOutflow, 1);
+
+  const renderLedgerTable = () => {
+    if (activeLedgerTab === 'fees') {
+      return (
+        <table style={{ width: '100%', borderCollapse: 'collapse', textAlign: 'left' }}>
+          <thead>
+            <tr style={{ background: 'var(--bg-card-subtle)', borderBottom: '1px solid var(--border-glass)' }}>
+              {['Receipt No', 'Student Name', 'Class', 'Category', 'Paid', 'Due', 'Status', 'Date'].map(h => (
+                <th key={h} style={{ padding: '14px 16px', fontSize: '0.72rem', fontWeight: 700, color: 'var(--text-muted)', textTransform: 'uppercase', whiteSpace: 'nowrap' }}>{h}</th>
+              ))}
+            </tr>
+          </thead>
+          <tbody>
+            {filteredItems.length === 0 ? (
+              <tr><td colSpan={8} style={{ padding: '30px', textAlign: 'center', color: 'var(--text-muted)' }}>No records found</td></tr>
+            ) : (
+              filteredItems.map((f, i) => (
+                <tr key={i} style={{ borderBottom: '1px solid rgba(255,255,255,0.02)' }} onMouseEnter={e => e.currentTarget.style.background = 'rgba(255,255,255,0.02)'} onMouseLeave={e => e.currentTarget.style.background = 'transparent'}>
+                  <td style={{ padding: '14px 16px', fontSize: '0.8rem', fontWeight: 700, color: '#10b981' }}>{f.receiptNumber}</td>
+                  <td style={{ padding: '14px 16px', fontSize: '0.82rem', fontWeight: 600, color: 'var(--text-main)' }}>{f.studentName}</td>
+                  <td style={{ padding: '14px 16px', fontSize: '0.8rem', color: 'var(--text-main)', fontWeight: 600 }}>{f.studentClass}-{f.section}</td>
+                  <td style={{ padding: '14px 16px', fontSize: '0.8rem', color: 'var(--text-muted)', fontWeight: 600 }}>{f.feeType}</td>
+                  <td style={{ padding: '14px 16px', fontSize: '0.82rem', fontWeight: 700, color: '#10b981' }}>₹{f.paidAmount?.toLocaleString()}</td>
+                  <td style={{ padding: '14px 16px', fontSize: '0.82rem', fontWeight: 700, color: f.dueAmount > 0 ? '#f59e0b' : 'var(--text-muted)' }}>₹{f.dueAmount?.toLocaleString()}</td>
+                  <td style={{ padding: '14px 16px' }}>
+                    <span style={{
+                      padding: '4px 10px', borderRadius: '20px', fontSize: '0.7rem', fontWeight: 700,
+                      background: f.paymentStatus === 'Paid' ? 'rgba(16,185,129,0.08)' : f.paymentStatus === 'Partial' ? 'rgba(245,158,11,0.08)' : 'rgba(239,68,68,0.08)',
+                      color: f.paymentStatus === 'Paid' ? '#10b981' : f.paymentStatus === 'Partial' ? '#f59e0b' : '#ef4444'
+                    }}>{f.paymentStatus}</span>
+                  </td>
+                  <td style={{ padding: '14px 16px', fontSize: '0.8rem', color: 'var(--text-muted)' }}>{f.paymentDate}</td>
+                </tr>
+              ))
+            )}
+          </tbody>
+        </table>
+      );
+    }
+    if (activeLedgerTab === 'expenses') {
+      return (
+        <table style={{ width: '100%', borderCollapse: 'collapse', textAlign: 'left' }}>
+          <thead>
+            <tr style={{ background: 'var(--bg-card-subtle)', borderBottom: '1px solid var(--border-glass)' }}>
+              {['Expense ID', 'Title', 'Category', 'Subcategory', 'Amount', 'Paid By', 'Date'].map(h => (
+                <th key={h} style={{ padding: '14px 16px', fontSize: '0.72rem', fontWeight: 700, color: 'var(--text-muted)', textTransform: 'uppercase', whiteSpace: 'nowrap' }}>{h}</th>
+              ))}
+            </tr>
+          </thead>
+          <tbody>
+            {filteredItems.length === 0 ? (
+              <tr><td colSpan={7} style={{ padding: '30px', textAlign: 'center', color: 'var(--text-muted)' }}>No records found</td></tr>
+            ) : (
+              filteredItems.map((e, i) => (
+                <tr key={i} style={{ borderBottom: '1px solid rgba(255,255,255,0.02)' }} onMouseEnter={e => e.currentTarget.style.background = 'rgba(255,255,255,0.02)'} onMouseLeave={e => e.currentTarget.style.background = 'transparent'}>
+                  <td style={{ padding: '14px 16px', fontSize: '0.8rem', fontWeight: 700, color: '#ef4444' }}>{e.expenseId}</td>
+                  <td style={{ padding: '14px 16px', fontSize: '0.82rem', fontWeight: 600, color: 'var(--text-main)' }}>{e.title}</td>
+                  <td style={{ padding: '14px 16px', fontSize: '0.8rem', color: 'var(--text-main)', fontWeight: 600 }}>{e.category}</td>
+                  <td style={{ padding: '14px 16px', fontSize: '0.8rem', color: 'var(--text-muted)' }}>{e.subcategory || '-'}</td>
+                  <td style={{ padding: '14px 16px', fontSize: '0.82rem', fontWeight: 700, color: '#ef4444' }}>₹{e.amount?.toLocaleString()}</td>
+                  <td style={{ padding: '14px 16px', fontSize: '0.8rem', color: 'var(--text-muted)' }}>{e.paidBy}</td>
+                  <td style={{ padding: '14px 16px', fontSize: '0.8rem', color: 'var(--text-muted)' }}>{e.date}</td>
+                </tr>
+              ))
+            )}
+          </tbody>
+        </table>
+      );
+    }
+    if (activeLedgerTab === 'salaries') {
+      return (
+        <table style={{ width: '100%', borderCollapse: 'collapse', textAlign: 'left' }}>
+          <thead>
+            <tr style={{ background: 'var(--bg-card-subtle)', borderBottom: '1px solid var(--border-glass)' }}>
+              {['Payment ID', 'Employee Name', 'Role/Designation', 'Net Paid', 'Payment Method', 'Payout Date'].map(h => (
+                <th key={h} style={{ padding: '14px 16px', fontSize: '0.72rem', fontWeight: 700, color: 'var(--text-muted)', textTransform: 'uppercase', whiteSpace: 'nowrap' }}>{h}</th>
+              ))}
+            </tr>
+          </thead>
+          <tbody>
+            {filteredItems.length === 0 ? (
+              <tr><td colSpan={6} style={{ padding: '30px', textAlign: 'center', color: 'var(--text-muted)' }}>No records found</td></tr>
+            ) : (
+              filteredItems.map((s, i) => (
+                <tr key={i} style={{ borderBottom: '1px solid rgba(255,255,255,0.02)' }} onMouseEnter={e => e.currentTarget.style.background = 'rgba(255,255,255,0.02)'} onMouseLeave={e => e.currentTarget.style.background = 'transparent'}>
+                  <td style={{ padding: '14px 16px', fontSize: '0.8rem', fontWeight: 700, color: '#8b5cf6' }}>{s.id}</td>
+                  <td style={{ padding: '14px 16px', fontSize: '0.82rem', fontWeight: 600, color: 'var(--text-main)' }}>{s.name}</td>
+                  <td style={{ padding: '14px 16px', fontSize: '0.8rem', color: 'var(--text-main)', fontWeight: 600 }}>{s.role}</td>
+                  <td style={{ padding: '14px 16px', fontSize: '0.82rem', fontWeight: 700, color: '#8b5cf6' }}>₹{s.amount?.toLocaleString()}</td>
+                  <td style={{ padding: '14px 16px', fontSize: '0.8rem', color: 'var(--text-muted)' }}>{s.method}</td>
+                  <td style={{ padding: '14px 16px', fontSize: '0.8rem', color: 'var(--text-muted)' }}>{s.date}</td>
+                </tr>
+              ))
+            )}
+          </tbody>
+        </table>
+      );
+    }
+    if (activeLedgerTab === 'auxiliary') {
+      return (
+        <table style={{ width: '100%', borderCollapse: 'collapse', textAlign: 'left' }}>
+          <thead>
+            <tr style={{ background: 'var(--bg-card-subtle)', borderBottom: '1px solid var(--border-glass)' }}>
+              {['Income ID', 'Source Category', 'Description', 'Amount Inflow', 'Date Received'].map(h => (
+                <th key={h} style={{ padding: '14px 16px', fontSize: '0.72rem', fontWeight: 700, color: 'var(--text-muted)', textTransform: 'uppercase', whiteSpace: 'nowrap' }}>{h}</th>
+              ))}
+            </tr>
+          </thead>
+          <tbody>
+            {filteredItems.length === 0 ? (
+              <tr><td colSpan={5} style={{ padding: '30px', textAlign: 'center', color: 'var(--text-muted)' }}>No records found</td></tr>
+            ) : (
+              filteredItems.map((inc, i) => (
+                <tr key={i} style={{ borderBottom: '1px solid rgba(255,255,255,0.02)' }} onMouseEnter={e => e.currentTarget.style.background = 'rgba(255,255,255,0.02)'} onMouseLeave={e => e.currentTarget.style.background = 'transparent'}>
+                  <td style={{ padding: '14px 16px', fontSize: '0.8rem', fontWeight: 700, color: '#06b6d4' }}>{inc.incomeId}</td>
+                  <td style={{ padding: '14px 16px', fontSize: '0.82rem', fontWeight: 600, color: 'var(--text-main)' }}>{inc.source}</td>
+                  <td style={{ padding: '14px 16px', fontSize: '0.8rem', color: 'var(--text-muted)' }}>{inc.description || 'No description'}</td>
+                  <td style={{ padding: '14px 16px', fontSize: '0.82rem', fontWeight: 700, color: '#10b981' }}>₹{inc.amount?.toLocaleString()}</td>
+                  <td style={{ padding: '14px 16px', fontSize: '0.8rem', color: 'var(--text-muted)' }}>{inc.date}</td>
+                </tr>
+              ))
+            )}
+          </tbody>
+        </table>
+      );
+    }
+  };
 
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: '28px' }}>
-      {/* Profit & Loss Summary */}
-      <div className="glass-panel" style={{ padding: '28px', borderRadius: '16px' }}>
-        <h3 style={{ fontSize: '1rem', fontWeight: 800, color: 'var(--text-main)', marginBottom: '20px', display: 'flex', alignItems: 'center', gap: '8px' }}>
-          <PieChart size={18} style={{ color: '#06b6d4' }} /> Profit & Loss Summary — FY 2026-2027
-        </h3>
-        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(180px, 1fr))', gap: '16px' }}>
-          {summaryItems.map((item, i) => (
-            <div key={i} style={{ padding: '16px', background: 'rgba(255,255,255,0.02)', borderRadius: '12px', border: '1px solid rgba(255,255,255,0.04)' }}>
-              <p style={{ fontSize: '0.68rem', color: 'var(--text-muted)', fontWeight: 700, textTransform: 'uppercase' }}>{item.label}</p>
-              <h4 style={{ fontSize: '1.2rem', fontWeight: 800, color: item.color, marginTop: '6px' }}>{item.value}</h4>
-            </div>
-          ))}
+      
+      {/* KPI Cards Grid */}
+      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))', gap: '20px' }}>
+        <div className="glass-panel" style={{ padding: '20px 24px', borderRadius: '14px', borderLeft: '4px solid #3b82f6' }}>
+          <p style={{ fontSize: '0.7rem', color: 'var(--text-muted)', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.05em' }}>Student Fee Collections</p>
+          <h3 style={{ fontSize: '1.6rem', fontWeight: 800, color: '#3b82f6', marginTop: '6px' }}>₹{totalFeeCollections.toLocaleString()}</h3>
+          <span style={{ fontSize: '0.72rem', color: 'var(--text-muted)' }}>Real-time student fee receipts</span>
+        </div>
+        <div className="glass-panel" style={{ padding: '20px 24px', borderRadius: '14px', borderLeft: '4px solid #8b5cf6' }}>
+          <p style={{ fontSize: '0.7rem', color: 'var(--text-muted)', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.05em' }}>Payroll Payouts</p>
+          <h3 style={{ fontSize: '1.6rem', fontWeight: 800, color: '#8b5cf6', marginTop: '6px' }}>₹{totalPayrollPaid.toLocaleString()}</h3>
+          <span style={{ fontSize: '0.72rem', color: 'var(--text-muted)' }}>Salaries paid to teachers & staff</span>
+        </div>
+        <div className="glass-panel" style={{ padding: '20px 24px', borderRadius: '14px', borderLeft: '4px solid #ef4444' }}>
+          <p style={{ fontSize: '0.7rem', color: 'var(--text-muted)', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.05em' }}>Operational Expenses</p>
+          <h3 style={{ fontSize: '1.6rem', fontWeight: 800, color: '#ef4444', marginTop: '6px' }}>₹{totalOperationalExpenses.toLocaleString()}</h3>
+          <span style={{ fontSize: '0.72rem', color: 'var(--text-muted)' }}>Non-salary operations costs</span>
+        </div>
+        <div className="glass-panel" style={{ padding: '20px 24px', borderRadius: '14px', borderLeft: '4px solid #f59e0b' }}>
+          <p style={{ fontSize: '0.7rem', color: 'var(--text-muted)', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.05em' }}>Outstanding Receivables</p>
+          <h3 style={{ fontSize: '1.6rem', fontWeight: 800, color: '#f59e0b', marginTop: '6px' }}>₹{totalPendingFees.toLocaleString()}</h3>
+          <span style={{ fontSize: '0.72rem', color: 'var(--text-muted)' }}>Pending student fee balances</span>
         </div>
       </div>
 
-      {/* Export Buttons */}
-      <div className="glass-panel" style={{ padding: '24px', borderRadius: '16px' }}>
-        <h3 style={{ fontSize: '1rem', fontWeight: 800, color: 'var(--text-main)', marginBottom: '16px', display: 'flex', alignItems: 'center', gap: '8px' }}>
-          <Download size={18} style={{ color: '#10b981' }} /> Export Financial Reports
-        </h3>
-        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))', gap: '14px' }}>
-          {[
-            { label: 'Fee Collection Report', desc: `${fees.length} records`, color: '#10b981', onClick: () => exportCSV(fees, 'fee_collection_report.csv') },
-            { label: 'Payroll Report', desc: `${payroll.length} records`, color: '#8b5cf6', onClick: () => exportCSV(payroll, 'payroll_report.csv') },
-            { label: 'Expense Report', desc: `${expenses.length} records`, color: '#ef4444', onClick: () => exportCSV(expenses, 'expense_report.csv') },
-          ].map((btn, i) => (
-            <button key={i} onClick={btn.onClick} style={{
-              padding: '18px 20px', background: 'rgba(255,255,255,0.02)', border: '1px solid rgba(255,255,255,0.06)',
-              borderRadius: '12px', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '12px',
-              transition: 'all 0.2s ease', textAlign: 'left'
+      {/* Analytics Section */}
+      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(360px, 1fr))', gap: '24px' }}>
+        
+        {/* Cash Flow Trend Chart */}
+        <div className="glass-panel" style={{ padding: '24px', borderRadius: '16px', display: 'flex', flexDirection: 'column' }}>
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '20px', flexWrap: 'wrap', gap: '10px' }}>
+            <h3 style={{ fontSize: '0.92rem', fontWeight: 700, color: 'var(--text-main)', margin: 0, display: 'flex', alignItems: 'center', gap: '8px' }}>
+              <BarChart3 size={18} style={{ color: '#10b981' }} /> Cash Flow Trend
+            </h3>
+            <div style={{ display: 'flex', background: 'rgba(255,255,255,0.02)', border: '1px solid var(--border-glass)', borderRadius: '8px', padding: '2px' }}>
+              {[
+                { key: 'daily', label: 'Daily (Jun 2026)' },
+                { key: 'monthly', label: 'Monthly (2026)' },
+                { key: 'yearly', label: 'Yearly' }
+              ].map(p => (
+                <button 
+                  key={p.key}
+                  onClick={() => setTrendPeriod(p.key)} 
+                  style={{
+                    border: 'none', background: trendPeriod === p.key ? 'rgba(16,185,129,0.12)' : 'none',
+                    color: trendPeriod === p.key ? '#10b981' : 'var(--text-muted)',
+                    fontSize: '0.75rem', fontWeight: 700, padding: '4px 10px', borderRadius: '6px', cursor: 'pointer'
+                  }}
+                >
+                  {p.label}
+                </button>
+              ))}
+            </div>
+          </div>
+
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '14px', maxHeight: '300px', overflowY: 'auto', paddingRight: '4px' }}>
+            {trendData.length === 0 ? (
+              <div style={{ textAlign: 'center', padding: '40px 10px', color: 'var(--text-muted)', fontSize: '0.82rem', display: 'flex', flexDirection: 'column', gap: '4px', alignItems: 'center', justifyContent: 'center', flex: 1 }}>
+                <span style={{ fontWeight: 600, color: 'var(--text-main)' }}>No transaction records</span>
+                <span>Trends will populate once data is logged</span>
+              </div>
+            ) : (
+              trendData.map((t, idx) => {
+                const inflowPercent = Math.round((t.inflow / maxOverall) * 100);
+                const outflowPercent = Math.round((t.outflow / maxOverall) * 100);
+
+                return (
+                  <div key={idx} style={{ display: 'grid', gridTemplateColumns: '90px 1fr', alignItems: 'center', gap: '12px' }}>
+                    <span style={{ fontSize: '0.78rem', fontWeight: 600, color: 'var(--text-muted)' }}>{t.label}</span>
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                        <div style={{ width: '100%', height: '8px', background: 'rgba(255,255,255,0.02)', borderRadius: '4px', overflow: 'hidden' }}>
+                          <div style={{ width: `${inflowPercent}%`, height: '100%', background: 'linear-gradient(90deg, #10b981, #059669)', borderRadius: '4px' }} />
+                        </div>
+                        <span style={{ fontSize: '0.72rem', fontWeight: 700, color: '#10b981', minWidth: '60px' }}>₹{t.inflow.toLocaleString()}</span>
+                      </div>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                        <div style={{ width: '100%', height: '8px', background: 'rgba(255,255,255,0.02)', borderRadius: '4px', overflow: 'hidden' }}>
+                          <div style={{ width: `${outflowPercent}%`, height: '100%', background: 'linear-gradient(90deg, #ef4444, #dc2626)', borderRadius: '4px' }} />
+                        </div>
+                        <span style={{ fontSize: '0.72rem', fontWeight: 700, color: '#ef4444', minWidth: '60px' }}>₹{t.outflow.toLocaleString()}</span>
+                      </div>
+                    </div>
+                  </div>
+                );
+              })
+            )}
+          </div>
+        </div>
+
+        {/* Real-Time Category Breakdown */}
+        <div className="glass-panel" style={{ padding: '24px', borderRadius: '16px', display: 'flex', flexDirection: 'column' }}>
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '20px' }}>
+            <h3 style={{ fontSize: '0.92rem', fontWeight: 700, color: 'var(--text-main)', margin: 0, display: 'flex', alignItems: 'center', gap: '8px' }}>
+              <PieChart size={18} style={{ color: breakdownType === 'inflow' ? '#10b981' : '#ef4444' }} /> Category Wise Distribution
+            </h3>
+            <div style={{ display: 'flex', background: 'rgba(255,255,255,0.02)', border: '1px solid var(--border-glass)', borderRadius: '8px', padding: '2px' }}>
+              <button 
+                onClick={() => setBreakdownType('inflow')} 
+                style={{
+                  border: 'none', background: breakdownType === 'inflow' ? 'rgba(16,185,129,0.12)' : 'none',
+                  color: breakdownType === 'inflow' ? '#10b981' : 'var(--text-muted)',
+                  fontSize: '0.75rem', fontWeight: 700, padding: '4px 10px', borderRadius: '6px', cursor: 'pointer'
+                }}
+              >
+                Inflows
+              </button>
+              <button 
+                onClick={() => setBreakdownType('outflow')} 
+                style={{
+                  border: 'none', background: breakdownType === 'outflow' ? 'rgba(239,68,68,0.12)' : 'none',
+                  color: breakdownType === 'outflow' ? '#ef4444' : 'var(--text-muted)',
+                  fontSize: '0.75rem', fontWeight: 700, padding: '4px 10px', borderRadius: '6px', cursor: 'pointer'
+                }}
+              >
+                Outflows
+              </button>
+            </div>
+          </div>
+          
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '12px', maxHeight: '300px', overflowY: 'auto', paddingRight: '4px' }}>
+            {sortedBreakdown.length === 0 ? (
+              <div style={{ textAlign: 'center', padding: '40px 10px', color: 'var(--text-muted)', fontSize: '0.82rem', display: 'flex', flexDirection: 'column', gap: '4px', alignItems: 'center', justifyContent: 'center', flex: 1 }}>
+                <span style={{ fontWeight: 600, color: 'var(--text-main)' }}>No distribution data</span>
+                <span>Values will show once ledger is populated</span>
+              </div>
+            ) : (
+              sortedBreakdown.map(([cat, val]) => {
+                const pct = totalBreakdownSum > 0 ? Math.round((val / totalBreakdownSum) * 100) : 0;
+                const barColor = categoryColors[cat] || (breakdownType === 'inflow' ? '#10b981' : '#6366f1');
+                return (
+                  <div key={cat} style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.78rem' }}>
+                      <span style={{ fontWeight: 600, color: 'var(--text-main)' }}>{cat}</span>
+                      <span style={{ fontWeight: 700, color: 'var(--text-muted)' }}>₹{val.toLocaleString()} ({pct}%)</span>
+                    </div>
+                    <div style={{ width: '100%', height: '8px', background: 'rgba(255,255,255,0.03)', borderRadius: '4px', overflow: 'hidden' }}>
+                      <div style={{ width: `${pct}%`, height: '100%', background: barColor, borderRadius: '4px', transition: 'width 0.4s ease' }} />
+                    </div>
+                  </div>
+                );
+              })
+            )}
+          </div>
+        </div>
+
+      </div>
+
+      {/* Transaction Ledger */}
+      <div className="glass-panel" style={{ padding: '24px', borderRadius: '16px', display: 'flex', flexDirection: 'column', gap: '20px' }}>
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '14px' }}>
+          <div>
+            <h3 style={{ fontSize: '1rem', fontWeight: 800, color: 'var(--text-main)', margin: 0 }}>Real-Time Transaction Ledger</h3>
+            <p style={{ fontSize: '0.75rem', color: 'var(--text-muted)', margin: '4px 0 0 0' }}>Inspect all double-entry ledger listings on the fly</p>
+          </div>
+          <button 
+            onClick={handleExport}
+            style={{
+              padding: '10px 18px', background: 'linear-gradient(135deg, #10b981, #059669)', border: 'none',
+              borderRadius: '10px', color: '#fff', fontWeight: 700, cursor: 'pointer',
+              display: 'flex', alignItems: 'center', gap: '8px', fontSize: '0.82rem',
+              boxShadow: '0 4px 15px rgba(16,185,129,0.15)'
             }}
-            onMouseEnter={e => { e.currentTarget.style.borderColor = `${btn.color}44`; e.currentTarget.style.background = `${btn.color}08`; }}
-            onMouseLeave={e => { e.currentTarget.style.borderColor = 'rgba(255,255,255,0.06)'; e.currentTarget.style.background = 'rgba(255,255,255,0.02)'; }}>
-              <div style={{ width: '40px', height: '40px', borderRadius: '10px', background: `${btn.color}15`, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-                <Download size={18} style={{ color: btn.color }} />
-              </div>
-              <div>
-                <span style={{ fontSize: '0.85rem', fontWeight: 700, color: 'var(--text-main)', display: 'block' }}>{btn.label}</span>
-                <span style={{ fontSize: '0.72rem', color: 'var(--text-muted)' }}>CSV • {btn.desc}</span>
-              </div>
+          >
+            <Download size={16} /> Export Selected Ledger
+          </button>
+        </div>
+
+        {/* Tab Controls */}
+        <div style={{ display: 'flex', gap: '10px', borderBottom: '1px solid var(--border-glass)', paddingBottom: '2px', flexWrap: 'wrap' }}>
+          {[
+            { key: 'fees', label: 'Fee Collections', color: '#10b981' },
+            { key: 'expenses', label: 'Operational Expenses', color: '#ef4444' },
+            { key: 'salaries', label: 'Salary Payouts', color: '#8b5cf6' },
+            { key: 'auxiliary', label: 'Auxiliary Revenue', color: '#06b6d4' }
+          ].map(tab => (
+            <button
+              key={tab.key}
+              onClick={() => { setActiveLedgerTab(tab.key); setLedgerSearch(''); }}
+              style={{
+                background: 'none', border: 'none', padding: '10px 14px', cursor: 'pointer',
+                fontSize: '0.82rem', fontWeight: 700,
+                color: activeLedgerTab === tab.key ? tab.color : 'var(--text-muted)',
+                borderBottom: activeLedgerTab === tab.key ? `3px solid ${tab.color}` : 'none',
+                transition: 'all 0.15s'
+              }}
+            >
+              {tab.label}
             </button>
           ))}
         </div>
+
+        {/* Search Input */}
+        <div style={{ position: 'relative' }}>
+          <Search size={16} style={{ position: 'absolute', left: '12px', top: '50%', transform: 'translateY(-50%)', color: 'var(--text-muted)' }} />
+          <input 
+            value={ledgerSearch} 
+            onChange={e => setLedgerSearch(e.target.value)} 
+            placeholder={`Search by name, ID or details...`}
+            style={{ ...inputStyle, paddingLeft: '38px' }}
+          />
+        </div>
+
+        {/* Table View */}
+        <div style={{ overflowX: 'auto', borderRadius: '12px', border: '1px solid var(--border-glass)' }}>
+          {renderLedgerTable()}
+        </div>
       </div>
 
-      {/* Category Breakdown */}
-      <div className="glass-panel" style={{ padding: '28px', borderRadius: '16px' }}>
-        <h3 style={{ fontSize: '1rem', fontWeight: 800, color: 'var(--text-main)', marginBottom: '20px', display: 'flex', alignItems: 'center', gap: '8px' }}>
-          <ClipboardList size={18} style={{ color: '#ef4444' }} /> Expense Category Breakdown
-        </h3>
-        {(!data || data.totalExpenses === 0 || expenses.length === 0) ? (
-          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', height: '140px', flexDirection: 'column', gap: '4px' }}>
-            <span style={{ fontWeight: 600, color: 'var(--text-main)', fontSize: '0.88rem' }}>No data available</span>
-            <span style={{ color: 'var(--text-muted)', fontSize: '0.8rem' }}>Data will appear once records are added</span>
-          </div>
-        ) : (
-          <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
-            {(() => {
-              const cats = {};
-              expenses.forEach(e => { cats[e.category] = (cats[e.category] || 0) + (e.amount || 0); });
-              const maxCat = Math.max(...Object.values(cats), 1);
-              const catColors = { Maintenance: '#3b82f6', Salary: '#8b5cf6', Stationery: '#f59e0b', Transport: '#06b6d4', Internet: '#10b981', Electricity: '#ec4899', Events: '#f97316', Infrastructure: '#14b8a6', Other: '#6b7280' };
-              return Object.entries(cats).sort((a, b) => b[1] - a[1]).map(([cat, val]) => (
-                <div key={cat} style={{ display: 'flex', alignItems: 'center', gap: '14px' }}>
-                  <span style={{ fontSize: '0.78rem', fontWeight: 600, color: 'var(--text-muted)', width: '100px', flexShrink: 0 }}>{cat}</span>
-                  <div style={{ flex: 1, height: '8px', background: 'rgba(255,255,255,0.04)', borderRadius: '4px', overflow: 'hidden' }}>
-                    <div style={{ width: `${(val / maxCat) * 100}%`, height: '100%', background: catColors[cat] || '#6b7280', borderRadius: '4px', transition: 'width 0.5s ease' }} />
-                  </div>
-                  <span style={{ fontSize: '0.78rem', fontWeight: 700, color: 'var(--text-main)', width: '90px', textAlign: 'right', flexShrink: 0 }}>₹{val.toLocaleString()}</span>
-                </div>
-              ));
-            })()}
-          </div>
-        )}
-      </div>
     </div>
   );
 }

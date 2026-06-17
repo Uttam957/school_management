@@ -24,11 +24,12 @@ import {
   Clock,
   Plus,
   UserCheck,
-  UserPlus
+  UserPlus,
+  Loader2
 } from 'lucide-react';
 import { hasPermission } from '../utils/permissions';
 
-export default function TeacherList({ setActiveView, readOnly = true, onAddClick }) {
+export default function TeacherList({ setActiveView, readOnly = true, onAddClick, onEditClick }) {
   const renderQualificationText = (q) => {
     if (!q) return 'N/A';
     if (Array.isArray(q)) {
@@ -46,6 +47,7 @@ export default function TeacherList({ setActiveView, readOnly = true, onAddClick
   const [departmentFilter, setDepartmentFilter] = useState('All');
   const [typeFilter, setTypeFilter] = useState('All');
   const [statusFilter, setStatusFilter] = useState('All');
+  const [roleFilter, setRoleFilter] = useState('All');
   const [sortBy, setSortBy] = useState('name');
   const [sortOrder, setSortOrder] = useState('asc');
   
@@ -57,6 +59,24 @@ export default function TeacherList({ setActiveView, readOnly = true, onAddClick
   // Inspector Drawer
   const [selectedTeacher, setSelectedTeacher] = useState(null);
   const [qrLoading, setQrLoading] = useState(false);
+  const [roles, setRoles] = useState([]);
+  const [departments, setDepartments] = useState([]);
+
+  useEffect(() => {
+    fetch('/api/rbac/roles')
+      .then(res => res.json())
+      .then(data => {
+        setRoles(data.filter(r => r.active));
+      })
+      .catch(err => console.error('Error fetching roles:', err));
+
+    fetch('/api/grades/departments')
+      .then(res => res.json())
+      .then(data => {
+        setDepartments(data.filter(d => d.status === 'Active' || !d.status));
+      })
+      .catch(err => console.error('Error fetching departments:', err));
+  }, []);
 
   const handleRegenerateQR = async (empId) => {
     try {
@@ -183,7 +203,7 @@ export default function TeacherList({ setActiveView, readOnly = true, onAddClick
   // DATA FETCHING
   // ==========================================
   const fetchTeachers = async () => {
-    const isSearchOrFilterActive = searchQuery !== '' || departmentFilter !== 'All' || typeFilter !== 'All' || statusFilter !== 'All';
+    const isSearchOrFilterActive = searchQuery !== '' || departmentFilter !== 'All' || typeFilter !== 'All' || statusFilter !== 'All' || roleFilter !== 'All';
     if (!isSearchOrFilterActive) {
       setTeachers([]);
       setTotalCount(0);
@@ -198,6 +218,7 @@ export default function TeacherList({ setActiveView, readOnly = true, onAddClick
         department: departmentFilter,
         employmentType: typeFilter,
         status: statusFilter,
+        designation: roleFilter,
         sortBy,
         sortOrder,
         page,
@@ -221,12 +242,12 @@ export default function TeacherList({ setActiveView, readOnly = true, onAddClick
   // Reload on dependency changes
   useEffect(() => {
     fetchTeachers();
-  }, [searchQuery, departmentFilter, typeFilter, statusFilter, sortBy, sortOrder, page]);
+  }, [searchQuery, departmentFilter, typeFilter, statusFilter, roleFilter, sortBy, sortOrder, page]);
 
   // Reset page on filter change
   useEffect(() => {
     setPage(1);
-  }, [searchQuery, departmentFilter, typeFilter, statusFilter]);
+  }, [searchQuery, departmentFilter, typeFilter, statusFilter, roleFilter]);
 
   // ==========================================
   // DELETE TEACHER
@@ -275,6 +296,7 @@ export default function TeacherList({ setActiveView, readOnly = true, onAddClick
       fullName: teacher.fullName || teacher.name || '',
       mobile: teacher.mobile || teacher.phone || '',
       email: teacher.email || '',
+      designation: teacher.designation || '',
       department: teacher.department || '',
       subjectSpecialization: teacher.subjectSpecialization || teacher.subject || '',
       qualification: Array.isArray(teacher.qualification) ? teacher.qualification.map(q => q.degree).filter(Boolean).join(', ') : (teacher.qualification || ''),
@@ -333,7 +355,7 @@ export default function TeacherList({ setActiveView, readOnly = true, onAddClick
     );
   };
 
-  const isSearchOrFilterActive = searchQuery !== '' || departmentFilter !== 'All' || typeFilter !== 'All' || statusFilter !== 'All';
+  const isSearchOrFilterActive = searchQuery !== '' || departmentFilter !== 'All' || typeFilter !== 'All' || statusFilter !== 'All' || roleFilter !== 'All';
 
   // ==========================================
   // RENDER
@@ -364,21 +386,31 @@ export default function TeacherList({ setActiveView, readOnly = true, onAddClick
               <Filter size={14} /> Filters:
             </span>
             
-            {/* Department filter */}
-            <select className="select-custom" value={departmentFilter} onChange={(e) => setDepartmentFilter(e.target.value)}
+            {/* Role filter */}
+            <select className="select-custom" value={roleFilter} onChange={(e) => {
+              const selectedRole = e.target.value;
+              setRoleFilter(selectedRole);
+              if (selectedRole !== 'Teacher') {
+                setDepartmentFilter('All');
+              }
+            }}
               style={{ padding: '8px 12px', borderRadius: '8px', fontSize: '0.85rem' }}>
-              <option value="All">All Departments</option>
-              <option value="Science">Science</option>
-              <option value="Mathematics">Mathematics</option>
-              <option value="English">English</option>
-              <option value="Hindi">Hindi</option>
-              <option value="Social Science">Social Science</option>
-              <option value="Computer Science">Computer Science</option>
-              <option value="Physical Education">Physical Education</option>
-              <option value="Arts">Arts</option>
-              <option value="Commerce">Commerce</option>
-              <option value="Music">Music</option>
+              <option value="All">All Roles</option>
+              {roles.map(r => (
+                <option key={r.id || r.name} value={r.name}>{r.name}</option>
+              ))}
             </select>
+
+            {/* Department filter (Only shown when Role is 'Teacher') */}
+            {roleFilter === 'Teacher' && (
+              <select className="select-custom" value={departmentFilter} onChange={(e) => setDepartmentFilter(e.target.value)}
+                style={{ padding: '8px 12px', borderRadius: '8px', fontSize: '0.85rem' }}>
+                <option value="All">All Departments</option>
+                {departments.map(d => (
+                  <option key={d.id || d.name} value={d.name}>{d.name}</option>
+                ))}
+              </select>
+            )}
 
             {/* Employment Type filter */}
             <select className="select-custom" value={typeFilter} onChange={(e) => setTypeFilter(e.target.value)}
@@ -514,7 +546,7 @@ export default function TeacherList({ setActiveView, readOnly = true, onAddClick
                             {!readOnly && (
                               <>
                                 {hasPermission('teacher-directory', 'edit') && (
-                                  <button onClick={() => openEditModal(t)} className="btn-secondary" 
+                                  <button onClick={() => onEditClick ? onEditClick(t) : openEditModal(t)} className="btn-secondary" 
                                     style={{ padding: '6px 10px', fontSize: '0.75rem', borderRadius: '8px', display: 'flex', alignItems: 'center', gap: '4px' }}>
                                     <Edit3 size={12} /> Edit
                                   </button>
@@ -619,7 +651,6 @@ export default function TeacherList({ setActiveView, readOnly = true, onAddClick
             <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
               {[
                 { label: 'Employee ID', value: selectedTeacher.employeeId || selectedTeacher.id },
-                { label: 'Staff ID', value: selectedTeacher.teacherId || 'N/A' },
                 { label: 'Department', value: selectedTeacher.department || 'N/A' },
                 { label: 'Role', value: selectedTeacher.designation || 'N/A' },
                 { label: 'Primary Subject', value: selectedTeacher.primarySubject || selectedTeacher.subjectSpecialization || selectedTeacher.subject || 'N/A' },
@@ -731,6 +762,12 @@ export default function TeacherList({ setActiveView, readOnly = true, onAddClick
                   <div style={{ fontSize: '0.82rem', fontWeight: 600 }}>ID Badge Access QR</div>
                   <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)', lineHeight: '1.4' }}>
                     Contains unique Employee ID & Type. Use the camera scanner in the Attendance Manager to record daily check-ins and check-outs.
+                    <br/><br/>
+                    <strong>Dynamic Department Update:</strong>
+                    <ul>
+                      <li>Department options now fetch dynamically from the system registry.</li>
+                      <li>Ensures alignment with active Grade Management settings.</li>
+                    </ul>
                   </div>
                   <div style={{ display: 'flex', gap: '6px', flexWrap: 'wrap', marginTop: '4px' }}>
                     {selectedTeacher.qrCodePath ? (
@@ -801,30 +838,49 @@ export default function TeacherList({ setActiveView, readOnly = true, onAddClick
                     className="form-control" style={{ padding: '10px 14px', borderRadius: '10px' }} />
                 </div>
 
-                <div className="form-group">
-                  <label>Department</label>
-                  <select value={editFormData.department || ''} onChange={(e) => setEditFormData({ ...editFormData, department: e.target.value })}
-                    className="form-control" style={{ padding: '10px 14px', borderRadius: '10px' }}>
-                    <option value="">Select</option>
-                    <option value="Science">Science</option>
-                    <option value="Mathematics">Mathematics</option>
-                    <option value="English">English</option>
-                    <option value="Hindi">Hindi</option>
-                    <option value="Social Science">Social Science</option>
-                    <option value="Computer Science">Computer Science</option>
-                    <option value="Physical Education">Physical Education</option>
-                    <option value="Arts">Arts</option>
-                    <option value="Commerce">Commerce</option>
-                    <option value="Music">Music</option>
-                    <option value="Other">Other</option>
+                 <div className="form-group">
+                  <label>Role</label>
+                  <select 
+                    value={editFormData.designation || ''} 
+                    onChange={(e) => {
+                      const newDesignation = e.target.value;
+                      setEditFormData({ 
+                        ...editFormData, 
+                        designation: newDesignation,
+                        department: newDesignation === 'Teacher' ? editFormData.department : '',
+                        subjectSpecialization: newDesignation === 'Teacher' ? editFormData.subjectSpecialization : ''
+                      });
+                    }}
+                    className="form-control" 
+                    style={{ padding: '10px 14px', borderRadius: '10px' }}
+                  >
+                    <option value="">Select Role</option>
+                    {roles.map(r => (
+                      <option key={r.id || r.name} value={r.name}>{r.name}</option>
+                    ))}
                   </select>
                 </div>
 
-                <div className="form-group">
-                  <label>Subject</label>
-                  <input type="text" value={editFormData.subjectSpecialization || ''} onChange={(e) => setEditFormData({ ...editFormData, subjectSpecialization: e.target.value })}
-                    className="form-control" style={{ padding: '10px 14px', borderRadius: '10px' }} />
-                </div>
+                {editFormData.designation === 'Teacher' && (
+                  <>
+                    <div className="form-group animate-slide-down">
+                      <label>Department</label>
+                      <select value={editFormData.department || ''} onChange={(e) => setEditFormData({ ...editFormData, department: e.target.value })}
+                        className="form-control" style={{ padding: '10px 14px', borderRadius: '10px' }}>
+                        <option value="">Select</option>
+                        {departments.map(d => (
+                          <option key={d.id || d.name} value={d.name}>{d.name}</option>
+                        ))}
+                      </select>
+                    </div>
+
+                    <div className="form-group animate-slide-down">
+                      <label>Subject</label>
+                      <input type="text" value={editFormData.subjectSpecialization || ''} onChange={(e) => setEditFormData({ ...editFormData, subjectSpecialization: e.target.value })}
+                        className="form-control" style={{ padding: '10px 14px', borderRadius: '10px' }} />
+                    </div>
+                  </>
+                )}
 
                 <div className="form-group">
                   <label>Qualification</label>

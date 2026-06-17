@@ -4,7 +4,7 @@ import { Shield, Mail, Lock, Eye, EyeOff, AlertCircle, School, ChevronRight, Use
 export default function SchoolLogin({ tenantSubdomain, onLoginSuccess }) {
   const [username, setUsername] = useState('');
   const [password, setPassword] = useState('');
-  const role = tenantSubdomain ? 'Auto' : 'Developer Admin';
+  const role = 'Auto';
   const [showPassword, setShowPassword] = useState(false);
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
@@ -140,10 +140,10 @@ export default function SchoolLogin({ tenantSubdomain, onLoginSuccess }) {
           
           <div>
             <h1 style={{ fontSize: '1.5rem', fontWeight: 800, margin: 0, color: 'var(--text-main)', letterSpacing: '-0.02em' }}>
-              {schoolInfo?.name || (tenantSubdomain ? `${tenantSubdomain.toUpperCase()} Academy` : 'Developer Admin Portal')}
+              {schoolInfo?.name || 'Aether Academy Login'}
             </h1>
             <p style={{ fontSize: '0.82rem', color: 'var(--text-muted)', margin: '4px 0 0 0' }}>
-              {tenantSubdomain ? 'Unified Multi-Role Login Portal' : 'Onboard & Manage School Ecosystems'}
+              Unified Multi-Role Login Portal
             </p>
           </div>
         </div>
@@ -178,7 +178,7 @@ export default function SchoolLogin({ tenantSubdomain, onLoginSuccess }) {
               <input
                 type="text"
                 className="form-control"
-                placeholder={tenantSubdomain ? "e.g. school_admin or teacher_user" : "dev@admin.com"}
+                placeholder="e.g. school_admin or teacher_user"
                 value={username}
                 onChange={(e) => setUsername(e.target.value)}
                 required
@@ -196,7 +196,7 @@ export default function SchoolLogin({ tenantSubdomain, onLoginSuccess }) {
               <button 
                 type="button" 
                 style={{ background: 'none', border: 'none', color: 'hsl(var(--color-primary))', fontSize: '0.75rem', fontWeight: 600, cursor: 'pointer', padding: 0 }}
-                onClick={() => alert('Please contact the Platform Developer Admin to reset your credentials.')}
+                onClick={() => alert('Please contact the school administrator to reset your credentials.')}
               >
                 Forgot Password?
               </button>

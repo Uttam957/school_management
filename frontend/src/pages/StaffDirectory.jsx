@@ -79,11 +79,11 @@ const DESIGNATION_DETAILS = {
   'Other': { category: 'Other', department: 'Other' }
 };
 
-export default function StaffDirectory({ readOnly = true, onAddClick }) {
+export default function StaffDirectory({ readOnly = true, onAddClick, onEditClick }) {
   const [staffList, setStaffList] = useState([]);
   const [loading, setLoading] = useState(true);
   const [searchQuery, setSearchQuery] = useState('');
-  const [categoryFilter, setCategoryFilter] = useState('All');
+  const [designationFilter, setDesignationFilter] = useState('All');
   const [statusFilter, setStatusFilter] = useState('All');
   const [inspectStaff, setInspectStaff] = useState(null);
   const [editStaff, setEditStaff] = useState(null);
@@ -292,12 +292,12 @@ export default function StaffDirectory({ readOnly = true, onAddClick }) {
     const id = (s.id || '').toLowerCase();
     const q = searchQuery.toLowerCase();
     const matchesSearch = name.includes(q) || role.includes(q) || id.includes(q);
-    const matchesCategory = categoryFilter === 'All' || (s.staffCategory || s.role || '') === categoryFilter;
+    const matchesDesignation = designationFilter === 'All' || (s.designation || '') === designationFilter;
     const matchesStatus = statusFilter === 'All' || s.status === statusFilter;
-    return matchesSearch && matchesCategory && matchesStatus;
+    return matchesSearch && matchesDesignation && matchesStatus;
   });
 
-  const isSearchOrFilterActive = searchQuery !== '' || categoryFilter !== 'All' || statusFilter !== 'All';
+  const isSearchOrFilterActive = searchQuery !== '' || designationFilter !== 'All' || statusFilter !== 'All';
   const displayStaff = isSearchOrFilterActive ? filteredStaff : [];
 
   // Safe JSON parse for qualifications/experiences
@@ -497,7 +497,7 @@ export default function StaffDirectory({ readOnly = true, onAddClick }) {
               <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))', gap: '14px' }}>
                 <div className="form-group">
                   <label style={{ fontSize: '0.8rem', fontWeight: 600 }}>Full Name</label>
-                  <input type="text" name="fullName" value={editData.fullName || editData.name || ''} onChange={(e) => setEditData(p => ({ ...p, fullName: e.target.value, name: e.target.value }))} className="form-control" style={inputStyle} />
+                  <input type="text" name="fullName" value={editData.fullName || editData.name || ''} onChange={(e) => { const v = e.target.value.replace(/[^A-Za-z\s]/g, '').slice(0, 50); setEditData(p => ({ ...p, fullName: v, name: v })); }} className="form-control" style={inputStyle} />
                 </div>
                 <div className="form-group">
                   <label style={{ fontSize: '0.8rem', fontWeight: 600 }}>Email</label>
@@ -567,8 +567,9 @@ export default function StaffDirectory({ readOnly = true, onAddClick }) {
         </div>
 
         <div className="filter-group" style={{ display: 'flex', gap: '10px', flexWrap: 'wrap' }}>
-          <select className="select-custom" value={categoryFilter} onChange={(e) => setCategoryFilter(e.target.value)}>
-            {STAFF_CATEGORIES.map(c => <option key={c} value={c}>{c === 'All' ? 'All Categories' : c}</option>)}
+          <select className="select-custom" value={designationFilter} onChange={(e) => setDesignationFilter(e.target.value)}>
+            <option value="All">All Designations</option>
+            {DESIGNATIONS.map(d => <option key={d} value={d}>{d}</option>)}
           </select>
           <select className="select-custom" value={statusFilter} onChange={(e) => setStatusFilter(e.target.value)}>
             <option value="All">All Status</option>
@@ -610,8 +611,9 @@ export default function StaffDirectory({ readOnly = true, onAddClick }) {
                 <tr>
                   <th>Employee ID</th>
                   <th>Employee Name</th>
-                  <th>Category</th>
-                  <th>Department</th>
+                  <th>Designation</th>
+                  <th>Designation Level</th>
+                  <th>Employee Type</th>
                   <th>Contact</th>
                   <th>Status</th>
                   <th>Actions</th>
@@ -634,12 +636,12 @@ export default function StaffDirectory({ readOnly = true, onAddClick }) {
                           </div>
                           <div>
                             <span style={{ fontWeight: 600, fontSize: '0.88rem' }}>{s.fullName || s.name}</span>
-                            {s.designation && <div style={{ fontSize: '0.72rem', color: 'var(--text-muted)' }}>{s.designation}</div>}
                           </div>
                         </div>
                       </td>
-                      <td><span style={{ fontSize: '0.82rem' }}>{s.staffCategory || s.role || '—'}</span></td>
-                      <td><span style={{ fontSize: '0.82rem' }}>{s.department || '—'}</span></td>
+                      <td><span style={{ fontSize: '0.82rem' }}>{s.designation || '—'}</span></td>
+                      <td><span style={{ fontSize: '0.82rem' }}>{s.designationLevel || '—'}</span></td>
+                      <td><span style={{ fontSize: '0.82rem' }}>{s.employmentType || '—'}</span></td>
                       <td>
                         <div style={{ fontSize: '0.82rem' }}>
                           <div>{s.mobile || s.phone || '—'}</div>
@@ -659,7 +661,7 @@ export default function StaffDirectory({ readOnly = true, onAddClick }) {
                           {!readOnly && (
                             <>
                               {hasPermission('staff-directory', 'edit') && (
-                                <button onClick={() => openEdit(s)} className="btn-secondary" style={{ padding: '6px 10px', fontSize: '0.8rem', borderRadius: '8px' }} title="Edit">
+                                <button onClick={() => onEditClick ? onEditClick(s) : openEdit(s)} className="btn-secondary" style={{ padding: '6px 10px', fontSize: '0.8rem', borderRadius: '8px' }} title="Edit">
                                   <Edit3 size={13} />
                                 </button>
                               )}

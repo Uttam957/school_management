@@ -23,9 +23,9 @@ import {
   Eye,
   RefreshCw,
   Clock,
-  Settings,
   Share2,
-  Trash2
+  Trash2,
+  RotateCcw
 } from 'lucide-react';
 
 const parseStudentClass = (studentClass) => {
@@ -365,7 +365,13 @@ export default function ResultManagementPanel({ activeTab: propActiveTab = 'anal
         setStudents(studentData.students || []);
       }
       if (subjectsRes.ok) setSubjects(await subjectsRes.json());
-      if (gradesRes.ok) setGradesSections(await gradesRes.json());
+      if (gradesRes.ok) {
+        const gsData = await gradesRes.json();
+        setGradesSections(gsData);
+        if (gsData.sections && gsData.sections.length > 0) {
+          setSelectedSection(gsData.sections[0]);
+        }
+      }
       if (resultsRes.ok) setResults(await resultsRes.json());
       if (overallRes.ok) setOverallResults(await overallRes.json());
       if (timetablesRes.ok) setExamTimetables(await timetablesRes.json());
@@ -724,6 +730,21 @@ export default function ResultManagementPanel({ activeTab: propActiveTab = 'anal
     showToast('Student results published successfully!', 'success');
   };
 
+  // Unpublish all results for a student (Undo Publish)
+  const handleUnpublish = (studentId, studentExams) => {
+    if (!studentExams || studentExams.length === 0) return;
+    setPublishedExams(prev => {
+      const updated = { ...prev };
+      if (updated[studentId]) {
+        studentExams.forEach(exam => {
+          updated[studentId][exam.examId] = false;
+        });
+      }
+      return updated;
+    });
+    showToast('Student results unpublished successfully.', 'info');
+  };
+
 
   // Print report card helper
   const handlePrint = (divId) => {
@@ -964,7 +985,56 @@ export default function ResultManagementPanel({ activeTab: propActiveTab = 'anal
         </div>
       )}
 
-
+      {/* Sub-navigation Menu Header for Results Manager (Analytics, Marks Entry, Report Cards) */}
+      {['analytics', 'marks-entry', 'report-cards'].includes(activeTab) && (
+        <div className="glass-panel" style={{ padding: '8px', display: 'flex', gap: '8px', overflowX: 'auto', borderRadius: '12px' }}>
+          <button 
+            onClick={() => {
+              setActiveTab('analytics');
+              setAdminView('results-analytics');
+            }}
+            className={`tab-btn-custom ${activeTab === 'analytics' ? 'active' : ''}`}
+            style={{
+              display: 'flex', alignItems: 'center', gap: '8px', padding: '10px 16px', borderRadius: '8px', fontSize: '0.85rem', fontWeight: 600, border: 'none', cursor: 'pointer',
+              background: activeTab === 'analytics' ? 'rgba(99,102,241,0.1)' : 'transparent',
+              color: activeTab === 'analytics' ? 'rgb(99,102,241)' : 'var(--text-muted)',
+              transition: 'all 0.2s ease'
+            }}
+          >
+            <BarChart3 size={16} /> Analytics Dashboard
+          </button>
+          <button 
+            onClick={() => {
+              setActiveTab('marks-entry');
+              setAdminView('results-marks-entry');
+            }}
+            className={`tab-btn-custom ${activeTab === 'marks-entry' ? 'active' : ''}`}
+            style={{
+              display: 'flex', alignItems: 'center', gap: '8px', padding: '10px 16px', borderRadius: '8px', fontSize: '0.85rem', fontWeight: 600, border: 'none', cursor: 'pointer',
+              background: activeTab === 'marks-entry' ? 'rgba(99,102,241,0.1)' : 'transparent',
+              color: activeTab === 'marks-entry' ? 'rgb(99,102,241)' : 'var(--text-muted)',
+              transition: 'all 0.2s ease'
+            }}
+          >
+            <FileSpreadsheet size={16} /> Marks Entry
+          </button>
+          <button 
+            onClick={() => {
+              setActiveTab('report-cards');
+              setAdminView('results-report-cards');
+            }}
+            className={`tab-btn-custom ${activeTab === 'report-cards' ? 'active' : ''}`}
+            style={{
+              display: 'flex', alignItems: 'center', gap: '8px', padding: '10px 16px', borderRadius: '8px', fontSize: '0.85rem', fontWeight: 600, border: 'none', cursor: 'pointer',
+              background: activeTab === 'report-cards' ? 'rgba(99,102,241,0.1)' : 'transparent',
+              color: activeTab === 'report-cards' ? 'rgb(99,102,241)' : 'var(--text-muted)',
+              transition: 'all 0.2s ease'
+            }}
+          >
+            <Award size={16} /> Report Cards
+          </button>
+        </div>
+      )}
 
       {/* MAIN VIEWPORT */}
       {loading && results.length === 0 ? (
@@ -1131,7 +1201,7 @@ export default function ResultManagementPanel({ activeTab: propActiveTab = 'anal
                   <div className="form-group" style={{ flex: 1, minWidth: '150px' }}>
                     <label style={{ fontSize: '0.75rem', fontWeight: 600, display: 'block', marginBottom: '4px' }}>Section</label>
                     <select className="select-custom" style={{ width: '100%' }} value={selectedSection} onChange={e => { setSelectedSection(e.target.value); setStudentExamSelections({}); setStudentExamCategories({}); setRosterSearch(''); }}>
-                      {['A', 'B', 'C', 'D', 'E'].map(s => (
+                      {gradesSections.sections.map(s => (
                         <option key={s} value={s}>{s}</option>
                       ))}
                     </select>
@@ -1723,7 +1793,7 @@ export default function ResultManagementPanel({ activeTab: propActiveTab = 'anal
                     onChange={e => setHistorySectionFilter(e.target.value)}
                   >
                     <option value="">All Sections</option>
-                    {['A', 'B', 'C', 'D', 'E'].map(sec => (
+                    {gradesSections.sections.map(sec => (
                       <option key={sec} value={sec}>Section {sec}</option>
                     ))}
                   </select>
@@ -1773,35 +1843,6 @@ export default function ResultManagementPanel({ activeTab: propActiveTab = 'anal
                                   {exam.percentage}% ({exam.grade})
                                 </span>
                               )}
-                              <button
-                                className="btn-secondary"
-                                style={{
-                                  padding: '4px 8px',
-                                  fontSize: '0.72rem',
-                                  borderRadius: '6px',
-                                  display: 'inline-flex',
-                                  alignItems: 'center',
-                                  gap: '4px',
-                                  border: '1px solid rgba(99, 102, 241, 0.2)',
-                                  color: 'hsl(var(--color-primary))',
-                                  cursor: 'pointer'
-                                }}
-                                onClick={() => {
-                                  const { grade, department } = parseStudentClass(student.studentClass);
-                                  setReportClass(grade);
-                                  if (department && department !== '-') {
-                                    setReportDepartment(department);
-                                  } else {
-                                    setReportDepartment('');
-                                  }
-                                  setReportStudentId(student.studentId);
-                                  setReportSearchQuery(student.studentName || '');
-                                  setActiveTab('report-cards');
-                                }}
-                                title="Print Report Card"
-                              >
-                                <Printer size={12} /> Print
-                              </button>
                             </div>
                           </div>
                         ))}
@@ -1813,9 +1854,10 @@ export default function ResultManagementPanel({ activeTab: propActiveTab = 'anal
                           const studentPubs = publishedExams[student.studentId] || {};
                           const isAllPublished = student.exams.length > 0 && student.exams.every(exam => studentPubs[exam.examId] === true);
                           return isAllPublished ? (
-                            <span
-                              style={{
-                                padding: '6px 12px',
+                            <div style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>
+                              <span
+                                style={{
+                                  padding: '6px 12px',
                                   fontSize: '0.78rem',
                                   borderRadius: '8px',
                                   display: 'inline-flex',
@@ -1829,6 +1871,25 @@ export default function ResultManagementPanel({ activeTab: propActiveTab = 'anal
                               >
                                 <Check size={12} /> Published
                               </span>
+                              <button
+                                type="button"
+                                className="btn-secondary"
+                                style={{
+                                  padding: '6px 12px',
+                                  fontSize: '0.78rem',
+                                  borderRadius: '8px',
+                                  display: 'inline-flex',
+                                  alignItems: 'center',
+                                  gap: '4px',
+                                  border: '1px solid var(--border-glass)',
+                                  color: 'var(--text-muted)',
+                                  cursor: 'pointer'
+                                }}
+                                onClick={() => handleUnpublish(student.studentId, student.exams)}
+                              >
+                                <RotateCcw size={12} /> Undo
+                              </button>
+                            </div>
                             ) : (
                               <button
                                 className="btn-primary"

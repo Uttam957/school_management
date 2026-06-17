@@ -95,3 +95,16 @@ export function getGradesWithSubjects(subjects) {
 export function getGradeOptions(subjects) {
   return getGradesWithSubjects(subjects).map(g => ({ value: g, label: `Grade ${g}` }));
 }
+
+export async function fetchActiveSections() {
+  try {
+    const res = await fetch('/api/grades/sections');
+    if (res.ok) {
+      const data = await res.json();
+      return data.filter(s => s.status === 'Active');
+    }
+  } catch (err) {
+    console.error('Failed to fetch active sections:', err);
+  }
+  return [];
+}

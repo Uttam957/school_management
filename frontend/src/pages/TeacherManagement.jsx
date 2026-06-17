@@ -347,9 +347,9 @@ export default function TeacherManagement() {
                       type="text" 
                       name="phone" 
                       value={formData.phone} 
-                      onChange={handleInputChange} 
+                      onChange={(e) => { const v = e.target.value.replace(/[^0-9]/g, '').slice(0, 10); setFormData(p => ({ ...p, phone: v })); }}
                       className="form-control"
-                      placeholder="e.g. +1 555-0811"
+                      placeholder="10-digit phone number"
                     />
                     {formErrors.phone && <span style={{ color: 'rgb(var(--color-danger-rgb))', fontSize: '0.75rem', display: 'flex', alignItems: 'center', gap: '4px', marginTop: '4px' }}><AlertCircle size={12}/>{formErrors.phone}</span>}
                   </div>

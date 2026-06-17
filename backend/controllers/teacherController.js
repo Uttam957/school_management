@@ -99,6 +99,13 @@ export const registerTeacher = async (req, res) => {
       return res.status(400).json({ error: 'Missing required teacher registration details (Full Name).' });
     }
 
+    if (aadhaarNumber && !/^\d{12}$/.test(String(aadhaarNumber).replace(/\s/g, ''))) {
+      return res.status(400).json({ error: 'Invalid Aadhaar number. Must be exactly 12 digits.' });
+    }
+    if (panNumber && !/^[A-Z]{5}[0-9]{4}[A-Z]{1}$/.test(String(panNumber).toUpperCase())) {
+      return res.status(400).json({ error: 'Invalid PAN card format. Must match ABCDE1234F.' });
+    }
+
     // Generate unique employee ID (Format: EMP-2026-XXXX, sequential starting at 1001)
     const currentYear = 2026;
     let maxNum = 1000;
@@ -169,7 +176,6 @@ export const registerTeacher = async (req, res) => {
       id: employeeId, // Direct backward compatibility index
       employeeId,
       qrCodePath: qrPath,
-      teacherId: req.body.teacherId || `TCH-${Date.now().toString().slice(-6)}`,
       name: derivedFullName, // Legacy compatibility
       fullName: derivedFullName,
       firstName: firstName || derivedFullName.split(' ')[0],
@@ -250,9 +256,9 @@ export const registerTeacher = async (req, res) => {
     // Automatically create userAccess entry matching the teacher's designation
     if (!db.userAccess) db.userAccess = [];
     
-    // Ensure roles are initialized in DB if missing
-    if (!db.roles || db.roles.length === 0) {
-      db.roles = getDefaultRoles();
+    // Ensure roles array is initialized defensively if missing
+    if (!db.roles) {
+      db.roles = [];
     }
     
     const roleId = mapDesignationToRoleId(designation, db.roles);
@@ -314,6 +320,12 @@ export const getTeachers = async (req, res) => {
     const statusFilter = req.query.status || 'All';
     if (statusFilter !== 'All') {
       result = result.filter(t => t.status === statusFilter);
+    }
+
+    // 4.5. Designation (Role) Filter
+    const designationFilter = req.query.designation || 'All';
+    if (designationFilter !== 'All') {
+      result = result.filter(t => t.designation === designationFilter);
     }
 
     // 5. Sorting
@@ -382,6 +394,13 @@ export const updateTeacher = async (req, res) => {
     const currentTeacher = db.teachers[teacherIndex];
     const updateData = req.body;
 
+    if (updateData.aadhaarNumber && !/^\d{12}$/.test(String(updateData.aadhaarNumber).replace(/\s/g, ''))) {
+      return res.status(400).json({ error: 'Invalid Aadhaar number. Must be exactly 12 digits.' });
+    }
+    if (updateData.panNumber && !/^[A-Z]{5}[0-9]{4}[A-Z]{1}$/.test(String(updateData.panNumber).toUpperCase())) {
+      return res.status(400).json({ error: 'Invalid PAN card format. Must match ABCDE1234F.' });
+    }
+
     // Check username uniqueness if modified
     if (updateData.username && updateData.username !== currentTeacher.username) {
       const usernameExists = db.teachers.some(t => t.username === updateData.username);
@@ -438,8 +457,8 @@ export const updateTeacher = async (req, res) => {
 
     // Synchronize userAccess record matching the teacher's designation and name
     if (!db.userAccess) db.userAccess = [];
-    if (!db.roles || db.roles.length === 0) {
-      db.roles = getDefaultRoles();
+    if (!db.roles) {
+      db.roles = [];
     }
     const accessIndex = db.userAccess.findIndex(ua => ua.userId === teacherId && ua.userType === 'Teacher');
     const targetRoleId = mapDesignationToRoleId(updatedTeacher.designation, db.roles);

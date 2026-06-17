@@ -25,8 +25,29 @@ import { hasPermission, isSuperAdmin } from '../utils/permissions';
 
 const TEACHER_ROLES = ['Principal', 'Vice Principal', 'Academic Coordinator', 'Subject Teacher', 'Librarian', 'Receptionist', 'Accountant', 'Expense Manager'];
 
+const LEGACY_MODULE_MAP = {
+  'student-directory': 'core-registers',
+  'teacher-directory': 'core-registers',
+  'staff-directory': 'core-registers',
+  'grade-settings': 'grade-management',
+  'grade-subjects': 'grade-management',
+  'register-student': 'registry-admissions',
+  'add-staff': 'registry-admissions',
+  'add-employee': 'registry-admissions',
+  'employee-attendance': 'attendance',
+  'attendance-history': 'attendance',
+  'published-timetable': 'academic-manager',
+  'published-exam': 'academic-manager',
+  'academic-calendar': 'academic-activities',
+  'results-history': 'results-manager',
+  'expense-dashboard': 'expenses',
+  'expense-all-expenses': 'expenses',
+  'expense-tracker': 'expenses',
+  'expense-history': 'expenses'
+};
+
 export default function RolesPermissions() {
-  const [activeTab, setActiveTab] = useState('dashboard'); // dashboard, roles, matrix, users, audit
+  const [activeTab, setActiveTab] = useState('dashboard'); // dashboard, roles, matrix, audit
   const [roles, setRoles] = useState([]);
   const [users, setUsers] = useState([]);
   const [auditLogs, setAuditLogs] = useState([]);
@@ -36,8 +57,6 @@ export default function RolesPermissions() {
   const [success, setSuccess] = useState('');
 
   // Search/Filter states
-  const [userSearch, setUserSearch] = useState('');
-  const [userRoleFilter, setUserRoleFilter] = useState('All');
   const [auditSearch, setAuditSearch] = useState('');
   const [auditActionFilter, setAuditActionFilter] = useState('All');
 
@@ -49,12 +68,8 @@ export default function RolesPermissions() {
   const [editingRole, setEditingRole] = useState(null); // null means adding
   const [roleForm, setRoleForm] = useState({ name: '', description: '', active: true });
 
-  const [showOverrideModal, setShowOverrideModal] = useState(false);
-  const [overrideUser, setOverrideUser] = useState(null);
-  const [userOverrideMatrix, setUserOverrideMatrix] = useState({});
-
   useEffect(() => {
-    const isModalOpen = showRoleModal || (showOverrideModal && overrideUser);
+    const isModalOpen = showRoleModal;
     if (isModalOpen) {
       document.body.style.overflow = 'hidden';
       const appContent = document.querySelector('.app-content');
@@ -75,50 +90,37 @@ export default function RolesPermissions() {
         appContent.style.overflow = '';
       }
     };
-  }, [showRoleModal, showOverrideModal, overrideUser]);
+  }, [showRoleModal]);
 
   const modules = [
-    { id: 'dashboard', label: 'Dashboard & Telemetry' },
-    // Core Registers
+    { id: 'overview', label: 'Admin Panel' },
     { id: 'student-directory', label: 'Student Directory' },
     { id: 'teacher-directory', label: 'Staff Directory' },
     { id: 'staff-directory', label: 'Employee Directory' },
-    // Registry Admissions
-    { id: 'registry-admissions', label: 'Registry Admissions' },
-    // Student Manager
+    { id: 'grade-settings', label: 'Grade Settings' },
+    { id: 'grade-subjects', label: 'Grade Subjects' },
+    { id: 'register-student', label: 'Register Student' },
+    { id: 'add-staff', label: 'Add Staff' },
+    { id: 'add-employee', label: 'Add Employee' },
     { id: 'student-manager', label: 'Student Manager' },
-    // Attendance Manager
-    { id: 'attendance-manager', label: 'Attendance Manager' },
-    { id: 'monthly-attendance', label: 'Monthly Attendance' },
-    { id: 'student-report', label: 'Student Report' },
-    { id: 'yearly-attendance', label: 'Yearly Attendance' },
-    // Academic Manager
+    { id: 'employee-attendance', label: 'Attendance Manager' },
+    { id: 'attendance', label: 'School Attendance' },
+    { id: 'attendance-history', label: 'Attendance History' },
     { id: 'academic-manager', label: 'Academic Manager' },
-    { id: 'class-timetable', label: 'Class Timetable' },
-    { id: 'teacher-timetable', label: 'Teacher Timetable' },
-    // Exam Management
-    { id: 'exam-timetable', label: 'Exam Timetable' },
-    // Academic Activities
+    { id: 'published-timetable', label: 'Published Timetable' },
+    { id: 'published-exam', label: 'Published Exam' },
     { id: 'academic-activities', label: 'Academic Activities' },
     { id: 'academic-calendar', label: 'Academic Calendar' },
-    // Academic History
-    { id: 'academic-history', label: 'Academic History' },
-    // Published Sections
-    { id: 'published-exam-timetable', label: 'Published Exam Timetable' },
-    { id: 'published-exam', label: 'Published Exam' },
-    // Results
-    { id: 'results', label: 'Results & Report Cards' },
-    // Notices, Events, Holidays
-    { id: 'notices', label: 'Notices & Announcements' },
-    { id: 'events', label: 'Events & Programs' },
-    { id: 'holidays', label: 'Holidays Registry' },
-    // Finance
-    { id: 'fee-structures', label: 'Fee Configuration & Invoices' },
-    { id: 'salaries', label: 'Salaries & Payroll' },
-    { id: 'expenses', label: 'Expenses & Budget Control' },
-    { id: 'income', label: 'Income & Revenues' },
-    // System
-    { id: 'roles-permissions', label: 'Roles & RBAC Settings' }
+    { id: 'results-manager', label: 'Results Manager' },
+    { id: 'results-history', label: 'Academic History' },
+    { id: 'finance', label: 'Finance' },
+    { id: 'expense-dashboard', label: 'Expense Panel' },
+    { id: 'expense-all-expenses', label: 'Expenses' },
+    { id: 'expense-tracker', label: 'Expense Tracker' },
+    { id: 'expense-history', label: 'Expense History' },
+    { id: 'income', label: 'Income Tracker' },
+    { id: 'financial-reports', label: 'Financial Reports' },
+    { id: 'roles-permissions', label: 'Roles & Permissions' }
   ];
 
   const actions = [
@@ -126,11 +128,8 @@ export default function RolesPermissions() {
     { id: 'create', label: 'Create' },
     { id: 'edit', label: 'Edit' },
     { id: 'delete', label: 'Delete' },
-    { id: 'approve', label: 'Approve' },
-    { id: 'publish', label: 'Publish' },
     { id: 'export', label: 'Export' },
-    { id: 'import', label: 'Import' },
-    { id: 'manage-settings', label: 'Settings' }
+    { id: 'import', label: 'Import' }
   ];
 
   const showToast = (message, type = 'success') => {
@@ -165,8 +164,7 @@ export default function RolesPermissions() {
       setAuditLogs(auditData);
 
       if (rolesData.length > 0 && !matrixRoleId) {
-        const firstTeacherRole = rolesData.find(r => TEACHER_ROLES.includes(r.name));
-        setMatrixRoleId(firstTeacherRole ? firstTeacherRole.id : rolesData[0].id);
+        setMatrixRoleId(rolesData[0].id);
       }
     } catch (err) {
       console.error('Failed to load RBAC configuration details:', err);
@@ -230,44 +228,9 @@ export default function RolesPermissions() {
     }
   };
 
-  const handleDuplicateRole = async (sourceRole) => {
-    if (!confirm(`Duplicate role: "${sourceRole.name}"?`)) return;
-    
-    setSubmitting(true);
-    try {
-      const payload = {
-        name: `${sourceRole.name} (Copy)`,
-        description: `Duplicate clone of ${sourceRole.name}. ${sourceRole.description || ''}`,
-        active: sourceRole.active,
-        permissions: sourceRole.permissions
-      };
 
-      const res = await fetch('/api/rbac/roles', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(payload)
-      });
-
-      const data = await res.json();
-      if (res.ok) {
-        showToast('Role cloned successfully!', 'success');
-        fetchAllData();
-      } else {
-        showToast(data.error || 'Failed to clone role.', 'error');
-      }
-    } catch (err) {
-      showToast('Network error.', 'error');
-    } finally {
-      setSubmitting(false);
-    }
-  };
 
   const handleDeleteRole = async (role) => {
-    if (role.isSystem) {
-      showToast('Default system roles cannot be deleted.', 'error');
-      return;
-    }
-    
     if (!confirm(`Are you sure you want to permanently delete the role "${role.name}"? This action is irreversible.`)) return;
 
     setSubmitting(true);
@@ -298,8 +261,22 @@ export default function RolesPermissions() {
     const selectedRole = roles.find(r => r.id === matrixRoleId);
     if (!selectedRole) return;
 
-    const updatedPermissions = { ...selectedRole.permissions };
-    if (!updatedPermissions[moduleId]) updatedPermissions[moduleId] = {};
+    const updatedPermissions = {};
+    Object.keys(selectedRole.permissions || {}).forEach(k => {
+      updatedPermissions[k] = { ...selectedRole.permissions[k] };
+    });
+
+    if (!updatedPermissions[moduleId]) {
+      updatedPermissions[moduleId] = {};
+      actions.forEach(act => {
+        let val = false;
+        const legacyModule = LEGACY_MODULE_MAP[moduleId];
+        if (legacyModule && updatedPermissions[legacyModule]?.[act.id] !== undefined) {
+          val = !!updatedPermissions[legacyModule][act.id];
+        }
+        updatedPermissions[moduleId][act.id] = val;
+      });
+    }
     
     updatedPermissions[moduleId][actionId] = !updatedPermissions[moduleId][actionId];
 
@@ -355,132 +332,7 @@ export default function RolesPermissions() {
     }
   };
 
-  const handleUpdateUserRole = async (user, newRoleId) => {
-    try {
-      const res = await fetch(`/api/rbac/users/${user.id}`, {
-        method: 'PUT',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          roleId: newRoleId,
-          userType: user.userType,
-          userName: user.name
-        })
-      });
-      const data = await res.json();
-      if (res.ok) {
-        showToast(`Access role for ${user.name} updated successfully!`, 'success');
-        fetchAllData();
-      } else {
-        showToast(data.error || 'Failed to update user role.', 'error');
-      }
-    } catch (err) {
-      showToast('Network error.', 'error');
-    }
-  };
 
-  const handleToggleUserStatus = async (user) => {
-    const newStatus = user.status === 'Active' ? 'Suspended' : 'Active';
-    try {
-      const res = await fetch(`/api/rbac/users/${user.id}`, {
-        method: 'PUT',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          status: newStatus,
-          userType: user.userType,
-          userName: user.name
-        })
-      });
-      const data = await res.json();
-      if (res.ok) {
-        showToast(`User ${user.name} status set to ${newStatus}.`, 'success');
-        fetchAllData();
-      } else {
-        showToast(data.error || 'Failed to update user status.', 'error');
-      }
-    } catch (err) {
-      showToast('Network error.', 'error');
-    }
-  };
-
-  const handleOpenOverrideModal = (user) => {
-    setOverrideUser(user);
-    
-    // Construct default template from active overrides
-    const initialOverride = {};
-    modules.forEach(m => {
-      initialOverride[m.id] = {};
-      actions.forEach(a => {
-        initialOverride[m.id][a.id] = user.overrides?.[m.id]?.[a.id] !== undefined 
-          ? user.overrides[m.id][a.id] 
-          : 'inherit'; // inherit, grant, deny
-      });
-    });
-
-    setUserOverrideMatrix(initialOverride);
-    setShowOverrideModal(true);
-  };
-
-  const handleSaveOverrides = async () => {
-    if (!overrideUser) return;
-    
-    setSubmitting(true);
-    try {
-      // Map overrides matrix values back to boolean / undefined
-      const cleanOverrides = {};
-      modules.forEach(m => {
-        let moduleHasOverride = false;
-        const temp = {};
-        
-        actions.forEach(a => {
-          const val = userOverrideMatrix[m.id]?.[a.id];
-          if (val === 'grant') {
-            temp[a.id] = true;
-            moduleHasOverride = true;
-          } else if (val === 'deny') {
-            temp[a.id] = false;
-            moduleHasOverride = true;
-          }
-        });
-
-        if (moduleHasOverride) {
-          cleanOverrides[m.id] = temp;
-        }
-      });
-
-      const res = await fetch(`/api/rbac/users/${overrideUser.id}`, {
-        method: 'PUT',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          overrides: cleanOverrides,
-          userType: overrideUser.userType,
-          userName: overrideUser.name
-        })
-      });
-
-      const data = await res.json();
-      if (res.ok) {
-        showToast(`Permissions overrides configured for ${overrideUser.name}`, 'success');
-        setShowOverrideModal(false);
-        setOverrideUser(null);
-        fetchAllData();
-      } else {
-        showToast(data.error || 'Failed to configure overrides.', 'error');
-      }
-    } catch (err) {
-      showToast('Network error.', 'error');
-    } finally {
-      setSubmitting(false);
-    }
-  };
-
-  // Filter lists
-  const filteredUsers = users.filter(u => {
-    const matchesSearch = u.name.toLowerCase().includes(userSearch.toLowerCase()) || 
-                          u.email.toLowerCase().includes(userSearch.toLowerCase()) ||
-                          u.id.toLowerCase().includes(userSearch.toLowerCase());
-    const matchesRole = userRoleFilter === 'All' || u.roleName === userRoleFilter || u.userType === userRoleFilter;
-    return matchesSearch && matchesRole;
-  });
 
   const filteredLogs = auditLogs.filter(log => {
     const matchesSearch = log.userName.toLowerCase().includes(auditSearch.toLowerCase()) ||
@@ -495,7 +347,6 @@ export default function RolesPermissions() {
   const activeRoles = roles.filter(r => r.active).length;
   const systemRoles = roles.filter(r => r.isSystem).length;
   const activeUsers = users.filter(u => u.status === 'Active').length;
-  const overrideCount = users.filter(u => u.overrides && Object.keys(u.overrides).length > 0).length;
 
   if (loading) {
     return (
@@ -562,7 +413,6 @@ export default function RolesPermissions() {
           { id: 'dashboard', label: 'Dashboard Overview', icon: Activity },
           { id: 'roles', label: 'Roles Management', icon: Shield },
           { id: 'matrix', label: 'Permissions Matrix', icon: Sliders },
-          { id: 'users', label: 'User Access Control', icon: Users },
           { id: 'audit', label: 'Security Audit Ledger', icon: ClipboardList }
         ].map(tab => {
           const Icon = tab.icon;
@@ -609,7 +459,7 @@ export default function RolesPermissions() {
               </div>
               <div style={{ fontSize: '2rem', fontWeight: 800, color: 'var(--text-main)' }}>{users.length}</div>
               <div style={{ fontSize: '0.8rem', color: 'var(--text-muted)', marginTop: '8px' }}>
-                {activeUsers} Active Logins / {overrideCount} Overrides
+                {activeUsers} Active Logins
               </div>
             </div>
 
@@ -634,8 +484,7 @@ export default function RolesPermissions() {
               <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
                 {[
                   { title: 'Create Custom Access Role', desc: 'Create a tailored subadmin template (e.g. Finance Admin) with custom scopes.', action: () => { setActiveTab('roles'); setShowRoleModal(true); } },
-                  { title: 'Update Permission Matrices', desc: 'Configure modules like Academics and Fee structures settings directly in the grid.', action: () => setActiveTab('matrix') },
-                  { title: 'Configure User Overrides', desc: 'Assign direct staff accounts to specific templates or grant overriding view blocks.', action: () => setActiveTab('users') }
+                  { title: 'Update Permission Matrices', desc: 'Configure modules like Academics and Fee structures settings directly in the grid.', action: () => setActiveTab('matrix') }
                 ].map((task, idx) => (
                   <div key={idx} onClick={task.action} style={{
                     padding: '16px', borderRadius: '12px', border: '1px solid var(--border-glass)', background: 'rgba(255,255,255,0.01)',
@@ -701,80 +550,79 @@ export default function RolesPermissions() {
           </div>
 
           <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(320px, 1fr))', gap: '20px' }}>
-            {roles.map(role => (
-              <div key={role.id} className="glass-panel" style={{
-                borderRadius: '16px', border: '1px solid var(--border-glass)', background: 'var(--bg-card)', overflow: 'hidden',
-                display: 'flex', flexDirection: 'column', transition: 'all 0.3s ease', opacity: role.active ? 1 : 0.65
-              }}>
-                <div style={{ padding: '24px', display: 'flex', flexDirection: 'column', gap: '12px', flex: 1 }}>
-                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                    <h3 style={{ margin: 0, fontSize: '1.1rem', fontWeight: 800, color: 'var(--text-main)', letterSpacing: '-0.01em' }}>
-                      {role.name}
-                    </h3>
-                    <div style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>
-                      {role.isSystem && (
-                        <span style={{ fontSize: '0.7rem', background: 'rgba(99, 102, 241, 0.12)', border: '1px solid rgba(99, 102, 241, 0.25)', color: 'hsl(var(--color-primary))', padding: '2px 8px', borderRadius: '100px', fontWeight: 700 }}>
-                          System Default
-                        </span>
-                      )}
-                      <span style={{
-                        width: '8px', height: '8px', borderRadius: '50%',
-                        background: role.active ? '#10b981' : '#ef4444',
-                        boxShadow: role.active ? '0 0 8px #10b981' : '0 0 8px #ef4444'
-                      }}></span>
+            {roles.length > 0 ? (
+              roles.map(role => (
+                <div key={role.id} className="glass-panel" style={{
+                  borderRadius: '16px', border: '1px solid var(--border-glass)', background: 'var(--bg-card)', overflow: 'hidden',
+                  display: 'flex', flexDirection: 'column', transition: 'all 0.3s ease', opacity: role.active ? 1 : 0.65
+                }}>
+                  <div style={{ padding: '24px', display: 'flex', flexDirection: 'column', gap: '12px', flex: 1 }}>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                      <h3 style={{ margin: 0, fontSize: '1.1rem', fontWeight: 800, color: 'var(--text-main)', letterSpacing: '-0.01em' }}>
+                        {role.name}
+                      </h3>
+                      <div style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>
+                        {role.isSystem && (
+                          <span style={{ fontSize: '0.7rem', background: 'rgba(99, 102, 241, 0.12)', border: '1px solid rgba(99, 102, 241, 0.25)', color: 'hsl(var(--color-primary))', padding: '2px 8px', borderRadius: '100px', fontWeight: 700 }}>
+                            System Default
+                          </span>
+                        )}
+                        <span style={{
+                          width: '8px', height: '8px', borderRadius: '50%',
+                          background: role.active ? '#10b981' : '#ef4444',
+                          boxShadow: role.active ? '0 0 8px #10b981' : '0 0 8px #ef4444'
+                        }}></span>
+                      </div>
+                    </div>
+                    <p style={{ margin: 0, fontSize: '0.82rem', color: 'var(--text-muted)', lineHeight: 1.5, flex: 1 }}>
+                      {role.description || 'No description provided.'}
+                    </p>
+                    <div style={{ fontSize: '0.78rem', color: 'var(--text-muted)', display: 'flex', gap: '16px', borderTop: '1px solid rgba(255,255,255,0.03)', paddingTop: '12px' }}>
+                      <span>
+                        Grants: <strong>
+                          {role.permissions 
+                            ? Object.values(role.permissions).reduce((acc, current) => acc + Object.values(current || {}).filter(Boolean).length, 0)
+                            : 0
+                          }
+                        </strong> points
+                      </span>
+                      <span>Created: <strong>{new Date(role.createdAt || Date.now()).toLocaleDateString()}</strong></span>
                     </div>
                   </div>
-                  <p style={{ margin: 0, fontSize: '0.82rem', color: 'var(--text-muted)', lineHeight: 1.5, flex: 1 }}>
-                    {role.description || 'No description provided.'}
-                  </p>
-                  <div style={{ fontSize: '0.78rem', color: 'var(--text-muted)', display: 'flex', gap: '16px', borderTop: '1px solid rgba(255,255,255,0.03)', paddingTop: '12px' }}>
-                    <span>
-                      Grants: <strong>
-                        {role.permissions 
-                          ? Object.values(role.permissions).reduce((acc, current) => acc + Object.values(current || {}).filter(Boolean).length, 0)
-                          : 0
-                        }
-                      </strong> points
-                    </span>
-                    <span>Created: <strong>{new Date(role.createdAt || Date.now()).toLocaleDateString()}</strong></span>
-                  </div>
-                </div>
 
-                <div style={{
-                  background: 'rgba(255,255,255,0.01)', borderTop: '1px solid var(--border-glass)', padding: '12px 20px',
-                  display: 'flex', justifyContent: 'flex-end', gap: '8px'
-                }}>
-                  <button 
-                    onClick={() => handleDuplicateRole(role)}
-                    className="btn-secondary"
-                    style={{ padding: '6px 12px', fontSize: '0.78rem', display: 'flex', alignItems: 'center', gap: '6px' }}
-                    title="Duplicate permissions template"
-                  >
-                    <Copy size={14} /> Duplicate
-                  </button>
-                  <button 
-                    onClick={() => {
-                      setEditingRole(role);
-                      setRoleForm({ name: role.name, description: role.description || '', active: role.active });
-                      setShowRoleModal(true);
-                    }}
-                    className="btn-secondary"
-                    style={{ padding: '6px 12px', fontSize: '0.78rem' }}
-                  >
-                    Edit Info
-                  </button>
-                  {!role.isSystem && (
+                  <div style={{
+                    background: 'rgba(255,255,255,0.01)', borderTop: '1px solid var(--border-glass)', padding: '12px 20px',
+                    display: 'flex', justifyContent: 'flex-end', gap: '8px'
+                  }}>
+                    <button 
+                      onClick={() => {
+                        setEditingRole(role);
+                        setRoleForm({ name: role.name, description: role.description || '', active: role.active });
+                        setShowRoleModal(true);
+                      }}
+                      className="btn-secondary"
+                      style={{ padding: '6px 12px', fontSize: '0.78rem' }}
+                    >
+                      Edit Info
+                    </button>
                     <button 
                       onClick={() => handleDeleteRole(role)}
                       className="btn-secondary"
                       style={{ padding: '6px 10px', fontSize: '0.78rem', border: '1px solid rgba(239, 68, 68, 0.15)', color: '#ef4444' }}
+                      title="Delete Role"
                     >
                       <Trash2 size={14} />
                     </button>
-                  )}
+                  </div>
                 </div>
+              ))
+            ) : (
+              <div className="glass-panel" style={{ gridColumn: '1 / -1', padding: '48px', textAlign: 'center', color: 'var(--text-muted)', borderRadius: '16px', border: '1px solid var(--border-glass)', background: 'var(--bg-card)' }}>
+                <ShieldAlert size={36} style={{ color: 'hsl(var(--color-primary))', margin: '0 auto 12px auto', display: 'block', opacity: 0.6 }} />
+                <div style={{ fontWeight: 700, fontSize: '1rem', color: 'var(--text-main)' }}>No Roles Found</div>
+                <p style={{ margin: '4px 0 0 0', fontSize: '0.82rem' }}>Create a custom role to configure RBAC settings.</p>
               </div>
-            ))}
+            )}
           </div>
         </div>
       )}
@@ -787,271 +635,146 @@ export default function RolesPermissions() {
           <div className="glass-panel" style={{ padding: '20px', borderRadius: '16px', border: '1px solid var(--border-glass)', background: 'var(--bg-card)', display: 'flex', flexDirection: 'column', gap: '16px', height: 'fit-content' }}>
             <h3 style={{ margin: 0, fontSize: '0.95rem', fontWeight: 800, textTransform: 'uppercase', letterSpacing: '0.02em', color: 'var(--text-muted)' }}>Role Profiles</h3>
             <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
-              {roles.filter(r => TEACHER_ROLES.includes(r.name)).map(r => (
-                <button
-                  key={r.id}
-                  onClick={() => setMatrixRoleId(r.id)}
-                  style={{
-                    textAlign: 'left', background: r.id === matrixRoleId ? 'rgba(99, 102, 241, 0.08)' : 'none',
-                    border: r.id === matrixRoleId ? '1px solid rgba(99, 102, 241, 0.25)' : '1px solid transparent',
-                    padding: '12px 14px', borderRadius: '10px', color: r.id === matrixRoleId ? 'hsl(var(--color-primary))' : 'var(--text-main)',
-                    fontSize: '0.88rem', fontWeight: r.id === matrixRoleId ? 700 : 500, cursor: 'pointer', outline: 'none',
-                    display: 'flex', justifyContent: 'space-between', alignItems: 'center', transition: 'all 0.2s ease'
-                  }}
-                  className="role-select-item"
-                >
-                  <span style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{r.name}</span>
-                  {r.isSystem && <Lock size={12} style={{ color: 'var(--text-muted)' }} />}
-                </button>
-              ))}
+              {roles.length > 0 ? (
+                roles.map(r => (
+                  <button
+                    key={r.id}
+                    onClick={() => setMatrixRoleId(r.id)}
+                    style={{
+                      textAlign: 'left', background: r.id === matrixRoleId ? 'rgba(99, 102, 241, 0.08)' : 'none',
+                      border: r.id === matrixRoleId ? '1px solid rgba(99, 102, 241, 0.25)' : '1px solid transparent',
+                      padding: '12px 14px', borderRadius: '10px', color: r.id === matrixRoleId ? 'hsl(var(--color-primary))' : 'var(--text-main)',
+                      fontSize: '0.88rem', fontWeight: r.id === matrixRoleId ? 700 : 500, cursor: 'pointer', outline: 'none',
+                      display: 'flex', justifyContent: 'space-between', alignItems: 'center', transition: 'all 0.2s ease'
+                    }}
+                    className="role-select-item"
+                  >
+                    <span style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{r.name}</span>
+                    {r.isSystem && <Lock size={12} style={{ color: 'var(--text-muted)' }} />}
+                  </button>
+                ))
+              ) : (
+                <div style={{ color: 'var(--text-muted)', fontSize: '0.88rem', padding: '12px 14px', textAlign: 'center' }}>
+                  No Roles Found
+                </div>
+              )}
             </div>
           </div>
 
           {/* Right panel spreadsheet matrix */}
-          <div className="glass-panel" style={{ padding: '24px', borderRadius: '16px', border: '1px solid var(--border-glass)', background: 'var(--bg-card)', display: 'flex', flexDirection: 'column', gap: '20px' }}>
-            
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '16px' }}>
-              <div>
-                <h3 style={{ margin: 0, fontSize: '1.1rem', fontWeight: 800, color: 'var(--text-main)' }}>
-                  Permissions Grid for: <span style={{ color: 'hsl(var(--color-primary))' }}>{selectedMatrixRole?.name}</span>
-                </h3>
-                <p style={{ margin: '4px 0 0 0', fontSize: '0.82rem', color: 'var(--text-muted)' }}>
-                  Select or clear checkpoints to allocate functional modules access permissions. Changes save instantly.
-                </p>
+          {selectedMatrixRole ? (
+            <div className="glass-panel" style={{ padding: '24px', borderRadius: '16px', border: '1px solid var(--border-glass)', background: 'var(--bg-card)', display: 'flex', flexDirection: 'column', gap: '20px' }}>
+              
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '16px' }}>
+                <div>
+                  <h3 style={{ margin: 0, fontSize: '1.1rem', fontWeight: 800, color: 'var(--text-main)' }}>
+                    Permissions Grid for: <span style={{ color: 'hsl(var(--color-primary))' }}>{selectedMatrixRole?.name}</span>
+                  </h3>
+                  <p style={{ margin: '4px 0 0 0', fontSize: '0.82rem', color: 'var(--text-muted)' }}>
+                    Select or clear checkpoints to allocate functional modules access permissions. Changes save instantly.
+                  </p>
+                </div>
+                <div style={{ display: 'flex', gap: '10px' }}>
+                  <button 
+                    onClick={() => handleBulkMatrixToggle('grant-all')}
+                    className="btn-secondary"
+                    style={{ padding: '8px 14px', fontSize: '0.82rem' }}
+                  >
+                    Grant All Access
+                  </button>
+                  <button 
+                    onClick={() => handleBulkMatrixToggle('clear-all')}
+                    className="btn-secondary"
+                    style={{ padding: '8px 14px', fontSize: '0.82rem' }}
+                  >
+                    Clear All
+                  </button>
+                </div>
               </div>
-              <div style={{ display: 'flex', gap: '10px' }}>
-                <button 
-                  onClick={() => handleBulkMatrixToggle('grant-all')}
-                  className="btn-secondary"
-                  style={{ padding: '8px 14px', fontSize: '0.82rem' }}
-                >
-                  Grant All Access
-                </button>
-                <button 
-                  onClick={() => handleBulkMatrixToggle('clear-all')}
-                  className="btn-secondary"
-                  style={{ padding: '8px 14px', fontSize: '0.82rem' }}
-                >
-                  Clear All
-                </button>
-              </div>
-            </div>
 
-            {(selectedMatrixRole?.id === 'role-super-admin' || selectedMatrixRole?.id === 'role-principal') && (
-              <div style={{
-                display: 'flex', gap: '12px', background: 'rgba(99, 102, 241, 0.06)', border: '1px solid rgba(99, 102, 241, 0.15)',
-                padding: '16px 20px', borderRadius: '12px', color: 'var(--text-muted)', fontSize: '0.85rem', lineHeight: 1.5
-              }}>
-                <Info size={18} style={{ color: 'hsl(var(--color-primary))', flexShrink: 0, marginTop: '2px' }} />
-                <span>
-                  <strong>Notice:</strong> Principal / Super Admin has absolute system authorization bypass. Checkpoints toggled here are primarily for visual auditing; their actual API permissions bypass check is hardcoded in core logic.
-                </span>
-              </div>
-            )}
+              {(selectedMatrixRole?.id === 'role-super-admin' || selectedMatrixRole?.id === 'role-principal') && (
+                <div style={{
+                  display: 'flex', gap: '12px', background: 'rgba(99, 102, 241, 0.06)', border: '1px solid rgba(99, 102, 241, 0.15)',
+                  padding: '16px 20px', borderRadius: '12px', color: 'var(--text-muted)', fontSize: '0.85rem', lineHeight: 1.5
+                }}>
+                  <Info size={18} style={{ color: 'hsl(var(--color-primary))', flexShrink: 0, marginTop: '2px' }} />
+                  <span>
+                    <strong>Notice:</strong> Principal / Super Admin has absolute system authorization bypass. Checkpoints toggled here are primarily for visual auditing; their actual API permissions bypass check is hardcoded in core logic.
+                  </span>
+                </div>
+              )}
 
-            {/* Matrix Table */}
-            <div style={{ overflowX: 'auto', border: '1px solid var(--border-glass)', borderRadius: '12px' }}>
-              <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '0.85rem', textAlign: 'left' }}>
-                <thead>
-                  <tr style={{ background: 'rgba(255,255,255,0.015)', borderBottom: '1px solid var(--border-glass)' }}>
-                    <th style={{ padding: '16px 20px', fontWeight: 700, color: 'var(--text-main)', width: '250px' }}>ERP Module Section</th>
-                    {actions.map(act => (
-                      <th key={act.id} style={{ padding: '16px 12px', fontWeight: 700, color: 'var(--text-main)', textAlign: 'center' }}>
-                        {act.label}
-                      </th>
+              {/* Matrix Table */}
+              <div style={{ overflowX: 'auto', border: '1px solid var(--border-glass)', borderRadius: '12px' }}>
+                <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '0.85rem', textAlign: 'left' }}>
+                  <thead>
+                    <tr style={{ background: 'rgba(255,255,255,0.015)', borderBottom: '1px solid var(--border-glass)' }}>
+                      <th style={{ padding: '16px 20px', fontWeight: 700, color: 'var(--text-main)', width: '250px' }}>ERP Module Section</th>
+                      {actions.map(act => (
+                        <th key={act.id} style={{ padding: '16px 12px', fontWeight: 700, color: 'var(--text-main)', textAlign: 'center' }}>
+                          {act.label}
+                        </th>
+                      ))}
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {modules.map((mod, modIdx) => (
+                      <tr key={mod.id} style={{
+                        borderBottom: modIdx === modules.length - 1 ? 'none' : '1px solid rgba(255,255,255,0.03)',
+                        background: modIdx % 2 === 0 ? 'rgba(255,255,255,0.005)' : 'none',
+                        transition: 'background 0.2s ease'
+                      }} className="matrix-row-hover">
+                        <td style={{ padding: '16px 20px', fontWeight: 600, color: 'var(--text-main)' }}>
+                          {mod.label}
+                          <div style={{ fontSize: '0.72rem', color: 'var(--text-muted)', fontWeight: 400, marginTop: '2px' }}>
+                            code: {mod.id}
+                          </div>
+                        </td>
+                        {actions.map(act => {
+                          let checked = false;
+                          const rolePermissions = selectedMatrixRole?.permissions;
+                          if (rolePermissions) {
+                            if (rolePermissions[mod.id]?.[act.id] !== undefined) {
+                              checked = !!rolePermissions[mod.id][act.id];
+                            } else {
+                              const legacyModule = LEGACY_MODULE_MAP[mod.id];
+                              if (legacyModule && rolePermissions[legacyModule]?.[act.id] !== undefined) {
+                                checked = !!rolePermissions[legacyModule][act.id];
+                              }
+                            }
+                          }
+                          return (
+                            <td key={act.id} style={{ padding: '12px', textAlign: 'center' }}>
+                              <input
+                                type="checkbox"
+                                checked={checked}
+                                onChange={() => handleToggleMatrixCheckbox(mod.id, act.id)}
+                                style={{
+                                  cursor: 'pointer', width: '16px', height: '16px', accentColor: 'hsl(var(--color-primary))',
+                                  border: '1px solid var(--border-glass)', borderRadius: '4px'
+                                }}
+                              />
+                            </td>
+                          );
+                        })}
+                      </tr>
                     ))}
-                  </tr>
-                </thead>
-                <tbody>
-                  {modules.map((mod, modIdx) => (
-                    <tr key={mod.id} style={{
-                      borderBottom: modIdx === modules.length - 1 ? 'none' : '1px solid rgba(255,255,255,0.03)',
-                      background: modIdx % 2 === 0 ? 'rgba(255,255,255,0.005)' : 'none',
-                      transition: 'background 0.2s ease'
-                    }} className="matrix-row-hover">
-                      <td style={{ padding: '16px 20px', fontWeight: 600, color: 'var(--text-main)' }}>
-                        {mod.label}
-                        <div style={{ fontSize: '0.72rem', color: 'var(--text-muted)', fontWeight: 400, marginTop: '2px' }}>
-                          code: {mod.id}
-                        </div>
-                      </td>
-                      {actions.map(act => {
-                        const checked = !!selectedMatrixRole?.permissions?.[mod.id]?.[act.id];
-                        return (
-                          <td key={act.id} style={{ padding: '12px', textAlign: 'center' }}>
-                            <input
-                              type="checkbox"
-                              checked={checked}
-                              onChange={() => handleToggleMatrixCheckbox(mod.id, act.id)}
-                              style={{
-                                cursor: 'pointer', width: '16px', height: '16px', accentColor: 'hsl(var(--color-primary))',
-                                border: '1px solid var(--border-glass)', borderRadius: '4px'
-                              }}
-                            />
-                          </td>
-                        );
-                      })}
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
+                  </tbody>
+                </table>
+              </div>
 
-          </div>
+            </div>
+          ) : (
+            <div className="glass-panel" style={{ padding: '48px', textAlign: 'center', color: 'var(--text-muted)', borderRadius: '16px', border: '1px solid var(--border-glass)', background: 'var(--bg-card)' }}>
+              <ShieldAlert size={36} style={{ color: 'hsl(var(--color-primary))', margin: '0 auto 12px auto', display: 'block', opacity: 0.6 }} />
+              <div style={{ fontWeight: 700, fontSize: '1rem', color: 'var(--text-main)' }}>No Roles Selected or Found</div>
+              <p style={{ margin: '4px 0 0 0', fontSize: '0.82rem' }}>Please select a role from the sidebar or create a new role to configure permissions.</p>
+            </div>
+          )}
         </div>
       )}
 
-      {/* TAB CONTENT: 4. USER ACCESS */}
-      {activeTab === 'users' && (
-        <div style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>
-          
-          {/* Filter Bar */}
-          <div className="glass-panel" style={{
-            padding: '16px 24px', borderRadius: '16px', border: '1px solid var(--border-glass)', background: 'var(--bg-card)',
-            display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '16px'
-          }}>
-            <div style={{ display: 'flex', gap: '16px', flex: 1, minWidth: '280px' }}>
-              <div style={{ position: 'relative', flex: 1 }}>
-                <Search size={16} style={{ position: 'absolute', left: '14px', top: '50%', transform: 'translateY(-50%)', color: 'var(--text-muted)' }} />
-                <input
-                  type="text"
-                  placeholder="Search user name or employee ID..."
-                  value={userSearch}
-                  onChange={(e) => setUserSearch(e.target.value)}
-                  className="form-control"
-                  style={{ paddingLeft: '40px', borderRadius: '10px' }}
-                />
-              </div>
-              <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                <Filter size={16} style={{ color: 'var(--text-muted)' }} />
-                <select
-                  className="form-control"
-                  value={userRoleFilter}
-                  onChange={(e) => setUserRoleFilter(e.target.value)}
-                  style={{ borderRadius: '10px', width: '160px', padding: '8px 12px' }}
-                >
-                  <option value="All">All User Types</option>
-                  <option value="Teacher">Teachers</option>
-                  <option value="Staff">General Staff</option>
-                  {roles.map(r => (
-                    <option key={r.id} value={r.name}>{r.name}</option>
-                  ))}
-                </select>
-              </div>
-            </div>
-            <span style={{ fontSize: '0.82rem', color: 'var(--text-muted)' }}>
-              Showing {filteredUsers.length} of {users.length} registry logins
-            </span>
-          </div>
 
-          {/* User Table */}
-          <div className="glass-panel" style={{
-            borderRadius: '16px', border: '1px solid var(--border-glass)', background: 'var(--bg-card)', overflow: 'hidden'
-          }}>
-            <div style={{ overflowX: 'auto' }}>
-              <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '0.88rem', textAlign: 'left' }}>
-                <thead>
-                  <tr style={{ background: 'rgba(255,255,255,0.015)', borderBottom: '1px solid var(--border-glass)' }}>
-                    <th style={{ padding: '16px 24px', fontWeight: 700, color: 'var(--text-main)' }}>Staff User Details</th>
-                    <th style={{ padding: '16px 20px', fontWeight: 700, color: 'var(--text-main)' }}>Registry Type</th>
-                    <th style={{ padding: '16px 20px', fontWeight: 700, color: 'var(--text-main)' }}>Assigned Access Role</th>
-                    <th style={{ padding: '16px 20px', fontWeight: 700, color: 'var(--text-main)', textAlign: 'center' }}>Overrides</th>
-                    <th style={{ padding: '16px 20px', fontWeight: 700, color: 'var(--text-main)' }}>Status</th>
-                    <th style={{ padding: '16px 24px', fontWeight: 700, color: 'var(--text-main)', textAlign: 'right' }}>Actions</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {filteredUsers.map((user, idx) => (
-                    <tr key={`${user.userType}-${user.id}`} style={{
-                      borderBottom: idx === filteredUsers.length - 1 ? 'none' : '1px solid rgba(255,255,255,0.03)',
-                      background: idx % 2 === 0 ? 'rgba(255,255,255,0.005)' : 'none'
-                    }}>
-                      <td style={{ padding: '16px 24px' }}>
-                        <div style={{ fontWeight: 700, color: 'var(--text-main)', fontSize: '0.92rem' }}>{user.name}</div>
-                        <div style={{ fontSize: '0.78rem', color: 'var(--text-muted)', marginTop: '2px' }}>
-                          ID: {user.id} {user.email ? `| ${user.email}` : ''}
-                        </div>
-                      </td>
-                      <td style={{ padding: '16px 20px' }}>
-                        <span style={{
-                          fontSize: '0.75rem', fontWeight: 700, padding: '4px 10px', borderRadius: '6px',
-                          background: user.userType === 'Teacher' ? 'rgba(59, 130, 246, 0.08)' : 'rgba(107, 114, 128, 0.08)',
-                          border: user.userType === 'Teacher' ? '1px solid rgba(59, 130, 246, 0.15)' : '1px solid rgba(107, 114, 128, 0.15)',
-                          color: user.userType === 'Teacher' ? '#3b82f6' : 'var(--text-main)'
-                        }}>
-                          {user.userType}
-                        </span>
-                      </td>
-                      <td style={{ padding: '16px 20px' }}>
-                        <select
-                          className="form-control"
-                          value={user.roleId || ''}
-                          onChange={(e) => handleUpdateUserRole(user, e.target.value)}
-                          style={{
-                            padding: '6px 10px', fontSize: '0.82rem', borderRadius: '8px', border: '1px solid var(--border-glass)',
-                            background: 'var(--bg-input)', color: 'var(--text-main)', width: '180px'
-                          }}
-                        >
-                          <option value="">-- Assign Role --</option>
-                          {roles.map(r => (
-                            <option key={r.id} value={r.id}>{r.name}</option>
-                          ))}
-                        </select>
-                      </td>
-                      <td style={{ padding: '16px 20px', textAlign: 'center' }}>
-                        {user.overrides && Object.keys(user.overrides).length > 0 ? (
-                          <span style={{
-                            fontSize: '0.72rem', background: 'rgba(245, 158, 11, 0.12)', border: '1px solid rgba(245, 158, 11, 0.25)',
-                            color: '#f59e0b', padding: '2px 8px', borderRadius: '100px', fontWeight: 700
-                          }}>
-                            {Object.keys(user.overrides).reduce((sum, key) => sum + Object.keys(user.overrides[key]).length, 0)} Active
-                          </span>
-                        ) : (
-                          <span style={{ fontSize: '0.8rem', color: 'var(--text-muted)' }}>None</span>
-                        )}
-                      </td>
-                      <td style={{ padding: '16px 20px' }}>
-                        <button
-                          onClick={() => handleToggleUserStatus(user)}
-                          style={{
-                            background: 'none', border: 'none', cursor: 'pointer', padding: 0,
-                            display: 'flex', alignItems: 'center', gap: '6px',
-                            color: user.status === 'Active' ? '#10b981' : '#ef4444',
-                            fontSize: '0.82rem', fontWeight: 600
-                          }}
-                        >
-                          <span style={{
-                            width: '6px', height: '6px', borderRadius: '50%',
-                            background: user.status === 'Active' ? '#10b981' : '#ef4444'
-                          }}></span>
-                          {user.status || 'Active'}
-                        </button>
-                      </td>
-                      <td style={{ padding: '16px 24px', textAlign: 'right' }}>
-                        <button
-                          onClick={() => handleOpenOverrideModal(user)}
-                          className="btn-secondary"
-                          style={{ padding: '6px 12px', fontSize: '0.78rem', display: 'inline-flex', alignItems: 'center', gap: '6px' }}
-                        >
-                          <Sliders size={12} /> Set Overrides
-                        </button>
-                      </td>
-                    </tr>
-                  ))}
-                  {filteredUsers.length === 0 && (
-                    <tr>
-                      <td colSpan={6} style={{ padding: '40px', textAlign: 'center', color: 'var(--text-muted)' }}>
-                        No user login records matched the current filter.
-                      </td>
-                    </tr>
-                  )}
-                </tbody>
-              </table>
-            </div>
-          </div>
-
-        </div>
-      )}
 
       {/* TAB CONTENT: 5. AUDIT LOGS */}
       {activeTab === 'audit' && (
@@ -1222,108 +945,7 @@ export default function RolesPermissions() {
         document.body
       )}
 
-      {/* PERMISSION OVERRIDES MODAL */}
-      {showOverrideModal && overrideUser && createPortal(
-        <div className="modal-overlay" onClick={() => { setShowOverrideModal(false); setOverrideUser(null); }}>
-          <div onClick={(e) => e.stopPropagation()} className="glass-panel animate-scale-up" style={{
-            width: '100%', maxWidth: '800px', maxHeight: '90vh', overflowY: 'auto', background: 'var(--bg-card)',
-            border: '1px solid var(--border-glass)', borderRadius: '20px', padding: '32px', display: 'flex',
-            flexDirection: 'column', gap: '20px', boxShadow: '0 24px 64px rgba(0,0,0,0.4)', position: 'relative'
-          }}>
-            <button 
-              type="button" 
-              onClick={() => { setShowOverrideModal(false); setOverrideUser(null); }}
-              style={{ position: 'absolute', top: '24px', right: '24px', background: 'none', border: 'none', color: 'var(--text-muted)', cursor: 'pointer' }}
-            >
-              <X size={20} />
-            </button>
 
-            <div>
-              <h3 style={{ margin: 0, fontSize: '1.25rem', fontWeight: 800, color: 'var(--text-main)', display: 'flex', alignItems: 'center', gap: '8px' }}>
-                <Sliders size={22} style={{ color: 'hsl(var(--color-primary))' }} />
-                Set Access Overrides for: {overrideUser.name}
-              </h3>
-              <p style={{ margin: '4px 0 0 0', fontSize: '0.82rem', color: 'var(--text-muted)' }}>
-                Set explicit permissions that bypass the user's base role profile ({overrideUser.roleName}).
-              </p>
-            </div>
-
-            {/* Overrides Selection Spreadsheet */}
-            <div style={{ overflowX: 'auto', border: '1px solid var(--border-glass)', borderRadius: '12px' }}>
-              <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '0.8rem', textAlign: 'left' }}>
-                <thead>
-                  <tr style={{ background: 'rgba(255,255,255,0.015)', borderBottom: '1px solid var(--border-glass)' }}>
-                    <th style={{ padding: '12px 16px', fontWeight: 700, color: 'var(--text-main)', width: '220px' }}>Module</th>
-                    {actions.map(act => (
-                      <th key={act.id} style={{ padding: '12px 6px', fontWeight: 700, color: 'var(--text-main)', textAlign: 'center' }}>
-                        {act.label}
-                      </th>
-                    ))}
-                  </tr>
-                </thead>
-                <tbody>
-                  {modules.map((mod, modIdx) => (
-                    <tr key={mod.id} style={{
-                      borderBottom: modIdx === modules.length - 1 ? 'none' : '1px solid rgba(255,255,255,0.03)',
-                      background: modIdx % 2 === 0 ? 'rgba(255,255,255,0.005)' : 'none'
-                    }}>
-                      <td style={{ padding: '12px 16px', fontWeight: 600, color: 'var(--text-main)' }}>
-                        {mod.label}
-                      </td>
-                      {actions.map(act => {
-                        const cellVal = userOverrideMatrix[mod.id]?.[act.id] || 'inherit';
-                        return (
-                          <td key={act.id} style={{ padding: '8px 4px', textAlign: 'center' }}>
-                            <select
-                              value={cellVal}
-                              onChange={(e) => {
-                                const newMatrix = { ...userOverrideMatrix };
-                                if (!newMatrix[mod.id]) newMatrix[mod.id] = {};
-                                newMatrix[mod.id][act.id] = e.target.value;
-                                setUserOverrideMatrix(newMatrix);
-                              }}
-                              style={{
-                                padding: '4px 6px', fontSize: '0.75rem', borderRadius: '6px', border: '1px solid var(--border-glass)',
-                                background: cellVal === 'grant' ? 'rgba(16,185,129,0.1)' : cellVal === 'deny' ? 'rgba(239,68,68,0.1)' : 'var(--bg-input)',
-                                color: cellVal === 'grant' ? '#10b981' : cellVal === 'deny' ? '#ef4444' : 'var(--text-muted)',
-                                fontWeight: cellVal !== 'inherit' ? 700 : 400, cursor: 'pointer', outline: 'none'
-                              }}
-                            >
-                              <option value="inherit">Inherit</option>
-                              <option value="grant">Grant</option>
-                              <option value="deny">Deny</option>
-                            </select>
-                          </td>
-                        );
-                      })}
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
-
-            <div style={{ display: 'flex', gap: '12px', marginTop: '10px' }}>
-              <button 
-                type="button" 
-                onClick={() => { setShowOverrideModal(false); setOverrideUser(null); }}
-                className="btn-secondary"
-                style={{ flex: 1, padding: '12px', justifyContent: 'center' }}
-              >
-                Cancel
-              </button>
-              <button 
-                onClick={handleSaveOverrides}
-                className="btn-primary"
-                disabled={submitting}
-                style={{ flex: 1, padding: '12px', justifyContent: 'center' }}
-              >
-                {submitting ? <Loader2 size={16} className="spinner" /> : 'Save Permission Overrides'}
-              </button>
-            </div>
-          </div>
-        </div>,
-        document.body
-      )}
 
     </div>
   );

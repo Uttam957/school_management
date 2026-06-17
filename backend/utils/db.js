@@ -250,7 +250,30 @@ const createTablesFromSchema = async () => {
       "ALTER TABLE fees ADD COLUMN amount DECIMAL(10,2) DEFAULT 0.00",
       "ALTER TABLE fees ADD COLUMN studentClass VARCHAR(100)",
       "ALTER TABLE fees ADD COLUMN section VARCHAR(50)",
-      "ALTER TABLE fees ADD COLUMN paymentStatus VARCHAR(50)"
+      "ALTER TABLE fees ADD COLUMN paymentStatus VARCHAR(50)",
+      "ALTER TABLE employees ADD COLUMN designationLevel VARCHAR(100)",
+      "ALTER TABLE employees ADD COLUMN employmentType VARCHAR(100)",
+      "ALTER TABLE staff_salary_structures ADD COLUMN designationLevel VARCHAR(100)",
+      "ALTER TABLE staff_salary_structures ADD COLUMN employmentType VARCHAR(100)",
+      "ALTER TABLE staff_payments ADD COLUMN staffName VARCHAR(255)",
+      "ALTER TABLE staff_payments ADD COLUMN staffRole VARCHAR(255)",
+      "ALTER TABLE staff_payments ADD COLUMN basicSalary DECIMAL(10,2) DEFAULT 0.00",
+      "ALTER TABLE staff_payments ADD COLUMN allowances DECIMAL(10,2) DEFAULT 0.00",
+      "ALTER TABLE staff_payments ADD COLUMN bonus DECIMAL(10,2) DEFAULT 0.00",
+      "ALTER TABLE staff_payments ADD COLUMN deductions DECIMAL(10,2) DEFAULT 0.00",
+      "ALTER TABLE staff_payments ADD COLUMN pfDeduction DECIMAL(10,2) DEFAULT 0.00",
+      "ALTER TABLE staff_payments ADD COLUMN taxDeduction DECIMAL(10,2) DEFAULT 0.00",
+      "ALTER TABLE staff_payments ADD COLUMN netSalary DECIMAL(10,2) DEFAULT 0.00",
+      "ALTER TABLE expenses ADD COLUMN grade VARCHAR(100)",
+      "ALTER TABLE expenses ADD COLUMN department VARCHAR(100)",
+      "ALTER TABLE expenses ADD COLUMN expenseType VARCHAR(100)",
+      "ALTER TABLE expenses ADD COLUMN subcategory VARCHAR(100)",
+      "ALTER TABLE academic_calendar_events ADD COLUMN color VARCHAR(50) DEFAULT '#6366f1'",
+      "ALTER TABLE academic_calendar_events ADD COLUMN audience VARCHAR(255) DEFAULT 'All'",
+      "ALTER TABLE academic_calendar_events ADD COLUMN recurring VARCHAR(50) DEFAULT 'None'",
+      "ALTER TABLE academic_calendar_events ADD COLUMN reminders JSON NULL",
+      "ALTER TABLE academic_calendar_events ADD COLUMN attachments JSON NULL",
+      "ALTER TABLE academic_calendar_events ADD COLUMN notifications JSON NULL"
     ];
 
     for (const sql of extraSchemaAlters) {
@@ -299,9 +322,10 @@ const migrateJsonToSql = async () => {
     // Seed global platform activities
     const globalActivities = globalDb.activities || [];
     for (const act of globalActivities) {
+      const actType = act.type === 'finance' ? 'account_management' : act.type;
       await sqlDb.query(
         'INSERT INTO activities (id, type, title, description, time, timestamp, color, bg, tenantId) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)',
-        [act.id, act.type, act.title, act.desc || act.description, act.time, act.timestamp, act.color, act.bg, 'platform']
+        [act.id, actType, act.title, act.desc || act.description, act.time, act.timestamp, act.color, act.bg, 'platform']
       );
     }
 
@@ -532,9 +556,10 @@ const migrateJsonToSql = async () => {
           // Seed activities
           const activities = tenantDb.activities || [];
           for (const act of activities) {
+            const actType = act.type === 'finance' ? 'account_management' : act.type;
             await sqlDb.query(
               'INSERT INTO activities (id, type, title, description, time, timestamp, color, bg, tenantId) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)',
-              [act.id, act.type, act.title, act.desc || act.description, act.time, act.timestamp, act.color, act.bg, tenantId]
+              [act.id, actType, act.title, act.desc || act.description, act.time, act.timestamp, act.color, act.bg, tenantId]
             );
           }
 
@@ -701,35 +726,33 @@ initSqlDb();
 // Default roles and permissions seeder data
 export const getDefaultRoles = () => {
   const modules = [
-    'dashboard',
-    // Core Registers
-    'student-directory', 'teacher-directory', 'staff-directory',
-    // Registry Admissions
-    'registry-admissions',
-    // Student Manager
+    'overview',
+    'student-directory',
+    'teacher-directory',
+    'staff-directory',
+    'grade-settings',
+    'grade-subjects',
+    'register-student',
+    'add-staff',
+    'add-employee',
     'student-manager',
-    // Attendance Manager (parent group)
-    'attendance-manager',
-    'monthly-attendance', 'student-report', 'yearly-attendance', 'employee-attendance',
-    // Academic Manager (parent group)
+    'employee-attendance',
+    'attendance',
+    'attendance-history',
     'academic-manager',
-    'class-timetable', 'teacher-timetable',
-    // Exam Management
-    'exam-timetable',
-    // Academic Activities (parent group)
+    'published-timetable',
+    'published-exam',
     'academic-activities',
     'academic-calendar',
-    // Academic History
-    'academic-history',
-    // Published sections
-    'published-exam-timetable', 'published-exam',
-    // Results
-    'results',
-    // Notices, Events, Holidays
-    'notices', 'events', 'holidays',
-    // Finance
-    'fee-structures', 'salaries', 'expenses', 'income',
-    // System
+    'results-manager',
+    'results-history',
+    'finance',
+    'expense-dashboard',
+    'expense-all-expenses',
+    'expense-tracker',
+    'expense-history',
+    'income',
+    'financial-reports',
     'roles-permissions'
   ];
   const actions = ['view', 'create', 'edit', 'delete', 'approve', 'publish', 'export', 'import', 'manage-settings'];
@@ -746,22 +769,14 @@ export const getDefaultRoles = () => {
   };
 
   return [
-    // ===== STAFF ROLES (14) =====
+    // ===== STAFF ROLES =====
     {
       id: 'role-principal',
       name: 'Principal',
       description: 'School principal with full administrative access to all modules and system settings.',
       active: true,
       isSystem: true,
-      permissions: (() => {
-        const matrix = createEmptyMatrix();
-        modules.forEach(m => {
-          actions.forEach(a => {
-            matrix[m][a] = true;
-          });
-        });
-        return matrix;
-      })()
+      permissions: createEmptyMatrix()
     },
     {
       id: 'role-vice-principal',
@@ -769,27 +784,7 @@ export const getDefaultRoles = () => {
       description: 'Vice principal with broad access to academics, staff, and student management.',
       active: true,
       isSystem: true,
-      permissions: (() => {
-        const matrix = createEmptyMatrix();
-        [
-          'dashboard', 'student-directory', 'teacher-directory', 'staff-directory',
-          'registry-admissions', 'student-manager',
-          'attendance-manager', 'monthly-attendance', 'student-report', 'yearly-attendance',
-          'academic-manager', 'class-timetable', 'teacher-timetable',
-          'exam-timetable', 'academic-activities', 'academic-calendar', 'academic-history',
-          'published-exam-timetable', 'published-exam',
-          'results', 'notices', 'events', 'holidays'
-        ].forEach(m => {
-          actions.forEach(a => {
-            matrix[m][a] = true;
-          });
-        });
-        ['fee-structures', 'salaries', 'expenses', 'income'].forEach(m => {
-          matrix[m]['view'] = true;
-          matrix[m]['export'] = true;
-        });
-        return matrix;
-      })()
+      permissions: createEmptyMatrix()
     },
     {
       id: 'role-academic-coordinator',
@@ -797,41 +792,7 @@ export const getDefaultRoles = () => {
       description: 'Coordinates academic programs, timetables, exam schedules, and curriculum planning.',
       active: true,
       isSystem: true,
-      permissions: (() => {
-        const matrix = createEmptyMatrix();
-        matrix['dashboard']['view'] = true;
-        [
-          'academic-manager', 'class-timetable', 'teacher-timetable',
-          'exam-timetable', 'academic-calendar', 'academic-history',
-          'published-exam-timetable', 'published-exam', 'results'
-        ].forEach(m => {
-          matrix[m]['view'] = true;
-          matrix[m]['create'] = true;
-          matrix[m]['edit'] = true;
-          matrix[m]['delete'] = true;
-          matrix[m]['approve'] = true;
-          matrix[m]['publish'] = true;
-          matrix[m]['export'] = true;
-          matrix[m]['import'] = true;
-          matrix[m]['manage-settings'] = true;
-        });
-        matrix['student-directory']['view'] = true;
-        matrix['teacher-directory']['view'] = true;
-        matrix['attendance-manager']['view'] = true;
-        matrix['attendance-manager']['create'] = true;
-        matrix['attendance-manager']['edit'] = true;
-        matrix['attendance-manager']['export'] = true;
-        matrix['monthly-attendance']['view'] = true;
-        matrix['student-report']['view'] = true;
-        matrix['yearly-attendance']['view'] = true;
-        ['notices', 'events', 'holidays', 'academic-activities'].forEach(m => {
-          matrix[m]['view'] = true;
-          matrix[m]['create'] = true;
-          matrix[m]['edit'] = true;
-          matrix[m]['delete'] = true;
-        });
-        return matrix;
-      })()
+      permissions: createEmptyMatrix()
     },
     {
       id: 'role-subject-teacher',
@@ -839,30 +800,7 @@ export const getDefaultRoles = () => {
       description: 'Subject teacher. Records attendance, enters marks, manages academic activities, and views student profiles.',
       active: true,
       isSystem: true,
-      permissions: (() => {
-        const matrix = createEmptyMatrix();
-        matrix['dashboard']['view'] = true;
-        matrix['student-directory']['view'] = true;
-        matrix['academic-manager']['view'] = true;
-        matrix['class-timetable']['view'] = true;
-        matrix['teacher-timetable']['view'] = true;
-        matrix['exam-timetable']['view'] = true;
-        matrix['published-exam-timetable']['view'] = true;
-        matrix['published-exam']['view'] = true;
-        matrix['results']['view'] = true;
-        matrix['results']['create'] = true;
-        matrix['results']['edit'] = true;
-        matrix['attendance-manager']['view'] = true;
-        matrix['attendance-manager']['create'] = true;
-        matrix['attendance-manager']['edit'] = true;
-        matrix['monthly-attendance']['view'] = true;
-        matrix['student-report']['view'] = true;
-        matrix['yearly-attendance']['view'] = true;
-        ['academic-calendar', 'academic-activities', 'notices', 'events', 'holidays'].forEach(m => {
-          matrix[m]['view'] = true;
-        });
-        return matrix;
-      })()
+      permissions: createEmptyMatrix()
     },
     {
       id: 'role-librarian',
@@ -870,43 +808,15 @@ export const getDefaultRoles = () => {
       description: 'School librarian. Manages library resources, student access, and catalog records.',
       active: true,
       isSystem: true,
-      permissions: (() => {
-        const matrix = createEmptyMatrix();
-        matrix['dashboard']['view'] = true;
-        matrix['student-directory']['view'] = true;
-        matrix['teacher-directory']['view'] = true;
-        ['academic-calendar', 'academic-activities', 'notices', 'events', 'holidays'].forEach(m => {
-          matrix[m]['view'] = true;
-        });
-        return matrix;
-      })()
+      permissions: createEmptyMatrix()
     },
-
     {
       id: 'role-receptionist',
       name: 'Receptionist',
       description: 'Front-office receptionist. Manages admissions, visitor records, and inquiry handling.',
       active: true,
       isSystem: true,
-      permissions: (() => {
-        const matrix = createEmptyMatrix();
-        matrix['dashboard']['view'] = true;
-        matrix['student-directory']['view'] = true;
-        matrix['student-directory']['create'] = true;
-        matrix['student-directory']['edit'] = true;
-        matrix['student-directory']['export'] = true;
-        matrix['student-directory']['import'] = true;
-        matrix['registry-admissions']['view'] = true;
-        matrix['registry-admissions']['create'] = true;
-        matrix['registry-admissions']['edit'] = true;
-        matrix['teacher-directory']['view'] = true;
-        matrix['staff-directory']['view'] = true;
-        matrix['attendance-manager']['view'] = true;
-        ['notices', 'events', 'holidays', 'academic-calendar', 'academic-activities'].forEach(m => {
-          matrix[m]['view'] = true;
-        });
-        return matrix;
-      })()
+      permissions: createEmptyMatrix()
     },
     {
       id: 'role-accountant',
@@ -914,26 +824,7 @@ export const getDefaultRoles = () => {
       description: 'Accounts administrator. Manages fee structures, collections, invoices, salaries, and financial reports.',
       active: true,
       isSystem: true,
-      permissions: (() => {
-        const matrix = createEmptyMatrix();
-        matrix['dashboard']['view'] = true;
-        ['fee-structures', 'salaries', 'expenses', 'income'].forEach(m => {
-          matrix[m]['view'] = true;
-          matrix[m]['create'] = true;
-          matrix[m]['edit'] = true;
-          matrix[m]['delete'] = true;
-          matrix[m]['approve'] = true;
-          matrix[m]['export'] = true;
-          matrix[m]['manage-settings'] = true;
-        });
-        matrix['student-directory']['view'] = true;
-        matrix['teacher-directory']['view'] = true;
-        matrix['staff-directory']['view'] = true;
-        ['notices', 'events', 'holidays', 'academic-calendar', 'academic-activities'].forEach(m => {
-          matrix[m]['view'] = true;
-        });
-        return matrix;
-      })()
+      permissions: createEmptyMatrix()
     },
     {
       id: 'role-expense-manager',
@@ -941,24 +832,7 @@ export const getDefaultRoles = () => {
       description: 'Expense manager. Oversees school expenses, financial reporting, and budgeting.',
       active: true,
       isSystem: true,
-      permissions: (() => {
-        const matrix = createEmptyMatrix();
-        matrix['dashboard']['view'] = true;
-        matrix['student-directory']['view'] = true;
-        matrix['staff-directory']['view'] = true;
-        matrix['expenses']['view'] = true;
-        matrix['expenses']['create'] = true;
-        matrix['expenses']['edit'] = true;
-        matrix['expenses']['delete'] = true;
-        matrix['expenses']['approve'] = true;
-        matrix['expenses']['export'] = true;
-        matrix['income']['view'] = true;
-        matrix['income']['export'] = true;
-        ['notices', 'events', 'holidays', 'academic-calendar', 'academic-activities'].forEach(m => {
-          matrix[m]['view'] = true;
-        });
-        return matrix;
-      })()
+      permissions: createEmptyMatrix()
     },
     // ===== PORTAL ROLES =====
     {
@@ -967,21 +841,7 @@ export const getDefaultRoles = () => {
       description: 'Student portal. Views timetables, exam reports, notices, and events.',
       active: true,
       isSystem: true,
-      permissions: (() => {
-        const matrix = createEmptyMatrix();
-        matrix['dashboard']['view'] = true;
-        matrix['academic-manager']['view'] = true;
-        matrix['class-timetable']['view'] = true;
-        matrix['academic-calendar']['view'] = true;
-        matrix['exam-timetable']['view'] = true;
-        matrix['published-exam-timetable']['view'] = true;
-        matrix['published-exam']['view'] = true;
-        matrix['results']['view'] = true;
-        matrix['notices']['view'] = true;
-        matrix['events']['view'] = true;
-        matrix['holidays']['view'] = true;
-        return matrix;
-      })()
+      permissions: createEmptyMatrix()
     },
     {
       id: 'role-parent',
@@ -989,27 +849,7 @@ export const getDefaultRoles = () => {
       description: 'Parent portal. Views children attendance, fees, academic cards, and school notices.',
       active: true,
       isSystem: true,
-      permissions: (() => {
-        const matrix = createEmptyMatrix();
-        matrix['dashboard']['view'] = true;
-        matrix['student-directory']['view'] = true;
-        matrix['academic-manager']['view'] = true;
-        matrix['class-timetable']['view'] = true;
-        matrix['academic-calendar']['view'] = true;
-        matrix['exam-timetable']['view'] = true;
-        matrix['published-exam-timetable']['view'] = true;
-        matrix['published-exam']['view'] = true;
-        matrix['results']['view'] = true;
-        matrix['notices']['view'] = true;
-        matrix['events']['view'] = true;
-        matrix['holidays']['view'] = true;
-        matrix['attendance-manager']['view'] = true;
-        matrix['monthly-attendance']['view'] = true;
-        matrix['student-report']['view'] = true;
-        matrix['yearly-attendance']['view'] = true;
-        matrix['fee-structures']['view'] = true;
-        return matrix;
-      })()
+      permissions: createEmptyMatrix()
     }
   ];
 };
@@ -1056,8 +896,36 @@ export const loadTenantSqlIntoMemory = async (tenantId) => {
       auditLogs: [],
       grades: [],
       departments: [],
-      gradeDepartments: []
+      gradeDepartments: [],
+      sections: [],
+      publishedClassTimetables: [],
+      publishedTeacherTimetables: []
     };
+
+    // Load existing sections and published timetables from local JSON backup file to preserve custom config
+    if (!isGlobal) {
+      const tenantFile = path.join(TENANTS_DIR, `db_${tenantId}.json`);
+      if (fs.existsSync(tenantFile)) {
+        try {
+          const tenantData = JSON.parse(fs.readFileSync(tenantFile, 'utf8'));
+          if (tenantData.sections) {
+            data.sections = tenantData.sections;
+          }
+          if (tenantData.publishedClassTimetables) {
+            data.publishedClassTimetables = tenantData.publishedClassTimetables;
+          }
+          if (tenantData.publishedTeacherTimetables) {
+            data.publishedTeacherTimetables = tenantData.publishedTeacherTimetables;
+          }
+        } catch (e) {
+          console.error(`Failed to read tenant custom fields from JSON:`, e);
+        }
+      }
+    }
+
+    if (data.sections === undefined) {
+      data.sections = [];
+    }
 
     // 1. Get Global Platform details
     const globalSchools = await sqlDb.query('SELECT * FROM schools');
@@ -1133,7 +1001,14 @@ export const loadTenantSqlIntoMemory = async (tenantId) => {
     }));
 
     const rawExpenses = await sqlDb.query('SELECT * FROM expenses WHERE tenantId = ?', [tId]);
-    data.expenses = rawExpenses.map(e => ({ ...e, amount: parseFloat(e.amount || 0) }));
+    data.expenses = rawExpenses.map(e => ({
+      ...e,
+      amount: parseFloat(e.amount || 0),
+      subcategory: e.subcategory || '',
+      grade: e.grade || '',
+      department: e.department || '',
+      expenseType: e.expenseType || ''
+    }));
 
     const rawPayroll = await sqlDb.query('SELECT * FROM payroll WHERE tenantId = ?', [tId]);
     data.payroll = rawPayroll.map(p => ({
@@ -1145,7 +1020,26 @@ export const loadTenantSqlIntoMemory = async (tenantId) => {
     }));
 
     const rawStaffPayments = await sqlDb.query('SELECT * FROM staff_payments WHERE tenantId = ?', [tId]);
-    data.staffPayments = rawStaffPayments.map(sp => ({ ...sp, amount: parseFloat(sp.amount || 0) }));
+    data.staffPayments = rawStaffPayments.map(sp => ({
+      id: sp.id,
+      paymentId: sp.id,
+      staffId: sp.staffId,
+      amount: parseFloat(sp.amount || 0),
+      paymentDate: sp.paymentDate,
+      paymentMethod: sp.paymentMethod,
+      paymentStatus: sp.status || 'Paid',
+      status: sp.status || 'Paid',
+      remarks: sp.remarks,
+      staffName: sp.staffName || '',
+      staffRole: sp.staffRole || '',
+      basicSalary: parseFloat(sp.basicSalary || 0),
+      allowances: parseFloat(sp.allowances || 0),
+      bonus: parseFloat(sp.bonus || 0),
+      deductions: parseFloat(sp.deductions || 0),
+      pfDeduction: parseFloat(sp.pfDeduction || 0),
+      taxDeduction: parseFloat(sp.taxDeduction || 0),
+      netSalary: parseFloat(sp.netSalary || sp.amount || 0)
+    }));
 
     const rawIncome = await sqlDb.query('SELECT * FROM income WHERE tenantId = ?', [tId]);
     data.income = rawIncome.map(i => ({ ...i, amount: parseFloat(i.amount || 0) }));
@@ -1257,7 +1151,9 @@ export const loadTenantSqlIntoMemory = async (tenantId) => {
       deductions: parseFloat(sss.deductions || 0),
       pfDeduction: parseFloat(sss.pfDeduction || 0),
       taxDeduction: parseFloat(sss.taxDeduction || 0),
-      netSalary: parseFloat(sss.netSalary || 0)
+      netSalary: parseFloat(sss.netSalary || 0),
+      designationLevel: sss.designationLevel || '',
+      employmentType: sss.employmentType || ''
     }));
 
     const dbFeeStructures = await sqlDb.query('SELECT * FROM fee_structures WHERE tenantId = ?', [tId]);
@@ -1426,32 +1322,17 @@ export const loadTenantSqlIntoMemory = async (tenantId) => {
 
     // Load Roles & Permissions details
     const dbRoles = await sqlDb.query('SELECT * FROM roles WHERE tenantId = ?', [tId]);
-    if (dbRoles.length === 0) {
-      // Seed default roles
-      const defaultRoles = getDefaultRoles();
-      for (const r of defaultRoles) {
-        await sqlDb.query(
-          `INSERT INTO roles (id, name, description, active, isSystem, permissions, createdAt, tenantId) VALUES (?, ?, ?, ?, ?, ?, ?, ?)`,
-          [
-            r.id,
-            r.name,
-            r.description,
-            r.active ? 1 : 0,
-            r.isSystem ? 1 : 0,
-            JSON.stringify(r.permissions),
-            new Date().toISOString(),
-            tId
-          ]
-        );
-      }
-      data.roles = defaultRoles;
-    } else {
-      data.roles = dbRoles.map(r => ({
-        ...r,
-        active: r.active === 1 || r.active === true || r.active === '1',
-        isSystem: r.isSystem === 1 || r.isSystem === true || r.isSystem === '1',
-        permissions: typeof r.permissions === 'string' ? JSON.parse(r.permissions) : (r.permissions || {})
-      }));
+    data.roles = dbRoles.map(r => ({
+      ...r,
+      active: r.active === 1 || r.active === true || r.active === '1',
+      isSystem: r.isSystem === 1 || r.isSystem === true || r.isSystem === '1',
+      permissions: typeof r.permissions === 'string' ? JSON.parse(r.permissions) : (r.permissions || {})
+    }));
+
+    // Auto-seed default roles if none exist for this tenant
+    if (data.roles.length === 0) {
+      data.roles = getDefaultRoles();
+      console.log(`[SQL Preload] Seeded default roles for tenant: ${tId}`);
     }
 
     const dbUserAccess = await sqlDb.query('SELECT * FROM user_access WHERE tenantId = ?', [tId]);
@@ -1717,17 +1598,19 @@ export const saveMemoryDbToSql = async (tenantId, db) => {
           s.id, s.name, s.fullName, s.role, s.department, s.email, s.phone, s.gender, s.qualification, 
           s.experience, s.dateOfJoining, s.salaryGrade, s.reportingTo, s.address, s.city, s.state, s.pincode, 
           s.emergencyContact, s.emergencyPhone, s.photo, s.aadharFile, s.certificateFile, s.status || 'Active', 
-          s.avatarBg, s.password, tId, s.designation || ''
+          s.avatarBg, s.password, tId, s.designation || '', s.designationLevel || '', s.employmentType || ''
         ].map(v => v === undefined ? null : v);
         await sqlDb.query(
           `INSERT INTO employees (
             id, name, fullName, role, department, email, phone, gender, qualification, experience, 
             dateOfJoining, salaryGrade, reportingTo, address, city, state, pincode, emergencyContact, 
-            emergencyPhone, photo, aadharFile, certificateFile, status, avatarBg, password, tenantId, designation
-          ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+            emergencyPhone, photo, aadharFile, certificateFile, status, avatarBg, password, tenantId, 
+            designation, designationLevel, employmentType
+          ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
           ON DUPLICATE KEY UPDATE
             name=VALUES(name), role=VALUES(role), department=VALUES(department), email=VALUES(email),
-            phone=VALUES(phone), status=VALUES(status), password=VALUES(password), designation=VALUES(designation)`,
+            phone=VALUES(phone), status=VALUES(status), password=VALUES(password), designation=VALUES(designation),
+            designationLevel=VALUES(designationLevel), employmentType=VALUES(employmentType)`,
           params
         );
       }
@@ -2021,9 +1904,9 @@ export const saveMemoryDbToSql = async (tenantId, db) => {
       for (const e of db.expenses) {
         if (!e.id) continue;
         await sqlDb.query(
-          `INSERT INTO expenses (id, category, amount, date, description, status, paidTo, paymentMethod, attachment, createdAt, tenantId) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-           ON DUPLICATE KEY UPDATE amount=VALUES(amount), status=VALUES(status)`,
-          [e.id, e.category || '', parseFloat(e.amount || 0), e.date || '', e.description || '', e.status || 'Approved', e.paidTo || '', e.paymentMethod || '', e.attachment || '', e.createdAt || new Date().toISOString(), tId]
+          `INSERT INTO expenses (id, category, subcategory, amount, date, description, status, paidTo, paymentMethod, attachment, createdAt, tenantId, grade, department, expenseType) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+           ON DUPLICATE KEY UPDATE amount=VALUES(amount), status=VALUES(status), subcategory=VALUES(subcategory), grade=VALUES(grade), department=VALUES(department), expenseType=VALUES(expenseType)`,
+          [e.id, e.category || '', e.subcategory || '', parseFloat(e.amount || 0), e.date || '', e.description || '', e.status || 'Approved', e.paidTo || '', e.paymentMethod || '', e.attachment || '', e.createdAt || new Date().toISOString(), tId, e.grade || '', e.department || '', e.expenseType || '']
         );
       }
     }
@@ -2049,7 +1932,7 @@ export const saveMemoryDbToSql = async (tenantId, db) => {
 
     // 11. Sync Staff Payments
     if (db.staffPayments && Array.isArray(db.staffPayments)) {
-      const activeSpIds = db.staffPayments.map(sp => sp.id).filter(Boolean);
+      const activeSpIds = db.staffPayments.map(sp => sp.id || sp.paymentId).filter(Boolean);
       if (activeSpIds.length > 0) {
         await sqlDb.query(`DELETE FROM staff_payments WHERE tenantId = ? AND id NOT IN (${activeSpIds.map(() => '?').join(',')})`, [tId, ...activeSpIds]);
       } else {
@@ -2057,11 +1940,28 @@ export const saveMemoryDbToSql = async (tenantId, db) => {
       }
 
       for (const sp of db.staffPayments) {
-        if (!sp.id) continue;
+        const spId = sp.id || sp.paymentId;
+        if (!spId) continue;
+        const netSal = sp.netSalary || sp.amount || 0;
         await sqlDb.query(
-          `INSERT INTO staff_payments (id, staffId, amount, paymentDate, paymentMethod, status, remarks, tenantId) VALUES (?, ?, ?, ?, ?, ?, ?, ?)
-           ON DUPLICATE KEY UPDATE amount=VALUES(amount), status=VALUES(status)`,
-          [sp.id, sp.staffId || '', parseFloat(sp.amount || 0), sp.paymentDate || '', sp.paymentMethod || '', sp.status || 'Paid', sp.remarks || '', tId]
+          `INSERT INTO staff_payments (
+            id, staffId, amount, paymentDate, paymentMethod, status, remarks, tenantId,
+            staffName, staffRole, basicSalary, allowances, bonus, deductions, pfDeduction, taxDeduction, netSalary
+          ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+           ON DUPLICATE KEY UPDATE 
+            amount=VALUES(amount), status=VALUES(status),
+            staffName=VALUES(staffName), staffRole=VALUES(staffRole),
+            basicSalary=VALUES(basicSalary), allowances=VALUES(allowances), bonus=VALUES(bonus),
+            deductions=VALUES(deductions), pfDeduction=VALUES(pfDeduction), taxDeduction=VALUES(taxDeduction),
+            netSalary=VALUES(netSalary)`,
+          [
+            spId, sp.staffId || '', parseFloat(netSal), sp.paymentDate || '', sp.paymentMethod || '', 
+            sp.status || sp.paymentStatus || 'Paid', sp.remarks || '', tId,
+            sp.staffName || '', sp.staffRole || '',
+            parseFloat(sp.basicSalary || 0), parseFloat(sp.allowances || 0), parseFloat(sp.bonus || 0),
+            parseFloat(sp.deductions || 0), parseFloat(sp.pfDeduction || 0), parseFloat(sp.taxDeduction || 0),
+            parseFloat(netSal)
+          ]
         );
       }
     }
@@ -2440,18 +2340,21 @@ export const saveMemoryDbToSql = async (tenantId, db) => {
         await sqlDb.query(
           `INSERT INTO staff_salary_structures (
              id, position, basicSalary, allowances, deductions, tenantId,
-             designation, bonus, pfDeduction, taxDeduction, netSalary
-           ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+             designation, bonus, pfDeduction, taxDeduction, netSalary, designationLevel, employmentType
+           ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
            ON DUPLICATE KEY UPDATE 
              basicSalary=VALUES(basicSalary), allowances=VALUES(allowances), deductions=VALUES(deductions),
-             designation=VALUES(designation), bonus=VALUES(bonus), pfDeduction=VALUES(pfDeduction), taxDeduction=VALUES(taxDeduction), netSalary=VALUES(netSalary)`,
+             designation=VALUES(designation), bonus=VALUES(bonus), pfDeduction=VALUES(pfDeduction), taxDeduction=VALUES(taxDeduction), 
+             netSalary=VALUES(netSalary), designationLevel=VALUES(designationLevel), employmentType=VALUES(employmentType)`,
           [
             sss.id || `SSS-${posVal}`, posVal, basicVal, allowVal, dedVal, tId,
             sss.designation || posVal,
             bonusVal,
             parseFloat(sss.pfDeduction || 0),
             parseFloat(sss.taxDeduction || 0),
-            netVal
+            netVal,
+            sss.designationLevel || '',
+            sss.employmentType || ''
           ]
         );
       }
@@ -2726,16 +2629,23 @@ export const saveMemoryDbToSql = async (tenantId, db) => {
         if (!e.id) continue;
         await sqlDb.query(
           `INSERT INTO academic_calendar_events (
-            id, eventDate, title, eventType, description, applicableClasses, startTime, endTime, session, tenantId, createdAt, updatedAt
-          ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+            id, eventDate, title, eventType, description, applicableClasses, startTime, endTime, session, color, audience, recurring, reminders, attachments, notifications, tenantId, createdAt, updatedAt
+          ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
           ON DUPLICATE KEY UPDATE 
             eventDate=VALUES(eventDate), title=VALUES(title), eventType=VALUES(eventType), 
             description=VALUES(description), applicableClasses=VALUES(applicableClasses), 
-            startTime=VALUES(startTime), endTime=VALUES(endTime), session=VALUES(session), 
+            startTime=VALUES(startTime), endTime=VALUES(endTime), session=VALUES(session),
+            color=VALUES(color), audience=VALUES(audience), recurring=VALUES(recurring),
+            reminders=VALUES(reminders), attachments=VALUES(attachments), notifications=VALUES(notifications),
             updatedAt=VALUES(updatedAt)`,
           [
             e.id, e.eventDate, e.title, e.eventType, e.description || '', e.applicableClasses || '',
-            e.startTime || '', e.endTime || '', e.session, tId, e.createdAt || new Date().toISOString(), e.updatedAt || new Date().toISOString()
+            e.startTime || '', e.endTime || '', e.session, e.color || '#6366f1', e.audience || 'All',
+            e.recurring || 'None',
+            e.reminders ? (typeof e.reminders === 'string' ? e.reminders : JSON.stringify(e.reminders)) : null,
+            e.attachments ? (typeof e.attachments === 'string' ? e.attachments : JSON.stringify(e.attachments)) : null,
+            e.notifications ? (typeof e.notifications === 'string' ? e.notifications : JSON.stringify(e.notifications)) : null,
+            tId, e.createdAt || new Date().toISOString(), e.updatedAt || new Date().toISOString()
           ]
         );
       }
@@ -2868,6 +2778,11 @@ export const readDb = () => {
     
     // Ensure all standard collections exist defensively
     if (!db.schools) db.schools = [];
+    if (!db.roles) db.roles = [];
+    // Auto-seed default roles if roles array is empty
+    if (db.roles.length === 0) {
+      db.roles = getDefaultRoles();
+    }
     if (!db.subscriptionPlans) db.subscriptionPlans = [];
     if (!db.activities) db.activities = [];
     if (!db.students) db.students = [];
@@ -2898,6 +2813,9 @@ export const readDb = () => {
     if (!db.grades) db.grades = [];
     if (!db.departments) db.departments = [];
     if (!db.gradeDepartments) db.gradeDepartments = [];
+    if (!db.sections) {
+      db.sections = [];
+    }
     if (!db.timeslots) {
       db.timeslots = [
         '09:00 AM - 10:00 AM',
@@ -2911,6 +2829,7 @@ export const readDb = () => {
   } catch (error) {
     const defaultDb = {
       schools: [],
+      roles: [],
       activities: [],
       students: [],
       teachers: [],
@@ -2938,6 +2857,7 @@ export const readDb = () => {
       grades: [],
       departments: [],
       gradeDepartments: [],
+      sections: [],
       timeslots: [
         '09:00 AM - 10:00 AM',
         '10:00 AM - 11:00 AM',

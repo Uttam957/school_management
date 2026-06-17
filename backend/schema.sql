@@ -220,7 +220,9 @@ CREATE TABLE IF NOT EXISTS employees (
   avatarBg TEXT,
   password VARCHAR(255),
   tenantId VARCHAR(100),
-  designation VARCHAR(100)
+  designation VARCHAR(100),
+  designationLevel VARCHAR(100),
+  employmentType VARCHAR(100)
 );
 
 -- 12. Staff Table
@@ -340,6 +342,7 @@ CREATE TABLE IF NOT EXISTS fees (
 CREATE TABLE IF NOT EXISTS expenses (
   id VARCHAR(50) PRIMARY KEY,
   category VARCHAR(100) NOT NULL,
+  subcategory VARCHAR(100),
   amount DECIMAL(10,2) NOT NULL,
   date VARCHAR(50),
   description TEXT,
@@ -348,7 +351,10 @@ CREATE TABLE IF NOT EXISTS expenses (
   paymentMethod VARCHAR(100),
   attachment TEXT,
   createdAt VARCHAR(100),
-  tenantId VARCHAR(100)
+  tenantId VARCHAR(100),
+  grade VARCHAR(100),
+  department VARCHAR(100),
+  expenseType VARCHAR(100)
 );
 
 -- 17. Payroll Table
@@ -378,7 +384,16 @@ CREATE TABLE IF NOT EXISTS staff_payments (
   paymentMethod VARCHAR(100),
   status VARCHAR(50) DEFAULT 'Paid',
   remarks TEXT,
-  tenantId VARCHAR(100)
+  tenantId VARCHAR(100),
+  staffName VARCHAR(255),
+  staffRole VARCHAR(255),
+  basicSalary DECIMAL(10,2) DEFAULT 0.00,
+  allowances DECIMAL(10,2) DEFAULT 0.00,
+  bonus DECIMAL(10,2) DEFAULT 0.00,
+  deductions DECIMAL(10,2) DEFAULT 0.00,
+  pfDeduction DECIMAL(10,2) DEFAULT 0.00,
+  taxDeduction DECIMAL(10,2) DEFAULT 0.00,
+  netSalary DECIMAL(10,2) DEFAULT 0.00
 );
 
 -- 19. Activities Table
@@ -464,6 +479,12 @@ CREATE TABLE IF NOT EXISTS academic_calendar_events (
   startTime VARCHAR(50),
   endTime VARCHAR(50),
   session VARCHAR(50) NOT NULL,
+  color VARCHAR(50) DEFAULT '#6366f1',
+  audience VARCHAR(255) DEFAULT 'All',
+  recurring VARCHAR(50) DEFAULT 'None',
+  reminders JSON NULL,
+  attachments JSON NULL,
+  notifications JSON NULL,
   tenantId VARCHAR(100) NOT NULL,
   createdAt VARCHAR(100) NOT NULL,
   updatedAt VARCHAR(100) NOT NULL
@@ -554,7 +575,14 @@ CREATE TABLE IF NOT EXISTS staff_salary_structures (
   basicSalary DECIMAL(10,2) NOT NULL,
   allowances JSON,
   deductions JSON,
-  tenantId VARCHAR(100)
+  tenantId VARCHAR(100),
+  designation VARCHAR(255),
+  bonus DECIMAL(10,2) DEFAULT 0.00,
+  pfDeduction DECIMAL(10,2) DEFAULT 0.00,
+  taxDeduction DECIMAL(10,2) DEFAULT 0.00,
+  netSalary DECIMAL(10,2) DEFAULT 0.00,
+  designationLevel VARCHAR(100),
+  employmentType VARCHAR(100)
 );
 
 -- 32. Income Table

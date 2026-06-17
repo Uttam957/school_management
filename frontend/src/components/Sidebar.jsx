@@ -54,26 +54,39 @@ export default function Sidebar({
   setAdminView, 
   isDeveloperAdmin,
   onDeveloperAdminLogout,
-  onBackToMain
+  onBackToMain,
+  userProfile
 }) {
   const [adminCoreOpen, setAdminCoreOpen] = useState(false);
   const [adminAttendanceOpen, setAdminAttendanceOpen] = useState(() => {
-    return typeof adminView === 'string' && (adminView === 'attendance' || adminView === 'attendance-history');
+    return typeof adminView === 'string' && (adminView === 'employee-attendance' || adminView === 'attendance' || adminView === 'attendance-history');
   });
-  const [adminAcademicOpen, setAdminAcademicOpen] = useState(false);
-  const [adminAcademicActivitiesOpen, setAdminAcademicActivitiesOpen] = useState(false);
+  const [adminAcademicOpen, setAdminAcademicOpen] = useState(() => {
+    return typeof adminView === 'string' && (['academic-manager', 'academic-class-timetable', 'academic-teacher-timetable', 'academic-exams', 'academic-exams-history', 'academic-published-exam', 'academic-published-timetable'].includes(adminView));
+  });
+  const [adminAcademicActivitiesOpen, setAdminAcademicActivitiesOpen] = useState(() => {
+    return typeof adminView === 'string' && (['academic-activities', 'academic-events', 'academic-notices', 'academic-holidays', 'academic-calendar'].includes(adminView));
+  });
   const [adminRecepOpen, setAdminRecepOpen] = useState(false);
-  const [adminFinanceOpen, setAdminFinanceOpen] = useState(false);
-  const [adminExpensesOpen, setAdminExpensesOpen] = useState(false);
+  const [adminFinanceOpen, setAdminFinanceOpen] = useState(() => {
+    return typeof adminView === 'string' && ([
+      'collect-fees', 'fee-structure', 
+      'payroll', 'teacher-pay-structure', 'staff-pay', 'staff-pay-structure'
+    ].includes(adminView));
+  });
+  const [adminExpensesOpen, setAdminExpensesOpen] = useState(() => {
+    return typeof adminView === 'string' && (adminView.startsWith('expense-'));
+  });
   const [adminResultsOpen, setAdminResultsOpen] = useState(() => {
-    return typeof adminView === 'string' && (adminView.startsWith('results-') || adminView === 'academic-results');
+    return typeof adminView === 'string' && (adminView.startsWith('results-') || adminView === 'academic-results' || adminView === 'results-history');
   });
   const [adminGradeOpen, setAdminGradeOpen] = useState(() => {
-    return typeof adminView === 'string' && (adminView.startsWith('grade-') || adminView === 'add-grade');
+    return typeof adminView === 'string' && (adminView.startsWith('grade-') || adminView === 'add-grade' || adminView === 'academic-grade-subjects');
   });
   const menuItems = [
     { id: 'students', label: 'Students', icon: Users },
     { id: 'school', label: 'School', icon: School },
+    { id: 'academic-calendar', label: 'Academic Calendar', icon: Calendar }
   ];
 
   return (
@@ -83,7 +96,17 @@ export default function Sidebar({
           <div className="brand-icon">
             <GraduationCap size={24} />
           </div>
-          <span className="brand-name">{isDeveloperAdmin ? 'Dev Dashboard' : (isAdmin ? 'Admin Dashboard' : (schoolDetails?.name || 'Dashboard'))}</span>
+          <span className="brand-name">
+            {isDeveloperAdmin 
+              ? 'Dev Dashboard' 
+              : (isAdmin 
+                  ? ((userProfile?.role === 'Main Admin' || userProfile?.role === 'Admin Dashboard' || userProfile?.role === 'Principal' || !userProfile?.role) 
+                      ? 'Admin Dashboard' 
+                      : `${userProfile.role} Dashboard`)
+                  : (schoolDetails?.name || 'Dashboard')
+                )
+            }
+          </span>
         </div>
         <button 
           onClick={() => {
@@ -117,6 +140,16 @@ export default function Sidebar({
           <>
             <button
               onClick={() => {
+                setActiveView('dashboard');
+                setMobileOpen(false);
+              }}
+              className={`nav-item ${activeView === 'dashboard' ? 'active' : ''}`}
+            >
+              <LayoutDashboard size={20} className="flex-shrink-0" />
+              <span className="nav-label">Platform Dashboard</span>
+            </button>
+            <button
+              onClick={() => {
                 setActiveView('school');
                 setMobileOpen(false);
               }}
@@ -125,84 +158,21 @@ export default function Sidebar({
               <School size={20} className="flex-shrink-0" />
               <span className="nav-label">Schools Registry</span>
             </button>
-            <button
-              onClick={() => {
-                onDeveloperAdminLogout();
-                setMobileOpen(false);
-              }}
-              className="nav-item"
-              style={{ color: 'rgb(var(--color-danger-rgb))', marginTop: '12px' }}
-            >
-              <LogOut size={20} className="flex-shrink-0" />
-              <span className="nav-label">Logout Platform</span>
-            </button>
           </>
         ) : isAdmin ? (
           <>
 
-            <button
-              onClick={() => {
-                setAdminView('overview');
-                setMobileOpen(false);
-              }}
-              className={`nav-item ${adminView === 'overview' ? 'active' : ''}`}
-            >
-              <List size={20} className="flex-shrink-0" />
-              <span className="nav-label">Admin Panel</span>
-            </button>
-
-            {isSuperAdmin() && (
-              <div style={{ display: 'flex', flexDirection: 'column', gap: '2px' }}>
-                <button
-                  type="button"
-                  onClick={() => setAdminGradeOpen(!adminGradeOpen)}
-                  className="nav-item"
-                  style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', width: '100%', cursor: 'pointer' }}
-                >
-                  <div style={{ display: 'flex', alignItems: 'center', gap: '16px', minWidth: 0, overflow: 'hidden' }}>
-                    <GraduationCap size={20} className="flex-shrink-0" />
-                    <span className="nav-label" style={{ fontWeight: 600 }}>Grade Management</span>
-                  </div>
-                  {adminGradeOpen ? <ChevronDown size={16} className="flex-shrink-0" /> : <ChevronRight size={16} className="flex-shrink-0" />}
-                </button>
-                {adminGradeOpen && (
-                  <div style={{ display: 'flex', flexDirection: 'column', paddingLeft: '16px', borderLeft: '1px solid rgba(255,255,255,0.06)', marginLeft: '24px', marginTop: '2px', marginBottom: '6px', gap: '4px' }}>
-                    <button
-                      onClick={() => { setAdminView('grade-list'); setMobileOpen(false); }}
-                      className={`nav-item ${adminView === 'grade-list' ? 'active' : ''}`}
-                      style={{ padding: '10px 12px', fontSize: '0.88rem', position: 'relative' }}
-                    >
-                      <List size={18} className="flex-shrink-0" />
-                      <span className="nav-label">Grade List</span>
-                    </button>
-                    <button
-                      onClick={() => { setAdminView('add-grade'); setMobileOpen(false); }}
-                      className={`nav-item ${adminView === 'add-grade' ? 'active' : ''}`}
-                      style={{ padding: '10px 12px', fontSize: '0.88rem', position: 'relative' }}
-                    >
-                      <Plus size={18} className="flex-shrink-0" />
-                      <span className="nav-label">Add Grade</span>
-                    </button>
-                    <button
-                      onClick={() => { setAdminView('grade-departments'); setMobileOpen(false); }}
-                      className={`nav-item ${adminView === 'grade-departments' ? 'active' : ''}`}
-                      style={{ padding: '10px 12px', fontSize: '0.88rem', position: 'relative' }}
-                    >
-                      <Users size={18} className="flex-shrink-0" />
-                      <span className="nav-label">Departments</span>
-                    </button>
-
-                    <button
-                      onClick={() => { setAdminView('grade-academic-settings'); setMobileOpen(false); }}
-                      className={`nav-item ${adminView === 'grade-academic-settings' ? 'active' : ''}`}
-                      style={{ padding: '10px 12px', fontSize: '0.88rem', position: 'relative' }}
-                    >
-                      <Settings size={18} className="flex-shrink-0" />
-                      <span className="nav-label">Academic Settings</span>
-                    </button>
-                  </div>
-                )}
-              </div>
+            {hasPermission('overview', 'view') && (
+              <button
+                onClick={() => {
+                  setAdminView('overview');
+                  setMobileOpen(false);
+                }}
+                className={`nav-item ${adminView === 'overview' ? 'active' : ''}`}
+              >
+                <List size={20} className="flex-shrink-0" />
+                <span className="nav-label">Admin Panel</span>
+              </button>
             )}
 
             {(hasPermission('student-directory', 'view') || hasPermission('teacher-directory', 'view') || hasPermission('staff-directory', 'view')) && (
@@ -210,7 +180,7 @@ export default function Sidebar({
                 <button
                   type="button"
                   onClick={() => setAdminCoreOpen(!adminCoreOpen)}
-                  className="nav-item"
+                  className={`nav-item ${['students', 'teachers', 'staff'].includes(adminView) ? 'active' : ''}`}
                   style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', width: '100%', cursor: 'pointer' }}
                 >
                   <div style={{ display: 'flex', alignItems: 'center', gap: '16px' }}>
@@ -256,7 +226,50 @@ export default function Sidebar({
               </div>
             )}
 
-            {(hasPermission('registry-admissions', 'view') || hasPermission('registry-admissions', 'create')) && (
+            {(hasPermission('grade-settings', 'view') || hasPermission('grade-subjects', 'view')) && (
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '2px' }}>
+                <button
+                  type="button"
+                  onClick={() => setAdminGradeOpen(!adminGradeOpen)}
+                  className={`nav-item ${['grade-list', 'add-grade', 'grade-departments', 'grade-dept-mapping', 'grade-academic-settings', 'section-utility', 'academic-grade-subjects'].includes(adminView) ? 'active' : ''}`}
+                  style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', width: '100%', cursor: 'pointer' }}
+                >
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '16px', minWidth: 0, overflow: 'hidden' }}>
+                    <GraduationCap size={20} className="flex-shrink-0" />
+                    <span className="nav-label" style={{ fontWeight: 600 }}>Grade Management</span>
+                  </div>
+                  {adminGradeOpen ? <ChevronDown size={16} className="flex-shrink-0" /> : <ChevronRight size={16} className="flex-shrink-0" />}
+                </button>
+                {adminGradeOpen && (
+                  <div style={{ display: 'flex', flexDirection: 'column', paddingLeft: '16px', borderLeft: '1px solid rgba(255,255,255,0.06)', marginLeft: '24px', marginTop: '2px', marginBottom: '6px', gap: '4px' }}>
+                    {hasPermission('grade-settings', 'view') && (
+                      <button
+                        onClick={() => { setAdminView('grade-list'); setMobileOpen(false); }}
+                        className={`nav-item ${['grade-list', 'add-grade', 'grade-departments', 'grade-dept-mapping', 'grade-academic-settings', 'section-utility'].includes(adminView) ? 'active' : ''}`}
+                        style={{ padding: '10px 12px', fontSize: '0.88rem', position: 'relative' }}
+                      >
+                        <Settings size={18} className="flex-shrink-0" />
+                        <span className="nav-label">Grade Settings</span>
+                      </button>
+                    )}
+                    {hasPermission('grade-subjects', 'view') && (
+                      <button
+                        onClick={() => { setAdminView('academic-grade-subjects'); setMobileOpen(false); }}
+                        className={`nav-item ${adminView === 'academic-grade-subjects' ? 'active' : ''}`}
+                        style={{ padding: '10px 12px', fontSize: '0.88rem', position: 'relative' }}
+                      >
+                        <BookOpen size={18} className="flex-shrink-0" />
+                        <span className="nav-label">Grade Subjects</span>
+                      </button>
+                    )}
+                  </div>
+                )}
+              </div>
+            )}
+
+            {(hasPermission('register-student', 'create') || hasPermission('register-student', 'view') || 
+              hasPermission('add-staff', 'create') || hasPermission('add-staff', 'view') || 
+              hasPermission('add-employee', 'create') || hasPermission('add-employee', 'view')) && (
               <div style={{ display: 'flex', flexDirection: 'column', gap: '2px' }}>
                 <button
                   type="button"
@@ -272,7 +285,7 @@ export default function Sidebar({
                 </button>
                 {adminRecepOpen && (
                   <div style={{ display: 'flex', flexDirection: 'column', paddingLeft: '16px', borderLeft: '1px solid rgba(255,255,255,0.06)', marginLeft: '24px', marginTop: '2px', marginBottom: '6px', gap: '4px' }}>
-                    {hasPermission('registry-admissions', 'create') && (
+                    {(hasPermission('register-student', 'create') || hasPermission('register-student', 'view')) && (
                       <button
                         onClick={() => { setAdminView('register-student'); setMobileOpen(false); }}
                         className={`nav-item ${adminView === 'register-student' ? 'active' : ''}`}
@@ -282,7 +295,7 @@ export default function Sidebar({
                         <span className="nav-label">Register Student</span>
                       </button>
                     )}
-                    {hasPermission('registry-admissions', 'create') && (
+                    {(hasPermission('add-staff', 'create') || hasPermission('add-staff', 'view')) && (
                       <button
                         onClick={() => { setAdminView('add-teacher'); setMobileOpen(false); }}
                         className={`nav-item ${adminView === 'add-teacher' ? 'active' : ''}`}
@@ -292,7 +305,7 @@ export default function Sidebar({
                         <span className="nav-label">Add Staff</span>
                       </button>
                     )}
-                    {hasPermission('registry-admissions', 'create') && (
+                    {(hasPermission('add-employee', 'create') || hasPermission('add-employee', 'view')) && (
                       <button
                         onClick={() => { setAdminView('add-staff'); setMobileOpen(false); }}
                         className={`nav-item ${adminView === 'add-staff' ? 'active' : ''}`}
@@ -317,23 +330,33 @@ export default function Sidebar({
               </button>
             )}
 
-            {(hasPermission('attendance-manager', 'create') || hasPermission('attendance-manager', 'view')) && (
+            {(hasPermission('employee-attendance', 'view') || hasPermission('attendance', 'view') || hasPermission('attendance-history', 'view')) && (
               <div style={{ display: 'flex', flexDirection: 'column', gap: '2px' }}>
                 <button
                   type="button"
                   onClick={() => setAdminAttendanceOpen(!adminAttendanceOpen)}
-                  className="nav-item"
+                  className={`nav-item ${['employee-attendance', 'attendance', 'attendance-history'].includes(adminView) ? 'active' : ''}`}
                   style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', width: '100%', cursor: 'pointer' }}
                 >
                   <div style={{ display: 'flex', alignItems: 'center', gap: '16px', minWidth: 0, overflow: 'hidden' }}>
                     <ClipboardCheck size={20} className="flex-shrink-0" />
-                    <span className="nav-label" style={{ fontWeight: 600 }}>Student Attendance</span>
+                    <span className="nav-label" style={{ fontWeight: 600 }}>Attendance</span>
                   </div>
                   {adminAttendanceOpen ? <ChevronDown size={16} className="flex-shrink-0" /> : <ChevronRight size={16} className="flex-shrink-0" />}
                 </button>
                 {adminAttendanceOpen && (
                   <div style={{ display: 'flex', flexDirection: 'column', paddingLeft: '16px', borderLeft: '1px solid rgba(255,255,255,0.06)', marginLeft: '24px', marginTop: '2px', marginBottom: '6px', gap: '4px' }}>
-                    {hasPermission('attendance-manager', 'create') && (
+                    {hasPermission('employee-attendance', 'view') && (
+                      <button
+                        onClick={() => { setAdminView('employee-attendance'); setMobileOpen(false); }}
+                        className={`nav-item ${adminView === 'employee-attendance' ? 'active' : ''}`}
+                        style={{ padding: '10px 12px', fontSize: '0.88rem', position: 'relative' }}
+                      >
+                        <QrCode size={18} className="flex-shrink-0" />
+                        <span className="nav-label">Attendance Manager</span>
+                      </button>
+                    )}
+                    {hasPermission('attendance', 'view') && (
                       <button
                         onClick={() => { setAdminView('attendance'); setMobileOpen(false); }}
                         className={`nav-item ${adminView === 'attendance' ? 'active' : ''}`}
@@ -343,7 +366,7 @@ export default function Sidebar({
                         <span className="nav-label">School Attendance</span>
                       </button>
                     )}
-                    {hasPermission('attendance-manager', 'view') && (
+                    {hasPermission('attendance-history', 'view') && (
                       <button
                         onClick={() => { setAdminView('attendance-history'); setMobileOpen(false); }}
                         className={`nav-item ${adminView === 'attendance-history' ? 'active' : ''}`}
@@ -353,28 +376,17 @@ export default function Sidebar({
                         <span className="nav-label">Attendance History</span>
                       </button>
                     )}
-
                   </div>
                 )}
               </div>
             )}
 
-            {(hasPermission('employee-attendance', 'view') || hasPermission('employee-attendance', 'create')) && (
-              <button
-                onClick={() => { setAdminView('employee-attendance'); setMobileOpen(false); }}
-                className={`nav-item ${adminView === 'employee-attendance' ? 'active' : ''}`}
-              >
-                <QrCode size={20} className="flex-shrink-0" />
-                <span className="nav-label">Attendance Manager</span>
-              </button>
-            )}
-
-            {(hasPermission('academic-manager', 'view') || hasPermission('class-timetable', 'view') || hasPermission('teacher-timetable', 'view') || hasPermission('exam-timetable', 'view') || hasPermission('results', 'view')) && (
+            {(hasPermission('academic-manager', 'view') || hasPermission('published-timetable', 'view') || hasPermission('published-exam', 'view')) && (
               <div style={{ display: 'flex', flexDirection: 'column', gap: '2px' }}>
                 <button
                   type="button"
                   onClick={() => setAdminAcademicOpen(!adminAcademicOpen)}
-                  className="nav-item"
+                  className={`nav-item ${['academic-manager', 'academic-class-timetable', 'academic-teacher-timetable', 'academic-exams', 'academic-exams-history', 'academic-published-timetable', 'academic-published-exam'].includes(adminView) ? 'active' : ''}`}
                   style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', width: '100%', cursor: 'pointer' }}
                 >
                   <div style={{ display: 'flex', alignItems: 'center', gap: '16px', minWidth: 0, overflow: 'hidden' }}>
@@ -387,65 +399,15 @@ export default function Sidebar({
                   <div style={{ display: 'flex', flexDirection: 'column', paddingLeft: '16px', borderLeft: '1px solid rgba(255,255,255,0.06)', marginLeft: '24px', marginTop: '2px', marginBottom: '6px', gap: '4px' }}>
                     {hasPermission('academic-manager', 'view') && (
                       <button
-                        onClick={() => { setAdminView('academic-grade-subjects'); setMobileOpen(false); }}
-                        className={`nav-item ${adminView === 'academic-grade-subjects' ? 'active' : ''}`}
+                        onClick={() => { setAdminView('academic-manager'); setMobileOpen(false); }}
+                        className={`nav-item ${['academic-manager', 'academic-class-timetable', 'academic-teacher-timetable', 'academic-exams', 'academic-exams-history'].includes(adminView) ? 'active' : ''}`}
                         style={{ padding: '10px 12px', fontSize: '0.88rem', position: 'relative' }}
                       >
                         <BookOpen size={18} className="flex-shrink-0" />
-                        <span className="nav-label">Grade Subjects</span>
+                        <span className="nav-label">Academic Manager</span>
                       </button>
                     )}
-                    {hasPermission('class-timetable', 'view') && (
-                      <button
-                        onClick={() => { setAdminView('academic-class-timetable'); setMobileOpen(false); }}
-                        className={`nav-item ${adminView === 'academic-class-timetable' ? 'active' : ''}`}
-                        style={{ padding: '10px 12px', fontSize: '0.88rem', position: 'relative' }}
-                      >
-                        <Clock size={18} className="flex-shrink-0" />
-                        <span className="nav-label">Class Timetable</span>
-                      </button>
-                    )}
-                    {hasPermission('teacher-timetable', 'view') && (
-                      <button
-                        onClick={() => { setAdminView('academic-teacher-timetable'); setMobileOpen(false); }}
-                        className={`nav-item ${adminView === 'academic-teacher-timetable' ? 'active' : ''}`}
-                        style={{ padding: '10px 12px', fontSize: '0.88rem', position: 'relative' }}
-                      >
-                        <UserCheck size={18} className="flex-shrink-0" />
-                        <span className="nav-label">Teacher Timetable</span>
-                      </button>
-                    )}
-                    {hasPermission('exam-timetable', 'view') && (
-                      <button
-                        onClick={() => { setAdminView('academic-exams'); setMobileOpen(false); }}
-                        className={`nav-item ${adminView === 'academic-exams' ? 'active' : ''}`}
-                        style={{ padding: '10px 12px', fontSize: '0.88rem', position: 'relative' }}
-                      >
-                        <ClipboardList size={18} className="flex-shrink-0" />
-                        <span className="nav-label">Exam Management</span>
-                      </button>
-                    )}
-                    {hasPermission('exam-timetable', 'view') && (
-                      <button
-                        onClick={() => { setAdminView('academic-exam-timetable'); setMobileOpen(false); }}
-                        className={`nav-item ${adminView === 'academic-exam-timetable' ? 'active' : ''}`}
-                        style={{ padding: '10px 12px', fontSize: '0.88rem', position: 'relative' }}
-                      >
-                        <Calendar size={18} className="flex-shrink-0" />
-                        <span className="nav-label">Exam Timetable</span>
-                      </button>
-                    )}
-                    {hasPermission('academic-history', 'view') && (
-                      <button
-                        onClick={() => { setAdminView('academic-exams-history'); setMobileOpen(false); }}
-                        className={`nav-item ${adminView === 'academic-exams-history' ? 'active' : ''}`}
-                        style={{ padding: '10px 12px', fontSize: '0.88rem', position: 'relative' }}
-                      >
-                        <History size={18} className="flex-shrink-0" />
-                        <span className="nav-label">Exam History</span>
-                      </button>
-                    )}
-                    {hasPermission('published-exam-timetable', 'view') && (
+                    {hasPermission('published-timetable', 'view') && (
                       <button
                         onClick={() => { setAdminView('academic-published-timetable'); setMobileOpen(false); }}
                         className={`nav-item ${adminView === 'academic-published-timetable' ? 'active' : ''}`}
@@ -470,12 +432,12 @@ export default function Sidebar({
               </div>
             )}
 
-            {(hasPermission('academic-activities', 'view') || hasPermission('academic-calendar', 'view') || hasPermission('notices', 'view') || hasPermission('events', 'view') || hasPermission('holidays', 'view')) && (
+            {(hasPermission('academic-activities', 'view') || hasPermission('academic-calendar', 'view')) && (
               <div style={{ display: 'flex', flexDirection: 'column', gap: '2px' }}>
                 <button
                   type="button"
                   onClick={() => setAdminAcademicActivitiesOpen(!adminAcademicActivitiesOpen)}
-                  className="nav-item"
+                  className={`nav-item ${['academic-activities', 'academic-events', 'academic-notices', 'academic-holidays', 'academic-calendar'].includes(adminView) ? 'active' : ''}`}
                   style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', width: '100%', cursor: 'pointer' }}
                 >
                   <div style={{ display: 'flex', alignItems: 'center', gap: '16px', minWidth: 0, overflow: 'hidden' }}>
@@ -486,34 +448,14 @@ export default function Sidebar({
                 </button>
                 {adminAcademicActivitiesOpen && (
                   <div style={{ display: 'flex', flexDirection: 'column', paddingLeft: '16px', borderLeft: '1px solid rgba(255,255,255,0.06)', marginLeft: '24px', marginTop: '2px', marginBottom: '6px', gap: '4px' }}>
-                    {hasPermission('events', 'view') && (
+                    {hasPermission('academic-activities', 'view') && (
                       <button
-                        onClick={() => { setAdminView('academic-events'); setMobileOpen(false); }}
-                        className={`nav-item ${adminView === 'academic-events' ? 'active' : ''}`}
-                        style={{ padding: '10px 12px', fontSize: '0.88rem', position: 'relative' }}
-                      >
-                        <School size={18} className="flex-shrink-0" />
-                        <span className="nav-label">Events Management</span>
-                      </button>
-                    )}
-                    {hasPermission('notices', 'view') && (
-                      <button
-                        onClick={() => { setAdminView('academic-notices'); setMobileOpen(false); }}
-                        className={`nav-item ${adminView === 'academic-notices' ? 'active' : ''}`}
-                        style={{ padding: '10px 12px', fontSize: '0.88rem', position: 'relative' }}
-                      >
-                        <Bell size={18} className="flex-shrink-0" />
-                        <span className="nav-label">Notices & Boards</span>
-                      </button>
-                    )}
-                    {hasPermission('holidays', 'view') && (
-                      <button
-                        onClick={() => { setAdminView('academic-holidays'); setMobileOpen(false); }}
-                        className={`nav-item ${adminView === 'academic-holidays' ? 'active' : ''}`}
+                        onClick={() => { setAdminView('academic-activities'); setMobileOpen(false); }}
+                        className={`nav-item ${['academic-activities', 'academic-events', 'academic-notices', 'academic-holidays'].includes(adminView) ? 'active' : ''}`}
                         style={{ padding: '10px 12px', fontSize: '0.88rem', position: 'relative' }}
                       >
                         <Calendar size={18} className="flex-shrink-0" />
-                        <span className="nav-label">Holidays</span>
+                        <span className="nav-label">Academic Activities</span>
                       </button>
                     )}
                     {hasPermission('academic-calendar', 'view') && (
@@ -526,27 +468,17 @@ export default function Sidebar({
                         <span className="nav-label">Academic Calendar</span>
                       </button>
                     )}
-                    {hasPermission('academic-calendar', 'view') && (
-                      <button
-                        onClick={() => { setAdminView('published-academic-calendar'); setMobileOpen(false); }}
-                        className={`nav-item ${adminView === 'published-academic-calendar' ? 'active' : ''}`}
-                        style={{ padding: '10px 12px', fontSize: '0.88rem', position: 'relative' }}
-                      >
-                        <CheckCircle size={18} className="flex-shrink-0" />
-                        <span className="nav-label">Published Calendar</span>
-                      </button>
-                    )}
                   </div>
                 )}
               </div>
             )}
 
-            {(hasPermission('results', 'view') || hasPermission('results', 'create')) && (
+            {(hasPermission('results-manager', 'view') || hasPermission('results-history', 'view')) && (
               <div style={{ display: 'flex', flexDirection: 'column', gap: '2px' }}>
                 <button
                   type="button"
                   onClick={() => setAdminResultsOpen(!adminResultsOpen)}
-                  className="nav-item"
+                  className={`nav-item ${['results-manager', 'results-analytics', 'results-marks-entry', 'results-report-cards', 'academic-results', 'results-history'].includes(adminView) ? 'active' : ''}`}
                   style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', width: '100%', cursor: 'pointer' }}
                 >
                   <div style={{ display: 'flex', alignItems: 'center', gap: '16px', minWidth: 0, overflow: 'hidden' }}>
@@ -557,37 +489,17 @@ export default function Sidebar({
                 </button>
                 {adminResultsOpen && (
                   <div style={{ display: 'flex', flexDirection: 'column', paddingLeft: '16px', borderLeft: '1px solid rgba(255,255,255,0.06)', marginLeft: '24px', marginTop: '2px', marginBottom: '6px', gap: '4px' }}>
-                    {hasPermission('results', 'view') && (
+                    {hasPermission('results-manager', 'view') && (
                       <button
-                        onClick={() => { setAdminView('results-analytics'); setMobileOpen(false); }}
-                        className={`nav-item ${adminView === 'results-analytics' ? 'active' : ''}`}
-                        style={{ padding: '10px 12px', fontSize: '0.88rem', position: 'relative' }}
-                      >
-                        <BarChart3 size={18} className="flex-shrink-0" />
-                        <span className="nav-label">Analytics Dashboard</span>
-                      </button>
-                    )}
-                    {hasPermission('results', 'create') && (
-                      <button
-                        onClick={() => { setAdminView('results-marks-entry'); setMobileOpen(false); }}
-                        className={`nav-item ${adminView === 'results-marks-entry' ? 'active' : ''}`}
+                        onClick={() => { setAdminView('results-manager'); setMobileOpen(false); }}
+                        className={`nav-item ${['results-manager', 'results-analytics', 'results-marks-entry', 'results-report-cards', 'academic-results'].includes(adminView) ? 'active' : ''}`}
                         style={{ padding: '10px 12px', fontSize: '0.88rem', position: 'relative' }}
                       >
                         <FileSpreadsheet size={18} className="flex-shrink-0" />
-                        <span className="nav-label">Marks Entry</span>
+                        <span className="nav-label">Results Manager</span>
                       </button>
                     )}
-                    {hasPermission('results', 'view') && (
-                      <button
-                        onClick={() => { setAdminView('results-report-cards'); setMobileOpen(false); }}
-                        className={`nav-item ${adminView === 'results-report-cards' ? 'active' : ''}`}
-                        style={{ padding: '10px 12px', fontSize: '0.88rem', position: 'relative' }}
-                      >
-                        <Award size={18} className="flex-shrink-0" />
-                        <span className="nav-label">Report Cards</span>
-                      </button>
-                    )}
-                    {hasPermission('results', 'view') && (
+                    {hasPermission('results-history', 'view') && (
                       <button
                         onClick={() => { setAdminView('results-history'); setMobileOpen(false); }}
                         className={`nav-item ${adminView === 'results-history' ? 'active' : ''}`}
@@ -602,12 +514,15 @@ export default function Sidebar({
               </div>
             )}
 
-            {(hasPermission('fee-structures', 'view') || hasPermission('salaries', 'view')) && (
+            {hasPermission('finance', 'view') && (
               <div style={{ display: 'flex', flexDirection: 'column', gap: '2px' }}>
                 <button
                   type="button"
                   onClick={() => setAdminFinanceOpen(!adminFinanceOpen)}
-                  className="nav-item"
+                  className={`nav-item ${[
+                    'collect-fees', 'fee-structure', 
+                    'payroll', 'teacher-pay-structure', 'staff-pay', 'staff-pay-structure'
+                  ].includes(adminView) ? 'active' : ''}`}
                   style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', width: '100%', cursor: 'pointer' }}
                 >
                   <div style={{ display: 'flex', alignItems: 'center', gap: '16px' }}>
@@ -618,159 +533,123 @@ export default function Sidebar({
                 </button>
                 {adminFinanceOpen && (
                   <div style={{ display: 'flex', flexDirection: 'column', paddingLeft: '16px', borderLeft: '1px solid rgba(255,255,255,0.06)', marginLeft: '24px', marginTop: '2px', marginBottom: '6px', gap: '4px' }}>
-                    {hasPermission('fee-structures', 'view') && (
-                      <>
-                        <span className="nav-label" style={{ fontWeight: 700, fontSize: '0.72rem', textTransform: 'uppercase', letterSpacing: '0.04em', color: 'var(--text-muted)', padding: '8px 12px 4px' }}>Student</span>
-                        <button
-                          onClick={() => { setAdminView('collect-fees'); setMobileOpen(false); }}
-                          className={`nav-item ${adminView === 'collect-fees' ? 'active' : ''}`}
-                          style={{ padding: '10px 12px', fontSize: '0.88rem', position: 'relative' }}
-                        >
-                          <Receipt size={18} className="flex-shrink-0" />
-                          <span className="nav-label">Collect Fees</span>
-                        </button>
-                        <button
-                          onClick={() => { setAdminView('fee-structure'); setMobileOpen(false); }}
-                          className={`nav-item ${adminView === 'fee-structure' ? 'active' : ''}`}
-                          style={{ padding: '10px 12px', fontSize: '0.88rem', position: 'relative' }}
-                        >
-                          <Calculator size={18} className="flex-shrink-0" />
-                          <span className="nav-label">Fee Structure</span>
-                        </button>
-                      </>
-                    )}
-                    {hasPermission('salaries', 'view') && (
-                      <>
-                        <span className="nav-label" style={{ fontWeight: 700, fontSize: '0.72rem', textTransform: 'uppercase', letterSpacing: '0.04em', color: 'var(--text-muted)', padding: '8px 12px 4px' }}>Teacher</span>
-                        <button
-                          onClick={() => { setAdminView('payroll'); setMobileOpen(false); }}
-                          className={`nav-item ${adminView === 'payroll' ? 'active' : ''}`}
-                          style={{ padding: '10px 12px', fontSize: '0.88rem', position: 'relative' }}
-                        >
-                          <Banknote size={18} className="flex-shrink-0" />
-                          <span className="nav-label">Manage Payroll</span>
-                        </button>
-                        <button
-                          onClick={() => { setAdminView('teacher-pay-structure'); setMobileOpen(false); }}
-                          className={`nav-item ${adminView === 'teacher-pay-structure' ? 'active' : ''}`}
-                          style={{ padding: '10px 12px', fontSize: '0.88rem', position: 'relative' }}
-                        >
-                          <Calculator size={18} className="flex-shrink-0" />
-                          <span className="nav-label">Teacher Pay Structure</span>
-                        </button>
-                        <span className="nav-label" style={{ fontWeight: 700, fontSize: '0.72rem', textTransform: 'uppercase', letterSpacing: '0.04em', color: 'var(--text-muted)', padding: '8px 12px 4px' }}>Staff</span>
-                        <button
-                          onClick={() => { setAdminView('staff-pay'); setMobileOpen(false); }}
-                          className={`nav-item ${adminView === 'staff-pay' ? 'active' : ''}`}
-                          style={{ padding: '10px 12px', fontSize: '0.88rem', position: 'relative' }}
-                        >
-                          <Banknote size={18} className="flex-shrink-0" />
-                          <span className="nav-label">Pay Staff</span>
-                        </button>
-                        <button
-                          onClick={() => { setAdminView('staff-pay-structure'); setMobileOpen(false); }}
-                          className={`nav-item ${adminView === 'staff-pay-structure' ? 'active' : ''}`}
-                          style={{ padding: '10px 12px', fontSize: '0.88rem', position: 'relative' }}
-                        >
-                          <Calculator size={18} className="flex-shrink-0" />
-                          <span className="nav-label">Staff Pay Structure</span>
-                        </button>
-                      </>
-                    )}
+                    
+                    <span className="nav-label" style={{ fontWeight: 700, fontSize: '0.72rem', textTransform: 'uppercase', letterSpacing: '0.04em', color: 'var(--text-muted)', padding: '8px 12px 4px' }}>Student Fees</span>
+                    <button
+                      onClick={() => { setAdminView('collect-fees'); setMobileOpen(false); }}
+                      className={`nav-item ${adminView === 'collect-fees' ? 'active' : ''}`}
+                      style={{ padding: '10px 12px', fontSize: '0.88rem', position: 'relative' }}
+                    >
+                      <Receipt size={18} className="flex-shrink-0" />
+                      <span className="nav-label">Collect Fees</span>
+                    </button>
+                    <button
+                      onClick={() => { setAdminView('fee-structure'); setMobileOpen(false); }}
+                      className={`nav-item ${adminView === 'fee-structure' ? 'active' : ''}`}
+                      style={{ padding: '10px 12px', fontSize: '0.88rem', position: 'relative' }}
+                    >
+                      <Calculator size={18} className="flex-shrink-0" />
+                      <span className="nav-label">Fee Structure</span>
+                    </button>
+
+                    <span className="nav-label" style={{ fontWeight: 700, fontSize: '0.72rem', textTransform: 'uppercase', letterSpacing: '0.04em', color: 'var(--text-muted)', padding: '8px 12px 4px' }}>Payroll</span>
+                    <button
+                      onClick={() => { setAdminView('payroll'); setMobileOpen(false); }}
+                      className={`nav-item ${adminView === 'payroll' ? 'active' : ''}`}
+                      style={{ padding: '10px 12px', fontSize: '0.88rem', position: 'relative' }}
+                    >
+                      <Banknote size={18} className="flex-shrink-0" />
+                      <span className="nav-label">Manage Payroll</span>
+                    </button>
+                    <button
+                      onClick={() => { setAdminView('teacher-pay-structure'); setMobileOpen(false); }}
+                      className={`nav-item ${adminView === 'teacher-pay-structure' ? 'active' : ''}`}
+                      style={{ padding: '10px 12px', fontSize: '0.88rem', position: 'relative' }}
+                    >
+                      <Calculator size={18} className="flex-shrink-0" />
+                      <span className="nav-label">Teacher Pay Structure</span>
+                    </button>
+                    <button
+                      onClick={() => { setAdminView('staff-pay'); setMobileOpen(false); }}
+                      className={`nav-item ${adminView === 'staff-pay' ? 'active' : ''}`}
+                      style={{ padding: '10px 12px', fontSize: '0.88rem', position: 'relative' }}
+                    >
+                      <Banknote size={18} className="flex-shrink-0" />
+                      <span className="nav-label">Pay Staff</span>
+                    </button>
+                    <button
+                      onClick={() => { setAdminView('staff-pay-structure'); setMobileOpen(false); }}
+                      className={`nav-item ${adminView === 'staff-pay-structure' ? 'active' : ''}`}
+                      style={{ padding: '10px 12px', fontSize: '0.88rem', position: 'relative' }}
+                    >
+                      <Calculator size={18} className="flex-shrink-0" />
+                      <span className="nav-label">Staff Pay Structure</span>
+                    </button>
+
                   </div>
                 )}
               </div>
             )}
 
-            {hasPermission('expenses', 'view') && (
+            {(hasPermission('expense-dashboard', 'view') || hasPermission('expense-all-expenses', 'view') || hasPermission('expense-tracker', 'view') || hasPermission('expense-history', 'view')) && (
               <div style={{ display: 'flex', flexDirection: 'column', gap: '2px' }}>
                 <button
                   type="button"
                   onClick={() => setAdminExpensesOpen(!adminExpensesOpen)}
-                  className="nav-item"
+                  className={`nav-item ${['expense-dashboard', 'expense-all-expenses', 'expense-tracker', 'expense-history'].includes(adminView) ? 'active' : ''}`}
                   style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', width: '100%', cursor: 'pointer' }}
                 >
                   <div style={{ display: 'flex', alignItems: 'center', gap: '16px' }}>
                     <Wallet size={20} className="flex-shrink-0" />
-                    <span className="nav-label" style={{ fontWeight: 600 }}>Expense Control</span>
+                    <span className="nav-label" style={{ fontWeight: 600 }}>Expenses</span>
                   </div>
                   {adminExpensesOpen ? <ChevronDown size={16} className="flex-shrink-0" /> : <ChevronRight size={16} className="flex-shrink-0" />}
                 </button>
                 {adminExpensesOpen && (
                   <div style={{ display: 'flex', flexDirection: 'column', paddingLeft: '16px', borderLeft: '1px solid rgba(255,255,255,0.06)', marginLeft: '24px', marginTop: '2px', marginBottom: '6px', gap: '4px' }}>
-                    <button
-                      onClick={() => { setAdminView('expense-dashboard'); setMobileOpen(false); }}
-                      className={`nav-item ${adminView === 'expense-dashboard' ? 'active' : ''}`}
-                      style={{ padding: '10px 12px', fontSize: '0.88rem', position: 'relative' }}
-                    >
-                      <LayoutDashboard size={18} className="flex-shrink-0" />
-                      <span className="nav-label">Expense Panel</span>
-                    </button>
-                    {hasPermission('expenses', 'create') && (
+                    {hasPermission('expense-dashboard', 'view') && (
                       <button
-                        onClick={() => { setAdminView('expense-add-expense'); setMobileOpen(false); }}
-                        className={`nav-item ${adminView === 'expense-add-expense' ? 'active' : ''}`}
+                        onClick={() => { setAdminView('expense-dashboard'); setMobileOpen(false); }}
+                        className={`nav-item ${adminView === 'expense-dashboard' ? 'active' : ''}`}
                         style={{ padding: '10px 12px', fontSize: '0.88rem', position: 'relative' }}
                       >
-                        <Plus size={18} className="flex-shrink-0" />
-                        <span className="nav-label">Record Expense</span>
+                        <LayoutDashboard size={18} className="flex-shrink-0" />
+                        <span className="nav-label">Expense Panel</span>
                       </button>
                     )}
-                    <button
-                      onClick={() => { setAdminView('expense-all-expenses'); setMobileOpen(false); }}
-                      className={`nav-item ${adminView === 'expense-all-expenses' ? 'active' : ''}`}
-                      style={{ padding: '10px 12px', fontSize: '0.88rem', position: 'relative' }}
-                    >
-                      <ClipboardList size={18} className="flex-shrink-0" />
-                      <span className="nav-label">General Ledger</span>
-                    </button>
-                    <button
-                      onClick={() => { setAdminView('expense-categories'); setMobileOpen(false); }}
-                      className={`nav-item ${adminView === 'expense-categories' ? 'active' : ''}`}
-                      style={{ padding: '10px 12px', fontSize: '0.88rem', position: 'relative' }}
-                    >
-                      <List size={18} className="flex-shrink-0" />
-                      <span className="nav-label">Category Analytics</span>
-                    </button>
-                    <button
-                      onClick={() => { setAdminView('expense-reports'); setMobileOpen(false); }}
-                      className={`nav-item ${adminView === 'expense-reports' ? 'active' : ''}`}
-                      style={{ padding: '10px 12px', fontSize: '0.88rem', position: 'relative' }}
-                    >
-                      <BarChart3 size={18} className="flex-shrink-0" />
-                      <span className="nav-label">Budget Controls</span>
-                    </button>
-                    {hasPermission('expenses', 'approve') && (
+                    {hasPermission('expense-all-expenses', 'view') && (
                       <button
-                        onClick={() => { setAdminView('expense-approvals'); setMobileOpen(false); }}
-                        className={`nav-item ${adminView === 'expense-approvals' ? 'active' : ''}`}
+                        onClick={() => { setAdminView('expense-all-expenses'); setMobileOpen(false); }}
+                        className={`nav-item ${adminView === 'expense-all-expenses' ? 'active' : ''}`}
                         style={{ padding: '10px 12px', fontSize: '0.88rem', position: 'relative' }}
                       >
-                        <ShieldAlert size={18} className="flex-shrink-0" />
-                        <span className="nav-label">Approvals Queue</span>
+                        <ClipboardList size={18} className="flex-shrink-0" />
+                        <span className="nav-label">Expenses</span>
                       </button>
                     )}
-                    <button
-                      onClick={() => { setAdminView('expense-tracker'); setMobileOpen(false); }}
-                      className={`nav-item ${adminView === 'expense-tracker' ? 'active' : ''}`}
-                      style={{ padding: '10px 12px', fontSize: '0.88rem', position: 'relative' }}
-                    >
-                      <TrendingDown size={18} className="flex-shrink-0" />
-                      <span className="nav-label">Expense Tracker</span>
-                    </button>
+                    {hasPermission('expense-tracker', 'view') && (
+                      <button
+                        onClick={() => { setAdminView('expense-tracker'); setMobileOpen(false); }}
+                        className={`nav-item ${adminView === 'expense-tracker' ? 'active' : ''}`}
+                        style={{ padding: '10px 12px', fontSize: '0.88rem', position: 'relative' }}
+                      >
+                        <TrendingDown size={18} className="flex-shrink-0" />
+                        <span className="nav-label">Expense Tracker</span>
+                      </button>
+                    )}
+                    {hasPermission('expense-history', 'view') && (
+                      <button
+                        onClick={() => { setAdminView('expense-history'); setMobileOpen(false); }}
+                        className={`nav-item ${adminView === 'expense-history' ? 'active' : ''}`}
+                        style={{ padding: '10px 12px', fontSize: '0.88rem', position: 'relative' }}
+                      >
+                        <History size={18} className="flex-shrink-0" />
+                        <span className="nav-label">Expense History</span>
+                      </button>
+                    )}
                   </div>
                 )}
               </div>
-            )}
-
-            {hasPermission('expenses', 'view') && (
-              <button
-                onClick={() => { setAdminView('expenses'); setMobileOpen(false); }}
-                className={`nav-item ${adminView === 'expenses' ? 'active' : ''}`}
-              >
-                <Wallet size={20} className="flex-shrink-0" />
-                <span className="nav-label">Expense Tracker</span>
-              </button>
             )}
 
             {hasPermission('income', 'view') && (
@@ -783,7 +662,7 @@ export default function Sidebar({
               </button>
             )}
 
-            {(hasPermission('income', 'view') || hasPermission('expenses', 'view')) && (
+            {hasPermission('financial-reports', 'view') && (
               <button
                 onClick={() => { setAdminView('reports'); setMobileOpen(false); }}
                 className={`nav-item ${adminView === 'reports' ? 'active' : ''}`}
@@ -793,8 +672,7 @@ export default function Sidebar({
               </button>
             )}
 
-
-            {isSuperAdmin() && (
+            {(isSuperAdmin() || hasPermission('roles-permissions', 'view')) && (
               <button
                 onClick={() => { setAdminView('roles-permissions'); setMobileOpen(false); }}
                 className={`nav-item ${adminView === 'roles-permissions' ? 'active' : ''}`}
@@ -846,13 +724,30 @@ export default function Sidebar({
         )}
       </nav>
 
-      <div className="sidebar-profile">
-        <div className="profile-avatar">
-          {isDeveloperAdmin ? 'OW' : isAdmin ? 'AD' : (schoolDetails?.principal ? schoolDetails.principal.split(' ').pop().substring(0, 2).toUpperCase() : 'AD')}
+      <div 
+        className="sidebar-profile" 
+        onClick={() => {
+          if (isDeveloperAdmin) {
+            setActiveView('profile');
+          } else if (isAdmin) {
+            setAdminView('profile');
+          } else {
+            setActiveView('profile');
+          }
+          setMobileOpen(false);
+        }}
+        style={{ cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '12px', padding: '12px', borderRadius: '12px', background: 'var(--bg-card-subtle)', border: '1px solid var(--border-glass)' }}
+      >
+        <div className="profile-avatar" style={{ overflow: 'hidden', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0, width: '40px', height: '40px', borderRadius: '50%', background: 'var(--bg-form)', border: '1.5px solid var(--border-glass)', color: '#000000' }}>
+          {userProfile?.photo ? (
+            <img src={userProfile.photo} alt={userProfile.name} style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+          ) : (
+            (userProfile?.name || 'AD').substring(0, 2).toUpperCase()
+          )}
         </div>
-        <div className="profile-details">
-          <span className="profile-name">{isDeveloperAdmin ? 'Platform Owner' : isAdmin ? 'Admin Dashboard' : (schoolDetails?.principal || 'Alex Devlin')}</span>
-          <span className="profile-role">{isDeveloperAdmin ? 'Developer Admin' : isAdmin ? 'Admin Dashboard' : 'Super Admin'}</span>
+        <div className="profile-details" style={{ display: isCollapsed ? 'none' : 'flex', flexDirection: 'column', minWidth: 0 }}>
+          <span className="profile-name" style={{ fontSize: '0.85rem', fontWeight: 700, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', color: 'var(--text-main)' }}>{userProfile?.name || 'User'}</span>
+          <span className="profile-role" style={{ fontSize: '0.72rem', color: 'var(--text-muted)', fontWeight: 500, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{userProfile?.role || 'Guest'}</span>
         </div>
       </div>
     </aside>

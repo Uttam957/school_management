@@ -50,11 +50,14 @@ export default function GradeManagement({ currentSubView, setAdminView, showToas
   const [logPage, setLogPage] = useState(1);
   const logLimit = 10;
 
-  // Form States
   const [newGrade, setNewGrade] = useState({ name: '', selectedDepts: [] });
   const [editingGrade, setEditingGrade] = useState(null);
   const [newDept, setNewDept] = useState({ name: '' });
   const [editingDept, setEditingDept] = useState(null);
+  const [newSection, setNewSection] = useState({ name: '' });
+  const [editingSection, setEditingSection] = useState(null);
+  const [sections, setSections] = useState([]);
+  const [showCreateModal, setShowCreateModal] = useState(false);
 
   // Bulk Action States
   const [selectedGrades, setSelectedGrades] = useState([]);
@@ -65,17 +68,19 @@ export default function GradeManagement({ currentSubView, setAdminView, showToas
     setLoading(true);
     try {
       const headers = { 'Content-Type': 'application/json' };
-      const [gradesRes, deptsRes, mapsRes, logsRes, settingsRes] = await Promise.all([
+      const [gradesRes, deptsRes, mapsRes, logsRes, settingsRes, sectionsRes] = await Promise.all([
         fetch('/api/grades'),
         fetch('/api/grades/departments'),
         fetch('/api/grades/mappings'),
         fetch('/api/rbac/audit-logs'),
-        fetch('/api/grades/settings')
+        fetch('/api/grades/settings'),
+        fetch('/api/grades/sections')
       ]);
 
       if (gradesRes.ok) setGrades(await gradesRes.json());
       if (deptsRes.ok) setDepartments(await deptsRes.json());
       if (mapsRes.ok) setMappings(await mapsRes.json());
+      if (sectionsRes.ok) setSections(await sectionsRes.json());
       if (logsRes.ok) {
         const allLogs = await logsRes.json();
         // Filter logs related to grade management actions
@@ -83,7 +88,8 @@ export default function GradeManagement({ currentSubView, setAdminView, showToas
           l.action.includes('Grade') || 
           l.action.includes('Department') || 
           l.action.includes('Mapping') ||
-          l.action.includes('Structure')
+          l.action.includes('Structure') ||
+          l.action.includes('Section')
         );
         setAuditLogs(filtered);
       }
@@ -288,6 +294,73 @@ export default function GradeManagement({ currentSubView, setAdminView, showToas
       } catch (err) {
         showToast('Network error.', 'danger');
       }
+    }
+  };
+
+  // Section CRUD Actions
+  const handleCreateSection = async (e) => {
+    e.preventDefault();
+    if (!newSection.name.trim()) return;
+
+    try {
+      const res = await fetch('/api/grades/sections', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ name: newSection.name.trim() })
+      });
+      const data = await res.json();
+      if (res.ok) {
+        showToast(`Section "${newSection.name}" created.`, 'success');
+        setNewSection({ name: '' });
+        setShowCreateModal(false);
+        loadData();
+      } else {
+        showToast(data.error || 'Failed to create section.', 'danger');
+      }
+    } catch (err) {
+      showToast('Network error.', 'danger');
+    }
+  };
+
+  const handleUpdateSection = async (e) => {
+    e.preventDefault();
+    if (!editingSection.name.trim()) return;
+
+    try {
+      const res = await fetch(`/api/grades/sections/${editingSection.id}`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          name: editingSection.name.trim(),
+          status: editingSection.status
+        })
+      });
+      const data = await res.json();
+      if (res.ok) {
+        showToast('Section updated successfully.', 'success');
+        setEditingSection(null);
+        loadData();
+      } else {
+        showToast(data.error || 'Failed to update section.', 'danger');
+      }
+    } catch (err) {
+      showToast('Network error.', 'danger');
+    }
+  };
+
+  const handleDeleteSection = async (id, name) => {
+    if (!window.confirm(`Are you sure you want to delete Section "${name}"?`)) return;
+    try {
+      const res = await fetch(`/api/grades/sections/${id}`, { method: 'DELETE' });
+      const data = await res.json();
+      if (res.ok) {
+        showToast(`Section "${name}" deleted.`, 'success');
+        loadData();
+      } else {
+        showToast(data.error || 'Failed to delete section.', 'danger');
+      }
+    } catch (err) {
+      showToast('Network error.', 'danger');
     }
   };
 
@@ -509,22 +582,35 @@ export default function GradeManagement({ currentSubView, setAdminView, showToas
             transition: 'all 0.2s ease'
           }}
         >
-          <Users size={16} /> Departments
-        </button>
+           <Users size={16} /> Departments
+         </button>
 
-        <button 
-          onClick={() => handleTabChange('grade-academic-settings')}
-          className={`tab-btn-custom ${activeTab === 'grade-academic-settings' ? 'active' : ''}`}
-          style={{
-            display: 'flex', alignItems: 'center', gap: '8px', padding: '10px 16px', borderRadius: '8px', fontSize: '0.85rem', fontWeight: 600, border: 'none', cursor: 'pointer',
-            background: activeTab === 'grade-academic-settings' ? 'rgba(99,102,241,0.1)' : 'transparent',
-            color: activeTab === 'grade-academic-settings' ? 'rgb(99,102,241)' : 'var(--text-muted)',
-            transition: 'all 0.2s ease'
-          }}
-        >
-          <Settings size={16} /> Structure Settings
-        </button>
-      </div>
+         <button 
+           onClick={() => handleTabChange('grade-academic-settings')}
+           className={`tab-btn-custom ${activeTab === 'grade-academic-settings' ? 'active' : ''}`}
+           style={{
+             display: 'flex', alignItems: 'center', gap: '8px', padding: '10px 16px', borderRadius: '8px', fontSize: '0.85rem', fontWeight: 600, border: 'none', cursor: 'pointer',
+             background: activeTab === 'grade-academic-settings' ? 'rgba(99,102,241,0.1)' : 'transparent',
+             color: activeTab === 'grade-academic-settings' ? 'rgb(99,102,241)' : 'var(--text-muted)',
+             transition: 'all 0.2s ease'
+           }}
+         >
+           <Settings size={16} /> Structure Settings
+         </button>
+
+         <button 
+           onClick={() => handleTabChange('section-utility')}
+           className={`tab-btn-custom ${activeTab === 'section-utility' ? 'active' : ''}`}
+           style={{
+             display: 'flex', alignItems: 'center', gap: '8px', padding: '10px 16px', borderRadius: '8px', fontSize: '0.85rem', fontWeight: 600, border: 'none', cursor: 'pointer',
+             background: activeTab === 'section-utility' ? 'rgba(99,102,241,0.1)' : 'transparent',
+             color: activeTab === 'section-utility' ? 'rgb(99,102,241)' : 'var(--text-muted)',
+             transition: 'all 0.2s ease'
+           }}
+         >
+           <Plus size={16} /> Section Utility
+         </button>
+       </div>
 
       {loading ? (
         <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', minHeight: '350px', flexDirection: 'column', gap: '12px' }}>
@@ -588,7 +674,19 @@ export default function GradeManagement({ currentSubView, setAdminView, showToas
                           const rowKey = g.displayId || g.id;
                           return (
                             <tr key={rowKey}>
-                              <td></td>
+                              <td>
+                                <input 
+                                  type="checkbox" 
+                                  checked={selectedGrades.includes(rowKey)} 
+                                  onChange={(e) => {
+                                    if (e.target.checked) {
+                                      setSelectedGrades(prev => [...prev, rowKey]);
+                                    } else {
+                                      setSelectedGrades(prev => prev.filter(id => id !== rowKey));
+                                    }
+                                  }}
+                                />
+                              </td>
                               <td style={{ fontWeight: 600 }}>{g.name}</td>
                               <td>
                                 {g.deptName !== 'None' ? (
@@ -794,7 +892,140 @@ export default function GradeManagement({ currentSubView, setAdminView, showToas
             </div>
           )}
 
+          {/* VIEW 4: SECTION UTILITY */}
+          {activeTab === 'section-utility' && (
+            <div style={{ display: 'grid', gridTemplateColumns: '1fr', gap: '20px' }}>
+              <div className="glass-panel" style={{ padding: '24px' }}>
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '20px' }}>
+                  <h3 style={{ margin: 0, fontSize: '1.1rem', fontWeight: 800 }}>Sections Registry</h3>
+                  <button 
+                    onClick={() => setShowCreateModal(true)} 
+                    className="btn-primary" 
+                    style={{ 
+                      display: 'flex', 
+                      alignItems: 'center', 
+                      gap: '8px', 
+                      padding: '8px 16px', 
+                      borderRadius: '8px', 
+                      fontSize: '0.85rem', 
+                      fontWeight: 600, 
+                      cursor: 'pointer' 
+                    }}
+                  >
+                    <Plus size={16} /> Create Section
+                  </button>
+                </div>
 
+                <div className="custom-table-container">
+                  <table className="custom-table">
+                    <thead>
+                      <tr>
+                        <th>Section Name</th>
+                        <th>Status</th>
+                        <th style={{ textAlign: 'right' }}>Actions</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {sections.length > 0 ? (
+                        sections.map(s => (
+                          <tr key={s.id}>
+                            <td style={{ fontWeight: 600 }}>{s.name}</td>
+                            <td>
+                              <span style={{
+                                padding: '2px 8px',
+                                borderRadius: '12px',
+                                fontSize: '0.75rem',
+                                fontWeight: 600,
+                                background: s.status === 'Active' ? 'rgba(16, 185, 129, 0.1)' : 'rgba(239, 68, 68, 0.1)',
+                                color: s.status === 'Active' ? '#10b981' : '#ef4444'
+                              }}>{s.status || 'Active'}</span>
+                            </td>
+                            <td>
+                              <div style={{ display: 'flex', gap: '8px', justifyContent: 'flex-end' }}>
+                                <button type="button" onClick={() => setEditingSection({...s})} className="btn-secondary" style={{ padding: '4px 8px', fontSize: '0.75rem', cursor: 'pointer' }}>
+                                  Edit
+                                </button>
+                                <button type="button" onClick={() => handleDeleteSection(s.id, s.name)} className="btn-danger" style={{ padding: '4px 6px', display: 'flex', cursor: 'pointer' }}>
+                                  <Trash2 size={12} />
+                                </button>
+                              </div>
+                            </td>
+                          </tr>
+                        ))
+                      ) : (
+                        <tr>
+                          <td colSpan="3" style={{ textAlign: 'center', padding: '30px', color: 'var(--text-muted)' }}>
+                            No sections registered.
+                          </td>
+                        </tr>
+                      )}
+                    </tbody>
+                  </table>
+                </div>
+              </div>
+
+              {/* Create Section Modal */}
+              {showCreateModal && (
+                <div onClick={() => setShowCreateModal(false)} style={{ position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, background: 'rgba(0,0,0,0.6)', backdropFilter: 'blur(4px)', WebkitBackdropFilter: 'blur(4px)', zIndex: 10000000, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '20px' }}>
+                  <form onSubmit={handleCreateSection} onClick={(e) => e.stopPropagation()} className="glass-panel" style={{ padding: '24px', width: '90%', maxWidth: '400px', display: 'flex', flexDirection: 'column', gap: '16px', background: 'var(--bg-elevated)', borderRadius: '16px', boxShadow: '0 25px 50px rgba(0,0,0,0.3)' }}>
+                    <h3 style={{ margin: 0, fontSize: '1.1rem', fontWeight: 800 }}>Create New Section</h3>
+                    <div>
+                      <label style={{ fontSize: '0.8rem', fontWeight: 600, display: 'block', marginBottom: '6px' }}>Section Name</label>
+                      <input 
+                        type="text" 
+                        placeholder="e.g. A, B, C, Gold"
+                        className="form-control"
+                        value={newSection.name}
+                        onChange={(e) => setNewSection({ ...newSection, name: e.target.value })}
+                        required
+                      />
+                    </div>
+
+                    <div style={{ display: 'flex', gap: '8px', justifyContent: 'flex-end', marginTop: '8px' }}>
+                      <button type="button" onClick={() => setShowCreateModal(false)} className="btn-secondary" style={{ padding: '8px 16px', cursor: 'pointer' }}>Cancel</button>
+                      <button type="submit" className="btn-primary" style={{ padding: '8px 16px', cursor: 'pointer' }}>Create</button>
+                    </div>
+                  </form>
+                </div>
+              )}
+
+              {/* Edit Section Modal */}
+              {editingSection && (
+                <div onClick={() => setEditingSection(null)} style={{ position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, background: 'rgba(0,0,0,0.6)', backdropFilter: 'blur(4px)', WebkitBackdropFilter: 'blur(4px)', zIndex: 10000000, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '20px' }}>
+                  <form onSubmit={handleUpdateSection} onClick={(e) => e.stopPropagation()} className="glass-panel" style={{ padding: '24px', width: '90%', maxWidth: '400px', display: 'flex', flexDirection: 'column', gap: '16px', background: 'var(--bg-elevated)', borderRadius: '16px', boxShadow: '0 25px 50px rgba(0,0,0,0.3)' }}>
+                    <h3 style={{ margin: 0, fontSize: '1.1rem', fontWeight: 800 }}>Edit Section</h3>
+                    <div>
+                      <label style={{ fontSize: '0.8rem', fontWeight: 600, display: 'block', marginBottom: '6px' }}>Section Name</label>
+                      <input 
+                        type="text" 
+                        className="form-control" 
+                        value={editingSection.name} 
+                        onChange={(e) => setEditingSection({ ...editingSection, name: e.target.value })}
+                        required
+                      />
+                    </div>
+                    <div>
+                      <label style={{ fontSize: '0.8rem', fontWeight: 600, display: 'block', marginBottom: '6px' }}>Status</label>
+                      <select 
+                        className="form-control" 
+                        value={editingSection.status || 'Active'} 
+                        onChange={(e) => setEditingSection({ ...editingSection, status: e.target.value })}
+                        style={{ background: 'var(--bg-form)', color: 'var(--text-main)' }}
+                      >
+                        <option value="Active">Active</option>
+                        <option value="Inactive">Inactive</option>
+                      </select>
+                    </div>
+
+                    <div style={{ display: 'flex', gap: '8px', justifyContent: 'flex-end', marginTop: '8px' }}>
+                      <button type="button" onClick={() => setEditingSection(null)} className="btn-secondary" style={{ padding: '8px 16px', cursor: 'pointer' }}>Cancel</button>
+                      <button type="submit" className="btn-primary" style={{ padding: '8px 16px', cursor: 'pointer' }}>Save Changes</button>
+                    </div>
+                  </form>
+                </div>
+              )}
+            </div>
+          )}
 
           {/* VIEW 5: ACADEMIC SETTINGS */}
           {activeTab === 'grade-academic-settings' && (

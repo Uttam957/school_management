@@ -26,7 +26,7 @@ import {
 } from 'lucide-react';
 import StudentDirectory from './StudentDirectory';
 import TeacherList from './TeacherList';
-import { fetchActiveGrades } from '../utils/grades';
+import { fetchActiveGrades, fetchActiveSections } from '../utils/grades';
 
 const parseGradeName = (fullName) => {
   if (!fullName) return { baseGrade: '', department: '' };
@@ -50,17 +50,25 @@ export default function TeacherPanel({ setActiveView, onLogout, teacherView, set
   const [selectedSection, setSelectedSection] = useState('A');
   const [studentSearch, setStudentSearch] = useState('');
 
-  // Load active grades for top level selection
+  // Load active grades and sections for top level selection
   const [topActiveGrades, setTopActiveGrades] = useState([]);
+  const [topActiveSections, setTopActiveSections] = useState([]);
   useEffect(() => {
-    const loadGrades = async () => {
-      const grades = await fetchActiveGrades();
+    const loadGradesAndSections = async () => {
+      const [grades, secs] = await Promise.all([
+        fetchActiveGrades(),
+        fetchActiveSections()
+      ]);
       setTopActiveGrades(grades);
       if (grades.length > 0) {
         setSelectedClass(grades[0].name);
       }
+      setTopActiveSections(secs);
+      if (secs.length > 0) {
+        setSelectedSection(secs[0].name);
+      }
     };
-    loadGrades();
+    loadGradesAndSections();
   }, []);
 
   // Notification states
@@ -255,6 +263,7 @@ export function MarkAttendanceView({ date, setDate, studentClass, setClass, sect
   const [saving, setSaving] = useState(false);
   const [submitting, setSubmitting] = useState(false);
   const [activeGrades, setActiveGrades] = useState([]);
+  const [activeSections, setActiveSections] = useState([]);
 
   const { baseGrade: baseClass, department: selectedDept } = parseGradeName(studentClass);
   const isHighGrade = isGrade11or12(baseClass);
@@ -298,11 +307,15 @@ export function MarkAttendanceView({ date, setDate, studentClass, setClass, sect
   };
 
   useEffect(() => {
-    const loadGrades = async () => {
-      const grades = await fetchActiveGrades();
+    const loadGradesAndSections = async () => {
+      const [grades, secs] = await Promise.all([
+        fetchActiveGrades(),
+        fetchActiveSections()
+      ]);
       setActiveGrades(grades);
+      setActiveSections(secs);
     };
-    loadGrades();
+    loadGradesAndSections();
   }, []);
 
   // Check if attendance is already submitted
@@ -456,7 +469,13 @@ export function MarkAttendanceView({ date, setDate, studentClass, setClass, sect
               <input 
                 type="date" 
                 value={date} 
-                onChange={(e) => setDate(e.target.value)}
+                onChange={(e) => {
+                  const val = e.target.value;
+                  const todayStr = new Date().toLocaleDateString('en-CA');
+                  if (val > todayStr) return;
+                  setDate(val);
+                }}
+                max={new Date().toLocaleDateString('en-CA')}
                 className="form-control"
                 style={{ height: '38px', borderRadius: '8px', padding: '8px 12px' }}
               />
@@ -505,10 +524,9 @@ export function MarkAttendanceView({ date, setDate, studentClass, setClass, sect
                 onChange={(e) => setSection(e.target.value)}
                 style={{ height: '38px', borderRadius: '8px' }}
               >
-                <option value="A">Section A</option>
-                <option value="B">Section B</option>
-                <option value="C">Section C</option>
-                <option value="D">Section D</option>
+                {activeSections.map(s => (
+                  <option key={s.id || s.name} value={s.name}>Section {s.name}</option>
+                ))}
               </select>
             </div>
 
@@ -824,6 +842,7 @@ export function AttendanceHistoryView({ showToast }) {
   const [roster, setRoster] = useState([]);
   const [loading, setLoading] = useState(false);
   const [activeGrades, setActiveGrades] = useState([]);
+  const [activeSections, setActiveSections] = useState([]);
 
   const { baseGrade: baseClass, department: selectedDept } = parseGradeName(studentClass);
   const isHighGrade = isGrade11or12(baseClass);
@@ -867,14 +886,21 @@ export function AttendanceHistoryView({ showToast }) {
   };
 
   useEffect(() => {
-    const loadGrades = async () => {
-      const grades = await fetchActiveGrades();
+    const loadGradesAndSections = async () => {
+      const [grades, secs] = await Promise.all([
+        fetchActiveGrades(),
+        fetchActiveSections()
+      ]);
       setActiveGrades(grades);
       if (grades.length > 0) {
         setClass(grades[0].name);
       }
+      setActiveSections(secs);
+      if (secs.length > 0) {
+        setSection(secs[0].name);
+      }
     };
-    loadGrades();
+    loadGradesAndSections();
   }, []);
   const [saving, setSaving] = useState(false);
   const [activeTab, setActiveTab] = useState('all'); // 'all' or 'submitted'
@@ -1089,7 +1115,13 @@ export function AttendanceHistoryView({ showToast }) {
             <input 
               type="date" 
               value={date} 
-              onChange={(e) => setDate(e.target.value)}
+              onChange={(e) => {
+                const val = e.target.value;
+                const todayStr = new Date().toLocaleDateString('en-CA');
+                if (val > todayStr) return;
+                setDate(val);
+              }}
+              max={new Date().toLocaleDateString('en-CA')}
               className="form-control"
               style={{ height: '38px', borderRadius: '8px', padding: '8px 12px' }}
             />
@@ -1136,10 +1168,9 @@ export function AttendanceHistoryView({ showToast }) {
               onChange={(e) => setSection(e.target.value)}
               style={{ height: '38px', borderRadius: '8px' }}
             >
-              <option value="A">Section A</option>
-              <option value="B">Section B</option>
-              <option value="C">Section C</option>
-              <option value="D">Section D</option>
+              {activeSections.map(s => (
+                <option key={s.id || s.name} value={s.name}>Section {s.name}</option>
+              ))}
             </select>
           </div>
 
@@ -1336,14 +1367,19 @@ export function StudentReportsView({ showToast }) {
   const [reports, setReports] = useState([]);
   const [loading, setLoading] = useState(false);
   const [activeGrades, setActiveGrades] = useState([]);
+  const [activeSections, setActiveSections] = useState([]);
   const [selectedStudentId, setSelectedStudentId] = useState('All');
 
   useEffect(() => {
-    const loadGrades = async () => {
-      const grades = await fetchActiveGrades();
+    const loadGradesAndSections = async () => {
+      const [grades, secs] = await Promise.all([
+        fetchActiveGrades(),
+        fetchActiveSections()
+      ]);
       setActiveGrades(grades);
+      setActiveSections(secs);
     };
-    loadGrades();
+    loadGradesAndSections();
   }, []);
 
   useEffect(() => {
@@ -1431,10 +1467,9 @@ export function StudentReportsView({ showToast }) {
               <label style={{ fontSize: '0.75rem', fontWeight: 700, textTransform: 'uppercase', color: 'var(--text-muted)' }}>Section</label>
               <select className="select-custom" value={section} onChange={(e) => setSection(e.target.value)} style={{ height: '38px', borderRadius: '8px' }}>
                 <option value="All">All Sections</option>
-                <option value="A">Section A</option>
-                <option value="B">Section B</option>
-                <option value="C">Section C</option>
-                <option value="D">Section D</option>
+                {activeSections.map(s => (
+                  <option key={s.id || s.name} value={s.name}>Section {s.name}</option>
+                ))}
               </select>
             </div>
 
@@ -1655,20 +1690,28 @@ export function MonthlyCalendarView({ showToast }) {
   const [loading, setLoading] = useState(false);
   const [activeTooltip, setActiveTooltip] = useState(null);
   const [activeGrades, setActiveGrades] = useState([]);
+  const [activeSections, setActiveSections] = useState([]);
 
   useEffect(() => {
-    const loadGrades = async () => {
-      const grades = await fetchActiveGrades();
+    const loadGradesAndSections = async () => {
+      const [grades, secs] = await Promise.all([
+        fetchActiveGrades(),
+        fetchActiveSections()
+      ]);
       setActiveGrades(grades);
       if (grades.length > 0) {
         setSelectedGrade(grades[0].name);
       }
+      setActiveSections(secs);
+      if (secs.length > 0) {
+        setSelectedSection(secs[0].name);
+      }
     };
-    loadGrades();
+    loadGradesAndSections();
   }, []);
 
   const grades = activeGrades.map(g => g.name);
-  const sections = ['A', 'B', 'C', 'D'];
+  const sections = activeSections.map(s => s.name);
 
   // Load filtered students
   const loadFilteredStudents = async () => {
@@ -1957,13 +2000,18 @@ export function ClassTimetableView({ showToast }) {
   const [searchGrade, setSearchGrade] = useState('All');
   const [searchSection, setSearchSection] = useState('All');
   const [activeGrades, setActiveGrades] = useState([]);
+  const [activeSections, setActiveSections] = useState([]);
 
   useEffect(() => {
-    const loadGrades = async () => {
-      const grades = await fetchActiveGrades();
+    const loadGradesAndSections = async () => {
+      const [grades, secs] = await Promise.all([
+        fetchActiveGrades(),
+        fetchActiveSections()
+      ]);
       setActiveGrades(grades);
+      setActiveSections(secs);
     };
-    loadGrades();
+    loadGradesAndSections();
   }, []);
 
   const daysOfWeek = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
@@ -2044,8 +2092,8 @@ export function ClassTimetableView({ showToast }) {
             style={{ padding: '6px 12px', borderRadius: '8px', fontSize: '0.82rem', background: 'var(--bg-glass-active)', border: '1px solid var(--border-glass)', color: 'var(--text-main)' }}
           >
             <option value="All">All Sections</option>
-            {['A', 'B', 'C', 'D', 'E', 'F'].map(s => (
-              <option key={s} value={s}>Section {s}</option>
+            {activeSections.map(s => (
+              <option key={s.id || s.name} value={s.name}>Section {s.name}</option>
             ))}
           </select>
 
@@ -2157,22 +2205,30 @@ export function YearlyAttendanceView({ showToast }) {
   const [yearlyStats, setYearlyStats] = useState(null);
   const [loading, setLoading] = useState(false);
   const [activeGrades, setActiveGrades] = useState([]);
+  const [activeSections, setActiveSections] = useState([]);
 
   useEffect(() => {
-    const loadGrades = async () => {
-      const grades = await fetchActiveGrades();
+    const loadGradesAndSections = async () => {
+      const [grades, secs] = await Promise.all([
+        fetchActiveGrades(),
+        fetchActiveSections()
+      ]);
       setActiveGrades(grades);
       if (grades.length > 0) {
         setSelectedGrade(grades[0].name);
       } else {
         setSelectedGrade('');
       }
+      setActiveSections(secs);
+      if (secs.length > 0) {
+        setSelectedSection(secs[0].name);
+      }
     };
-    loadGrades();
+    loadGradesAndSections();
   }, []);
 
   const grades = activeGrades.map(g => g.name);
-  const sections = ['A', 'B', 'C', 'D'];
+  const sections = activeSections.map(s => s.name);
 
   // Load filtered students list (identical to MonthlyCalendarView)
   const loadFilteredStudents = async () => {

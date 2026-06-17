@@ -7,16 +7,17 @@ import studentRoutes from './routes/studentRoutes.js';
 import teacherRoutes from './routes/teacherRoutes.js';
 import attendanceRoutes from './routes/attendanceRoutes.js';
 import employeeAttendanceRoutes from './routes/employeeAttendanceRoutes.js';
-import financeRoutes from './routes/financeRoutes.js';
+import accountManagementRoutes from './routes/accountManagementRoutes.js';
 import academicRoutes from './routes/academicRoutes.js';
 import rbacRoutes from './routes/rbacRoutes.js';
 import gradeRoutes from './routes/gradeRoutes.js';
 import upload from './middleware/upload.js';
 import { readDb, writeDb, addActivity, tenantStorage, slugify, restoreTenantContext, ensureTenantSqlLoaded } from './utils/db.js';
-import { generateToken } from './middleware/auth.js';
+import { auth, generateToken } from './middleware/auth.js';
 import { generateQrCode } from './utils/qrService.js';
 
 
+// Database cache refresh trigger
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 const GLOBAL_DB_FILE = path.join(__dirname, 'db.json');
@@ -72,11 +73,20 @@ app.post('/api/auth/login', (req, res) => {
     return res.status(400).json({ error: 'Username and password are required.' });
   }
 
-  // 1. If role is Developer Admin, authenticate immediately as the Platform Owner
-  if (role === 'Developer Admin') {
-    if (username === 'dev@admin.com' && password === 'admin123') {
-      const token = generateToken({ role: 'Developer Admin', username: 'dev@admin.com' });
-      return res.json({ token, role: 'Developer Admin', name: 'Platform Owner' });
+  // 1. If role is Developer Admin or credentials match the Platform Owner (dev@admin.com)
+  const globalDb = JSON.parse(fs.readFileSync(GLOBAL_DB_FILE, 'utf8'));
+  const owner = globalDb.platformOwner || {
+    name: "Platform Owner",
+    username: "dev@admin.com",
+    password: "admin123",
+    email: "dev@admin.com",
+    phone: "",
+    photo: ""
+  };
+  if (role === 'Developer Admin' || username === owner.username || username === owner.email) {
+    if ((username === owner.username || username === owner.email) && password === owner.password) {
+      const token = generateToken({ role: 'Developer Admin', username: owner.username });
+      return res.json({ token, role: 'Developer Admin', name: owner.name });
     }
     return res.status(401).json({ error: 'Invalid Developer Admin credentials.' });
   }
@@ -91,7 +101,6 @@ app.post('/api/auth/login', (req, res) => {
   const db = readDb(); // This will read the tenant-specific db because tenantId is set!
   
   // Find school info
-  const globalDb = JSON.parse(fs.readFileSync(GLOBAL_DB_FILE, 'utf8'));
   const schoolRecord = (globalDb.schools || []).find(s => s.subdomain === tenantId);
   if (!schoolRecord) {
     return res.status(404).json({ error: 'School domain registration not found.' });
@@ -562,6 +571,307 @@ app.get('/api/platform/analytics', (req, res) => {
 });
 
 // ==========================================
+// DYNAMIC USER PROFILE APIS
+// ==========================================
+
+// GET Profile Info
+app.get('/api/auth/profile', auth, restoreTenantContext, (req, res) => {
+  const user = req.admin;
+  if (!user) {
+    return res.status(401).json({ error: 'Unauthorized' });
+  }
+
+  const globalDb = JSON.parse(fs.readFileSync(GLOBAL_DB_FILE, 'utf8'));
+
+  if (user.role === 'Developer Admin') {
+    if (!globalDb.platformOwner) {
+      globalDb.platformOwner = {
+        name: "Platform Owner",
+        username: "dev@admin.com",
+        password: "admin123",
+        email: "dev@admin.com",
+        phone: "",
+        photo: ""
+      };
+      fs.writeFileSync(GLOBAL_DB_FILE, JSON.stringify(globalDb, null, 2), 'utf8');
+    }
+    return res.json({
+      role: 'Developer Admin',
+      name: globalDb.platformOwner.name,
+      username: globalDb.platformOwner.username,
+      email: globalDb.platformOwner.email,
+      phone: globalDb.platformOwner.phone,
+      photo: globalDb.platformOwner.photo,
+      password: globalDb.platformOwner.password
+    });
+  }
+
+  const tenantId = tenantStorage.getStore() || user.tenantId;
+  if (!tenantId) {
+    return res.status(400).json({ error: 'Tenant context is missing.' });
+  }
+
+  if (user.role === 'Main Admin') {
+    const schoolRecord = (globalDb.schools || []).find(s => s.subdomain === tenantId);
+    if (!schoolRecord) {
+      return res.status(404).json({ error: 'School domain registration not found.' });
+    }
+    return res.json({
+      role: 'Main Admin',
+      name: schoolRecord.adminName,
+      username: schoolRecord.adminUsername,
+      email: schoolRecord.adminEmail,
+      phone: schoolRecord.phone,
+      photo: schoolRecord.logo,
+      password: schoolRecord.adminPassword
+    });
+  }
+
+  // Staff / Teacher
+  const db = readDb();
+  if (user.userType === 'Teacher') {
+    const teacher = (db.teachers || []).find(t => t.id === user.id);
+    if (!teacher) {
+      return res.status(404).json({ error: 'Teacher profile not found.' });
+    }
+    
+    // Look up permissions matrix
+    let permissions = {};
+    const access = (db.userAccess || []).find(ua => ua.userId === teacher.id && ua.userType === 'Teacher');
+    let roleRecord = access ? (db.roles || []).find(r => r.id === access.roleId) : null;
+    if (!roleRecord) {
+      roleRecord = (db.roles || []).find(r => r.id === 'role-subject-teacher' || r.id === 'role-teacher' || r.name === 'Subject Teacher' || r.name === 'Teacher');
+    }
+    if (roleRecord) {
+      permissions = roleRecord.permissions;
+    }
+
+    return res.json({
+      id: teacher.id,
+      role: user.role,
+      userType: 'Teacher',
+      name: teacher.fullName || teacher.name,
+      username: teacher.username || teacher.email,
+      email: teacher.email,
+      phone: teacher.phone || teacher.mobile,
+      photo: teacher.photo,
+      password: teacher.password || '',
+      permissions: permissions
+    });
+  } else {
+    // Staff
+    const staff = (db.staff || []).find(s => s.id === user.id);
+    if (!staff) {
+      return res.status(404).json({ error: 'Staff profile not found.' });
+    }
+
+    // Look up permissions matrix
+    let permissions = {};
+    const access = (db.userAccess || []).find(ua => ua.userId === staff.id && ua.userType === 'Staff');
+    let roleRecord = access ? (db.roles || []).find(r => r.id === access.roleId) : null;
+    if (!roleRecord) {
+      roleRecord = (db.roles || []).find(r => r.name.toLowerCase() === staff.role.toLowerCase());
+    }
+    if (roleRecord) {
+      permissions = roleRecord.permissions;
+    }
+
+    return res.json({
+      id: staff.id,
+      role: user.role,
+      userType: 'Staff',
+      name: staff.fullName || staff.name,
+      username: staff.username || staff.email,
+      email: staff.email,
+      phone: staff.phone || staff.mobile,
+      photo: staff.photo,
+      password: staff.password || '',
+      permissions: permissions
+    });
+  }
+});
+
+// UPDATE Profile Info
+app.put('/api/auth/profile', auth, upload.single('photo'), restoreTenantContext, (req, res) => {
+  const user = req.admin;
+  if (!user) {
+    return res.status(401).json({ error: 'Unauthorized' });
+  }
+
+  const { name, username, email, phone, password } = req.body;
+  const photoPath = req.file ? `/uploads/${req.file.filename}` : undefined;
+
+  const globalDb = JSON.parse(fs.readFileSync(GLOBAL_DB_FILE, 'utf8'));
+
+  if (user.role === 'Developer Admin') {
+    if (!globalDb.platformOwner) {
+      globalDb.platformOwner = {
+        name: "Platform Owner",
+        username: "dev@admin.com",
+        password: "admin123",
+        email: "dev@admin.com",
+        phone: "",
+        photo: ""
+      };
+    }
+    globalDb.platformOwner.name = name || globalDb.platformOwner.name;
+    globalDb.platformOwner.username = username || globalDb.platformOwner.username;
+    globalDb.platformOwner.email = email || globalDb.platformOwner.email;
+    globalDb.platformOwner.phone = phone !== undefined ? phone : globalDb.platformOwner.phone;
+    if (password) {
+      globalDb.platformOwner.password = password;
+    }
+    if (photoPath) {
+      globalDb.platformOwner.photo = photoPath;
+    }
+    fs.writeFileSync(GLOBAL_DB_FILE, JSON.stringify(globalDb, null, 2), 'utf8');
+
+    return res.json({
+      success: true,
+      message: 'Platform owner profile updated successfully.',
+      profile: {
+        role: 'Developer Admin',
+        name: globalDb.platformOwner.name,
+        username: globalDb.platformOwner.username,
+        email: globalDb.platformOwner.email,
+        phone: globalDb.platformOwner.phone,
+        photo: globalDb.platformOwner.photo
+      }
+    });
+  }
+
+  const tenantId = tenantStorage.getStore() || user.tenantId;
+  if (!tenantId) {
+    return res.status(400).json({ error: 'Tenant context is missing.' });
+  }
+
+  if (user.role === 'Main Admin') {
+    const index = (globalDb.schools || []).findIndex(s => s.subdomain === tenantId);
+    if (index === -1) {
+      return res.status(404).json({ error: 'School domain registration not found.' });
+    }
+    const currentSchool = globalDb.schools[index];
+    globalDb.schools[index] = {
+      ...currentSchool,
+      adminName: name || currentSchool.adminName,
+      principalName: name || currentSchool.principalName,
+      adminUsername: username || currentSchool.adminUsername,
+      adminEmail: email || currentSchool.adminEmail,
+      phone: phone || currentSchool.phone,
+      logo: photoPath || currentSchool.logo,
+      adminPassword: password || currentSchool.adminPassword
+    };
+    fs.writeFileSync(GLOBAL_DB_FILE, JSON.stringify(globalDb, null, 2), 'utf8');
+
+    // Sync to tenant db
+    const tenantDbPath = path.join(__dirname, 'tenants', `db_${currentSchool.subdomain}.json`);
+    if (fs.existsSync(tenantDbPath)) {
+      try {
+        const raw = fs.readFileSync(tenantDbPath, 'utf8');
+        const tenantData = JSON.parse(raw);
+        tenantData.school = {
+          ...tenantData.school,
+          name: globalDb.schools[index].name,
+          address: globalDb.schools[index].address,
+          city: globalDb.schools[index].city,
+          state: globalDb.schools[index].state,
+          phone: globalDb.schools[index].phone,
+          email: globalDb.schools[index].adminEmail,
+          adminName: globalDb.schools[index].adminName,
+          adminPassword: globalDb.schools[index].adminPassword,
+          principal: globalDb.schools[index].principalName
+        };
+        fs.writeFileSync(tenantDbPath, JSON.stringify(tenantData, null, 2), 'utf8');
+      } catch (e) {
+        console.error('Failed to sync school update to tenant DB:', e);
+      }
+    }
+
+    return res.json({
+      success: true,
+      message: 'School admin profile updated successfully.',
+      profile: {
+        role: 'Main Admin',
+        name: globalDb.schools[index].adminName,
+        username: globalDb.schools[index].adminUsername,
+        email: globalDb.schools[index].adminEmail,
+        phone: globalDb.schools[index].phone,
+        photo: globalDb.schools[index].logo
+      }
+    });
+  }
+
+  // Staff / Teacher
+  const db = readDb();
+  if (user.userType === 'Teacher') {
+    const teacherIndex = (db.teachers || []).findIndex(t => t.id === user.id);
+    if (teacherIndex === -1) {
+      return res.status(404).json({ error: 'Teacher profile not found.' });
+    }
+    const currentTeacher = db.teachers[teacherIndex];
+    db.teachers[teacherIndex] = {
+      ...currentTeacher,
+      name: name || currentTeacher.name,
+      fullName: name || currentTeacher.fullName,
+      email: email || currentTeacher.email,
+      username: username || currentTeacher.username || email,
+      phone: phone || currentTeacher.phone || currentTeacher.mobile,
+      mobile: phone || currentTeacher.phone || currentTeacher.mobile,
+      photo: photoPath || currentTeacher.photo,
+      password: password || currentTeacher.password
+    };
+    writeDb(db);
+    return res.json({
+      success: true,
+      message: 'Teacher profile updated successfully.',
+      profile: {
+        id: db.teachers[teacherIndex].id,
+        role: user.role,
+        userType: 'Teacher',
+        name: db.teachers[teacherIndex].fullName,
+        username: db.teachers[teacherIndex].username || db.teachers[teacherIndex].email,
+        email: db.teachers[teacherIndex].email,
+        phone: db.teachers[teacherIndex].phone,
+        photo: db.teachers[teacherIndex].photo
+      }
+    });
+  } else {
+    // Staff
+    const staffIndex = (db.staff || []).findIndex(s => s.id === user.id);
+    if (staffIndex === -1) {
+      return res.status(404).json({ error: 'Staff profile not found.' });
+    }
+    const currentStaff = db.staff[staffIndex];
+    db.staff[staffIndex] = {
+      ...currentStaff,
+      name: name || currentStaff.name,
+      fullName: name || currentStaff.fullName,
+      email: email || currentStaff.email,
+      username: username || currentStaff.username || email,
+      phone: phone || currentStaff.phone || currentStaff.mobile,
+      mobile: phone || currentStaff.phone || currentStaff.mobile,
+      photo: photoPath || currentStaff.photo,
+      password: password || currentStaff.password
+    };
+    writeDb(db);
+    return res.json({
+      success: true,
+      message: 'Staff profile updated successfully.',
+      profile: {
+        id: db.staff[staffIndex].id,
+        role: user.role,
+        userType: 'Staff',
+        name: db.staff[staffIndex].fullName,
+        username: db.staff[staffIndex].username || db.staff[staffIndex].email,
+        email: db.staff[staffIndex].email,
+        phone: db.staff[staffIndex].phone,
+        photo: db.staff[staffIndex].photo
+      }
+    });
+  }
+});
+
+// ==========================================
 // 1. STUDENTS ROUTER & STATIC UPLOADS
 // ==========================================
 app.use('/uploads', express.static(path.join(__dirname, 'uploads')));
@@ -579,9 +889,10 @@ app.use('/api/attendance', attendanceRoutes);
 app.use('/api/employee-attendance', employeeAttendanceRoutes);
 
 // ==========================================
-// 2B. FINANCE ROUTER
+// 2B. ACCOUNT MANAGEMENT ROUTER
 // ==========================================
-app.use('/api/finance', financeRoutes);
+app.use('/api/account-management', accountManagementRoutes);
+app.use('/api/finance', accountManagementRoutes);
 
 // ==========================================
 // 2C. ACADEMICS ROUTER
@@ -638,6 +949,13 @@ app.post('/api/staff', staffUploadFields, restoreTenantContext, async (req, res)
     // Minimal validation - only require a name
     if (!derivedFullName) {
       return res.status(400).json({ error: 'Staff name is required.' });
+    }
+
+    if (body.aadhaarNumber && !/^\d{12}$/.test(String(body.aadhaarNumber).replace(/\s/g, ''))) {
+      return res.status(400).json({ error: 'Invalid Aadhaar number. Must be exactly 12 digits.' });
+    }
+    if (body.panNumber && !/^[A-Z]{5}[0-9]{4}[A-Z]{1}$/.test(String(body.panNumber).toUpperCase())) {
+      return res.status(400).json({ error: 'Invalid PAN card format. Must match ABCDE1234F.' });
     }
 
     // Process file uploads
@@ -706,6 +1024,7 @@ app.post('/api/staff', staffUploadFields, restoreTenantContext, async (req, res)
       staffCategory: staffRole,
       role: staffRole,
       designation: body.designation || '',
+      designationLevel: body.designationLevel || '',
       department: body.department || '',
       employmentType: body.employmentType || '',
       employeeStatus: body.employeeStatus || body.status || 'Active',
@@ -783,7 +1102,7 @@ app.post('/api/staff', staffUploadFields, restoreTenantContext, async (req, res)
 });
 
 // UPDATE STAFF
-app.put('/api/staff/:id', (req, res) => {
+app.put('/api/staff/:id', staffUploadFields, (req, res) => {
   try {
     const db = readDb();
     if (!db.staff) db.staff = [];
@@ -796,9 +1115,41 @@ app.put('/api/staff/:id', (req, res) => {
     const currentStaff = db.staff[staffIndex];
     const updateData = req.body;
 
+    if (updateData.aadhaarNumber && !/^\d{12}$/.test(String(updateData.aadhaarNumber).replace(/\s/g, ''))) {
+      return res.status(400).json({ error: 'Invalid Aadhaar number. Must be exactly 12 digits.' });
+    }
+    if (updateData.panNumber && !/^[A-Z]{5}[0-9]{4}[A-Z]{1}$/.test(String(updateData.panNumber).toUpperCase())) {
+      return res.status(400).json({ error: 'Invalid PAN card format. Must match ABCDE1234F.' });
+    }
+
+    const files = req.files || {};
+    const getFilePath = (key) => files[key] ? `/uploads/${files[key][0].filename}` : currentStaff[key];
+    const aadhaarPath = getFilePath('aadhaarFile') || getFilePath('aadharFile') || currentStaff.aadhaarFile || currentStaff.aadharFile || '';
+
+    // Parse qualification & experience arrays if they came as stringified JSON
+    let parsedQualifications = updateData.qualification;
+    if (typeof updateData.qualification === 'string') {
+      try { parsedQualifications = JSON.parse(updateData.qualification); } catch { parsedQualifications = []; }
+    }
+    let parsedExperiences = updateData.experiences;
+    if (typeof updateData.experiences === 'string') {
+      try { parsedExperiences = JSON.parse(updateData.experiences); } catch { parsedExperiences = []; }
+    }
+
     const updatedStaff = {
       ...currentStaff,
       ...updateData,
+      photo: getFilePath('photo'),
+      aadhaarFile: aadhaarPath,
+      aadharFile: aadhaarPath,
+      panFile: getFilePath('panFile'),
+      resumeFile: getFilePath('resumeFile'),
+      qualificationFile: getFilePath('qualificationFile'),
+      experienceFile: getFilePath('experienceFile'),
+      certificateFile: getFilePath('certificateFile'),
+      otherFile: getFilePath('otherFile'),
+      qualification: parsedQualifications !== undefined ? parsedQualifications : currentStaff.qualification,
+      experiences: parsedExperiences !== undefined ? parsedExperiences : currentStaff.experiences,
       name: updateData.fullName || updateData.name || currentStaff.name,
       fullName: updateData.fullName || updateData.name || currentStaff.fullName,
       phone: updateData.mobile || updateData.phone || currentStaff.phone,
@@ -991,9 +1342,9 @@ app.post('/api/invoices', (req, res) => {
   db.invoices.push(newInvoice);
 
   if (status === 'Paid') {
-    addActivity(db, 'finance', 'Tuition Receipt Generated', `Payment of ${cleanAmount} verified for ${name}`, 'rgb(var(--color-success-rgb))', 'rgba(var(--color-success-rgb), 0.1)');
+    addActivity(db, 'account_management', 'Tuition Receipt Generated', `Payment of ${cleanAmount} verified for ${name}`, 'rgb(var(--color-success-rgb))', 'rgba(var(--color-success-rgb), 0.1)');
   } else {
-    addActivity(db, 'finance', 'Tuition Invoiced', `New tuition bill of ${cleanAmount} generated for ${name}`, 'rgb(var(--color-warning-rgb))', 'rgba(var(--color-warning-rgb), 0.1)');
+    addActivity(db, 'account_management', 'Tuition Invoiced', `New tuition bill of ${cleanAmount} generated for ${name}`, 'rgb(var(--color-warning-rgb))', 'rgba(var(--color-warning-rgb), 0.1)');
   }
 
   writeDb(db);
@@ -1117,6 +1468,7 @@ app.get('/api/overview', (req, res) => {
   // Current month expenses (recorded expenses + paid payrolls/staff payments)
   const currentMonthExpenses = expensesList
     .filter(e => {
+      if (e.deleted) return false;
       const dt = e.date || e.paymentDate;
       return typeof dt === 'string' && dt.startsWith(currentYearMonth);
     })
@@ -1137,7 +1489,7 @@ app.get('/api/overview', (req, res) => {
   const totalPendingFees = feesList
     .filter(f => f.paymentStatus === 'Pending' || f.paymentStatus === 'Partial')
     .reduce((sum, f) => sum + (f.dueAmount || 0), 0);
-  const totalExpenses = expensesList.reduce((sum, e) => sum + (e.amount || 0), 0);
+  const totalExpenses = expensesList.filter(e => !e.deleted).reduce((sum, e) => sum + (e.amount || 0), 0);
   const totalPayrollPaid = payrollList
     .filter(p => p.paymentStatus === 'Paid')
     .reduce((sum, p) => sum + (p.netSalary || 0), 0);
@@ -1359,5 +1711,5 @@ app.use((err, req, res, next) => {
 app.listen(PORT, () => {
   console.log(`Aether Server running at http://localhost:${PORT}`);
 });
-// Trigger restart to sync platform database cache
+// Trigger restart to sync database cache and reload server state
 

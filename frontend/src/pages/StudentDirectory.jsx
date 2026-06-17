@@ -24,19 +24,22 @@ import {
   Printer
 } from 'lucide-react';
 import { hasPermission } from '../utils/permissions';
-import { fetchActiveGrades } from '../utils/grades';
+import { fetchActiveGrades, fetchActiveSections } from '../utils/grades';
 
-export default function StudentDirectory({ readOnly = true, onAddClick }) {
+export default function StudentDirectory({ readOnly = true, onAddClick, onEditClick }) {
   const [students, setStudents] = useState([]);
   const [loading, setLoading] = useState(true);
   const [activeGrades, setActiveGrades] = useState([]);
+  const [sections, setSections] = useState([]);
 
   useEffect(() => {
-    const loadGrades = async () => {
+    const loadGradesAndSections = async () => {
       const grades = await fetchActiveGrades();
       setActiveGrades(grades);
+      const activeSections = await fetchActiveSections();
+      setSections(activeSections);
     };
-    loadGrades();
+    loadGradesAndSections();
   }, []);
 
   
@@ -430,10 +433,9 @@ export default function StudentDirectory({ readOnly = true, onAddClick }) {
               style={{ padding: '8px 12px', borderRadius: '8px', fontSize: '0.85rem' }}
             >
               <option value="All">All Sections</option>
-              <option value="A">Section A</option>
-              <option value="B">Section B</option>
-              <option value="C">Section C</option>
-              <option value="D">Section D</option>
+              {sections.map(sec => (
+                <option key={sec.id} value={sec.name}>Section {sec.name}</option>
+              ))}
             </select>
           </div>
 
@@ -608,7 +610,7 @@ export default function StudentDirectory({ readOnly = true, onAddClick }) {
                               <>
                                 {hasPermission('student-directory', 'edit') && (
                                   <button 
-                                    onClick={() => openEditModal(stu)}
+                                    onClick={() => onEditClick ? onEditClick(stu) : openEditModal(stu)}
                                     className="btn-secondary" 
                                     style={{ padding: '6px 12px', fontSize: '0.8rem', borderRadius: '8px', display: 'flex', alignItems: 'center', gap: '4px' }}
                                   >
@@ -1179,11 +1181,9 @@ export default function StudentDirectory({ readOnly = true, onAddClick }) {
                   <select value={editFormData.section || ''} onChange={(e) => setEditFormData({ ...editFormData, section: e.target.value })}
                     className="form-control" style={{ padding: '10px 14px', borderRadius: '10px' }}>
                     <option value="">-</option>
-                    <option value="A">A</option>
-                    <option value="B">B</option>
-                    <option value="C">C</option>
-                    <option value="D">D</option>
-                    <option value="E">E</option>
+                    {sections.map(sec => (
+                      <option key={sec.id} value={sec.name}>{sec.name}</option>
+                    ))}
                   </select>
                 </div>
 

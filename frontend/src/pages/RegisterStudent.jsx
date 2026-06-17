@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { fetchActiveGrades } from '../utils/grades';
+import { fetchActiveGrades, fetchActiveSections } from '../utils/grades';
 import { 
   User, 
   Users, 
@@ -202,7 +202,18 @@ function DragAndDropFile({ fieldName, label, file, onFileChange, onRemove, accep
   );
 }
 
-export default function RegisterStudent({ setActiveView }) {
+let studentFilesCache = {
+  photo: null,
+  birthCertificateFile: null,
+  aadhaarFile: null,
+  marksheetFile: null,
+  transferCertificateFile: null,
+  addressProofFile: null,
+  medicalCertificateFile: null,
+  additionalFile: null
+};
+
+export default function RegisterStudent({ setActiveView, editData }) {
   const [activeStep, setActiveStep] = useState(1);
   const [loading, setLoading] = useState(false);
   const [successToast, setSuccessToast] = useState(false);
@@ -298,28 +309,16 @@ export default function RegisterStudent({ setActiveView }) {
   });
 
   // Step 9 File Upload State
-  const [files, setFiles] = useState({
-    photo: null,
-    birthCertificateFile: null,
-    aadhaarFile: null,
-    marksheetFile: null,
-    transferCertificateFile: null,
-    addressProofFile: null,
-    medicalCertificateFile: null,
-    additionalFile: null
-  });
+  const [files, setFiles] = useState(studentFilesCache);
+
+  useEffect(() => {
+    Object.assign(studentFilesCache, files);
+  }, [files]);
 
   const [formErrors, setFormErrors] = useState({});
 
   const [classOptions, setClassOptions] = useState([]);
-
-  const sectionOptions = [
-    { value: 'A', label: 'Section A' },
-    { value: 'B', label: 'Section B' },
-    { value: 'C', label: 'Section C' },
-    { value: 'D', label: 'Section D' },
-    { value: 'E', label: 'Section E' }
-  ];
+  const [sectionOptions, setSectionOptions] = useState([]);
 
   const bloodGroupOptions = [
     { value: 'A+', label: 'A+' },
@@ -368,20 +367,104 @@ export default function RegisterStudent({ setActiveView }) {
     { value: 'Fixed', label: 'Fixed Amount (₹)' }
   ];
 
-  // Load dynamic grades
+  // Load dynamic grades & sections
   useEffect(() => {
-    const loadGrades = async () => {
+    const loadGradesAndSections = async () => {
       const activeGrades = await fetchActiveGrades();
       setClassOptions(activeGrades.map(g => ({ 
         value: g.name, 
         label: g.name.startsWith('LKG') || g.name.startsWith('UKG') || g.name.startsWith('NURSERY') ? g.name : `Grade ${g.name}` 
       })));
+
+      const activeSections = await fetchActiveSections();
+      setSectionOptions(activeSections.map(s => ({
+        value: s.name,
+        label: `Section ${s.name}`
+      })));
     };
-    loadGrades();
+    loadGradesAndSections();
   }, []);
+
+  // Populate from editData
+  useEffect(() => {
+    if (editData) {
+      const derivedFullName = editData.fullName || editData.name || '';
+      const parts = derivedFullName.trim().split(/\s+/);
+      const first = editData.firstName || parts[0] || '';
+      const last = editData.lastName || parts.slice(1).join(' ') || '';
+
+      setFormData({
+        firstName: first,
+        middleName: editData.middleName || '',
+        lastName: last,
+        fullName: derivedFullName,
+        admissionNumber: editData.admissionNumber || '',
+        manualAdmissionNumber: true,
+        admissionDate: editData.admissionDate || '',
+        dob: editData.dob || '',
+        gender: editData.gender || '',
+        bloodGroup: editData.bloodGroup || '',
+        nationality: editData.nationality || 'Indian',
+        category: editData.category || 'General',
+        religion: editData.religion || 'Hinduism',
+        aadhaarNumber: editData.aadhaarNumber || '',
+        academicYear: editData.academicYear || '2026-2027',
+        admissionType: editData.admissionType || 'New Admission',
+        studentClass: editData.studentClass || '',
+        section: editData.section || '',
+        rollNumber: editData.rollNumber || editData.roll || '',
+        autoRollNumber: false,
+        previousSchoolName: editData.previousSchoolName || '',
+        previousSchoolAddress: editData.previousSchoolAddress || '',
+        previousClassStudied: editData.previousClassStudied || '',
+        transferCertificateNumber: editData.transferCertificateNumber || '',
+        status: editData.status || 'Active',
+        fatherName: editData.fatherName || '',
+        fatherOccupation: editData.fatherOccupation || '',
+        fatherMobile: editData.fatherMobile || '',
+        fatherEmail: editData.fatherEmail || '',
+        motherName: editData.motherName || '',
+        motherOccupation: editData.motherOccupation || '',
+        motherMobile: editData.motherMobile || '',
+        motherEmail: editData.motherEmail || '',
+        guardianName: editData.guardianName || '',
+        guardianRelation: editData.guardianRelation || '',
+        guardianContact: editData.guardianContact || '',
+        currentAddress: editData.currentAddress || editData.address || '',
+        permanentAddress: editData.permanentAddress || '',
+        city: editData.city || '',
+        state: editData.state || '',
+        country: editData.country || 'India',
+        postalCode: editData.postalCode || editData.pincode || '',
+        emergencyContactNumber: editData.emergencyContactNumber || '',
+        sameAsPermanent: editData.sameAsPermanent || false,
+        medicalConditions: editData.medicalConditions || '',
+        allergies: editData.allergies || '',
+        disabilities: editData.disabilities || '',
+        emergencyNotes: editData.emergencyNotes || '',
+        doctorName: editData.doctorName || '',
+        doctorContact: editData.doctorContact || '',
+        transportRequired: editData.transportRequired || 'No',
+        route: editData.route || '',
+        pickupPoint: editData.pickupPoint || '',
+        dropPoint: editData.dropPoint || '',
+        transportFeePlan: editData.transportFeePlan || '',
+        hostelRequired: editData.hostelRequired || 'No',
+        hostelBlock: editData.hostelBlock || '',
+        roomNumber: editData.roomNumber || '',
+        bedNumber: editData.bedNumber || '',
+        feeStructure: editData.feeStructure || 'STANDARD-2026',
+        scholarshipDetails: editData.scholarshipDetails || '',
+        discountType: editData.discountType || '',
+        discountAmount: String(editData.discountAmount || '0'),
+        initialPaymentStatus: editData.initialPaymentStatus || 'Pending'
+      });
+    }
+  }, [editData]);
 
   // 1. Auto Load Draft
   useEffect(() => {
+    if (editData) return;
     const savedDraft = localStorage.getItem(draftKey);
     if (savedDraft) {
       try {
@@ -393,10 +476,11 @@ export default function RegisterStudent({ setActiveView }) {
         console.error('Failed to restore draft registration:', err);
       }
     }
-  }, []);
+  }, [editData]);
 
   // 2. Auto-Save Draft to LocalStorage on change
   useEffect(() => {
+    if (editData) return;
     const hasAnyContent = Object.keys(formData).some(key => {
       if (key === 'nationality' || key === 'religion' || key === 'category' || key === 'country' || key === 'academicYear' || key === 'admissionType' || key === 'admissionDate' || key === 'sameAsPermanent' || key === 'manualAdmissionNumber' || key === 'autoRollNumber') {
         return false;
@@ -410,7 +494,7 @@ export default function RegisterStudent({ setActiveView }) {
       const timer = setTimeout(() => setDraftSaving(false), 600);
       return () => clearTimeout(timer);
     }
-  }, [formData]);
+  }, [formData, editData]);
 
   // Clean Draft Storage
   const clearDraft = () => {
@@ -419,23 +503,25 @@ export default function RegisterStudent({ setActiveView }) {
 
   // Generate Unique Admission Number
   useEffect(() => {
+    if (editData) return;
     if (!formData.manualAdmissionNumber && !formData.admissionNumber) {
       setFormData(prev => ({
         ...prev,
         admissionNumber: `ADM-${Date.now().toString().slice(-6)}`
       }));
     }
-  }, [formData.manualAdmissionNumber]);
+  }, [formData.manualAdmissionNumber, editData]);
 
   // Generate Unique Roll Number
   useEffect(() => {
+    if (editData) return;
     if (formData.autoRollNumber && !formData.rollNumber) {
       setFormData(prev => ({
         ...prev,
         rollNumber: `${Math.floor(10 + Math.random() * 90)}`
       }));
     }
-  }, [formData.autoRollNumber]);
+  }, [formData.autoRollNumber, editData]);
 
   // Handle address copying
   useEffect(() => {
@@ -450,7 +536,11 @@ export default function RegisterStudent({ setActiveView }) {
   // Field change handlers
   const handleTextChange = (e) => {
     const { name, value, type, checked } = e.target;
-    const val = type === 'checkbox' ? checked : value;
+    let val = type === 'checkbox' ? checked : value;
+    
+    if (name === 'firstName' || name === 'middleName' || name === 'lastName') {
+      val = val.replace(/[^A-Za-z\s]/g, '').slice(0, 50);
+    }
     
     setFormData(prev => {
       const updated = { ...prev, [name]: val };
@@ -480,6 +570,13 @@ export default function RegisterStudent({ setActiveView }) {
     if (formErrors[name]) setFormErrors(prev => ({ ...prev, [name]: '' }));
   };
 
+  const handleAadhaarChange = (e) => {
+    const { value } = e.target;
+    const cleanVal = value.replace(/[^0-9]/g, '').slice(0, 12);
+    setFormData(prev => ({ ...prev, aadhaarNumber: cleanVal }));
+    if (formErrors.aadhaarNumber) setFormErrors(prev => ({ ...prev, aadhaarNumber: '' }));
+  };
+
   const handleSelectChange = (fieldName, value) => {
     setFormData(prev => ({ ...prev, [fieldName]: value }));
     if (formErrors[fieldName]) {
@@ -503,13 +600,24 @@ export default function RegisterStudent({ setActiveView }) {
   // Step Validator
   const validateStep = (step) => {
     const errors = {};
+    if (step === 1) {
+      if (!formData.firstName.trim()) errors.firstName = 'First name is required';
+      if (!formData.lastName.trim()) errors.lastName = 'Last name is required';
+      if (!formData.gender) errors.gender = 'Gender is required';
+      if (!formData.dob) errors.dob = 'Date of birth is required';
+      if (formData.aadhaarNumber && !/^\d{12}$/.test(formData.aadhaarNumber.replace(/\s/g, ''))) {
+        errors.aadhaarNumber = 'Aadhaar number must be exactly 12 digits';
+      }
+    }
     setFormErrors(errors);
-    return true;
+    return Object.keys(errors).length === 0;
   };
 
   const handleNext = () => {
-    setActiveStep(prev => prev + 1);
-    window.scrollTo({ top: 0, behavior: 'smooth' });
+    if (validateStep(activeStep)) {
+      setActiveStep(prev => prev + 1);
+      window.scrollTo({ top: 0, behavior: 'smooth' });
+    }
   };
 
   const handlePrev = () => {
@@ -518,7 +626,7 @@ export default function RegisterStudent({ setActiveView }) {
   };
 
   const performReset = () => {
-    clearDraft();
+    if (!editData) clearDraft();
     setFormData({
       firstName: '',
       middleName: '',
@@ -651,20 +759,25 @@ export default function RegisterStudent({ setActiveView }) {
         }
       });
 
-      const res = await fetch('/api/students', {
-        method: 'POST',
+      const url = editData ? `/api/students/${editData.id}` : '/api/students';
+      const method = editData ? 'PUT' : 'POST';
+
+      const res = await fetch(url, {
+        method: method,
         headers: { 'x-tenant-id': tenantSubdomain },
         body: dataObj
       });
 
       if (res.ok) {
+        performReset();
+        setActiveStep(1);
+        setLoading(false);
+        isSubmitting.current = false;
         setSuccessToast(true);
         setTimeout(() => setSuccessToast(false), 5000);
-        setTimeout(() => {
-          performReset();
-          setLoading(false);
-          isSubmitting.current = false;
-        }, 1500);
+        if (editData) {
+          setActiveView('students');
+        }
       } else {
         const errData = await res.json();
         alert(errData.error || 'Server error occurred during admission submit.');
@@ -844,19 +957,21 @@ export default function RegisterStudent({ setActiveView }) {
         </div>
         
         {/* Reset Draft Button */}
-        <button 
-          type="button" 
-          onClick={resetForm}
-          className="btn-secondary"
-          style={{ padding: '8px 14px', borderRadius: '8px', fontSize: '0.8rem', display: 'flex', alignItems: 'center', gap: '6px' }}
-        >
-          <RotateCcw size={14} /> Clear Form & Draft
-        </button>
+        {!editData && (
+          <button 
+            type="button" 
+            onClick={resetForm}
+            className="btn-secondary"
+            style={{ padding: '8px 14px', borderRadius: '8px', fontSize: '0.8rem', display: 'flex', alignItems: 'center', gap: '6px' }}
+          >
+            <RotateCcw size={14} /> Clear Form & Draft
+          </button>
+        )}
       </div>
 
       {/* FORM BODY STAGE */}
       <form 
-        onSubmit={handleSubmit} 
+        onSubmit={(e) => e.preventDefault()} 
         onKeyDown={handleFormKeyDown} 
         style={{ display: 'flex', flexDirection: 'column', gap: '24px' }}
       >
@@ -917,6 +1032,7 @@ export default function RegisterStudent({ setActiveView }) {
                   name="dob"
                   value={formData.dob}
                   onChange={handleTextChange}
+                  max={new Date().toLocaleDateString('en-CA')}
                   className="form-control"
                   style={{ borderColor: formErrors.dob ? '#ef4444' : undefined }}
                 />
@@ -979,6 +1095,7 @@ export default function RegisterStudent({ setActiveView }) {
                   name="admissionDate"
                   value={formData.admissionDate}
                   onChange={handleTextChange}
+                  max={new Date().toLocaleDateString('en-CA')}
                   className="form-control"
                 />
               </div>
@@ -1023,10 +1140,13 @@ export default function RegisterStudent({ setActiveView }) {
                   type="text"
                   name="aadhaarNumber"
                   value={formData.aadhaarNumber}
-                  onChange={handleTextChange}
+                  onChange={handleAadhaarChange}
                   className="form-control"
                   placeholder="12-digit UIDAI number"
+                  style={{ borderColor: formErrors.aadhaarNumber ? '#ef4444' : undefined }}
+                  maxLength={12}
                 />
+                {formErrors.aadhaarNumber && <span style={{ color: '#ef4444', fontSize: '0.75rem', marginTop: '4px', display: 'block' }}>{formErrors.aadhaarNumber}</span>}
               </div>
 
               <div className="form-group">
@@ -1792,11 +1912,11 @@ export default function RegisterStudent({ setActiveView }) {
           <div style={{ display: 'flex', gap: '12px' }}>
             <button 
               type="button" 
-              onClick={() => { clearDraft(); setActiveView('students'); }} 
+              onClick={() => { if (!editData) clearDraft(); setActiveView('students'); }} 
               className="btn-secondary"
               style={{ padding: '12px 24px', borderRadius: '10px', fontWeight: 600, cursor: 'pointer' }}
             >
-              Cancel Admission
+              {editData ? 'Cancel' : 'Cancel Admission'}
             </button>
             
             {activeStep < 9 ? (
@@ -1810,7 +1930,8 @@ export default function RegisterStudent({ setActiveView }) {
               </button>
             ) : (
               <button 
-                type="submit" 
+                type="button" 
+                onClick={handleSubmit}
                 className="btn-primary"
                 disabled={loading}
                 style={{ 
@@ -1827,11 +1948,11 @@ export default function RegisterStudent({ setActiveView }) {
               >
                 {loading ? (
                   <>
-                    <Loader2 size={16} className="animate-spin" /> Admitting...
+                    <Loader2 size={16} className="animate-spin" /> Saving...
                   </>
                 ) : (
                   <>
-                    <Save size={16} /> Submit Admission
+                    <Save size={16} /> {editData ? 'Save' : 'Submit Admission'}
                   </>
                 )}
               </button>

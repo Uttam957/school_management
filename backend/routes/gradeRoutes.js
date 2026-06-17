@@ -526,7 +526,109 @@ router.delete('/mappings/:id', (req, res) => {
 });
 
 // ==========================================
-// 5. ACADEMIC STRUCTURE SETTINGS
+// 5. SECTIONS CRUD
+// ==========================================
+router.get('/sections', (req, res) => {
+  try {
+    const db = readDb();
+    res.json(db.sections || []);
+  } catch (error) {
+    res.status(500).json({ error: 'Failed to fetch sections: ' + error.message });
+  }
+});
+
+router.post('/sections', (req, res) => {
+  try {
+    const { name } = req.body;
+    if (!name || !name.trim()) {
+      return res.status(400).json({ error: 'Section name is required.' });
+    }
+
+    const db = readDb();
+    if (!db.sections) db.sections = [];
+
+    const exists = db.sections.some(s => s.name.trim().toLowerCase() === name.trim().toLowerCase());
+    if (exists) {
+      return res.status(400).json({ error: 'A section with this name already exists.' });
+    }
+
+    const sectionId = `section-${slugify(name)}-${Date.now()}`;
+    const newSection = {
+      id: sectionId,
+      name: name.trim(),
+      status: 'Active',
+      createdAt: new Date().toISOString(),
+      updatedAt: new Date().toISOString()
+    };
+
+    db.sections.push(newSection);
+    logAudit(db, req, 'Create Section', `Created section: ${name}`);
+    writeDb(db);
+
+    res.status(201).json(newSection);
+  } catch (error) {
+    res.status(500).json({ error: 'Failed to create section: ' + error.message });
+  }
+});
+
+router.put('/sections/:id', (req, res) => {
+  try {
+    const { id } = req.params;
+    const { name, status } = req.body;
+
+    const db = readDb();
+    const index = db.sections.findIndex(s => s.id === id);
+    if (index === -1) {
+      return res.status(404).json({ error: 'Section not found.' });
+    }
+
+    const section = db.sections[index];
+
+    if (name && name.trim().toLowerCase() !== section.name.toLowerCase()) {
+      const exists = db.sections.some(s => s.name.trim().toLowerCase() === name.trim().toLowerCase() && s.id !== id);
+      if (exists) {
+        return res.status(400).json({ error: 'Another section with this name already exists.' });
+      }
+      section.name = name.trim();
+    }
+
+    if (status) {
+      section.status = status;
+    }
+
+    section.updatedAt = new Date().toISOString();
+    db.sections[index] = section;
+
+    logAudit(db, req, 'Update Section', `Updated section: ${section.name}`);
+    writeDb(db);
+
+    res.json(section);
+  } catch (error) {
+    res.status(500).json({ error: 'Failed to update section: ' + error.message });
+  }
+});
+
+router.delete('/sections/:id', (req, res) => {
+  try {
+    const { id } = req.params;
+    const db = readDb();
+    const section = db.sections.find(s => s.id === id);
+    if (!section) {
+      return res.status(404).json({ error: 'Section not found.' });
+    }
+
+    db.sections = db.sections.filter(s => s.id !== id);
+    logAudit(db, req, 'Delete Section', `Deleted section: ${section.name}`);
+    writeDb(db);
+
+    res.json({ success: true, message: `Section ${section.name} deleted successfully.` });
+  } catch (error) {
+    res.status(500).json({ error: 'Failed to delete section: ' + error.message });
+  }
+});
+
+// ==========================================
+// 6. ACADEMIC STRUCTURE SETTINGS
 // ==========================================
 router.get('/settings', (req, res) => {
   try {

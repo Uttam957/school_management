@@ -201,7 +201,18 @@ function DragAndDropFile({ fieldName, label, file, onFileChange, onRemove, accep
   );
 }
 
-export default function AddTeacher({ setActiveView }) {
+let teacherFilesCache = {
+  photo: null,
+  aadhaarFile: null,
+  panFile: null,
+  resumeFile: null,
+  qualificationFile: null,
+  experienceFile: null,
+  joiningLetterFile: null,
+  otherFile: null
+};
+
+export default function AddTeacher({ setActiveView, editData }) {
   const [activeStep, setActiveStep] = useState(1);
   const [loading, setLoading] = useState(false);
   const [successToast, setSuccessToast] = useState(false);
@@ -227,7 +238,6 @@ export default function AddTeacher({ setActiveView }) {
     maritalStatus: '',
     aadhaarNumber: '',
     panNumber: '',
-    teacherId: '',
 
     // Step 2: Professional Information
     joiningDate: new Date().toISOString().split('T')[0],
@@ -274,16 +284,11 @@ export default function AddTeacher({ setActiveView }) {
   });
 
   // Step 7: File Upload State
-  const [files, setFiles] = useState({
-    photo: null,
-    aadhaarFile: null,
-    panFile: null,
-    resumeFile: null,
-    qualificationFile: null,
-    experienceFile: null,
-    joiningLetterFile: null,
-    otherFile: null
-  });
+  const [files, setFiles] = useState(teacherFilesCache);
+
+  useEffect(() => {
+    Object.assign(teacherFilesCache, files);
+  }, [files]);
 
   const [formErrors, setFormErrors] = useState({});
 
@@ -320,30 +325,9 @@ export default function AddTeacher({ setActiveView }) {
     { value: 'Visiting Faculty', label: 'Visiting Faculty' }
   ];
 
-  const roleOptions = [
-    { value: 'Principal', label: 'Principal' },
-    { value: 'Vice Principal', label: 'Vice Principal' },
-    { value: 'Academic Coordinator', label: 'Academic Coordinator' },
-    { value: 'Subject Teacher', label: 'Subject Teacher' },
-    { value: 'Librarian', label: 'Librarian' },
-    { value: 'Receptionist', label: 'Receptionist' },
-    { value: 'Accountant', label: 'Accountant' },
-    { value: 'Expense Manager', label: 'Expense Manager' }
-  ];
+  const [roleOptions, setRoleOptions] = useState([]);
 
-  const departmentOptions = [
-    { value: 'Science', label: 'Science' },
-    { value: 'Mathematics', label: 'Mathematics' },
-    { value: 'English', label: 'English' },
-    { value: 'Hindi', label: 'Hindi' },
-    { value: 'Social Science', label: 'Social Science' },
-    { value: 'Computer Science', label: 'Computer Science' },
-    { value: 'Physical Education', label: 'Physical Education' },
-    { value: 'Arts', label: 'Arts' },
-    { value: 'Commerce', label: 'Commerce' },
-    { value: 'Music', label: 'Music' },
-    { value: 'Other', label: 'Other' }
-  ];
+  const [departmentOptions, setDepartmentOptions] = useState([]);
 
   const statusOptions = [
     { value: 'Active', label: 'Active' },
@@ -351,8 +335,51 @@ export default function AddTeacher({ setActiveView }) {
     { value: 'On Leave', label: 'On Leave' }
   ];
 
+  const [existingFiles, setExistingFiles] = useState({});
+
+  useEffect(() => {
+    if (editData) {
+      setExistingFiles({
+        photo: editData.photo || '',
+        aadhaarFile: editData.aadhaarFile || '',
+        panFile: editData.panFile || '',
+        resumeFile: editData.resumeFile || '',
+        qualificationFile: editData.qualificationFile || '',
+        experienceFile: editData.experienceFile || '',
+        joiningLetterFile: editData.joiningLetterFile || '',
+        otherFile: editData.otherFile || ''
+      });
+    }
+  }, [editData]);
+
+  // Fetch active roles & departments from database dynamically
+  useEffect(() => {
+    fetch('/api/rbac/roles')
+      .then(res => res.json())
+      .then(data => {
+        const activeRoles = data.filter(r => r.active);
+        const mapped = activeRoles.map(r => ({ value: r.name, label: r.name }));
+        setRoleOptions(mapped);
+      })
+      .catch(err => {
+        console.error('Error fetching roles:', err);
+      });
+
+    fetch('/api/grades/departments')
+      .then(res => res.json())
+      .then(data => {
+        const activeDepts = data.filter(d => d.status === 'Active' || !d.status);
+        const mapped = activeDepts.map(d => ({ value: d.name, label: d.name }));
+        setDepartmentOptions(mapped);
+      })
+      .catch(err => {
+        console.error('Error fetching departments:', err);
+      });
+  }, []);
+
   // 1. Auto Load Draft
   useEffect(() => {
+    if (editData) return;
     const savedDraft = localStorage.getItem(draftKey);
     if (savedDraft) {
       try {
@@ -364,10 +391,11 @@ export default function AddTeacher({ setActiveView }) {
         console.error('Failed to restore draft registration:', err);
       }
     }
-  }, []);
+  }, [editData]);
 
   // 2. Auto-Save Draft to LocalStorage on change
   useEffect(() => {
+    if (editData) return;
     const hasAnyContent = Object.keys(formData).some(key => {
       if (
         key === 'nationality' || 
@@ -391,7 +419,89 @@ export default function AddTeacher({ setActiveView }) {
       const timer = setTimeout(() => setDraftSaving(false), 600);
       return () => clearTimeout(timer);
     }
-  }, [formData]);
+  }, [formData, editData]);
+
+  // Populate from editData
+  useEffect(() => {
+    if (editData && Object.keys(editData).length > 0) {
+      let parsedQualifications = editData.qualification || editData.qualifications || [];
+      if (typeof parsedQualifications === 'string') {
+        try {
+          parsedQualifications = JSON.parse(parsedQualifications);
+        } catch (e) {
+          parsedQualifications = [];
+        }
+      }
+      if (!Array.isArray(parsedQualifications)) {
+        parsedQualifications = [];
+      }
+      if (parsedQualifications.length === 0) {
+        parsedQualifications = [
+          { degree: 'B.Ed', institution: '', board: '', year: '', percentage: '' },
+          { degree: 'M.Ed', institution: '', board: '', year: '', percentage: '' },
+          { degree: 'B.Sc', institution: '', board: '', year: '', percentage: '' },
+          { degree: 'M.Sc', institution: '', board: '', year: '', percentage: '' }
+        ];
+      }
+
+      let parsedExperiences = editData.experiences || [];
+      if (typeof parsedExperiences === 'string') {
+        try {
+          parsedExperiences = JSON.parse(parsedExperiences);
+        } catch (e) {
+          parsedExperiences = [];
+        }
+      }
+      if (!Array.isArray(parsedExperiences)) {
+        parsedExperiences = [];
+      }
+      if (parsedExperiences.length === 0) {
+        parsedExperiences = [
+          { schoolName: '', designation: '', duration: '', reason: '' }
+        ];
+      }
+
+      setFormData({
+        firstName: editData.firstName || '',
+        middleName: editData.middleName || '',
+        lastName: editData.lastName || '',
+        fullName: editData.fullName || editData.name || '',
+        gender: editData.gender || '',
+        dob: editData.dob ? editData.dob.split('T')[0] : '',
+        bloodGroup: editData.bloodGroup || '',
+        nationality: editData.nationality || 'Indian',
+        maritalStatus: editData.maritalStatus || '',
+        aadhaarNumber: editData.aadhaarNumber || '',
+        panNumber: editData.panNumber || '',
+        joiningDate: editData.joiningDate ? editData.joiningDate.split('T')[0] : '',
+        employmentType: editData.employmentType || '',
+        designation: editData.designation || '',
+        department: editData.department || '',
+        primarySubject: editData.primarySubject || editData.subject || '',
+        secondarySubject: editData.secondarySubject || '',
+        status: editData.status || 'Active',
+        mobile: editData.mobile || editData.phone || '',
+        alternateMobile: editData.alternateMobile || '',
+        email: editData.email || '',
+        password: editData.password || '',
+        emergencyContactNumber: editData.emergencyContactNumber || '',
+        currentAddress: editData.currentAddress || '',
+        currentCity: editData.currentCity || '',
+        currentState: editData.currentState || '',
+        currentCountry: editData.currentCountry || 'India',
+        currentPostalCode: editData.currentPostalCode || '',
+        permanentAddress: editData.permanentAddress || '',
+        permanentCity: editData.permanentCity || '',
+        permanentState: editData.permanentState || '',
+        permanentCountry: editData.permanentCountry || 'India',
+        permanentPostalCode: editData.permanentPostalCode || '',
+        sameAsPermanent: editData.sameAsPermanent === true || editData.sameAsPermanent === 'true' || editData.sameAsPermanent === 'Yes',
+        qualifications: parsedQualifications,
+        experience: editData.experience || '',
+        experiences: parsedExperiences
+      });
+    }
+  }, [editData]);
 
   const clearDraft = () => {
     localStorage.removeItem(draftKey);
@@ -418,20 +528,18 @@ export default function AddTeacher({ setActiveView }) {
     formData.permanentPostalCode
   ]);
 
-  // Generate Unique Teacher ID (For form field display, actual Employee ID is backend auto generated)
-  useEffect(() => {
-    if (!formData.teacherId) {
-      setFormData(prev => ({
-        ...prev,
-        teacherId: `TCH-${Date.now().toString().slice(-6)}`
-      }));
-    }
-  }, []);
-
   // Text inputs handler
   const handleTextChange = (e) => {
     const { name, value, type, checked } = e.target;
-    const val = type === 'checkbox' ? checked : value;
+    let val = type === 'checkbox' ? checked : value;
+    
+    if (name === 'firstName' || name === 'middleName' || name === 'lastName') {
+      val = val.replace(/[^A-Za-z\s]/g, '').slice(0, 50);
+    }
+    
+    if (name === 'panNumber') {
+      val = val.toUpperCase().slice(0, 10);
+    }
     
     setFormData(prev => {
       const updated = { ...prev, [name]: val };
@@ -453,6 +561,13 @@ export default function AddTeacher({ setActiveView }) {
     if (formErrors[name]) setFormErrors(prev => ({ ...prev, [name]: '' }));
   };
 
+  const handleAadhaarChange = (e) => {
+    const { value } = e.target;
+    const cleanVal = value.replace(/[^0-9]/g, '').slice(0, 12);
+    setFormData(prev => ({ ...prev, aadhaarNumber: cleanVal }));
+    if (formErrors.aadhaarNumber) setFormErrors(prev => ({ ...prev, aadhaarNumber: '' }));
+  };
+
   const handlePincodeChange = (e) => {
     const { name, value } = e.target;
     const cleanVal = value.replace(/[^0-9]/g, '').slice(0, 6);
@@ -463,8 +578,10 @@ export default function AddTeacher({ setActiveView }) {
   const handleSelectChange = (fieldName, value) => {
     setFormData(prev => {
       const updated = { ...prev, [fieldName]: value };
-      if (fieldName === 'designation' && value !== 'Subject Teacher') {
+      if (fieldName === 'designation' && value !== 'Teacher') {
         updated.department = '';
+        updated.primarySubject = '';
+        updated.secondarySubject = '';
       }
       return updated;
     });
@@ -540,8 +657,26 @@ export default function AddTeacher({ setActiveView }) {
   // Step validator
   const validateStep = (step) => {
     const errors = {};
+    if (step === 1) {
+      if (!formData.firstName.trim()) errors.firstName = 'First name is required';
+      if (!formData.lastName.trim()) errors.lastName = 'Last name is required';
+      if (!formData.gender) errors.gender = 'Gender is required';
+      if (!formData.dob) errors.dob = 'Date of birth is required';
+      
+      if (formData.aadhaarNumber && !/^\d{12}$/.test(formData.aadhaarNumber.replace(/\s/g, ''))) {
+        errors.aadhaarNumber = 'Aadhaar number must be exactly 12 digits';
+      }
+      if (formData.panNumber && !/^[A-Z]{5}[0-9]{4}[A-Z]{1}$/.test(formData.panNumber.toUpperCase())) {
+        errors.panNumber = 'PAN number must be in ABCDE1234F format';
+      }
+    }
+    if (step === 3) {
+      if (!formData.mobile.trim()) errors.mobile = 'Mobile number is required';
+      else if (formData.mobile.length !== 10) errors.mobile = 'Mobile must be 10 digits';
+      if (!formData.email.trim()) errors.email = 'Email is required';
+    }
     setFormErrors(errors);
-    return true;
+    return Object.keys(errors).length === 0;
   };
 
 
@@ -551,7 +686,6 @@ export default function AddTeacher({ setActiveView }) {
     setFormData({
       firstName: '', middleName: '', lastName: '', fullName: '', gender: '', dob: '', bloodGroup: '',
       nationality: 'Indian', maritalStatus: '', aadhaarNumber: '', panNumber: '',
-      teacherId: `TCH-${Date.now().toString().slice(-6)}`,
       joiningDate: new Date().toISOString().split('T')[0],
       employmentType: '', designation: '', department: '', primarySubject: '', secondarySubject: '', status: 'Active',
       mobile: '', alternateMobile: '', email: '', password: '', emergencyContactNumber: '',
@@ -615,7 +749,10 @@ export default function AddTeacher({ setActiveView }) {
     try {
       const dataObj = new FormData();
       Object.keys(formData).forEach(key => {
-        if (key === 'qualifications' || key === 'experiences') {
+        if (key === 'qualifications') {
+          dataObj.append('qualification', JSON.stringify(formData[key]));
+          dataObj.append('qualifications', JSON.stringify(formData[key]));
+        } else if (key === 'experiences') {
           dataObj.append(key, JSON.stringify(formData[key]));
         } else {
           dataObj.append(key, formData[key]);
@@ -629,20 +766,22 @@ export default function AddTeacher({ setActiveView }) {
         }
       });
 
-      const res = await fetch('/api/teachers', {
-        method: 'POST',
+      const url = editData ? `/api/teachers/${editData.employeeId || editData.id}` : '/api/teachers';
+      const method = editData ? 'PUT' : 'POST';
+
+      const res = await fetch(url, {
+        method: method,
         headers: { 'x-tenant-id': tenantSubdomain },
         body: dataObj
       });
 
       if (res.ok) {
+        performReset();
+        setActiveStep(1);
+        setLoading(false);
+        isSubmitting.current = false;
         setSuccessToast(true);
         setTimeout(() => setSuccessToast(false), 5000);
-        setTimeout(() => {
-          performReset();
-          setLoading(false);
-          isSubmitting.current = false;
-        }, 1500);
       } else {
         const errData = await res.json();
         alert(errData.error || 'Server error occurred during teacher registration.');
@@ -709,8 +848,8 @@ export default function AddTeacher({ setActiveView }) {
         }}>
           <CheckCircle size={24} />
           <div>
-            <strong style={{ display: 'block', fontSize: '0.95rem' }}>Teacher Registered!</strong>
-            <span style={{ fontSize: '0.8rem' }}>Faculty profile created and account credentials activated.</span>
+            <strong style={{ display: 'block', fontSize: '0.95rem' }}>{editData ? 'Changes Saved!' : 'Teacher Registered!'}</strong>
+            <span style={{ fontSize: '0.8rem' }}>{editData ? 'Faculty profile updated successfully.' : 'Faculty profile created and account credentials activated.'}</span>
           </div>
         </div>
       )}
@@ -798,19 +937,21 @@ export default function AddTeacher({ setActiveView }) {
         </div>
         
         {/* Reset Draft Button */}
-        <button 
-          type="button" 
-          onClick={resetForm}
-          className="btn-secondary"
-          style={{ padding: '8px 14px', borderRadius: '8px', fontSize: '0.8rem', display: 'flex', alignItems: 'center', gap: '6px' }}
-        >
-          <RotateCcw size={14} /> Clear Form & Draft
-        </button>
+        {!editData && (
+          <button 
+            type="button" 
+            onClick={resetForm}
+            className="btn-secondary"
+            style={{ padding: '8px 14px', borderRadius: '8px', fontSize: '0.8rem', display: 'flex', alignItems: 'center', gap: '6px' }}
+          >
+            <RotateCcw size={14} /> Clear Form & Draft
+          </button>
+        )}
       </div>
 
       {/* FORM BODY STAGE */}
       <form 
-        onSubmit={handleSubmit} 
+        onSubmit={(e) => e.preventDefault()} 
         onKeyDown={handleFormKeyDown} 
         style={{ display: 'flex', flexDirection: 'column', gap: '24px' }}
       >
@@ -895,6 +1036,7 @@ export default function AddTeacher({ setActiveView }) {
                   name="dob"
                   value={formData.dob}
                   onChange={handleTextChange}
+                  max={new Date().toLocaleDateString('en-CA')}
                   className="form-control"
                   style={{ borderColor: formErrors.dob ? '#ef4444' : undefined }}
                 />
@@ -941,10 +1083,13 @@ export default function AddTeacher({ setActiveView }) {
                   type="text"
                   name="aadhaarNumber"
                   value={formData.aadhaarNumber}
-                  onChange={handleTextChange}
+                  onChange={handleAadhaarChange}
                   className="form-control"
                   placeholder="12-digit Aadhaar ID"
+                  style={{ borderColor: formErrors.aadhaarNumber ? '#ef4444' : undefined }}
+                  maxLength={12}
                 />
+                {formErrors.aadhaarNumber && <span style={{ color: '#ef4444', fontSize: '0.75rem', marginTop: '4px', display: 'block' }}>{formErrors.aadhaarNumber}</span>}
               </div>
 
               <div className="form-group">
@@ -956,14 +1101,16 @@ export default function AddTeacher({ setActiveView }) {
                   onChange={handleTextChange}
                   className="form-control"
                   placeholder="10-digit PAN ID"
+                  style={{ borderColor: formErrors.panNumber ? '#ef4444' : undefined }}
                 />
+                {formErrors.panNumber && <span style={{ color: '#ef4444', fontSize: '0.75rem', marginTop: '4px', display: 'block' }}>{formErrors.panNumber}</span>}
               </div>
 
               <div className="form-group">
                 <DragAndDropFile 
                   fieldName="photo"
                   label="Teacher Profile Photo (Optional)"
-                  file={files.photo}
+                  file={files.photo || (existingFiles.photo ? { name: existingFiles.photo.split('/').pop() } : null)}
                   onFileChange={handleFileChange}
                   onRemove={removeFile}
                   accept="image/*"
@@ -990,6 +1137,7 @@ export default function AddTeacher({ setActiveView }) {
                   name="joiningDate"
                   value={formData.joiningDate}
                   onChange={handleTextChange}
+                  max={new Date().toLocaleDateString('en-CA')}
                   className="form-control"
                 />
               </div>
@@ -1016,42 +1164,44 @@ export default function AddTeacher({ setActiveView }) {
                 />
               </div>
 
-              {formData.designation === 'Subject Teacher' && (
-                <div className="form-group animate-slide-down">
-                  <label>Department *</label>
-                  <SearchableSelect 
-                    options={departmentOptions}
-                    value={formData.department}
-                    onChange={(val) => handleSelectChange('department', val)}
-                    placeholder="Choose Department"
-                    className="form-control"
-                  />
-                </div>
+              {formData.designation === 'Teacher' && (
+                <>
+                  <div className="form-group animate-slide-down">
+                    <label>Department *</label>
+                    <SearchableSelect 
+                      options={departmentOptions}
+                      value={formData.department}
+                      onChange={(val) => handleSelectChange('department', val)}
+                      placeholder="Choose Department"
+                      className="form-control"
+                    />
+                  </div>
+
+                  <div className="form-group animate-slide-down">
+                    <label>Primary Subject</label>
+                    <input 
+                      type="text"
+                      name="primarySubject"
+                      value={formData.primarySubject}
+                      onChange={handleTextChange}
+                      className="form-control"
+                      placeholder="e.g. Mathematics"
+                    />
+                  </div>
+
+                  <div className="form-group animate-slide-down">
+                    <label>Secondary Subject</label>
+                    <input 
+                      type="text"
+                      name="secondarySubject"
+                      value={formData.secondarySubject}
+                      onChange={handleTextChange}
+                      className="form-control"
+                      placeholder="e.g. Science"
+                    />
+                  </div>
+                </>
               )}
-
-              <div className="form-group">
-                <label>Primary Subject</label>
-                <input 
-                  type="text"
-                  name="primarySubject"
-                  value={formData.primarySubject}
-                  onChange={handleTextChange}
-                  className="form-control"
-                  placeholder="e.g. Mathematics"
-                />
-              </div>
-
-              <div className="form-group">
-                <label>Secondary Subject</label>
-                <input 
-                  type="text"
-                  name="secondarySubject"
-                  value={formData.secondarySubject}
-                  onChange={handleTextChange}
-                  className="form-control"
-                  placeholder="e.g. Science"
-                />
-              </div>
 
               <div className="form-group">
                 <label>Employee Status *</label>
@@ -1061,18 +1211,6 @@ export default function AddTeacher({ setActiveView }) {
                   onChange={(val) => handleSelectChange('status', val)}
                   placeholder="Choose Status"
                   className="form-control"
-                />
-              </div>
-
-              <div className="form-group">
-                <label>Teacher ID Code</label>
-                <input 
-                  type="text"
-                  name="teacherId"
-                  value={formData.teacherId}
-                  onChange={handleTextChange}
-                  className="form-control"
-                  placeholder="Auto generated or override"
                 />
               </div>
 
@@ -1527,7 +1665,7 @@ export default function AddTeacher({ setActiveView }) {
               <DragAndDropFile 
                 fieldName="aadhaarFile"
                 label="Aadhaar Card"
-                file={files.aadhaarFile}
+                file={files.aadhaarFile || (existingFiles.aadhaarFile ? { name: existingFiles.aadhaarFile.split('/').pop() } : null)}
                 onFileChange={handleFileChange}
                 onRemove={removeFile}
               />
@@ -1535,7 +1673,7 @@ export default function AddTeacher({ setActiveView }) {
               <DragAndDropFile 
                 fieldName="panFile"
                 label="PAN Card Document"
-                file={files.panFile}
+                file={files.panFile || (existingFiles.panFile ? { name: existingFiles.panFile.split('/').pop() } : null)}
                 onFileChange={handleFileChange}
                 onRemove={removeFile}
               />
@@ -1543,7 +1681,7 @@ export default function AddTeacher({ setActiveView }) {
               <DragAndDropFile 
                 fieldName="resumeFile"
                 label="Resume / CV File"
-                file={files.resumeFile}
+                file={files.resumeFile || (existingFiles.resumeFile ? { name: existingFiles.resumeFile.split('/').pop() } : null)}
                 onFileChange={handleFileChange}
                 onRemove={removeFile}
               />
@@ -1551,7 +1689,7 @@ export default function AddTeacher({ setActiveView }) {
               <DragAndDropFile 
                 fieldName="qualificationFile"
                 label="Degree / Qualification Certificates"
-                file={files.qualificationFile}
+                file={files.qualificationFile || (existingFiles.qualificationFile ? { name: existingFiles.qualificationFile.split('/').pop() } : null)}
                 onFileChange={handleFileChange}
                 onRemove={removeFile}
               />
@@ -1559,7 +1697,7 @@ export default function AddTeacher({ setActiveView }) {
               <DragAndDropFile 
                 fieldName="experienceFile"
                 label="Previous Experience Certificates"
-                file={files.experienceFile}
+                file={files.experienceFile || (existingFiles.experienceFile ? { name: existingFiles.experienceFile.split('/').pop() } : null)}
                 onFileChange={handleFileChange}
                 onRemove={removeFile}
               />
@@ -1567,7 +1705,7 @@ export default function AddTeacher({ setActiveView }) {
               <DragAndDropFile 
                 fieldName="joiningLetterFile"
                 label="Joining Letter"
-                file={files.joiningLetterFile}
+                file={files.joiningLetterFile || (existingFiles.joiningLetterFile ? { name: existingFiles.joiningLetterFile.split('/').pop() } : null)}
                 onFileChange={handleFileChange}
                 onRemove={removeFile}
               />
@@ -1575,7 +1713,7 @@ export default function AddTeacher({ setActiveView }) {
               <DragAndDropFile 
                 fieldName="otherFile"
                 label="Other Supporting Documents"
-                file={files.otherFile}
+                file={files.otherFile || (existingFiles.otherFile ? { name: existingFiles.otherFile.split('/').pop() } : null)}
                 onFileChange={handleFileChange}
                 onRemove={removeFile}
               />
@@ -1621,10 +1759,14 @@ export default function AddTeacher({ setActiveView }) {
                 </div>
                 <div style={{ display: 'flex', flexDirection: 'column', gap: '6px', fontSize: '0.85rem' }}>
                   <div><strong>Role:</strong> {formData.designation || 'N/A'}</div>
-                  <div><strong>Department:</strong> {formData.department || 'N/A'}</div>
-                  <div><strong>Subjects:</strong> {formData.primarySubject} {formData.secondarySubject ? `, ${formData.secondarySubject}` : ''}</div>
+                  {formData.designation === 'Teacher' && (
+                    <>
+                      <div><strong>Department:</strong> {formData.department || 'N/A'}</div>
+                      <div><strong>Subjects:</strong> {formData.primarySubject || 'N/A'} {formData.secondarySubject ? `, ${formData.secondarySubject}` : ''}</div>
+                    </>
+                  )}
                   <div><strong>Type / Session:</strong> {formData.employmentType || 'N/A'} / {formData.joiningDate}</div>
-                  <div><strong>Status / ID:</strong> {formData.status} / {formData.teacherId}</div>
+                  <div><strong>Status:</strong> {formData.status}</div>
                 </div>
               </div>
 
@@ -1676,14 +1818,14 @@ export default function AddTeacher({ setActiveView }) {
                 <button type="button" onClick={() => setActiveStep(7)} style={{ background: 'none', border: 'none', color: 'hsl(var(--color-primary))', fontSize: '0.75rem', fontWeight: 600, cursor: 'pointer' }}>Edit</button>
               </div>
               <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: '12px', fontSize: '0.8rem' }}>
-                <div><strong>Photograph:</strong> {files.photo ? <span style={{ color: '#10b981' }}>✔ {files.photo.name}</span> : <span style={{ color: 'var(--text-muted)' }}>Not uploaded</span>}</div>
-                <div><strong>Aadhaar Card:</strong> {files.aadhaarFile ? <span>✔ {files.aadhaarFile.name}</span> : <span style={{ color: 'var(--text-muted)' }}>Not uploaded</span>}</div>
-                <div><strong>PAN Card:</strong> {files.panFile ? <span>✔ {files.panFile.name}</span> : <span style={{ color: 'var(--text-muted)' }}>Not uploaded</span>}</div>
-                <div><strong>Resume/CV Document:</strong> {files.resumeFile ? <span>✔ {files.resumeFile.name}</span> : <span style={{ color: 'var(--text-muted)' }}>Not uploaded</span>}</div>
-                <div><strong>Degrees/Certs:</strong> {files.qualificationFile ? <span>✔ {files.qualificationFile.name}</span> : <span style={{ color: 'var(--text-muted)' }}>Not uploaded</span>}</div>
-                <div><strong>Exp Certificates:</strong> {files.experienceFile ? <span>✔ {files.experienceFile.name}</span> : <span style={{ color: 'var(--text-muted)' }}>Not uploaded</span>}</div>
-                <div><strong>Joining Letter:</strong> {files.joiningLetterFile ? <span>✔ {files.joiningLetterFile.name}</span> : <span style={{ color: 'var(--text-muted)' }}>Not uploaded</span>}</div>
-                <div><strong>Other Docs:</strong> {files.otherFile ? <span>✔ {files.otherFile.name}</span> : <span style={{ color: 'var(--text-muted)' }}>Not uploaded</span>}</div>
+                <div><strong>Photograph:</strong> {files.photo ? <span style={{ color: '#10b981' }}>✔ {files.photo.name}</span> : existingFiles.photo ? <span style={{ color: '#10b981' }}>✔ Existing Photo</span> : <span style={{ color: 'var(--text-muted)' }}>Not uploaded</span>}</div>
+                <div><strong>Aadhaar Card:</strong> {files.aadhaarFile ? <span>✔ {files.aadhaarFile.name}</span> : existingFiles.aadhaarFile ? <span style={{ color: '#10b981' }}>✔ Existing Document</span> : <span style={{ color: 'var(--text-muted)' }}>Not uploaded</span>}</div>
+                <div><strong>PAN Card:</strong> {files.panFile ? <span>✔ {files.panFile.name}</span> : existingFiles.panFile ? <span style={{ color: '#10b981' }}>✔ Existing Document</span> : <span style={{ color: 'var(--text-muted)' }}>Not uploaded</span>}</div>
+                <div><strong>Resume/CV Document:</strong> {files.resumeFile ? <span>✔ {files.resumeFile.name}</span> : existingFiles.resumeFile ? <span style={{ color: '#10b981' }}>✔ Existing Document</span> : <span style={{ color: 'var(--text-muted)' }}>Not uploaded</span>}</div>
+                <div><strong>Degrees/Certs:</strong> {files.qualificationFile ? <span>✔ {files.qualificationFile.name}</span> : existingFiles.qualificationFile ? <span style={{ color: '#10b981' }}>✔ Existing Document</span> : <span style={{ color: 'var(--text-muted)' }}>Not uploaded</span>}</div>
+                <div><strong>Exp Certificates:</strong> {files.experienceFile ? <span>✔ {files.experienceFile.name}</span> : existingFiles.experienceFile ? <span style={{ color: '#10b981' }}>✔ Existing Document</span> : <span style={{ color: 'var(--text-muted)' }}>Not uploaded</span>}</div>
+                <div><strong>Joining Letter:</strong> {files.joiningLetterFile ? <span>✔ {files.joiningLetterFile.name}</span> : existingFiles.joiningLetterFile ? <span style={{ color: '#10b981' }}>✔ Existing Document</span> : <span style={{ color: 'var(--text-muted)' }}>Not uploaded</span>}</div>
+                <div><strong>Other Docs:</strong> {files.otherFile ? <span>✔ {files.otherFile.name}</span> : existingFiles.otherFile ? <span style={{ color: '#10b981' }}>✔ Existing Document</span> : <span style={{ color: 'var(--text-muted)' }}>Not uploaded</span>}</div>
               </div>
             </div>
 
@@ -1734,7 +1876,8 @@ export default function AddTeacher({ setActiveView }) {
               </button>
             ) : (
               <button 
-                type="submit" 
+                type="button" 
+                onClick={handleSubmit}
                 className="btn-primary"
                 disabled={loading}
                 style={{ 
@@ -1751,11 +1894,11 @@ export default function AddTeacher({ setActiveView }) {
               >
                 {loading ? (
                   <>
-                    <Loader2 size={16} className="animate-spin" /> Registering...
+                    <Loader2 size={16} className="animate-spin" /> {editData ? 'Saving...' : 'Submitting...'}
                   </>
                 ) : (
                   <>
-                    <Save size={16} /> Register Teacher
+                    <Save size={16} /> {editData ? 'Save Changes' : 'Submit'}
                   </>
                 )}
               </button>

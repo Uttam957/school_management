@@ -27,6 +27,7 @@ import {
   uploadCalendarFile,
   confirmCalendarImport,
   downloadCalendarTemplate,
+  exportCalendarEvents,
   getNotices,
   createNotice,
   updateNotice,
@@ -56,7 +57,9 @@ import {
   getPublishedEvents,
   publishEvent,
   unpublishEvent,
-  submitCohortResults
+  submitCohortResults,
+  getPublishedTimetables,
+  publishTimetable
 } from '../controllers/academicController.js';
 
 
@@ -69,6 +72,8 @@ router.delete('/timetables/:id', deleteTimetable);
 router.post('/timetables/bulk', createTimetableBulk);
 router.post('/timetables/bulk/teacher', createTimetableBulkTeacher);
 router.get('/teacher-timetables', getTeacherTimetables);
+router.get('/published-timetables', getPublishedTimetables);
+router.post('/published-timetables/publish', publishTimetable);
 
 // Subjects
 router.get('/subjects', getSubjects);
@@ -117,6 +122,7 @@ router.get('/calendar-imports', getCalendarImports);
 router.post('/calendar-upload', upload.single('file'), uploadCalendarFile);
 router.post('/calendar-import-confirm', confirmCalendarImport);
 router.get('/calendar-template', downloadCalendarTemplate);
+router.get('/calendar-export', exportCalendarEvents);
 
 // Calendar Publish Endpoints
 router.get('/calendar/published', getPublishedEvents);
