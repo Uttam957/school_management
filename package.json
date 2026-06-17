@@ -6,6 +6,7 @@
     "install:all": "npm install --prefix frontend && npm install --prefix backend",
     "dev:frontend": "npm run dev --prefix frontend",
     "dev:backend": "npm run dev --prefix backend",
-    "dev": "npx concurrently --kill-others \"npm run dev:backend\" \"npm run dev:frontend\""
+    "dev": "npx concurrently --kill-others \"npm run dev:backend\" \"npm run dev:frontend\"",
+    "build": "npm install --prefix frontend && npm run build --prefix frontend"
   }
 }
