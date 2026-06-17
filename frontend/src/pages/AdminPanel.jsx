@@ -195,16 +195,24 @@ export default function AdminPanel({ setActiveView, onLogout, adminView, setAdmi
   const [attendanceTab, setAttendanceTab] = useState('mark-attendance');
   const [notification, setNotification] = useState(null);
 
-  // Overview stats state
-  const [overviewStats, setOverviewStats] = useState({
-    students: { total: 0, male: 0, female: 0 },
-    staff: { total: 0, male: 0, female: 0 },
-    employees: { total: 0, male: 0, female: 0 }
+  // Overview stats state initialized from sessionStorage cache if available
+  const [overviewStats, setOverviewStats] = useState(() => {
+    const cached = sessionStorage.getItem('cached_overview_stats');
+    return cached ? JSON.parse(cached) : {
+      students: { total: 0, male: 0, female: 0 },
+      staff: { total: 0, male: 0, female: 0 },
+      employees: { total: 0, male: 0, female: 0 }
+    };
   });
-  const [statsLoading, setStatsLoading] = useState(true);
+  const [statsLoading, setStatsLoading] = useState(() => {
+    return !sessionStorage.getItem('cached_overview_stats');
+  });
 
   const fetchOverviewStats = async () => {
-    setStatsLoading(true);
+    const hasCache = !!sessionStorage.getItem('cached_overview_stats');
+    if (!hasCache) {
+      setStatsLoading(true);
+    }
     try {
       // Fetch teachers (staff/faculty)
       const [teachersRes, staffRes] = await Promise.all([
@@ -251,7 +259,9 @@ export default function AdminPanel({ setActiveView, onLogout, adminView, setAdmi
         // Students may have no class filter by default - use 0
       }
 
-      setOverviewStats({ students, staff: staffStats, employees: employeeStats });
+      const newStats = { students, staff: staffStats, employees: employeeStats };
+      setOverviewStats(newStats);
+      sessionStorage.setItem('cached_overview_stats', JSON.stringify(newStats));
     } catch (err) {
       console.error('Error fetching overview stats:', err);
     } finally {

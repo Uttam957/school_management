@@ -126,13 +126,20 @@ export default function App() {
   const [isCollapsed, setIsCollapsed] = useState(false);
   const [mobileOpen, setMobileOpen] = useState(false);
   const [theme, setTheme] = useState('light');
-  const [schoolDetails, setSchoolDetails] = useState({ name: 'Aether Academy', principal: 'Alex Devlin' });
+  const [schoolDetails, setSchoolDetails] = useState(() => {
+    const cached = sessionStorage.getItem('cached_school_details');
+    return cached ? JSON.parse(cached) : { name: 'Aether Academy', principal: 'Alex Devlin' };
+  });
   
-  const [userProfile, setUserProfile] = useState({
-    name: sessionStorage.getItem('name') || 'User',
-    role: sessionStorage.getItem('role') || sessionStorage.getItem('portal_role') || 'Guest',
-    photo: sessionStorage.getItem('photo') || '',
-    username: sessionStorage.getItem('username') || ''
+  const [userProfile, setUserProfile] = useState(() => {
+    const cached = sessionStorage.getItem('cached_user_profile');
+    if (cached) return JSON.parse(cached);
+    return {
+      name: sessionStorage.getItem('name') || 'User',
+      role: sessionStorage.getItem('role') || sessionStorage.getItem('portal_role') || 'Guest',
+      photo: sessionStorage.getItem('photo') || '',
+      username: sessionStorage.getItem('username') || ''
+    };
   });
 
   const fetchUserProfile = async () => {
@@ -143,6 +150,7 @@ export default function App() {
       if (res.ok) {
         const data = await res.json();
         setUserProfile(data);
+        sessionStorage.setItem('cached_user_profile', JSON.stringify(data));
         sessionStorage.setItem('name', data.name);
         sessionStorage.setItem('role', data.role);
         if (data.photo) {
@@ -182,13 +190,15 @@ export default function App() {
     try {
       const tenant = getActiveTenant();
       if (!tenant) {
-        setSchoolDetails({ name: 'School ERP Platform', principal: 'Master Admin' });
+        const platformDefault = { name: 'School ERP Platform', principal: 'Master Admin' };
+        setSchoolDetails(platformDefault);
         return;
       }
       const res = await fetch('/api/school');
       if (res.ok) {
         const data = await res.json();
         setSchoolDetails(data);
+        sessionStorage.setItem('cached_school_details', JSON.stringify(data));
       }
     } catch (err) {
       console.error('Error loading school details:', err);
