@@ -273,15 +273,22 @@ const createTablesFromSchema = async () => {
       "ALTER TABLE academic_calendar_events ADD COLUMN recurring VARCHAR(50) DEFAULT 'None'",
       "ALTER TABLE academic_calendar_events ADD COLUMN reminders JSON NULL",
       "ALTER TABLE academic_calendar_events ADD COLUMN attachments JSON NULL",
-      "ALTER TABLE academic_calendar_events ADD COLUMN notifications JSON NULL"
+      "ALTER TABLE academic_calendar_events ADD COLUMN notifications JSON NULL",
+      "ALTER TABLE students ADD INDEX idx_students_tenant_status (tenantId, status)",
+      "ALTER TABLE staff ADD INDEX idx_staff_tenant_status (tenantId, status)",
+      "ALTER TABLE employees ADD INDEX idx_employees_tenant_status (tenantId, status)",
+      "ALTER TABLE fees ADD INDEX idx_fees_tenant_status (tenantId, status)",
+      "ALTER TABLE expenses ADD INDEX idx_expenses_tenant_date (tenantId, date)",
+      "ALTER TABLE activities ADD INDEX idx_activities_tenant (tenantId)",
+      "ALTER TABLE attendance ADD INDEX idx_attendance_tenant_date (tenantId, attendanceDate)"
     ];
 
     for (const sql of extraSchemaAlters) {
       try {
         await sqlDb.query(sql);
       } catch (err) {
-        if (err.code !== 'ER_DUP_FIELDNAME' && err.code !== 'ER_ALTER_OPERATION_NOT_SUPPORTED_REASON') {
-          // Ignore duplicate field names or unsupported alters
+        if (err.code !== 'ER_DUP_FIELDNAME' && err.code !== 'ER_ALTER_OPERATION_NOT_SUPPORTED_REASON' && err.code !== 'ER_DUP_KEYNAME') {
+          // Ignore duplicate field names, duplicate keys, or unsupported alters
         }
       }
     }
@@ -713,7 +720,14 @@ export const initSqlDb = async () => {
     // 2. Run data migration
     await migrateJsonToSql();
     isSqlInitialized = true;
-    console.log('[SQL Init] MySQL Caching Adapter is active and running.');
+    console.log('[SQL Init] MySQL is PRIMARY database — active and running.');
+    // 3. Pre-load platform cache so login/profile routes work from MySQL immediately
+    try {
+      await loadTenantSqlIntoMemory('platform');
+      console.log('[SQL Init] Platform cache pre-loaded from MySQL successfully.');
+    } catch (e) {
+      console.warn('[SQL Init] Platform cache pre-load failed:', e.message);
+    }
   } else {
     console.warn('[SQL Init WARNING] MySQL Connection unavailable. Falling back to local JSON files.');
     isSqlInitialized = false;
@@ -722,6 +736,54 @@ export const initSqlDb = async () => {
 
 // Start the init procedure on boot
 initSqlDb();
+
+// ─── Global Platform DB Helpers ───────────────────────────────────────────────
+// Read platform-level data (schools, platformOwner) from MySQL cache when active,
+// falling back to db.json for compatibility.
+export const readGlobalDb = () => {
+  // When MySQL is active, use the platform dbCache
+  if (isSqlActive() && dbCache['platform']) {
+    // platformOwner is stored only in the JSON file (not in MySQL schema)
+    // so we merge it in from the JSON file if needed
+    const cached = dbCache['platform'];
+    if (!cached.platformOwner) {
+      try {
+        const raw = JSON.parse(fs.readFileSync(GLOBAL_DB_FILE, 'utf8'));
+        cached.platformOwner = raw.platformOwner || null;
+      } catch (e) { /* ignore */ }
+    }
+    return cached;
+  }
+  // Fallback: read from db.json
+  try {
+    const data = JSON.parse(fs.readFileSync(GLOBAL_DB_FILE, 'utf8'));
+    if (!data.schools) data.schools = [];
+    return data;
+  } catch (e) {
+    return { schools: [], subscriptionPlans: [], activities: [], platformOwner: null };
+  }
+};
+
+// Write global platform data — updates MySQL cache + dispatches async MySQL sync + JSON backup
+export const writeGlobalDb = (data) => {
+  // Keep platform dbCache in sync
+  dbCache['platform'] = data;
+  // Dispatch MySQL sync
+  if (isSqlActive()) {
+    saveMemoryDbToSql('platform', data);
+  }
+  // Always backup to JSON file asynchronously
+  fs.writeFile(GLOBAL_DB_FILE, JSON.stringify(data, null, 2), 'utf8', (err) => {
+    if (err) console.error('[JSON Backup ERROR] Failed writing global db.json:', err);
+  });
+};
+
+// Invalidate the in-memory cache for a specific tenant (forces reload from MySQL on next request)
+export const invalidateTenantCache = (tenantId) => {
+  const tId = tenantId ? slugify(tenantId) : 'platform';
+  delete dbCache[tId];
+  console.log(`[Cache] Invalidated cache for tenant: ${tId}`);
+};
 
 // Default roles and permissions seeder data
 export const getDefaultRoles = () => {
@@ -2761,6 +2823,9 @@ export const saveMemoryDbToSql = async (tenantId, db) => {
   return syncPromise;
 };
 
+// Local cache store for JSON files to prevent repeated disk reads
+const jsonFileCache = {};
+
 // Central Database Reader (Preserves synchronous signature)
 export const readDb = () => {
   const tenantId = tenantStorage.getStore();
@@ -2773,6 +2838,17 @@ export const readDb = () => {
   // Fallback to synchronous local file read
   const dbFile = getDbPath();
   try {
+    let mtimeMs = 0;
+    try {
+      mtimeMs = fs.statSync(dbFile).mtimeMs;
+    } catch (e) {
+      // If file doesn't exist yet, mtimeMs will stay 0
+    }
+
+    if (mtimeMs && jsonFileCache[dbFile] && jsonFileCache[dbFile].mtimeMs === mtimeMs) {
+      return jsonFileCache[dbFile].data;
+    }
+
     const data = fs.readFileSync(dbFile, 'utf8');
     const db = JSON.parse(data);
     
@@ -2825,6 +2901,10 @@ export const readDb = () => {
         '02:00 PM - 03:00 PM'
       ];
     }
+
+    if (mtimeMs) {
+      jsonFileCache[dbFile] = { data: db, mtimeMs };
+    }
     return db;
   } catch (error) {
     const defaultDb = {
@@ -2876,17 +2956,28 @@ export const writeDb = (data) => {
   const activeTenant = tenantId ? slugify(tenantId) : 'platform';
 
   if (isSqlActive()) {
-    // 1. Update memory cache instantly
+    // 1. Update memory cache instantly (reads are served from here — no DB roundtrip)
     dbCache[activeTenant] = data;
-    // 2. Dispatch MySQL sync asynchronously in the background
+    // 2. Dispatch MySQL sync asynchronously (MySQL is PRIMARY — this persists data)
     saveMemoryDbToSql(activeTenant, data);
   }
 
-  // Backup to JSON file asynchronously to avoid blocking
+  // JSON backup is written asynchronously as a fallback only
   const dbFile = getDbPath();
+  
+  // Optimistically update the cache to prevent immediate re-reads during write latency
+  jsonFileCache[dbFile] = { data, mtimeMs: Date.now() };
+
   fs.writeFile(dbFile, JSON.stringify(data, null, 2), 'utf8', (err) => {
     if (err) {
-      console.error(`[JSON Backup ERROR] Failed writing local backup:`, err);
+      console.error(`[JSON Backup ERROR] Failed writing JSON backup:`, err);
+    } else {
+      try {
+        const mtimeMs = fs.statSync(dbFile).mtimeMs;
+        jsonFileCache[dbFile] = { data, mtimeMs };
+      } catch (e) {
+        // Fallback: keep using the date hash
+      }
     }
   });
 };

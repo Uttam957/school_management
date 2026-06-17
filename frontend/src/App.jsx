@@ -2,6 +2,7 @@ import React, { useState, useEffect, useRef } from 'react';
 import Sidebar from './components/Sidebar';
 import Header from './components/Header';
 import { CheckCircle, AlertCircle } from 'lucide-react';
+import { cachedFetch, prefetchOnLogin } from './utils/apiCache';
 
 import './App.css';
 
@@ -146,7 +147,7 @@ export default function App() {
     try {
       const token = sessionStorage.getItem('token');
       if (!token) return;
-      const res = await fetch('/api/auth/profile');
+      const res = await cachedFetch('/api/auth/profile');
       if (res.ok) {
         const data = await res.json();
         setUserProfile(data);
@@ -194,7 +195,7 @@ export default function App() {
         setSchoolDetails(platformDefault);
         return;
       }
-      const res = await fetch('/api/school');
+      const res = await cachedFetch('/api/school');
       if (res.ok) {
         const data = await res.json();
         setSchoolDetails(data);
@@ -444,6 +445,7 @@ export default function App() {
     }
     fetchSchoolDetails();
     fetchUserProfile();
+    prefetchOnLogin();
   };
 
   const handleLogout = () => {
@@ -644,9 +646,7 @@ export default function App() {
 
         <main style={{ flex: 1, marginTop: '10px' }}>
           <React.Suspense fallback={<PageLoading />}>
-            <div key={activeView} className="animate-slide-up">
-              {renderCurrentView()}
-            </div>
+            {renderCurrentView()}
           </React.Suspense>
         </main>
       </div>

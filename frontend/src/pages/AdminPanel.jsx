@@ -19,6 +19,8 @@ import {
   RefreshCw
 } from 'lucide-react';
 import { fetchActiveGrades, fetchActiveSections } from '../utils/grades';
+import { cachedFetch } from '../utils/apiCache';
+import { CardSkeleton, FormSkeleton, PageSkeleton } from '../components/SkeletonLoaders';
 
 // ── Lazy-load all sub-page components for instant section switching ──
 const StudentDirectory = React.lazy(() => import('./StudentDirectory'));
@@ -51,21 +53,18 @@ const LazyReportsView = React.lazy(() => import('./AccountantPanel').then(m => (
 const LazyStaffPaymentsView = React.lazy(() => import('./AccountantPanel').then(m => ({ default: m.StaffPaymentsView })));
 const LazyStaffPaymentStructureView = React.lazy(() => import('./AccountantPanel').then(m => ({ default: m.StaffPaymentStructureView })));
 
-// Lightweight skeleton fallback for lazy-loaded sections
-const SectionLoading = () => (
-  <div style={{
-    display: 'flex', alignItems: 'center', justifyContent: 'center',
-    minHeight: '300px', width: '100%', flexDirection: 'column', gap: '12px'
-  }}>
-    <div style={{
-      width: '32px', height: '32px',
-      border: '3px solid var(--border-glass)',
-      borderTopColor: 'hsl(var(--color-primary))',
-      borderRadius: '50%',
-      animation: 'spin 0.7s linear infinite'
-    }} />
-  </div>
-);
+// Dynamic skeleton fallback for lazy-loaded sections
+const getFallbackSkeleton = (view) => {
+  if (view === 'overview') return <CardSkeleton count={3} />;
+  if (['register-student', 'add-teacher', 'add-staff', 'profile'].includes(view)) {
+    return (
+      <div className="glass-panel" style={{ padding: '24px', border: '1px solid var(--border-glass)', borderRadius: '16px', background: 'var(--bg-card)' }}>
+        <FormSkeleton fields={6} />
+      </div>
+    );
+  }
+  return <PageSkeleton />;
+};
 
 // ─── Overview Stats Card (Theme-Aware) ──────────────────────────────────────
 function GenderRatioBar({ maleCount, femaleCount, total }) {
@@ -230,8 +229,8 @@ export default function AdminPanel({ setActiveView, onLogout, adminView, setAdmi
     try {
       // Fetch teachers (staff/faculty)
       const [teachersRes, staffRes] = await Promise.all([
-        fetch('/api/teachers?limit=9999&status=All'),
-        fetch('/api/staff')
+        cachedFetch('/api/teachers?limit=9999&status=All'),
+        cachedFetch('/api/staff')
       ]);
 
       let students = { total: 0, male: 0, female: 0 };
@@ -259,7 +258,7 @@ export default function AdminPanel({ setActiveView, onLogout, adminView, setAdmi
 
       // Students: fetch with status=All to get total count
       try {
-        const stuRes = await fetch('/api/students?limit=9999&status=All&class=All');
+        const stuRes = await cachedFetch('/api/students?limit=9999&status=All&class=All');
         if (stuRes.ok) {
           const data = await stuRes.json();
           const list = data.students || [];
@@ -779,7 +778,7 @@ export default function AdminPanel({ setActiveView, onLogout, adminView, setAdmi
   return (
     <div className="animate-slide-up" style={{ display: 'flex', flexDirection: 'column', gap: '24px' }}>
       {/* Admin Content — wrapped in Suspense for lazy-loaded components */}
-      <Suspense fallback={<SectionLoading />}>
+      <Suspense fallback={getFallbackSkeleton(adminView)}>
         {renderAdminContent()}
       </Suspense>
     </div>

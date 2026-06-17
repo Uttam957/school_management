@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import { cachedFetch } from '../utils/apiCache';
 import { 
   User, 
   Briefcase, 
@@ -354,7 +355,7 @@ export default function AddTeacher({ setActiveView, editData }) {
 
   // Fetch active roles & departments from database dynamically
   useEffect(() => {
-    fetch('/api/rbac/roles')
+    cachedFetch('/api/rbac/roles')
       .then(res => res.json())
       .then(data => {
         const activeRoles = data.filter(r => r.active);
@@ -365,7 +366,7 @@ export default function AddTeacher({ setActiveView, editData }) {
         console.error('Error fetching roles:', err);
       });
 
-    fetch('/api/grades/departments')
+    cachedFetch('/api/grades/departments')
       .then(res => res.json())
       .then(data => {
         const activeDepts = data.filter(d => d.status === 'Active' || !d.status);
@@ -769,7 +770,7 @@ export default function AddTeacher({ setActiveView, editData }) {
       const url = editData ? `/api/teachers/${editData.employeeId || editData.id}` : '/api/teachers';
       const method = editData ? 'PUT' : 'POST';
 
-      const res = await fetch(url, {
+      const res = await cachedFetch(url, {
         method: method,
         headers: { 'x-tenant-id': tenantSubdomain },
         body: dataObj

@@ -45,6 +45,7 @@ import StaffDirectory from './StaffDirectory';
 import RegisterStudent from './RegisterStudent';
 import AddTeacher from './AddTeacher';
 import AddStaff from './AddStaff';
+import { cachedFetch } from '../utils/apiCache';
 
 export default function AccountantPanel({ setActiveView, onLogout, accountantView, setAccountantView, onBackToMain }) {
   const [notification, setNotification] = useState(null);
@@ -149,7 +150,7 @@ function DashboardView({ setAccountantView }) {
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    fetch('/api/finance/overview')
+    cachedFetch('/api/finance/overview')
       .then(r => r.json())
       .then(d => { setData(d); setLoading(false); })
       .catch(() => setLoading(false));
@@ -400,7 +401,7 @@ export function CollectFeesView({ showToast }) {
     }
     if (filterStatus !== 'All') params.set('status', filterStatus);
     if (search) params.set('search', search);
-    fetch(`/api/finance/fees?${params}`)
+    cachedFetch(`/api/finance/fees?${params}`)
       .then(r => r.json())
       .then(d => {
         let filtered = d;
@@ -414,12 +415,12 @@ export function CollectFeesView({ showToast }) {
   };
 
   const fetchStudents = () => {
-    fetch('/api/students?limit=1000')
+    cachedFetch('/api/students?limit=1000')
       .then(r => r.json())
       .then(d => setStudents(d.students || []))
       .catch(() => {});
 
-    fetch('/api/finance/fee-structures')
+    cachedFetch('/api/finance/fee-structures')
       .then(r => r.json())
       .then(d => setFeeStructures(d))
       .catch(() => {});
@@ -591,7 +592,7 @@ export function CollectFeesView({ showToast }) {
     try {
       const url = editingId ? `/api/finance/fees/${editingId}` : '/api/finance/fees';
       const method = editingId ? 'PUT' : 'POST';
-      const res = await fetch(url, {
+      const res = await cachedFetch(url, {
         method: method,
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(form)
@@ -1031,7 +1032,7 @@ export function CollectFeesView({ showToast }) {
         onConfirm={async () => {
           if (showConfirmDelete) {
             try {
-              const res = await fetch(`/api/finance/fees/${showConfirmDelete.id || showConfirmDelete.feeId}`, {
+              const res = await cachedFetch(`/api/finance/fees/${showConfirmDelete.id || showConfirmDelete.feeId}`, {
                 method: 'DELETE'
               });
               if (res.ok) {
@@ -1091,7 +1092,7 @@ export function FeeStructureView({ showToast }) {
   };
 
   const fetchStructures = () => {
-    fetch('/api/finance/fee-structures')
+    cachedFetch('/api/finance/fee-structures')
       .then(r => r.json())
       .then(d => { setStructures(d); setLoading(false); })
       .catch(() => setLoading(false));
@@ -1135,7 +1136,7 @@ export function FeeStructureView({ showToast }) {
     try {
       const isEdit = !!editingId;
       const url = isEdit ? `/api/finance/fee-structures/${editingId}` : '/api/finance/fee-structures';
-      const res = await fetch(url, {
+      const res = await cachedFetch(url, {
         method: isEdit ? 'PUT' : 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(payload)
@@ -1338,7 +1339,7 @@ export function FeeStructureView({ showToast }) {
         message="Are you sure you want to delete this fee structure?"
         onConfirm={async () => {
           try {
-            const res = await fetch(`/api/finance/fee-structures/${confirmDelete}`, { method: 'DELETE' });
+            const res = await cachedFetch(`/api/finance/fee-structures/${confirmDelete}`, { method: 'DELETE' });
             if (res.ok) { showToast('Fee structure deleted'); fetchStructures(); }
           } catch { showToast('Error deleting', 'error'); }
           setConfirmDelete(null);
@@ -1391,14 +1392,14 @@ export function StaffPaymentStructureView({ showToast }) {
   });
 
   const fetchStructures = () => {
-    fetch('/api/finance/staff-salary-structures')
+    cachedFetch('/api/finance/staff-salary-structures')
       .then(r => r.json())
       .then(d => { setStructures(d); setLoading(false); })
       .catch(() => setLoading(false));
   };
 
   const fetchDesignationOptions = () => {
-    fetch('/api/staff')
+    cachedFetch('/api/staff')
       .then(r => r.json())
       .then(staff => {
         const staffRoles = (staff || []).map(s => s.role).filter(Boolean);
@@ -1417,7 +1418,7 @@ export function StaffPaymentStructureView({ showToast }) {
     try {
       const isEdit = !!editingId;
       const url = isEdit ? `/api/finance/staff-salary-structures/${editingId}` : '/api/finance/staff-salary-structures';
-      const res = await fetch(url, {
+      const res = await cachedFetch(url, {
         method: isEdit ? 'PUT' : 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(form)
@@ -1619,7 +1620,7 @@ export function StaffPaymentStructureView({ showToast }) {
           message={confirmDelete ? `Are you sure you want to delete the structure for ${confirmDelete.name}?` : ''}
           onConfirm={async () => {
             try {
-              const res = await fetch(`/api/finance/staff-salary-structures/${confirmDelete.id}`, { method: 'DELETE' });
+              const res = await cachedFetch(`/api/finance/staff-salary-structures/${confirmDelete.id}`, { method: 'DELETE' });
               if (res.ok) {
                 showToast(`Deleted salary structure for ${confirmDelete.name}`);
                 fetchStructures();
@@ -1664,14 +1665,14 @@ export function StaffPaymentsView({ showToast }) {
     const params = new URLSearchParams();
     if (filterStatus !== 'All') params.set('status', filterStatus);
     if (search) params.set('search', search);
-    fetch(`/api/finance/staff-payments?${params}`)
+    cachedFetch(`/api/finance/staff-payments?${params}`)
       .then(r => r.json())
       .then(d => { setPayments(d); setLoading(false); })
       .catch(() => setLoading(false));
   };
 
   const fetchStaff = () => {
-    fetch('/api/staff')
+    cachedFetch('/api/staff')
       .then(r => r.json())
       .then(d => setStaff(d))
       .catch(() => {});
@@ -1681,7 +1682,7 @@ export function StaffPaymentsView({ showToast }) {
 
   const selectStaff = (s) => {
     if (s) {
-      fetch('/api/finance/staff-salary-structures')
+      cachedFetch('/api/finance/staff-salary-structures')
         .then(r => r.json())
         .then(structures => {
           const sstr = structures.find(st => st.designation === s.role);
@@ -1718,7 +1719,7 @@ export function StaffPaymentsView({ showToast }) {
     const s = staff.find(st => st.id === e.target.value);
     if (s) {
       // Find matching salary structure by role
-      fetch('/api/finance/staff-salary-structures')
+      cachedFetch('/api/finance/staff-salary-structures')
         .then(r => r.json())
         .then(structures => {
           const sstr = structures.find(st => st.designation === s.role);
@@ -1746,7 +1747,7 @@ export function StaffPaymentsView({ showToast }) {
   const handleSubmit = async (e) => {
     e.preventDefault();
     try {
-      const res = await fetch('/api/finance/staff-payments', {
+      const res = await cachedFetch('/api/finance/staff-payments', {
         method: 'POST', headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(form)
       });
@@ -1896,7 +1897,7 @@ export function StaffPaymentsView({ showToast }) {
                     value={form.staffRole}
                     onChange={e => {
                       const selectedRole = e.target.value;
-                      fetch('/api/finance/staff-salary-structures')
+                      cachedFetch('/api/finance/staff-salary-structures')
                         .then(r => r.json())
                         .then(structures => {
                           const sstr = structures.find(st => st.designation === selectedRole);
@@ -2056,21 +2057,21 @@ export function PayrollView({ showToast }) {
     const params = new URLSearchParams();
     if (filterStatus !== 'All') params.set('status', filterStatus);
     if (search) params.set('search', search);
-    fetch(`/api/finance/payroll?${params}`)
+    cachedFetch(`/api/finance/payroll?${params}`)
       .then(r => r.json())
       .then(d => { setPayroll(d); setLoading(false); })
       .catch(() => setLoading(false));
   };
 
   const fetchTeachers = () => {
-    fetch('/api/teachers?limit=1000')
+    cachedFetch('/api/teachers?limit=1000')
       .then(r => r.json())
       .then(d => setTeachers(d.teachers || []))
       .catch(() => {});
   };
 
   const fetchSalaryStructures = () => {
-    fetch('/api/finance/salary-structures')
+    cachedFetch('/api/finance/salary-structures')
       .then(r => r.json())
       .then(d => setSalaryStructures(d || []))
       .catch(() => {});
@@ -2157,7 +2158,7 @@ export function PayrollView({ showToast }) {
   const handleSubmit = async (e) => {
     e.preventDefault();
     try {
-      const res = await fetch('/api/finance/payroll', {
+      const res = await cachedFetch('/api/finance/payroll', {
         method: 'POST', headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(form)
       });
@@ -2473,10 +2474,10 @@ export function ExpensesView({ showToast }) {
 
   const fetchData = () => {
     Promise.all([
-      fetch('/api/finance/overview').then(r => r.ok ? r.json() : null),
-      fetch('/api/finance/fees').then(r => r.ok ? r.json() : []),
-      fetch('/api/finance/income').then(r => r.ok ? r.json() : []),
-      fetch('/api/finance/expenses').then(r => r.ok ? r.json() : []),
+      cachedFetch('/api/finance/overview').then(r => r.ok ? r.json() : null),
+      cachedFetch('/api/finance/fees').then(r => r.ok ? r.json() : []),
+      cachedFetch('/api/finance/income').then(r => r.ok ? r.json() : []),
+      cachedFetch('/api/finance/expenses').then(r => r.ok ? r.json() : []),
     ]).then(([overviewData, feesData, incomeData, expensesData]) => {
       setOverview(overviewData);
       setFees(feesData);
@@ -2751,10 +2752,10 @@ export function IncomeView({ showToast }) {
   const fetchData = () => {
     setLoading(true);
     Promise.all([
-      fetch('/api/finance/overview').then(r => r.ok ? r.json() : null),
-      fetch('/api/finance/fees').then(r => r.ok ? r.json() : []),
-      fetch('/api/finance/income').then(r => r.ok ? r.json() : []),
-      fetch('/api/finance/expenses').then(r => r.ok ? r.json() : []),
+      cachedFetch('/api/finance/overview').then(r => r.ok ? r.json() : null),
+      cachedFetch('/api/finance/fees').then(r => r.ok ? r.json() : []),
+      cachedFetch('/api/finance/income').then(r => r.ok ? r.json() : []),
+      cachedFetch('/api/finance/expenses').then(r => r.ok ? r.json() : []),
     ]).then(([overviewData, feesData, incomeData, expensesData]) => {
       setOverview(overviewData);
       setFees(feesData);
@@ -3256,12 +3257,12 @@ export function ReportsView({ showToast }) {
 
   useEffect(() => {
     Promise.all([
-      fetch('/api/finance/overview').then(r => r.ok ? r.json() : null),
-      fetch('/api/finance/fees').then(r => r.ok ? r.json() : []),
-      fetch('/api/finance/payroll').then(r => r.ok ? r.json() : []),
-      fetch('/api/finance/staff-payments').then(r => r.ok ? r.json() : []),
-      fetch('/api/finance/expenses').then(r => r.ok ? r.json() : []),
-      fetch('/api/finance/income').then(r => r.ok ? r.json() : []),
+      cachedFetch('/api/finance/overview').then(r => r.ok ? r.json() : null),
+      cachedFetch('/api/finance/fees').then(r => r.ok ? r.json() : []),
+      cachedFetch('/api/finance/payroll').then(r => r.ok ? r.json() : []),
+      cachedFetch('/api/finance/staff-payments').then(r => r.ok ? r.json() : []),
+      cachedFetch('/api/finance/expenses').then(r => r.ok ? r.json() : []),
+      cachedFetch('/api/finance/income').then(r => r.ok ? r.json() : []),
     ]).then(([overviewData, feesData, payrollData, staffPaymentsData, expensesData, incomeData]) => {
       setOverview(overviewData);
       setFees(feesData);
@@ -3864,7 +3865,7 @@ export function TeacherSalaryStructureView({ showToast }) {
   const [gradeRange, setGradeRange] = useState('');
 
   const fetchStructures = () => {
-    fetch('/api/finance/salary-structures')
+    cachedFetch('/api/finance/salary-structures')
       .then(r => r.json())
       .then(d => { setStructures(d); setLoading(false); })
       .catch(() => setLoading(false));
@@ -3888,7 +3889,7 @@ export function TeacherSalaryStructureView({ showToast }) {
     try {
       const isEdit = !!editingId;
       const url = isEdit ? `/api/finance/salary-structures/${editingId}` : '/api/finance/salary-structures';
-      const res = await fetch(url, {
+      const res = await cachedFetch(url, {
         method: isEdit ? 'PUT' : 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(formData)
@@ -4132,7 +4133,7 @@ export function TeacherSalaryStructureView({ showToast }) {
           message={confirmDelete ? `Are you sure you want to delete the structure for ${confirmDelete.name}?` : ''}
           onConfirm={async () => {
             try {
-              const res = await fetch(`/api/finance/salary-structures/${confirmDelete.id}`, { method: 'DELETE' });
+              const res = await cachedFetch(`/api/finance/salary-structures/${confirmDelete.id}`, { method: 'DELETE' });
               if (res.ok) {
                 showToast(`Deleted salary structure for ${confirmDelete.name}`);
                 fetchStructures();

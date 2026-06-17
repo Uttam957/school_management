@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { createPortal } from 'react-dom';
 import { 
+import { cachedFetch } from '../utils/apiCache';
   Search, 
   Mail, 
   Phone, 
@@ -40,7 +41,7 @@ export default function TeacherManagement() {
 
   const fetchTeachers = async () => {
     try {
-      const res = await fetch('/api/teachers');
+      const res = await cachedFetch('/api/teachers');
       if (res.ok) {
         const data = await res.json();
         setTeachers(data);
@@ -83,7 +84,7 @@ export default function TeacherManagement() {
     }
 
     try {
-      const res = await fetch('/api/teachers', {
+      const res = await cachedFetch('/api/teachers', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(formData)
@@ -114,7 +115,7 @@ export default function TeacherManagement() {
   const handleDeleteTeacher = async (teacherId) => {
     if (window.confirm('Are you sure you want to dismiss this faculty member from the roster?')) {
       try {
-        const res = await fetch(`/api/teachers/${teacherId}`, { method: 'DELETE' });
+        const res = await cachedFetch(`/api/teachers/${teacherId}`, { method: 'DELETE' });
         if (res.ok) {
           setTeachers(teachers.filter(t => t.id !== teacherId));
         }

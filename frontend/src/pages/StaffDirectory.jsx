@@ -21,6 +21,8 @@ import {
   Download
 } from 'lucide-react';
 import { hasPermission } from '../utils/permissions';
+import { cachedFetch } from '../utils/apiCache';
+import { TableSkeleton } from '../components/SkeletonLoaders';
 
 const STAFF_CATEGORIES = [
   'All', 'Administration', 'Accounts & Finance', 'IT Department', 'Transport', 'Hostel', 
@@ -100,7 +102,7 @@ export default function StaffDirectory({ readOnly = true, onAddClick, onEditClic
   const handleRegenerateQR = async (empId) => {
     try {
       setQrLoading(true);
-      const res = await fetch('/api/employee-attendance/regenerate-qr', {
+      const res = await cachedFetch('/api/employee-attendance/regenerate-qr', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ employeeId: empId, employeeType: 'Staff' })
@@ -215,7 +217,7 @@ export default function StaffDirectory({ readOnly = true, onAddClick, onEditClic
 
   const fetchStaff = async () => {
     try {
-      const res = await fetch('/api/staff');
+      const res = await cachedFetch('/api/staff');
       if (res.ok) {
         const data = await res.json();
         setStaffList(data);
@@ -232,14 +234,24 @@ export default function StaffDirectory({ readOnly = true, onAddClick, onEditClic
 
   const handleDeleteStaff = async (staffId) => {
     if (window.confirm('Are you sure you want to dismiss this employee?')) {
+      const previousStaffList = [...staffList];
+      
+      // Optimistic update
+      setStaffList(prev => prev.filter(s => s.id !== staffId));
+      if (inspectStaff?.id === staffId) setInspectStaff(null);
+
       try {
-        const res = await fetch(`/api/staff/${staffId}`, { method: 'DELETE' });
-        if (res.ok) {
-          setStaffList(staffList.filter(s => s.id !== staffId));
-          if (inspectStaff?.id === staffId) setInspectStaff(null);
+        const res = await cachedFetch(`/api/staff/${staffId}`, { method: 'DELETE' });
+        if (!res.ok) {
+          setStaffList(previousStaffList);
+          alert('Failed to dismiss employee.');
+        } else {
+          fetchStaff();
         }
       } catch (err) {
         console.error('Error removing staff:', err);
+        setStaffList(previousStaffList);
+        alert('Network error dismissing employee.');
       }
     }
   };
@@ -270,7 +282,7 @@ export default function StaffDirectory({ readOnly = true, onAddClick, onEditClic
   const handleEditSave = async () => {
     setEditLoading(true);
     try {
-      const res = await fetch(`/api/staff/${editStaff.id}`, {
+      const res = await cachedFetch(`/api/staff/${editStaff.id}`, {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(editData)
@@ -610,6 +622,8 @@ export default function StaffDirectory({ readOnly = true, onAddClick, onEditClic
               Please search or select a filter to view employee records
             </span>
           </div>
+        ) : loading ? (
+          <TableSkeleton rows={8} cols={8} />
         ) : (
           <div className="custom-table-container">
             <table className="custom-table">

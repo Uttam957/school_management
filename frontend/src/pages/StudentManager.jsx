@@ -9,6 +9,7 @@ import {
   ArrowRight
 } from 'lucide-react';
 import { fetchActiveGrades, fetchActiveSections } from '../utils/grades';
+import { cachedFetch } from '../utils/apiCache';
 
 export default function StudentManager({ showToast }) {
   const [students, setStudents] = useState([]);
@@ -62,7 +63,7 @@ export default function StudentManager({ showToast }) {
         limit: 1000
       }).toString();
       
-      const res = await fetch(`/api/students?${queryParams}`, {
+      const res = await cachedFetch(`/api/students?${queryParams}`, {
         headers: { 'x-tenant-id': tenantSubdomain }
       });
       if (res.ok) {
@@ -114,7 +115,7 @@ export default function StudentManager({ showToast }) {
 
     setUpdatingId(studentId);
     try {
-      const res = await fetch(`/api/students/${studentId}`, {
+      const res = await cachedFetch(`/api/students/${studentId}`, {
         method: 'PUT',
         headers: {
           'Content-Type': 'application/json',

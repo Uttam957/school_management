@@ -40,6 +40,8 @@ import {
 import ResultManagementPanel from './ResultManagementPanel';
 import EXAM_TYPES from '../utils/examTypes';
 import { getGradesWithSubjects, getGradeOptions, GRADE_ORDER, fetchActiveGrades, fetchActiveSections } from '../utils/grades';
+import { cachedFetch } from '../utils/apiCache';
+import { PageSkeleton } from '../components/SkeletonLoaders';
 
 
 export default function AcademicPanel({ subView, setAdminView }) {
@@ -270,7 +272,7 @@ export default function AcademicPanel({ subView, setAdminView }) {
     const suffix = timeslotType !== 'Regular' ? ` [${timeslotType}]` : '';
     const finalSlot = `${convertTo12HourFormat(startTimeInput)} - ${convertTo12HourFormat(endTimeInput)}${suffix}`;
     try {
-      const res = await fetch('/api/academics/timeslots', {
+      const res = await cachedFetch('/api/academics/timeslots', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ timeslot: finalSlot })
@@ -292,7 +294,7 @@ export default function AcademicPanel({ subView, setAdminView }) {
   const handleDeleteTimeslot = async (slotToDelete) => {
     if (!confirm(`Are you sure you want to delete the time slot: ${slotToDelete}?`)) return;
     try {
-      const res = await fetch('/api/academics/timeslots', {
+      const res = await cachedFetch('/api/academics/timeslots', {
         method: 'DELETE',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ timeslot: slotToDelete })
@@ -346,8 +348,7 @@ export default function AcademicPanel({ subView, setAdminView }) {
       await Promise.all(
         endpoints.map(async (ep) => {
           try {
-            const separator = ep.url.includes('?') ? '&' : '?';
-            const res = await fetch(`${ep.url}${separator}_t=${Date.now()}`);
+            const res = await cachedFetch(ep.url);
             if (res.ok) {
               const data = await res.json();
               ep.setter(data);
@@ -380,7 +381,7 @@ export default function AcademicPanel({ subView, setAdminView }) {
     e.preventDefault();
     if (!newSubjectName.trim()) return;
     try {
-      const res = await fetch('/api/academics/subjects', {
+      const res = await cachedFetch('/api/academics/subjects', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ grade: newSubjectGrade, subjectName: newSubjectName.trim() })
@@ -401,7 +402,7 @@ export default function AcademicPanel({ subView, setAdminView }) {
   const handleDeleteSubject = async (id) => {
     if (!confirm('Are you sure you want to delete this subject?')) return;
     try {
-      const res = await fetch(`/api/academics/subjects/${id}`, { method: 'DELETE' });
+      const res = await cachedFetch(`/api/academics/subjects/${id}`, { method: 'DELETE' });
       if (res.ok) {
         showToast('Subject deleted.', 'success');
         fetchAllData();
@@ -422,7 +423,7 @@ export default function AcademicPanel({ subView, setAdminView }) {
 
     try {
       await Promise.all(
-        gradeSubjects.map(sub => fetch(`/api/academics/subjects/${sub.id}`, { method: 'DELETE' }))
+        gradeSubjects.map(sub => cachedFetch(`/api/academics/subjects/${sub.id}`, { method: 'DELETE' }))
       );
       showToast(`All subjects for Grade ${grade} deleted successfully.`, 'success');
       fetchAllData();
@@ -450,12 +451,12 @@ export default function AcademicPanel({ subView, setAdminView }) {
       if (subjectsToDelete.length > 0) {
         await Promise.all(
           subjectsToDelete.map(sub =>
-            fetch(`/api/academics/subjects/${sub.id}`, { method: 'DELETE' })
+            cachedFetch(`/api/academics/subjects/${sub.id}`, { method: 'DELETE' })
           )
         );
       }
 
-      const res = await fetch('/api/academics/subjects/bulk', {
+      const res = await cachedFetch('/api/academics/subjects/bulk', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ grade: newSubjectGrade, subjectNames })
@@ -565,7 +566,7 @@ export default function AcademicPanel({ subView, setAdminView }) {
     });
 
     try {
-      const res = await fetch('/api/academics/timetables/bulk', {
+      const res = await cachedFetch('/api/academics/timetables/bulk', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
@@ -620,7 +621,7 @@ export default function AcademicPanel({ subView, setAdminView }) {
   const handleDeleteWholeTeacherTimetable = async (tName) => {
     if (!confirm(`Are you sure you want to clear the entire weekly timetable for teacher: ${tName}? This action cannot be undone.`)) return;
     try {
-      const res = await fetch('/api/academics/timetables/bulk/teacher', {
+      const res = await cachedFetch('/api/academics/timetables/bulk/teacher', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
@@ -689,7 +690,7 @@ export default function AcademicPanel({ subView, setAdminView }) {
     });
 
     try {
-      const res = await fetch('/api/academics/timetables/bulk/teacher', {
+      const res = await cachedFetch('/api/academics/timetables/bulk/teacher', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
@@ -736,12 +737,7 @@ export default function AcademicPanel({ subView, setAdminView }) {
   }, []);
 
   if (loading) {
-    return (
-      <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', minHeight: '500px', flexDirection: 'column', gap: '16px' }}>
-        <Loader2 className="animate-spin" size={48} style={{ color: 'hsl(var(--color-primary))' }} />
-        <p style={{ color: 'var(--text-muted)', fontWeight: 500 }}>Synchronizing Academic Records...</p>
-      </div>
-    );
+    return <PageSkeleton />;
   }
 
   // =============================================
@@ -753,7 +749,7 @@ export default function AcademicPanel({ subView, setAdminView }) {
     e.preventDefault();
     const payload = { cohort: activeClass, ...timetableForm };
     try {
-      const res = await fetch('/api/academics/timetables', {
+      const res = await cachedFetch('/api/academics/timetables', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(payload)
@@ -773,7 +769,7 @@ export default function AcademicPanel({ subView, setAdminView }) {
 
   const deleteTimetablePeriod = async (id) => {
     try {
-      const res = await fetch(`/api/academics/timetables/${id}`, { method: 'DELETE' });
+      const res = await cachedFetch(`/api/academics/timetables/${id}`, { method: 'DELETE' });
       if (res.ok) {
         showToast('Period removed from schedule.', 'success');
         fetchAllData();
@@ -818,7 +814,7 @@ export default function AcademicPanel({ subView, setAdminView }) {
 
   const handlePublishTimetable = async (type, identifier) => {
     try {
-      const res = await fetch('/api/academics/published-timetables/publish', {
+      const res = await cachedFetch('/api/academics/published-timetables/publish', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ type, identifier })
@@ -843,7 +839,7 @@ export default function AcademicPanel({ subView, setAdminView }) {
   const confirmDeleteWholeTimetable = async () => {
     if (!cohortToDelete) return;
     try {
-      const res = await fetch('/api/academics/timetables/bulk', {
+      const res = await cachedFetch('/api/academics/timetables/bulk', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ cohort: cohortToDelete, timetables: [] })
@@ -878,7 +874,7 @@ export default function AcademicPanel({ subView, setAdminView }) {
   const handleExamSubmit = async (e) => {
     e.preventDefault();
     try {
-      const res = await fetch('/api/academics/exams', {
+      const res = await cachedFetch('/api/academics/exams', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(examForm)
@@ -907,7 +903,7 @@ export default function AcademicPanel({ subView, setAdminView }) {
 
   const deleteExamConfig = async (id) => {
     try {
-      const res = await fetch(`/api/academics/exams/${id}`, { method: 'DELETE' });
+      const res = await cachedFetch(`/api/academics/exams/${id}`, { method: 'DELETE' });
       if (res.ok) {
         showToast('Exam configuration purged.', 'success');
         fetchAllData();
@@ -922,7 +918,7 @@ export default function AcademicPanel({ subView, setAdminView }) {
     e.preventDefault();
     const payload = { ...examTimetableForm, examId: activeExam };
     try {
-      const res = await fetch('/api/academics/exam-timetables', {
+      const res = await cachedFetch('/api/academics/exam-timetables', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(payload)
@@ -942,7 +938,7 @@ export default function AcademicPanel({ subView, setAdminView }) {
 
   const deleteExamTimetableSlot = async (id) => {
     try {
-      const res = await fetch(`/api/academics/exam-timetables/${id}`, { method: 'DELETE' });
+      const res = await cachedFetch(`/api/academics/exam-timetables/${id}`, { method: 'DELETE' });
       if (res.ok) {
         showToast('Exam schedule period deleted.', 'success');
         fetchAllData();
@@ -958,7 +954,7 @@ export default function AcademicPanel({ subView, setAdminView }) {
     try {
       const url = editingId ? `/api/academics/events/${editingId}` : '/api/academics/events';
       const method = editingId ? 'PUT' : 'POST';
-      const res = await fetch(url, {
+      const res = await cachedFetch(url, {
         method,
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(eventForm)
@@ -976,7 +972,7 @@ export default function AcademicPanel({ subView, setAdminView }) {
 
   const deleteEventLog = async (id) => {
     try {
-      const res = await fetch(`/api/academics/events/${id}`, { method: 'DELETE' });
+      const res = await cachedFetch(`/api/academics/events/${id}`, { method: 'DELETE' });
       if (res.ok) {
         showToast('Event listing removed.', 'success');
         fetchAllData();
@@ -992,7 +988,7 @@ export default function AcademicPanel({ subView, setAdminView }) {
     try {
       const url = editingId ? `/api/academics/notices/${editingId}` : '/api/academics/notices';
       const method = editingId ? 'PUT' : 'POST';
-      const res = await fetch(url, {
+      const res = await cachedFetch(url, {
         method,
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(noticeForm)
@@ -1010,7 +1006,7 @@ export default function AcademicPanel({ subView, setAdminView }) {
 
   const deleteNoticeBoard = async (id) => {
     try {
-      const res = await fetch(`/api/academics/notices/${id}`, { method: 'DELETE' });
+      const res = await cachedFetch(`/api/academics/notices/${id}`, { method: 'DELETE' });
       if (res.ok) {
         showToast('Notice deleted.', 'success');
         fetchAllData();
@@ -1026,7 +1022,7 @@ export default function AcademicPanel({ subView, setAdminView }) {
     try {
       const url = editingId ? `/api/academics/holidays/${editingId}` : '/api/academics/holidays';
       const method = editingId ? 'PUT' : 'POST';
-      const res = await fetch(url, {
+      const res = await cachedFetch(url, {
         method,
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(holidayForm)
@@ -1044,7 +1040,7 @@ export default function AcademicPanel({ subView, setAdminView }) {
 
   const deleteHolidaySchedule = async (id) => {
     try {
-      const res = await fetch(`/api/academics/holidays/${id}`, { method: 'DELETE' });
+      const res = await cachedFetch(`/api/academics/holidays/${id}`, { method: 'DELETE' });
       if (res.ok) {
         showToast('Holiday designation removed.', 'success');
         fetchAllData();
@@ -1056,7 +1052,7 @@ export default function AcademicPanel({ subView, setAdminView }) {
 
   const deleteResult = async (id) => {
     try {
-      const res = await fetch(`/api/academics/results/${id}`, { method: 'DELETE' });
+      const res = await cachedFetch(`/api/academics/results/${id}`, { method: 'DELETE' });
       if (res.ok) {
         showToast('Result record deleted successfully.', 'success');
         fetchAllData();
@@ -1084,7 +1080,7 @@ export default function AcademicPanel({ subView, setAdminView }) {
       term: examItem.examName
     };
     try {
-      const res = await fetch('/api/academics/results', {
+      const res = await cachedFetch('/api/academics/results', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(payload)
@@ -1453,7 +1449,7 @@ export default function AcademicPanel({ subView, setAdminView }) {
     }
     
     try {
-      const res = await fetch(`/api/academics/exam-timetables/exam/${examId}/cohort/${cohort}`, {
+      const res = await cachedFetch(`/api/academics/exam-timetables/exam/${examId}/cohort/${cohort}`, {
         method: 'DELETE'
       });
       if (res.ok) {
@@ -1646,7 +1642,7 @@ export default function AcademicPanel({ subView, setAdminView }) {
 
       const sectionsToSave = filteredSectionsForGrade.length > 0 ? filteredSectionsForGrade : [manualSection || 'A'];
       const promises = sectionsToSave.map(sec => 
-        fetch('/api/academics/exam-timetables/bulk', {
+        cachedFetch('/api/academics/exam-timetables/bulk', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({
@@ -1660,7 +1656,7 @@ export default function AcademicPanel({ subView, setAdminView }) {
       const allOk = responses.every(res => res.ok);
       if (allOk) {
         // Reset published status when editing schedules
-        await fetch(`/api/academics/exams/${activeExam}`, {
+        await cachedFetch(`/api/academics/exams/${activeExam}`, {
           method: 'PUT',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({ timetablePublished: false })
@@ -2608,7 +2604,7 @@ export default function AcademicPanel({ subView, setAdminView }) {
 
     const handlePublishExam = async (examId) => {
       try {
-        const res = await fetch(`/api/academics/exams/${examId}/publish`, { method: 'PUT' });
+        const res = await cachedFetch(`/api/academics/exams/${examId}/publish`, { method: 'PUT' });
         if (res.ok) {
           showToast('Exam published successfully!', 'success');
           fetchAllData();
@@ -2629,7 +2625,7 @@ export default function AcademicPanel({ subView, setAdminView }) {
     const handleDelete = async (id) => {
       if (!confirm('Delete this exam configuration? This will also remove all schedules.')) return;
       try {
-        const res = await fetch(`/api/academics/exams/${id}`, { method: 'DELETE' });
+        const res = await cachedFetch(`/api/academics/exams/${id}`, { method: 'DELETE' });
         if (res.ok) {
           showToast('Exam deleted.', 'success');
           fetchAllData();
@@ -2919,7 +2915,7 @@ export default function AcademicPanel({ subView, setAdminView }) {
                                         onClick={async (e) => {
                                           e.stopPropagation();
                                           try {
-                                            const res = await fetch(`/api/academics/exams/${ex.id}`, {
+                                            const res = await cachedFetch(`/api/academics/exams/${ex.id}`, {
                                               method: 'PUT',
                                               headers: { 'Content-Type': 'application/json' },
                                               body: JSON.stringify({ timetablePublished: true })
@@ -2987,7 +2983,7 @@ export default function AcademicPanel({ subView, setAdminView }) {
                           e.stopPropagation(); 
                           if (confirm('Are you sure you want to mark this exam as completed? It will be moved to Exam History.')) {
                             try {
-                              const res = await fetch(`/api/academics/exams/${ex.id}`, {
+                              const res = await cachedFetch(`/api/academics/exams/${ex.id}`, {
                                 method: 'PUT',
                                 headers: { 'Content-Type': 'application/json' },
                                 body: JSON.stringify({ status: 'Completed' })
@@ -3075,7 +3071,7 @@ export default function AcademicPanel({ subView, setAdminView }) {
     const handleDeleteSlot = async (id) => {
       if (!confirm('Remove this exam slot from schedule?')) return;
       try {
-        const res = await fetch(`/api/academics/exam-timetables/${id}`, { method: 'DELETE' });
+        const res = await cachedFetch(`/api/academics/exam-timetables/${id}`, { method: 'DELETE' });
         if (res.ok) {
           showToast('Schedule slot removed.', 'success');
           fetchAllData();
@@ -3252,7 +3248,7 @@ export default function AcademicPanel({ subView, setAdminView }) {
       try {
         const sectionsToSave = filteredSectionsForGrade.length > 0 ? filteredSectionsForGrade : [manualSection || 'A'];
         const promises = sectionsToSave.map(sec => 
-          fetch('/api/academics/exam-timetables/bulk', {
+          cachedFetch('/api/academics/exam-timetables/bulk', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({
@@ -3266,7 +3262,7 @@ export default function AcademicPanel({ subView, setAdminView }) {
         const allOk = responses.every(res => res.ok);
         if (allOk) {
           // Reset published status when editing schedules
-          await fetch(`/api/academics/exams/${activeExam}`, {
+          await cachedFetch(`/api/academics/exams/${activeExam}`, {
             method: 'PUT',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({ timetablePublished: false })
@@ -3574,7 +3570,7 @@ export default function AcademicPanel({ subView, setAdminView }) {
                         <button
                           onClick={async () => {
                             try {
-                              const res = await fetch(`/api/academics/exams/${ex.id}`, {
+                              const res = await cachedFetch(`/api/academics/exams/${ex.id}`, {
                                 method: 'PUT',
                                 headers: { 'Content-Type': 'application/json' },
                                 body: JSON.stringify({ timetablePublished: true })
@@ -3659,7 +3655,7 @@ export default function AcademicPanel({ subView, setAdminView }) {
     const handleDelete = async (id) => {
       if (!confirm('Delete this completed exam history? This will permanently remove the record.')) return;
       try {
-        const res = await fetch(`/api/academics/exams/${id}`, { method: 'DELETE' });
+        const res = await cachedFetch(`/api/academics/exams/${id}`, { method: 'DELETE' });
         if (res.ok) {
           showToast('Exam history deleted.', 'success');
           fetchAllData();
@@ -4735,7 +4731,7 @@ export default function AcademicPanel({ subView, setAdminView }) {
     const method = isEdit ? 'PUT' : 'POST';
 
     try {
-      const res = await fetch(url, {
+      const res = await cachedFetch(url, {
         method,
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ ...calendarEventForm, session: calendarSession })
@@ -4744,7 +4740,7 @@ export default function AcademicPanel({ subView, setAdminView }) {
         // If editing a published event, auto-unpublish so user must re-publish
         if (isEdit && publishedEventIds.includes(editingCalendarEventId)) {
           try {
-            await fetch('/api/academics/calendar/unpublish', {
+            await cachedFetch('/api/academics/calendar/unpublish', {
               method: 'POST',
               headers: { 'Content-Type': 'application/json' },
               body: JSON.stringify({ eventId: editingCalendarEventId })
@@ -4783,7 +4779,7 @@ export default function AcademicPanel({ subView, setAdminView }) {
   const handleDeleteCalendarEvent = async (id) => {
     if (!confirm('Are you sure you want to delete this calendar event?')) return;
     try {
-      const res = await fetch(`/api/academics/calendar-events/${id}`, { method: 'DELETE' });
+      const res = await cachedFetch(`/api/academics/calendar-events/${id}`, { method: 'DELETE' });
       if (res.ok) {
         showToast('Calendar event deleted successfully.', 'success');
         fetchAllData();
@@ -4798,7 +4794,7 @@ export default function AcademicPanel({ subView, setAdminView }) {
 
   const handlePublishEvent = async (eventId) => {
     try {
-      const res = await fetch('/api/academics/calendar/publish', {
+      const res = await cachedFetch('/api/academics/calendar/publish', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ eventId })
@@ -4817,7 +4813,7 @@ export default function AcademicPanel({ subView, setAdminView }) {
 
   const handleUnpublishEvent = async (eventId) => {
     try {
-      const res = await fetch('/api/academics/calendar/unpublish', {
+      const res = await cachedFetch('/api/academics/calendar/unpublish', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ eventId })
@@ -4845,7 +4841,7 @@ export default function AcademicPanel({ subView, setAdminView }) {
     formData.append('file', file);
 
     try {
-      const res = await fetch('/api/academics/calendar-upload', {
+      const res = await cachedFetch('/api/academics/calendar-upload', {
         method: 'POST',
         body: formData
       });
@@ -4871,7 +4867,7 @@ export default function AcademicPanel({ subView, setAdminView }) {
     }
 
     try {
-      const res = await fetch('/api/academics/calendar-import-confirm', {
+      const res = await cachedFetch('/api/academics/calendar-import-confirm', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
@@ -7294,7 +7290,7 @@ export default function AcademicPanel({ subView, setAdminView }) {
                       const hasSchedules = wizardForm.id ? examTimetables.some(et => et.examId === wizardForm.id) : false;
                       const statusVal = existingExam ? (hasSchedules ? 'Scheduled' : 'Draft') : 'Draft';
 
-                      const res = await fetch(url, {
+                      const res = await cachedFetch(url, {
                         method: method,
                         headers: { 'Content-Type': 'application/json' },
                         body: JSON.stringify({

@@ -25,6 +25,8 @@ import {
 } from 'lucide-react';
 import { hasPermission } from '../utils/permissions';
 import { fetchActiveGrades, fetchActiveSections } from '../utils/grades';
+import { cachedFetch } from '../utils/apiCache';
+import { TableSkeleton } from '../components/SkeletonLoaders';
 
 export default function StudentDirectory({ readOnly = true, onAddClick, onEditClick }) {
   const [students, setStudents] = useState([]);
@@ -83,7 +85,7 @@ export default function StudentDirectory({ readOnly = true, onAddClick, onEditCl
   useEffect(() => {
     const fetchSchool = async () => {
       try {
-        const res = await fetch('/api/school');
+        const res = await cachedFetch('/api/school');
         if (res.ok) {
           const data = await res.json();
           setSchoolDetails(data);
@@ -318,7 +320,7 @@ export default function StudentDirectory({ readOnly = true, onAddClick, onEditCl
     setEditLoading(true);
     try {
       const studentId = editingStudent.id;
-      const res = await fetch(`/api/students/${studentId}`, {
+      const res = await cachedFetch(`/api/students/${studentId}`, {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(editFormData)
@@ -373,7 +375,7 @@ export default function StudentDirectory({ readOnly = true, onAddClick, onEditCl
         limit
       }).toString();
       
-      const res = await fetch(`/api/students?${queryParams}`);
+      const res = await cachedFetch(`/api/students?${queryParams}`);
       if (res.ok) {
         const data = await res.json();
         setStudents(data.students || []);
@@ -404,14 +406,34 @@ export default function StudentDirectory({ readOnly = true, onAddClick, onEditCl
   // Delete Student Profile
   const handleDeleteStudent = async (studentId, studentName) => {
     if (window.confirm(`Are you sure you want to completely dismiss student ${studentName} (${studentId}) from the ERP registry?`)) {
+      const previousStudents = [...students];
+      const previousTotalCount = totalCount;
+
+      // Optimistic delete: update UI instantly
+      setStudents(prev => prev.filter(s => s.id !== studentId));
+      setTotalCount(prev => Math.max(0, prev - 1));
+      if (selectedStudent?.id === studentId) {
+        setSelectedStudent(null);
+      }
+
       try {
-        const res = await fetch(`/api/students/${studentId}`, { method: 'DELETE' });
-        if (res.ok) {
+        const res = await cachedFetch(`/api/students/${studentId}`, { method: 'DELETE' });
+        if (!res.ok) {
+          // Rollback on server error
+          setStudents(previousStudents);
+          setTotalCount(previousTotalCount);
+          const errData = await res.json();
+          alert(errData.error || 'Server error occurred while deleting student.');
+        } else {
+          // Fetch updated state in background
           fetchStudents();
-          setSelectedStudent(null);
         }
       } catch (err) {
         console.error('Error removing student record:', err);
+        // Rollback on network error
+        setStudents(previousStudents);
+        setTotalCount(previousTotalCount);
+        alert('Network error removing student record.');
       }
     }
   };
@@ -556,9 +578,7 @@ export default function StudentDirectory({ readOnly = true, onAddClick, onEditCl
             </span>
           </div>
         ) : loading ? (
-          <div style={{ textAlign: 'center', padding: '60px', color: 'var(--text-muted)', fontSize: '0.9rem' }}>
-            Loading students database directory...
-          </div>
+          <TableSkeleton rows={limit} cols={8} />
         ) : (
           <>
             <div className="custom-table-container">

@@ -22,6 +22,7 @@ import {
   AlertCircle
 } from 'lucide-react';
 import { hasPermission, isSuperAdmin } from '../utils/permissions';
+import { cachedFetch } from '../utils/apiCache';
 
 const TEACHER_ROLES = ['Principal', 'Vice Principal', 'Academic Coordinator', 'Subject Teacher', 'Librarian', 'Receptionist', 'Accountant', 'Expense Manager'];
 
@@ -146,9 +147,9 @@ export default function RolesPermissions() {
     setLoading(true);
     try {
       const [rolesRes, usersRes, auditRes] = await Promise.all([
-        fetch('/api/rbac/roles'),
-        fetch('/api/rbac/users'),
-        fetch('/api/rbac/audit-logs')
+        cachedFetch('/api/rbac/roles'),
+        cachedFetch('/api/rbac/users'),
+        cachedFetch('/api/rbac/audit-logs')
       ]);
 
       if (!rolesRes.ok || !usersRes.ok || !auditRes.ok) {
@@ -205,7 +206,7 @@ export default function RolesPermissions() {
         payload.permissions = initialMatrix;
       }
 
-      const res = await fetch(url, {
+      const res = await cachedFetch(url, {
         method,
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(payload)
@@ -235,7 +236,7 @@ export default function RolesPermissions() {
 
     setSubmitting(true);
     try {
-      const res = await fetch(`/api/rbac/roles/${role.id}`, {
+      const res = await cachedFetch(`/api/rbac/roles/${role.id}`, {
         method: 'DELETE'
       });
 
@@ -284,7 +285,7 @@ export default function RolesPermissions() {
     setRoles(roles.map(r => r.id === matrixRoleId ? { ...r, permissions: updatedPermissions } : r));
 
     try {
-      const res = await fetch(`/api/rbac/roles/${matrixRoleId}`, {
+      const res = await cachedFetch(`/api/rbac/roles/${matrixRoleId}`, {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ permissions: updatedPermissions })
@@ -313,7 +314,7 @@ export default function RolesPermissions() {
     });
 
     try {
-      const res = await fetch(`/api/rbac/roles/${matrixRoleId}`, {
+      const res = await cachedFetch(`/api/rbac/roles/${matrixRoleId}`, {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ permissions: updatedPermissions })

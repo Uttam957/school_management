@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useMemo, useRef } from 'react';
 import { createPortal } from 'react-dom';
 import { fetchActiveGrades } from '../utils/grades';
+import { cachedFetch } from '../utils/apiCache';
 import {
   Award,
   Search,
@@ -350,13 +351,13 @@ export default function ResultManagementPanel({ activeTab: propActiveTab = 'anal
     setLoading(true);
     try {
       const [examsRes, studentsRes, subjectsRes, gradesRes, resultsRes, overallRes, timetablesRes] = await Promise.all([
-        fetch('/api/academics/exams'),
-        fetch('/api/students?limit=10000'),
-        fetch('/api/academics/subjects'),
-        fetch('/api/academics/grades-sections'),
-        fetch('/api/academics/results'),
-        fetch('/api/academics/results/overall'),
-        fetch('/api/academics/exam-timetables')
+        cachedFetch('/api/academics/exams'),
+        cachedFetch('/api/students?limit=10000'),
+        cachedFetch('/api/academics/subjects'),
+        cachedFetch('/api/academics/grades-sections'),
+        cachedFetch('/api/academics/results'),
+        cachedFetch('/api/academics/results/overall'),
+        cachedFetch('/api/academics/exam-timetables')
       ]);
 
       if (examsRes.ok) setExams(await examsRes.json());
@@ -548,7 +549,7 @@ export default function ResultManagementPanel({ activeTab: propActiveTab = 'anal
 
     try {
       setLoading(true);
-      const res = await fetch('/api/academics/results/student-bulk', {
+      const res = await cachedFetch('/api/academics/results/student-bulk', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
@@ -589,7 +590,7 @@ export default function ResultManagementPanel({ activeTab: propActiveTab = 'anal
 
     try {
       setLoading(true);
-      const res = await fetch(`/api/academics/results/student/${studentId}/exam/${examId}`, {
+      const res = await cachedFetch(`/api/academics/results/student/${studentId}/exam/${examId}`, {
         method: 'DELETE'
       });
 
@@ -645,7 +646,7 @@ export default function ResultManagementPanel({ activeTab: propActiveTab = 'anal
 
     setLoading(true);
     try {
-      const res = await fetch('/api/academics/results/bulk', {
+      const res = await cachedFetch('/api/academics/results/bulk', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({

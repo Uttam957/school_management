@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { Shield, Mail, Lock, Eye, EyeOff, AlertCircle, School, ChevronRight, UserCheck } from 'lucide-react';
+import { cachedFetch } from '../utils/apiCache';
 
 export default function SchoolLogin({ tenantSubdomain, onLoginSuccess }) {
   const [username, setUsername] = useState('');
@@ -15,7 +16,7 @@ export default function SchoolLogin({ tenantSubdomain, onLoginSuccess }) {
     const fetchSchoolInfo = async () => {
       if (!tenantSubdomain) return;
       try {
-        const res = await fetch('/api/school', {
+        const res = await cachedFetch('/api/school', {
           headers: { 'x-tenant-id': tenantSubdomain }
         });
         if (res.ok) {
@@ -35,7 +36,7 @@ export default function SchoolLogin({ tenantSubdomain, onLoginSuccess }) {
     setLoading(true);
 
     try {
-      const res = await fetch('/api/auth/login', {
+      const res = await cachedFetch('/api/auth/login', {
         method: 'POST',
         headers: { 
           'Content-Type': 'application/json',

@@ -1,3 +1,4 @@
+import { cachedFetch } from '../utils/apiCache';
 export const GRADE_ORDER = ['LKG', 'UKG', 'I', 'II', 'III', 'IV', 'V', 'VI', 'VII', 'VIII', 'IX', 'X', 'XI', 'XII'];
 
 const romanMap = { 
@@ -67,7 +68,7 @@ export function sortGradeObjects(options) {
 
 export async function fetchActiveGrades() {
   try {
-    const res = await fetch('/api/grades/active-options');
+    const res = await cachedFetch('/api/grades/active-options');
     if (res.ok) {
       const options = await res.json();
       const mapped = options.map(opt => ({
@@ -98,7 +99,7 @@ export function getGradeOptions(subjects) {
 
 export async function fetchActiveSections() {
   try {
-    const res = await fetch('/api/grades/sections');
+    const res = await cachedFetch('/api/grades/sections');
     if (res.ok) {
       const data = await res.json();
       return data.filter(s => s.status === 'Active');

@@ -9,6 +9,7 @@ import {
   Calendar 
 } from 'lucide-react';
 import { fetchActiveGrades, fetchActiveSections } from '../utils/grades';
+import { cachedFetch } from '../utils/apiCache';
 
 const parseGradeName = (fullName) => {
   if (!fullName) return { baseGrade: '', department: '' };
@@ -120,7 +121,7 @@ export function MarkAttendanceView({ date, setDate, studentClass, setClass, sect
   const handleSaveEdit = async (stuId) => {
     try {
       setSavingEdit(true);
-      const res = await fetch('/api/attendance', {
+      const res = await cachedFetch('/api/attendance', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
@@ -160,7 +161,7 @@ export function MarkAttendanceView({ date, setDate, studentClass, setClass, sect
         section,
         search
       }).toString();
-      const res = await fetch(`/api/attendance?${queryParams}`);
+      const res = await cachedFetch(`/api/attendance?${queryParams}`);
       if (res.ok) {
         const data = await res.json();
         setRoster(data);
@@ -240,7 +241,7 @@ export function MarkAttendanceView({ date, setDate, studentClass, setClass, sect
         }));
 
       // Step 1: Save all attendance records
-      const saveRes = await fetch('/api/attendance', {
+      const saveRes = await cachedFetch('/api/attendance', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
@@ -259,7 +260,7 @@ export function MarkAttendanceView({ date, setDate, studentClass, setClass, sect
       }
 
       // Step 2: Submit (finalize) the attendance
-      const submitRes = await fetch('/api/attendance/submit', {
+      const submitRes = await cachedFetch('/api/attendance/submit', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ date, studentClass, section })
@@ -810,7 +811,7 @@ export function AttendanceHistoryView({ date, showToast }) {
         section,
         submitted: 'true'
       }).toString();
-      const res = await fetch(`/api/attendance?${queryParams}`);
+      const res = await cachedFetch(`/api/attendance?${queryParams}`);
       if (res.ok) {
         const data = await res.json();
         // Only show students who have a submitted attendance record

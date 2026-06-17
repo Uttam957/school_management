@@ -1,4 +1,5 @@
 import React, { useState } from 'react';
+import { prefetchModule } from '../utils/apiCache';
 import { hasPermission, isSuperAdmin } from '../utils/permissions';
 import { 
   GraduationCap, 
@@ -168,6 +169,7 @@ export default function Sidebar({
                   setAdminView('overview');
                   setMobileOpen(false);
                 }}
+                onMouseEnter={() => prefetchModule('overview')}
                 className={`nav-item ${adminView === 'overview' ? 'active' : ''}`}
               >
                 <List size={20} className="flex-shrink-0" />
@@ -194,6 +196,7 @@ export default function Sidebar({
                     {hasPermission('student-directory', 'view') && (
                       <button
                         onClick={() => { setAdminView('students'); setMobileOpen(false); }}
+                        onMouseEnter={() => prefetchModule('students')}
                         className={`nav-item ${adminView === 'students' ? 'active' : ''}`}
                         style={{ padding: '10px 12px', fontSize: '0.88rem', position: 'relative' }}
                       >
@@ -204,6 +207,7 @@ export default function Sidebar({
                     {hasPermission('teacher-directory', 'view') && (
                       <button
                         onClick={() => { setAdminView('teachers'); setMobileOpen(false); }}
+                        onMouseEnter={() => prefetchModule('teachers')}
                         className={`nav-item ${adminView === 'teachers' ? 'active' : ''}`}
                         style={{ padding: '10px 12px', fontSize: '0.88rem', position: 'relative' }}
                       >
@@ -214,6 +218,7 @@ export default function Sidebar({
                     {hasPermission('staff-directory', 'view') && (
                       <button
                         onClick={() => { setAdminView('staff'); setMobileOpen(false); }}
+                        onMouseEnter={() => prefetchModule('staff')}
                         className={`nav-item ${adminView === 'staff' ? 'active' : ''}`}
                         style={{ padding: '10px 12px', fontSize: '0.88rem', position: 'relative' }}
                       >
@@ -245,6 +250,7 @@ export default function Sidebar({
                     {hasPermission('grade-settings', 'view') && (
                       <button
                         onClick={() => { setAdminView('grade-list'); setMobileOpen(false); }}
+                        onMouseEnter={() => prefetchModule('grades')}
                         className={`nav-item ${['grade-list', 'add-grade', 'grade-departments', 'grade-dept-mapping', 'grade-academic-settings', 'section-utility'].includes(adminView) ? 'active' : ''}`}
                         style={{ padding: '10px 12px', fontSize: '0.88rem', position: 'relative' }}
                       >
@@ -255,6 +261,7 @@ export default function Sidebar({
                     {hasPermission('grade-subjects', 'view') && (
                       <button
                         onClick={() => { setAdminView('academic-grade-subjects'); setMobileOpen(false); }}
+                        onMouseEnter={() => prefetchModule('academics')}
                         className={`nav-item ${adminView === 'academic-grade-subjects' ? 'active' : ''}`}
                         style={{ padding: '10px 12px', fontSize: '0.88rem', position: 'relative' }}
                       >
@@ -288,6 +295,7 @@ export default function Sidebar({
                     {(hasPermission('register-student', 'create') || hasPermission('register-student', 'view')) && (
                       <button
                         onClick={() => { setAdminView('register-student'); setMobileOpen(false); }}
+                        onMouseEnter={() => prefetchModule('students')}
                         className={`nav-item ${adminView === 'register-student' ? 'active' : ''}`}
                         style={{ padding: '10px 12px', fontSize: '0.88rem', position: 'relative' }}
                       >
@@ -298,6 +306,7 @@ export default function Sidebar({
                     {(hasPermission('add-staff', 'create') || hasPermission('add-staff', 'view')) && (
                       <button
                         onClick={() => { setAdminView('add-teacher'); setMobileOpen(false); }}
+                        onMouseEnter={() => prefetchModule('teachers')}
                         className={`nav-item ${adminView === 'add-teacher' ? 'active' : ''}`}
                         style={{ padding: '10px 12px', fontSize: '0.88rem', position: 'relative' }}
                       >
@@ -308,6 +317,7 @@ export default function Sidebar({
                     {(hasPermission('add-employee', 'create') || hasPermission('add-employee', 'view')) && (
                       <button
                         onClick={() => { setAdminView('add-staff'); setMobileOpen(false); }}
+                        onMouseEnter={() => prefetchModule('staff')}
                         className={`nav-item ${adminView === 'add-staff' ? 'active' : ''}`}
                         style={{ padding: '10px 12px', fontSize: '0.88rem', position: 'relative' }}
                       >
@@ -323,6 +333,7 @@ export default function Sidebar({
             {hasPermission('student-manager', 'view') && (
               <button
                 onClick={() => { setAdminView('student-manager'); setMobileOpen(false); }}
+                onMouseEnter={() => prefetchModule('students')}
                 className={`nav-item ${adminView === 'student-manager' ? 'active' : ''}`}
               >
                 <UserPlus2 size={20} className="flex-shrink-0" />
@@ -349,6 +360,7 @@ export default function Sidebar({
                     {hasPermission('employee-attendance', 'view') && (
                       <button
                         onClick={() => { setAdminView('employee-attendance'); setMobileOpen(false); }}
+                        onMouseEnter={() => prefetchModule('attendance')}
                         className={`nav-item ${adminView === 'employee-attendance' ? 'active' : ''}`}
                         style={{ padding: '10px 12px', fontSize: '0.88rem', position: 'relative' }}
                       >
@@ -359,6 +371,7 @@ export default function Sidebar({
                     {hasPermission('attendance', 'view') && (
                       <button
                         onClick={() => { setAdminView('attendance'); setMobileOpen(false); }}
+                        onMouseEnter={() => prefetchModule('attendance')}
                         className={`nav-item ${adminView === 'attendance' ? 'active' : ''}`}
                         style={{ padding: '10px 12px', fontSize: '0.88rem', position: 'relative' }}
                       >
@@ -369,6 +382,7 @@ export default function Sidebar({
                     {hasPermission('attendance-history', 'view') && (
                       <button
                         onClick={() => { setAdminView('attendance-history'); setMobileOpen(false); }}
+                        onMouseEnter={() => prefetchModule('attendance')}
                         className={`nav-item ${adminView === 'attendance-history' ? 'active' : ''}`}
                         style={{ padding: '10px 12px', fontSize: '0.88rem', position: 'relative' }}
                       >
@@ -400,6 +414,7 @@ export default function Sidebar({
                     {hasPermission('academic-manager', 'view') && (
                       <button
                         onClick={() => { setAdminView('academic-manager'); setMobileOpen(false); }}
+                        onMouseEnter={() => prefetchModule('academics')}
                         className={`nav-item ${['academic-manager', 'academic-class-timetable', 'academic-teacher-timetable', 'academic-exams', 'academic-exams-history'].includes(adminView) ? 'active' : ''}`}
                         style={{ padding: '10px 12px', fontSize: '0.88rem', position: 'relative' }}
                       >
@@ -410,6 +425,7 @@ export default function Sidebar({
                     {hasPermission('published-timetable', 'view') && (
                       <button
                         onClick={() => { setAdminView('academic-published-timetable'); setMobileOpen(false); }}
+                        onMouseEnter={() => prefetchModule('academics')}
                         className={`nav-item ${adminView === 'academic-published-timetable' ? 'active' : ''}`}
                         style={{ padding: '10px 12px', fontSize: '0.88rem', position: 'relative' }}
                       >
@@ -420,6 +436,7 @@ export default function Sidebar({
                     {hasPermission('published-exam', 'view') && (
                       <button
                         onClick={() => { setAdminView('academic-published-exam'); setMobileOpen(false); }}
+                        onMouseEnter={() => prefetchModule('academics')}
                         className={`nav-item ${adminView === 'academic-published-exam' ? 'active' : ''}`}
                         style={{ padding: '10px 12px', fontSize: '0.88rem', position: 'relative' }}
                       >
@@ -451,6 +468,7 @@ export default function Sidebar({
                     {hasPermission('academic-activities', 'view') && (
                       <button
                         onClick={() => { setAdminView('academic-activities'); setMobileOpen(false); }}
+                        onMouseEnter={() => prefetchModule('academics')}
                         className={`nav-item ${['academic-activities', 'academic-events', 'academic-notices', 'academic-holidays'].includes(adminView) ? 'active' : ''}`}
                         style={{ padding: '10px 12px', fontSize: '0.88rem', position: 'relative' }}
                       >
@@ -461,6 +479,7 @@ export default function Sidebar({
                     {hasPermission('academic-calendar', 'view') && (
                       <button
                         onClick={() => { setAdminView('academic-calendar'); setMobileOpen(false); }}
+                        onMouseEnter={() => prefetchModule('academics')}
                         className={`nav-item ${adminView === 'academic-calendar' ? 'active' : ''}`}
                         style={{ padding: '10px 12px', fontSize: '0.88rem', position: 'relative' }}
                       >
@@ -492,6 +511,7 @@ export default function Sidebar({
                     {hasPermission('results-manager', 'view') && (
                       <button
                         onClick={() => { setAdminView('results-manager'); setMobileOpen(false); }}
+                        onMouseEnter={() => prefetchModule('results')}
                         className={`nav-item ${['results-manager', 'results-analytics', 'results-marks-entry', 'results-report-cards', 'academic-results'].includes(adminView) ? 'active' : ''}`}
                         style={{ padding: '10px 12px', fontSize: '0.88rem', position: 'relative' }}
                       >
@@ -502,6 +522,7 @@ export default function Sidebar({
                     {hasPermission('results-history', 'view') && (
                       <button
                         onClick={() => { setAdminView('results-history'); setMobileOpen(false); }}
+                        onMouseEnter={() => prefetchModule('results')}
                         className={`nav-item ${adminView === 'results-history' ? 'active' : ''}`}
                         style={{ padding: '10px 12px', fontSize: '0.88rem', position: 'relative' }}
                       >
@@ -537,6 +558,7 @@ export default function Sidebar({
                     <span className="nav-label" style={{ fontWeight: 700, fontSize: '0.72rem', textTransform: 'uppercase', letterSpacing: '0.04em', color: 'var(--text-muted)', padding: '8px 12px 4px' }}>Student Fees</span>
                     <button
                       onClick={() => { setAdminView('collect-fees'); setMobileOpen(false); }}
+                      onMouseEnter={() => prefetchModule('fees')}
                       className={`nav-item ${adminView === 'collect-fees' ? 'active' : ''}`}
                       style={{ padding: '10px 12px', fontSize: '0.88rem', position: 'relative' }}
                     >
@@ -545,6 +567,7 @@ export default function Sidebar({
                     </button>
                     <button
                       onClick={() => { setAdminView('fee-structure'); setMobileOpen(false); }}
+                      onMouseEnter={() => prefetchModule('fees')}
                       className={`nav-item ${adminView === 'fee-structure' ? 'active' : ''}`}
                       style={{ padding: '10px 12px', fontSize: '0.88rem', position: 'relative' }}
                     >
@@ -555,6 +578,7 @@ export default function Sidebar({
                     <span className="nav-label" style={{ fontWeight: 700, fontSize: '0.72rem', textTransform: 'uppercase', letterSpacing: '0.04em', color: 'var(--text-muted)', padding: '8px 12px 4px' }}>Payroll</span>
                     <button
                       onClick={() => { setAdminView('payroll'); setMobileOpen(false); }}
+                      onMouseEnter={() => prefetchModule('payroll')}
                       className={`nav-item ${adminView === 'payroll' ? 'active' : ''}`}
                       style={{ padding: '10px 12px', fontSize: '0.88rem', position: 'relative' }}
                     >
@@ -563,6 +587,7 @@ export default function Sidebar({
                     </button>
                     <button
                       onClick={() => { setAdminView('teacher-pay-structure'); setMobileOpen(false); }}
+                      onMouseEnter={() => prefetchModule('payroll')}
                       className={`nav-item ${adminView === 'teacher-pay-structure' ? 'active' : ''}`}
                       style={{ padding: '10px 12px', fontSize: '0.88rem', position: 'relative' }}
                     >
@@ -571,6 +596,7 @@ export default function Sidebar({
                     </button>
                     <button
                       onClick={() => { setAdminView('staff-pay'); setMobileOpen(false); }}
+                      onMouseEnter={() => prefetchModule('payroll')}
                       className={`nav-item ${adminView === 'staff-pay' ? 'active' : ''}`}
                       style={{ padding: '10px 12px', fontSize: '0.88rem', position: 'relative' }}
                     >
@@ -579,6 +605,7 @@ export default function Sidebar({
                     </button>
                     <button
                       onClick={() => { setAdminView('staff-pay-structure'); setMobileOpen(false); }}
+                      onMouseEnter={() => prefetchModule('payroll')}
                       className={`nav-item ${adminView === 'staff-pay-structure' ? 'active' : ''}`}
                       style={{ padding: '10px 12px', fontSize: '0.88rem', position: 'relative' }}
                     >
@@ -610,6 +637,7 @@ export default function Sidebar({
                     {hasPermission('expense-dashboard', 'view') && (
                       <button
                         onClick={() => { setAdminView('expense-dashboard'); setMobileOpen(false); }}
+                        onMouseEnter={() => prefetchModule('expenses')}
                         className={`nav-item ${adminView === 'expense-dashboard' ? 'active' : ''}`}
                         style={{ padding: '10px 12px', fontSize: '0.88rem', position: 'relative' }}
                       >
@@ -620,6 +648,7 @@ export default function Sidebar({
                     {hasPermission('expense-all-expenses', 'view') && (
                       <button
                         onClick={() => { setAdminView('expense-all-expenses'); setMobileOpen(false); }}
+                        onMouseEnter={() => prefetchModule('expenses')}
                         className={`nav-item ${adminView === 'expense-all-expenses' ? 'active' : ''}`}
                         style={{ padding: '10px 12px', fontSize: '0.88rem', position: 'relative' }}
                       >
@@ -630,6 +659,7 @@ export default function Sidebar({
                     {hasPermission('expense-tracker', 'view') && (
                       <button
                         onClick={() => { setAdminView('expense-tracker'); setMobileOpen(false); }}
+                        onMouseEnter={() => prefetchModule('expenses')}
                         className={`nav-item ${adminView === 'expense-tracker' ? 'active' : ''}`}
                         style={{ padding: '10px 12px', fontSize: '0.88rem', position: 'relative' }}
                       >
@@ -640,6 +670,7 @@ export default function Sidebar({
                     {hasPermission('expense-history', 'view') && (
                       <button
                         onClick={() => { setAdminView('expense-history'); setMobileOpen(false); }}
+                        onMouseEnter={() => prefetchModule('expenses')}
                         className={`nav-item ${adminView === 'expense-history' ? 'active' : ''}`}
                         style={{ padding: '10px 12px', fontSize: '0.88rem', position: 'relative' }}
                       >
@@ -655,6 +686,7 @@ export default function Sidebar({
             {hasPermission('income', 'view') && (
               <button
                 onClick={() => { setAdminView('income'); setMobileOpen(false); }}
+                onMouseEnter={() => prefetchModule('expenses')}
                 className={`nav-item ${adminView === 'income' ? 'active' : ''}`}
               >
                 <CreditCard size={20} className="flex-shrink-0" />
@@ -665,6 +697,7 @@ export default function Sidebar({
             {hasPermission('financial-reports', 'view') && (
               <button
                 onClick={() => { setAdminView('reports'); setMobileOpen(false); }}
+                onMouseEnter={() => prefetchModule('overview')}
                 className={`nav-item ${adminView === 'reports' ? 'active' : ''}`}
               >
                 <List size={20} className="flex-shrink-0" />
@@ -675,6 +708,7 @@ export default function Sidebar({
             {(isSuperAdmin() || hasPermission('roles-permissions', 'view')) && (
               <button
                 onClick={() => { setAdminView('roles-permissions'); setMobileOpen(false); }}
+                onMouseEnter={() => prefetchModule('roles')}
                 className={`nav-item ${adminView === 'roles-permissions' ? 'active' : ''}`}
               >
                 <Shield size={20} className="flex-shrink-0" />
@@ -694,6 +728,7 @@ export default function Sidebar({
                     setActiveView(item.id);
                     setMobileOpen(false);
                   }}
+                  onMouseEnter={() => prefetchModule(item.id === 'academic-calendar' ? 'academics' : item.id)}
                   className={`nav-item ${activeView === item.id ? 'active' : ''}`}
                 >
                   <Icon size={20} className="flex-shrink-0" />

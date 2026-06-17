@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { createPortal } from 'react-dom';
 import { 
+import { cachedFetch } from '../utils/apiCache';
   Clock, 
   BookOpen, 
   Award, 
@@ -33,7 +34,7 @@ export default function Academics() {
 
   const fetchTimetables = async () => {
     try {
-      const res = await fetch('/api/timetables');
+      const res = await cachedFetch('/api/timetables');
       if (res.ok) {
         const data = await res.json();
         setTimetableRecords(data);
@@ -80,7 +81,7 @@ export default function Academics() {
     };
 
     try {
-      const res = await fetch('/api/timetables', {
+      const res = await cachedFetch('/api/timetables', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(payload)

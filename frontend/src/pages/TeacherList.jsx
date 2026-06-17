@@ -28,6 +28,8 @@ import {
   Loader2
 } from 'lucide-react';
 import { hasPermission } from '../utils/permissions';
+import { cachedFetch } from '../utils/apiCache';
+import { TableSkeleton } from '../components/SkeletonLoaders';
 
 export default function TeacherList({ setActiveView, readOnly = true, onAddClick, onEditClick }) {
   const renderQualificationText = (q) => {
@@ -69,7 +71,7 @@ export default function TeacherList({ setActiveView, readOnly = true, onAddClick
   });
 
   useEffect(() => {
-    fetch('/api/rbac/roles')
+    cachedFetch('/api/rbac/roles')
       .then(res => res.json())
       .then(data => {
         const activeRoles = data.filter(r => r.active);
@@ -78,7 +80,7 @@ export default function TeacherList({ setActiveView, readOnly = true, onAddClick
       })
       .catch(err => console.error('Error fetching roles:', err));
 
-    fetch('/api/grades/departments')
+    cachedFetch('/api/grades/departments')
       .then(res => res.json())
       .then(data => {
         const activeDepts = data.filter(d => d.status === 'Active' || !d.status);
@@ -91,7 +93,7 @@ export default function TeacherList({ setActiveView, readOnly = true, onAddClick
   const handleRegenerateQR = async (empId) => {
     try {
       setQrLoading(true);
-      const res = await fetch('/api/employee-attendance/regenerate-qr', {
+      const res = await cachedFetch('/api/employee-attendance/regenerate-qr', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ employeeId: empId, employeeType: 'Teacher' })
@@ -247,7 +249,7 @@ export default function TeacherList({ setActiveView, readOnly = true, onAddClick
         limit
       }).toString();
       
-      const res = await fetch(`/api/teachers?${queryParams}`);
+      const res = await cachedFetch(`/api/teachers?${queryParams}`);
       if (res.ok) {
         const data = await res.json();
         setTeachers(data.teachers || []);
@@ -278,14 +280,30 @@ export default function TeacherList({ setActiveView, readOnly = true, onAddClick
   // ==========================================
   const handleDeleteTeacher = async (teacherId, teacherName) => {
     if (window.confirm(`Are you sure you want to dismiss ${teacherName} (${teacherId}) from the faculty roster?`)) {
+      const previousTeachers = [...teachers];
+      const previousTotalCount = totalCount;
+
+      // Optimistic delete
+      setTeachers(prev => prev.filter(t => (t.employeeId || t.id) !== teacherId));
+      setTotalCount(prev => Math.max(0, prev - 1));
+      if (selectedTeacher && (selectedTeacher.employeeId === teacherId || selectedTeacher.id === teacherId)) {
+        setSelectedTeacher(null);
+      }
+
       try {
-        const res = await fetch(`/api/teachers/${teacherId}`, { method: 'DELETE' });
-        if (res.ok) {
+        const res = await cachedFetch(`/api/teachers/${teacherId}`, { method: 'DELETE' });
+        if (!res.ok) {
+          setTeachers(previousTeachers);
+          setTotalCount(previousTotalCount);
+          alert('Failed to delete staff member.');
+        } else {
           fetchTeachers();
-          setSelectedTeacher(null);
         }
       } catch (err) {
         console.error('Error removing teacher record:', err);
+        setTeachers(previousTeachers);
+        setTotalCount(previousTotalCount);
+        alert('Network error removing staff record.');
       }
     }
   };
@@ -295,7 +313,7 @@ export default function TeacherList({ setActiveView, readOnly = true, onAddClick
   // ==========================================
   const handleStatusChange = async (teacherId, newStatus) => {
     try {
-      const res = await fetch(`/api/teachers/${teacherId}`, {
+      const res = await cachedFetch(`/api/teachers/${teacherId}`, {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ status: newStatus })
@@ -336,7 +354,7 @@ export default function TeacherList({ setActiveView, readOnly = true, onAddClick
     setEditLoading(true);
     try {
       const teacherId = editingTeacher.employeeId || editingTeacher.id;
-      const res = await fetch(`/api/teachers/${teacherId}`, {
+      const res = await cachedFetch(`/api/teachers/${teacherId}`, {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(editFormData)
@@ -510,9 +528,7 @@ export default function TeacherList({ setActiveView, readOnly = true, onAddClick
             </span>
           </div>
         ) : loading ? (
-          <div style={{ textAlign: 'center', padding: '60px', color: 'var(--text-muted)', fontSize: '0.9rem' }}>
-            Loading staff directory...
-          </div>
+          <TableSkeleton rows={limit} cols={11} />
         ) : (
           <>
             <div className="custom-table-container">

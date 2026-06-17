@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useRef } from 'react';
 import jsQR from 'jsqr';
+import { cachedFetch } from '../utils/apiCache';
 import { 
   QrCode, 
   Camera, 
@@ -55,7 +56,7 @@ export default function AttendanceManager() {
   const fetchAnalytics = async () => {
     try {
       setAnalyticsLoading(true);
-      const res = await fetch('/api/employee-attendance/analytics');
+      const res = await cachedFetch('/api/employee-attendance/analytics');
       if (res.ok) {
         const data = await res.json();
         setAnalytics(data);
@@ -69,7 +70,7 @@ export default function AttendanceManager() {
 
   const fetchTodayRecords = async () => {
     try {
-      const res = await fetch('/api/employee-attendance/today');
+      const res = await cachedFetch('/api/employee-attendance/today');
       if (res.ok) {
         const data = await res.json();
         setTodayRecords(data || []);
@@ -90,7 +91,7 @@ export default function AttendanceManager() {
         year: filterYear
       }).toString();
       
-      const res = await fetch(`/api/employee-attendance/reports?${queryParams}`);
+      const res = await cachedFetch(`/api/employee-attendance/reports?${queryParams}`);
       if (res.ok) {
         const data = await res.json();
         setReports(data || []);
@@ -224,7 +225,7 @@ export default function AttendanceManager() {
 
   const processAttendanceScan = async (employeeId, employeeType) => {
     try {
-      const res = await fetch('/api/employee-attendance/scan', {
+      const res = await cachedFetch('/api/employee-attendance/scan', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ employeeId, employeeType })

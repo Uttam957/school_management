@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { fetchActiveGrades, fetchActiveSections } from '../utils/grades';
+import { cachedFetch } from '../utils/apiCache';
 import { 
   User, 
   Users, 
@@ -762,7 +763,7 @@ export default function RegisterStudent({ setActiveView, editData }) {
       const url = editData ? `/api/students/${editData.id}` : '/api/students';
       const method = editData ? 'PUT' : 'POST';
 
-      const res = await fetch(url, {
+      const res = await cachedFetch(url, {
         method: method,
         headers: { 'x-tenant-id': tenantSubdomain },
         body: dataObj

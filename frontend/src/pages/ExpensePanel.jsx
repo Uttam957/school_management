@@ -7,6 +7,7 @@ import {
   LogOut, History
 } from 'lucide-react';
 import { fetchActiveGrades } from '../utils/grades';
+import { cachedFetch } from '../utils/apiCache';
 
 const getTodayStr = () => {
   const d = new Date();
@@ -31,15 +32,15 @@ export default function ExpensePanel({ setActiveView, onLogout, expenseView, set
     setLoading(true);
     setError(null);
     Promise.all([
-      fetch('/api/account-management/expenses').then(res => {
+      cachedFetch('/api/account-management/expenses').then(res => {
         if (!res.ok) throw new Error('Failed to retrieve expenses database records.');
         return res.json();
       }),
-      fetch('/api/account-management/income').then(res => {
+      cachedFetch('/api/account-management/income').then(res => {
         if (!res.ok) throw new Error('Failed to retrieve income database records.');
         return res.json();
       }),
-      fetch('/api/account-management/expense-history').then(res => {
+      cachedFetch('/api/account-management/expense-history').then(res => {
         if (!res.ok) throw new Error('Failed to retrieve expense history database records.');
         return res.json();
       })
@@ -491,7 +492,7 @@ function AddExpenseView({ showToast, setExpenseView, onClose, onSuccess, isModal
       try {
         const [gradesData, deptsRes] = await Promise.all([
           fetchActiveGrades(),
-          fetch('/api/grades/departments').then(res => res.json())
+          cachedFetch('/api/grades/departments').then(res => res.json())
         ]);
         setGrades(gradesData || []);
         setDepartments(deptsRes || []);
@@ -564,7 +565,7 @@ function AddExpenseView({ showToast, setExpenseView, onClose, onSuccess, isModal
     const method = editExpense ? 'PUT' : 'POST';
 
     try {
-      const res = await fetch(url, {
+      const res = await cachedFetch(url, {
         method,
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(payload)
@@ -900,7 +901,7 @@ function AllExpensesView({ expenses, showToast, fetchExpenses, autoOpenAddForm =
   const handleDelete = async (id, title) => {
     if (!window.confirm(`Permanently remove expense request "${title}"?`)) return;
     try {
-      const res = await fetch(`/api/account-management/expenses/${id}`, { method: 'DELETE' });
+      const res = await cachedFetch(`/api/account-management/expenses/${id}`, { method: 'DELETE' });
       if (res.ok) {
         showToast('Expense successfully removed.');
         fetchExpenses();
@@ -1213,7 +1214,7 @@ function TrackerView({ expenses, income, fetchExpenses, showToast, budgetLimit }
       try {
         const [gradesData, deptsRes] = await Promise.all([
           fetchActiveGrades(),
-          fetch('/api/grades/departments').then(res => res.json())
+          cachedFetch('/api/grades/departments').then(res => res.json())
         ]);
         if (active) {
           setGrades(gradesData || []);

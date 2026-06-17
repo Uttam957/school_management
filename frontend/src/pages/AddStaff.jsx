@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
+import { cachedFetch } from '../utils/apiCache';
 import { 
   User, 
   Briefcase, 
@@ -249,7 +250,7 @@ export default function AddStaff({ setActiveView, editData }) {
   const isSubmitting = React.useRef(false);
 
   useEffect(() => {
-    fetch('/api/rbac/roles')
+    cachedFetch('/api/rbac/roles')
       .then(res => res.json())
       .then(data => {
         setRoles(data.filter(r => r.active));
@@ -594,7 +595,7 @@ export default function AddStaff({ setActiveView, editData }) {
       const url = editData ? `/api/staff/${editData.id}` : '/api/staff';
       const method = editData ? 'PUT' : 'POST';
 
-      const res = await fetch(url, { method: method, body: fd });
+      const res = await cachedFetch(url, { method: method, body: fd });
       if (res.ok) {
         resetForm();
         setCurrentStep(1);

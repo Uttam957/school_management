@@ -1,5 +1,6 @@
 import express from 'express';
 import cors from 'cors';
+import compression from 'compression';
 import fs from 'fs';
 import path from 'path';
 import { fileURLToPath } from 'url';
@@ -12,9 +13,10 @@ import academicRoutes from './routes/academicRoutes.js';
 import rbacRoutes from './routes/rbacRoutes.js';
 import gradeRoutes from './routes/gradeRoutes.js';
 import upload from './middleware/upload.js';
-import { readDb, writeDb, addActivity, tenantStorage, slugify, restoreTenantContext, ensureTenantSqlLoaded } from './utils/db.js';
+import { readDb, writeDb, readGlobalDb, writeGlobalDb, addActivity, tenantStorage, slugify, restoreTenantContext, ensureTenantSqlLoaded } from './utils/db.js';
 import { auth, generateToken } from './middleware/auth.js';
 import { generateQrCode } from './utils/qrService.js';
+import { responseCacheMiddleware } from './middleware/responseCache.js';
 
 
 // Database cache refresh trigger
@@ -24,6 +26,16 @@ const GLOBAL_DB_FILE = path.join(__dirname, 'db.json');
 
 const app = express();
 const PORT = process.env.PORT || 5000;
+
+// Gzip/Brotli compression for all responses (reduces payload size 30-70%)
+app.use(compression({
+  level: 6,           // balanced speed/compression
+  threshold: 1024,    // compress responses > 1KB
+  filter: (req, res) => {
+    if (req.headers['x-no-compress']) return false;
+    return compression.filter(req, res);
+  }
+}));
 
 app.use(cors());
 app.use(express.json());
@@ -74,7 +86,7 @@ app.post('/api/auth/login', (req, res) => {
   }
 
   // 1. If role is Developer Admin or credentials match the Platform Owner (dev@admin.com)
-  const globalDb = JSON.parse(fs.readFileSync(GLOBAL_DB_FILE, 'utf8'));
+  const globalDb = readGlobalDb();
   const owner = globalDb.platformOwner || {
     name: "Platform Owner",
     username: "dev@admin.com",
@@ -507,67 +519,75 @@ app.delete('/api/platform/schools/:id', (req, res) => {
   res.json({ success: true, message: 'School removed from the platform.' });
 });
 
-// Get Platform Analytics
-app.get('/api/platform/analytics', (req, res) => {
-  const db = readDb(); // Global DB
-  const schools = db.schools || [];
+// Get Platform Analytics (uses MySQL COUNT queries — no JSON file reads)
+app.get('/api/platform/analytics', async (req, res) => {
+  try {
+    const globalDb = readGlobalDb();
+    const schools = globalDb.schools || [];
 
-  const totalSchools = schools.length;
-  const activeSchools = schools.filter(s => s.status === 'Active').length;
-  const inactiveSchools = totalSchools - activeSchools;
+    const totalSchools = schools.length;
+    const activeSchools = schools.filter(s => s.status === 'Active').length;
+    const inactiveSchools = totalSchools - activeSchools;
+    let totalStudents = 0;
+    let totalTeachers = 0;
+    let totalStaff = 0;
+    let monthlyRevenue = 0;
 
-  let totalStudents = 0;
-  let totalTeachers = 0;
-  let totalStaff = 0;
-  let monthlyRevenue = 0;
-
-  schools.forEach(school => {
-    // Read individual tenant files
-    const tenantDbPath = path.join(__dirname, 'tenants', `db_${school.subdomain}.json`);
-    if (fs.existsSync(tenantDbPath)) {
-      try {
-        const raw = fs.readFileSync(tenantDbPath, 'utf8');
-        const data = JSON.parse(raw);
-        totalStudents += (data.students || []).length;
-        totalTeachers += (data.teachers || []).length;
-        totalStaff += (data.staff || []).length;
-      } catch (e) {
-        console.error(`Error reading tenant DB for ${school.subdomain}:`, e);
-      }
+    // Use MySQL COUNT queries when available (much faster than reading JSON files)
+    try {
+      const sqlDb = await import('./utils/sqlDb.js');
+      const stuRows = await sqlDb.query('SELECT COUNT(*) as cnt FROM students');
+      const tchRows = await sqlDb.query('SELECT COUNT(*) as cnt FROM staff');
+      const stfRows = await sqlDb.query('SELECT COUNT(*) as cnt FROM employees');
+      totalStudents = (stuRows[0] && stuRows[0].cnt) ? parseInt(stuRows[0].cnt) : 0;
+      totalTeachers = (tchRows[0] && tchRows[0].cnt) ? parseInt(tchRows[0].cnt) : 0;
+      totalStaff    = (stfRows[0] && stfRows[0].cnt) ? parseInt(stfRows[0].cnt) : 0;
+    } catch (_sqlErr) {
+      // Fallback: read tenant JSON files
+      schools.forEach(school => {
+        const tenantDbPath = path.join(__dirname, 'tenants', `db_${school.subdomain}.json`);
+        if (fs.existsSync(tenantDbPath)) {
+          try {
+            const data = JSON.parse(fs.readFileSync(tenantDbPath, 'utf8'));
+            totalStudents += (data.students || []).length;
+            totalTeachers += (data.teachers || []).length;
+            totalStaff += (data.staff || []).length;
+          } catch (e) {}
+        }
+      });
     }
 
-    // Monthly revenue based on plans
-    const plan = school.subscriptionPlan || 'Starter';
-    if (plan === 'Starter') monthlyRevenue += 99;
-    else if (plan === 'Growth') monthlyRevenue += 249;
-    else if (plan === 'Premium') monthlyRevenue += 499;
-  });
+    schools.forEach(school => {
+      const plan = school.subscriptionPlan || 'Starter';
+      if (plan === 'Starter') monthlyRevenue += 99;
+      else if (plan === 'Growth') monthlyRevenue += 249;
+      else if (plan === 'Premium') monthlyRevenue += 499;
+    });
 
-  // Recent registrations
-  const recentRegistrations = [...schools]
-    .sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt))
-    .slice(0, 5);
+    const recentRegistrations = [...schools]
+      .sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt))
+      .slice(0, 5);
 
-  // School Growth chart data
-  const growthAnalytics = [
-    { month: 'Jan', schools: 1, revenue: 99 },
-    { month: 'Feb', schools: 1, revenue: 99 },
-    { month: 'Mar', schools: Math.max(1, totalSchools - 2), revenue: Math.max(99, monthlyRevenue - 348) },
-    { month: 'Apr', schools: Math.max(1, totalSchools - 1), revenue: Math.max(99, monthlyRevenue - 99) },
-    { month: 'May', schools: totalSchools, revenue: monthlyRevenue }
-  ];
+    const growthAnalytics = [
+      { month: 'Jan', schools: 1, revenue: 99 },
+      { month: 'Feb', schools: 1, revenue: 99 },
+      { month: 'Mar', schools: Math.max(1, totalSchools - 2), revenue: Math.max(99, monthlyRevenue - 348) },
+      { month: 'Apr', schools: Math.max(1, totalSchools - 1), revenue: Math.max(99, monthlyRevenue - 99) },
+      { month: 'May', schools: totalSchools, revenue: monthlyRevenue }
+    ];
 
-  res.json({
-    totalSchools,
-    activeSchools,
-    inactiveSchools,
-    totalStudents,
-    totalTeachers,
-    totalStaff,
-    monthlyRevenue: `$${monthlyRevenue.toLocaleString()}`,
-    recentRegistrations,
-    growthAnalytics
-  });
+    // Cache-Control: allow browsers to use stale analytics for 30s
+    res.set('Cache-Control', 'public, max-age=30, stale-while-revalidate=60');
+    res.json({
+      totalSchools, activeSchools, inactiveSchools,
+      totalStudents, totalTeachers, totalStaff,
+      monthlyRevenue: `$${monthlyRevenue.toLocaleString()}`,
+      recentRegistrations, growthAnalytics
+    });
+  } catch (err) {
+    console.error('[Analytics ERROR]', err);
+    res.status(500).json({ error: 'Failed to fetch analytics.' });
+  }
 });
 
 // ==========================================
@@ -581,7 +601,7 @@ app.get('/api/auth/profile', auth, restoreTenantContext, (req, res) => {
     return res.status(401).json({ error: 'Unauthorized' });
   }
 
-  const globalDb = JSON.parse(fs.readFileSync(GLOBAL_DB_FILE, 'utf8'));
+  const globalDb = readGlobalDb();
 
   if (user.role === 'Developer Admin') {
     if (!globalDb.platformOwner) {
@@ -593,7 +613,7 @@ app.get('/api/auth/profile', auth, restoreTenantContext, (req, res) => {
         phone: "",
         photo: ""
       };
-      fs.writeFileSync(GLOBAL_DB_FILE, JSON.stringify(globalDb, null, 2), 'utf8');
+      writeGlobalDb(globalDb);
     }
     return res.json({
       role: 'Developer Admin',
@@ -701,7 +721,7 @@ app.put('/api/auth/profile', auth, upload.single('photo'), restoreTenantContext,
   const { name, username, email, phone, password } = req.body;
   const photoPath = req.file ? `/uploads/${req.file.filename}` : undefined;
 
-  const globalDb = JSON.parse(fs.readFileSync(GLOBAL_DB_FILE, 'utf8'));
+  const globalDb = readGlobalDb();
 
   if (user.role === 'Developer Admin') {
     if (!globalDb.platformOwner) {
@@ -724,7 +744,7 @@ app.put('/api/auth/profile', auth, upload.single('photo'), restoreTenantContext,
     if (photoPath) {
       globalDb.platformOwner.photo = photoPath;
     }
-    fs.writeFileSync(GLOBAL_DB_FILE, JSON.stringify(globalDb, null, 2), 'utf8');
+    writeGlobalDb(globalDb);
 
     return res.json({
       success: true,
@@ -761,9 +781,9 @@ app.put('/api/auth/profile', auth, upload.single('photo'), restoreTenantContext,
       logo: photoPath || currentSchool.logo,
       adminPassword: password || currentSchool.adminPassword
     };
-    fs.writeFileSync(GLOBAL_DB_FILE, JSON.stringify(globalDb, null, 2), 'utf8');
+    writeGlobalDb(globalDb);
 
-    // Sync to tenant db
+    // Sync to tenant db (async backup)
     const tenantDbPath = path.join(__dirname, 'tenants', `db_${currentSchool.subdomain}.json`);
     if (fs.existsSync(tenantDbPath)) {
       try {
@@ -875,39 +895,48 @@ app.put('/api/auth/profile', auth, upload.single('photo'), restoreTenantContext,
 // 1. STUDENTS ROUTER & STATIC UPLOADS
 // ==========================================
 app.use('/uploads', express.static(path.join(__dirname, 'uploads')));
-app.use('/api/students', studentRoutes);
+app.use('/api/students', responseCacheMiddleware(30), studentRoutes);
 
 // ==========================================
 // 2. TEACHERS ROUTER
 // ==========================================
-app.use('/api/teachers', teacherRoutes);
+app.use('/api/teachers', responseCacheMiddleware(30), teacherRoutes);
 
 // ==========================================
 // 2A. ATTENDANCE ROUTER
 // ==========================================
-app.use('/api/attendance', attendanceRoutes);
-app.use('/api/employee-attendance', employeeAttendanceRoutes);
+app.use('/api/attendance', responseCacheMiddleware(30), attendanceRoutes);
+app.use('/api/employee-attendance', responseCacheMiddleware(30), employeeAttendanceRoutes);
 
 // ==========================================
 // 2B. ACCOUNT MANAGEMENT ROUTER
 // ==========================================
-app.use('/api/account-management', accountManagementRoutes);
-app.use('/api/finance', accountManagementRoutes);
+app.use('/api/account-management', responseCacheMiddleware(30), accountManagementRoutes);
+app.use('/api/finance', responseCacheMiddleware(30), accountManagementRoutes);
 
 // ==========================================
 // 2C. ACADEMICS ROUTER
 // ==========================================
-app.use('/api/academics', academicRoutes);
+app.use('/api/academics', responseCacheMiddleware(30), academicRoutes);
 
 // ==========================================
 // 2D. RBAC ROUTER
 // ==========================================
-app.use('/api/rbac', rbacRoutes);
+app.use('/api/rbac', responseCacheMiddleware(30), rbacRoutes);
 
 // ==========================================
 // 2E. GRADE MANAGEMENT ROUTER
 // ==========================================
-app.use('/api/grades', gradeRoutes);
+app.use('/api/grades', responseCacheMiddleware(30), gradeRoutes);
+
+// ==========================================
+// CACHE MIDDLEWARE FOR SINGLE ROUTE GROUPS
+// ==========================================
+app.use('/api/staff', responseCacheMiddleware(30));
+app.use('/api/timetables', responseCacheMiddleware(30));
+app.use('/api/invoices', responseCacheMiddleware(30));
+app.use('/api/school', responseCacheMiddleware(30));
+app.use('/api/overview', responseCacheMiddleware(30));
 
 // ==========================================
 // 2B. STAFF ENDPOINTS (Complete Module)

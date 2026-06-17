@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { createPortal } from 'react-dom';
+import { cachedFetch } from '../utils/apiCache';
 import { 
   DollarSign, 
   CreditCard, 
@@ -33,7 +34,7 @@ export default function AccountManagementPortal() {
 
   const fetchInvoices = async () => {
     try {
-      const res = await fetch('/api/invoices');
+      const res = await cachedFetch('/api/invoices');
       if (res.ok) {
         const data = await res.json();
         setInvoices(data);
@@ -68,7 +69,7 @@ export default function AccountManagementPortal() {
     }
 
     try {
-      const res = await fetch('/api/invoices', {
+      const res = await cachedFetch('/api/invoices', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(formData)

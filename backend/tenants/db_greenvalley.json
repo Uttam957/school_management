@@ -788,6 +788,36 @@
   "staffPayments": [],
   "activities": [
     {
+      "id": "ACT-1781684658636",
+      "type": "alert",
+      "title": "Notice Board Published",
+      "desc": "Notice: \"Recusandae Fuga Al\" visibility set to: Staff",
+      "time": "Just now",
+      "timestamp": "2026-06-17T08:24:18.636Z",
+      "color": "hsl(var(--color-info))",
+      "bg": "rgba(hsl(var(--color-info)), 0.1)"
+    },
+    {
+      "id": "ACT-1781684652610",
+      "type": "alert",
+      "title": "New School Event",
+      "desc": "Event \"Velit similique vol\" scheduled for 1982-08-10 at Exercitation excepte",
+      "time": "Just now",
+      "timestamp": "2026-06-17T08:24:12.610Z",
+      "color": "hsl(var(--color-secondary))",
+      "bg": "rgba(hsl(var(--color-secondary)), 0.1)"
+    },
+    {
+      "id": "ACT-1781684346514",
+      "type": "alert",
+      "title": "New Examination Created",
+      "desc": "Unit Test-1 created as Draft",
+      "time": "Just now",
+      "timestamp": "2026-06-17T08:19:06.514Z",
+      "color": "hsl(var(--color-primary))",
+      "bg": "rgba(hsl(var(--color-primary)), 0.1)"
+    },
+    {
       "id": "ACT-001",
       "type": "registration",
       "title": "Admissions Opened",
@@ -1259,7 +1289,7 @@
       "term": "Unit Test-1",
       "startDate": "2026-06-17",
       "endDate": "2026-06-22",
-      "status": "Published",
+      "status": "Completed",
       "description": "esrgt",
       "totalMarks": 100,
       "gradeSections": [
@@ -1274,6 +1304,28 @@
       "subjectMarks": {},
       "createdAt": "2026-06-16T07:00:34.754Z",
       "timetablePublished": true
+    },
+    {
+      "id": "EXM-1781684346513",
+      "examName": "Unit Test-1",
+      "examType": "Unit Test-1",
+      "academicSession": "2026-2027",
+      "description": "f",
+      "totalMarks": 100,
+      "subjectMarks": {},
+      "subjectIncluded": {},
+      "gradeSections": [
+        {
+          "grade": "XI (Commerce)",
+          "section": "",
+          "startDate": "2026-06-18",
+          "endDate": "2026-06-29"
+        }
+      ],
+      "endDate": "2026-06-29",
+      "status": "Scheduled",
+      "createdAt": "2026-06-17T08:19:06.514Z",
+      "timetablePublished": false
     }
   ],
   "examTimetables": [
@@ -1339,6 +1391,76 @@
       "section": "",
       "examDate": "2026-06-19",
       "roomAllocation": ""
+    },
+    {
+      "id": "EXMT-1781684367386-0-1tla",
+      "examId": "EXM-1781684346513",
+      "subject": "sadfgf",
+      "examDate": "2026-06-18",
+      "startTime": "09:00 AM",
+      "endTime": "12:00 PM",
+      "duration": "3 Hours",
+      "roomAllocation": "",
+      "invigilator": "",
+      "cohort": "XI (Commerce)-",
+      "grade": "XI (Commerce)",
+      "section": ""
+    },
+    {
+      "id": "EXMT-1781684367386-1-xwtq",
+      "examId": "EXM-1781684346513",
+      "subject": "asdfs",
+      "examDate": "2026-06-19",
+      "startTime": "09:00 AM",
+      "endTime": "12:00 PM",
+      "duration": "3 Hours",
+      "roomAllocation": "",
+      "invigilator": "",
+      "cohort": "XI (Commerce)-",
+      "grade": "XI (Commerce)",
+      "section": ""
+    },
+    {
+      "id": "EXMT-1781684367386-2-zcol",
+      "examId": "EXM-1781684346513",
+      "subject": "dfsd",
+      "examDate": "2026-06-20",
+      "startTime": "09:00 AM",
+      "endTime": "12:00 PM",
+      "duration": "3 Hours",
+      "roomAllocation": "",
+      "invigilator": "",
+      "cohort": "XI (Commerce)-",
+      "grade": "XI (Commerce)",
+      "section": ""
+    },
+    {
+      "id": "EXMT-1781684367386-3-gka2",
+      "examId": "EXM-1781684346513",
+      "subject": "as",
+      "examDate": "2026-06-22",
+      "startTime": "09:00 AM",
+      "endTime": "12:00 PM",
+      "duration": "3 Hours",
+      "roomAllocation": "",
+      "invigilator": "",
+      "cohort": "XI (Commerce)-",
+      "grade": "XI (Commerce)",
+      "section": ""
+    },
+    {
+      "id": "EXMT-1781684367386-4-rcm0",
+      "examId": "EXM-1781684346513",
+      "subject": "adfg",
+      "examDate": "2026-06-23",
+      "startTime": "09:00 AM",
+      "endTime": "12:00 PM",
+      "duration": "3 Hours",
+      "roomAllocation": "",
+      "invigilator": "",
+      "cohort": "XI (Commerce)-",
+      "grade": "XI (Commerce)",
+      "section": ""
     }
   ],
   "notices": [],
@@ -2195,6 +2317,14 @@
           "publish": false,
           "manage-settings": false
         },
+        "attendance": {
+          "edit": true,
+          "view": true,
+          "create": true,
+          "delete": true,
+          "export": true,
+          "import": true
+        },
         "exam-timetable": {
           "edit": false,
           "view": false,
@@ -2360,6 +2490,14 @@
           "publish": false,
           "manage-settings": false
         },
+        "attendance-history": {
+          "edit": true,
+          "view": true,
+          "create": true,
+          "delete": true,
+          "export": true,
+          "import": true
+        },
         "attendance-manager": {
           "edit": true,
           "view": true,
@@ -2401,6 +2539,14 @@
           "export": false,
           "import": false
         },
+        "published-timetable": {
+          "edit": false,
+          "view": true,
+          "create": false,
+          "delete": false,
+          "export": false,
+          "import": false
+        },
         "registry-admissions": {
           "edit": false,
           "view": false,
@@ -2422,30 +2568,6 @@
           "approve": false,
           "publish": false,
           "manage-settings": false
-        },
-        "published-timetable": {
-          "view": true,
-          "create": false,
-          "edit": false,
-          "delete": false,
-          "export": false,
-          "import": false
-        },
-        "attendance": {
-          "view": true,
-          "create": true,
-          "edit": true,
-          "delete": true,
-          "export": true,
-          "import": true
-        },
-        "attendance-history": {
-          "view": true,
-          "create": true,
-          "edit": true,
-          "delete": true,
-          "export": true,
-          "import": true
         }
       },
       "createdAt": "2026-06-15T04:54:48.955Z",
@@ -2479,6 +2601,14 @@
           "approve": false,
           "publish": false,
           "manage-settings": false
+        },
+        "finance": {
+          "edit": true,
+          "view": true,
+          "create": true,
+          "delete": true,
+          "export": true,
+          "import": true
         },
         "notices": {
           "edit": false,
@@ -2765,14 +2895,6 @@
           "approve": false,
           "publish": false,
           "manage-settings": false
-        },
-        "finance": {
-          "view": true,
-          "create": true,
-          "edit": true,
-          "delete": true,
-          "export": true,
-          "import": true
         }
       },
       "createdAt": "2026-06-15T04:54:55.795Z",
@@ -3508,6 +3630,14 @@
           "publish": false,
           "manage-settings": false
         },
+        "add-staff": {
+          "edit": false,
+          "view": false,
+          "create": false,
+          "delete": false,
+          "export": false,
+          "import": false
+        },
         "dashboard": {
           "edit": false,
           "view": false,
@@ -3518,6 +3648,14 @@
           "approve": false,
           "publish": false,
           "manage-settings": false
+        },
+        "add-employee": {
+          "edit": false,
+          "view": false,
+          "create": false,
+          "delete": false,
+          "export": false,
+          "import": false
         },
         "exam-timetable": {
           "edit": false,
@@ -3540,6 +3678,22 @@
           "approve": false,
           "publish": false,
           "manage-settings": false
+        },
+        "grade-settings": {
+          "edit": false,
+          "view": false,
+          "create": false,
+          "delete": false,
+          "export": false,
+          "import": false
+        },
+        "grade-subjects": {
+          "edit": false,
+          "view": false,
+          "create": false,
+          "delete": false,
+          "export": false,
+          "import": false
         },
         "published-exam": {
           "edit": false,
@@ -3617,6 +3771,14 @@
           "approve": false,
           "publish": false,
           "manage-settings": false
+        },
+        "register-student": {
+          "edit": false,
+          "view": false,
+          "create": false,
+          "delete": false,
+          "export": false,
+          "import": false
         },
         "academic-calendar": {
           "edit": false,
@@ -3738,46 +3900,6 @@
           "approve": false,
           "publish": false,
           "manage-settings": false
-        },
-        "grade-settings": {
-          "view": false,
-          "create": false,
-          "edit": false,
-          "delete": false,
-          "export": false,
-          "import": false
-        },
-        "grade-subjects": {
-          "view": false,
-          "create": false,
-          "edit": false,
-          "delete": false,
-          "export": false,
-          "import": false
-        },
-        "register-student": {
-          "view": false,
-          "create": false,
-          "edit": false,
-          "delete": false,
-          "export": false,
-          "import": false
-        },
-        "add-staff": {
-          "view": false,
-          "create": false,
-          "edit": false,
-          "delete": false,
-          "export": false,
-          "import": false
-        },
-        "add-employee": {
-          "view": false,
-          "create": false,
-          "edit": false,
-          "delete": false,
-          "export": false,
-          "import": false
         }
       },
       "createdAt": "2026-06-15T04:56:02.183Z",
@@ -4675,626 +4797,6 @@
     }
   ],
   "auditLogs": [
-    {
-      "id": "log-1781610721537-618",
-      "userId": "school_admin",
-      "userName": "school_admin",
-      "userRole": "Main Admin",
-      "action": "Update Role",
-      "details": "Updated role: Principle",
-      "ipAddress": "::ffff:127.0.0.1",
-      "timestamp": "2026-06-16T11:52:01.537Z"
-    },
-    {
-      "id": "log-1781610720812-145",
-      "userId": "school_admin",
-      "userName": "school_admin",
-      "userRole": "Main Admin",
-      "action": "Update Role",
-      "details": "Updated role: Principle",
-      "ipAddress": "::ffff:127.0.0.1",
-      "timestamp": "2026-06-16T11:52:00.812Z"
-    },
-    {
-      "id": "log-1781610719897-890",
-      "userId": "school_admin",
-      "userName": "school_admin",
-      "userRole": "Main Admin",
-      "action": "Update Role",
-      "details": "Updated role: Principle",
-      "ipAddress": "::ffff:127.0.0.1",
-      "timestamp": "2026-06-16T11:51:59.898Z"
-    },
-    {
-      "id": "log-1781610717738-88",
-      "userId": "school_admin",
-      "userName": "school_admin",
-      "userRole": "Main Admin",
-      "action": "Update Role",
-      "details": "Updated role: Principle",
-      "ipAddress": "::ffff:127.0.0.1",
-      "timestamp": "2026-06-16T11:51:57.738Z"
-    },
-    {
-      "id": "log-1781610717154-895",
-      "userId": "school_admin",
-      "userName": "school_admin",
-      "userRole": "Main Admin",
-      "action": "Update Role",
-      "details": "Updated role: Principle",
-      "ipAddress": "::ffff:127.0.0.1",
-      "timestamp": "2026-06-16T11:51:57.154Z"
-    },
-    {
-      "id": "log-1781610716216-18",
-      "userId": "school_admin",
-      "userName": "school_admin",
-      "userRole": "Main Admin",
-      "action": "Update Role",
-      "details": "Updated role: Principle",
-      "ipAddress": "::ffff:127.0.0.1",
-      "timestamp": "2026-06-16T11:51:56.216Z"
-    },
-    {
-      "id": "log-1781610715698-364",
-      "userId": "school_admin",
-      "userName": "school_admin",
-      "userRole": "Main Admin",
-      "action": "Update Role",
-      "details": "Updated role: Principle",
-      "ipAddress": "::ffff:127.0.0.1",
-      "timestamp": "2026-06-16T11:51:55.698Z"
-    },
-    {
-      "id": "log-1781610715105-468",
-      "userId": "school_admin",
-      "userName": "school_admin",
-      "userRole": "Main Admin",
-      "action": "Update Role",
-      "details": "Updated role: Principle",
-      "ipAddress": "::ffff:127.0.0.1",
-      "timestamp": "2026-06-16T11:51:55.105Z"
-    },
-    {
-      "id": "log-1781610714091-51",
-      "userId": "school_admin",
-      "userName": "school_admin",
-      "userRole": "Main Admin",
-      "action": "Update Role",
-      "details": "Updated role: Principle",
-      "ipAddress": "::ffff:127.0.0.1",
-      "timestamp": "2026-06-16T11:51:54.091Z"
-    },
-    {
-      "id": "log-1781610713368-700",
-      "userId": "school_admin",
-      "userName": "school_admin",
-      "userRole": "Main Admin",
-      "action": "Update Role",
-      "details": "Updated role: Principle",
-      "ipAddress": "::ffff:127.0.0.1",
-      "timestamp": "2026-06-16T11:51:53.368Z"
-    },
-    {
-      "id": "log-1781610712545-812",
-      "userId": "school_admin",
-      "userName": "school_admin",
-      "userRole": "Main Admin",
-      "action": "Update Role",
-      "details": "Updated role: Principle",
-      "ipAddress": "::ffff:127.0.0.1",
-      "timestamp": "2026-06-16T11:51:52.545Z"
-    },
-    {
-      "id": "log-1781610711720-878",
-      "userId": "school_admin",
-      "userName": "school_admin",
-      "userRole": "Main Admin",
-      "action": "Update Role",
-      "details": "Updated role: Principle",
-      "ipAddress": "::ffff:127.0.0.1",
-      "timestamp": "2026-06-16T11:51:51.720Z"
-    },
-    {
-      "id": "log-1781610710985-805",
-      "userId": "school_admin",
-      "userName": "school_admin",
-      "userRole": "Main Admin",
-      "action": "Update Role",
-      "details": "Updated role: Principle",
-      "ipAddress": "::ffff:127.0.0.1",
-      "timestamp": "2026-06-16T11:51:50.985Z"
-    },
-    {
-      "id": "log-1781610703849-274",
-      "userId": "school_admin",
-      "userName": "school_admin",
-      "userRole": "Main Admin",
-      "action": "Update Role",
-      "details": "Updated role: Principle",
-      "ipAddress": "::ffff:127.0.0.1",
-      "timestamp": "2026-06-16T11:51:43.849Z"
-    },
-    {
-      "id": "log-1781610703057-620",
-      "userId": "school_admin",
-      "userName": "school_admin",
-      "userRole": "Main Admin",
-      "action": "Update Role",
-      "details": "Updated role: Principle",
-      "ipAddress": "::ffff:127.0.0.1",
-      "timestamp": "2026-06-16T11:51:43.057Z"
-    },
-    {
-      "id": "log-1781610702282-780",
-      "userId": "school_admin",
-      "userName": "school_admin",
-      "userRole": "Main Admin",
-      "action": "Update Role",
-      "details": "Updated role: Principle",
-      "ipAddress": "::ffff:127.0.0.1",
-      "timestamp": "2026-06-16T11:51:42.282Z"
-    },
-    {
-      "id": "log-1781610691949-436",
-      "userId": "school_admin",
-      "userName": "school_admin",
-      "userRole": "Main Admin",
-      "action": "Update Role",
-      "details": "Updated role: Receptionist",
-      "ipAddress": "::ffff:127.0.0.1",
-      "timestamp": "2026-06-16T11:51:31.949Z"
-    },
-    {
-      "id": "log-1781610690944-583",
-      "userId": "school_admin",
-      "userName": "school_admin",
-      "userRole": "Main Admin",
-      "action": "Update Role",
-      "details": "Updated role: Receptionist",
-      "ipAddress": "::ffff:127.0.0.1",
-      "timestamp": "2026-06-16T11:51:30.944Z"
-    },
-    {
-      "id": "log-1781610689969-730",
-      "userId": "school_admin",
-      "userName": "school_admin",
-      "userRole": "Main Admin",
-      "action": "Update Role",
-      "details": "Updated role: Receptionist",
-      "ipAddress": "::ffff:127.0.0.1",
-      "timestamp": "2026-06-16T11:51:29.969Z"
-    },
-    {
-      "id": "log-1781610688840-689",
-      "userId": "school_admin",
-      "userName": "school_admin",
-      "userRole": "Main Admin",
-      "action": "Update Role",
-      "details": "Updated role: Receptionist",
-      "ipAddress": "::ffff:127.0.0.1",
-      "timestamp": "2026-06-16T11:51:28.840Z"
-    },
-    {
-      "id": "log-1781610687730-383",
-      "userId": "school_admin",
-      "userName": "school_admin",
-      "userRole": "Main Admin",
-      "action": "Update Role",
-      "details": "Updated role: Receptionist",
-      "ipAddress": "::ffff:127.0.0.1",
-      "timestamp": "2026-06-16T11:51:27.730Z"
-    },
-    {
-      "id": "log-1781610685272-926",
-      "userId": "school_admin",
-      "userName": "school_admin",
-      "userRole": "Main Admin",
-      "action": "Update Role",
-      "details": "Updated role: Receptionist",
-      "ipAddress": "::ffff:127.0.0.1",
-      "timestamp": "2026-06-16T11:51:25.272Z"
-    },
-    {
-      "id": "log-1781610681081-732",
-      "userId": "school_admin",
-      "userName": "school_admin",
-      "userRole": "Main Admin",
-      "action": "Update Role",
-      "details": "Updated role: Receptionist",
-      "ipAddress": "::ffff:127.0.0.1",
-      "timestamp": "2026-06-16T11:51:21.081Z"
-    },
-    {
-      "id": "log-1781610679720-202",
-      "userId": "school_admin",
-      "userName": "school_admin",
-      "userRole": "Main Admin",
-      "action": "Update Role",
-      "details": "Updated role: Receptionist",
-      "ipAddress": "::ffff:127.0.0.1",
-      "timestamp": "2026-06-16T11:51:19.720Z"
-    },
-    {
-      "id": "log-1781610678993-765",
-      "userId": "school_admin",
-      "userName": "school_admin",
-      "userRole": "Main Admin",
-      "action": "Update Role",
-      "details": "Updated role: Receptionist",
-      "ipAddress": "::ffff:127.0.0.1",
-      "timestamp": "2026-06-16T11:51:18.993Z"
-    },
-    {
-      "id": "log-1781610678075-357",
-      "userId": "school_admin",
-      "userName": "school_admin",
-      "userRole": "Main Admin",
-      "action": "Update Role",
-      "details": "Updated role: Receptionist",
-      "ipAddress": "::ffff:127.0.0.1",
-      "timestamp": "2026-06-16T11:51:18.075Z"
-    },
-    {
-      "id": "log-1781610677488-206",
-      "userId": "school_admin",
-      "userName": "school_admin",
-      "userRole": "Main Admin",
-      "action": "Update Role",
-      "details": "Updated role: Receptionist",
-      "ipAddress": "::ffff:127.0.0.1",
-      "timestamp": "2026-06-16T11:51:17.488Z"
-    },
-    {
-      "id": "log-1781610676672-748",
-      "userId": "school_admin",
-      "userName": "school_admin",
-      "userRole": "Main Admin",
-      "action": "Update Role",
-      "details": "Updated role: Receptionist",
-      "ipAddress": "::ffff:127.0.0.1",
-      "timestamp": "2026-06-16T11:51:16.672Z"
-    },
-    {
-      "id": "log-1781610675944-863",
-      "userId": "school_admin",
-      "userName": "school_admin",
-      "userRole": "Main Admin",
-      "action": "Update Role",
-      "details": "Updated role: Receptionist",
-      "ipAddress": "::ffff:127.0.0.1",
-      "timestamp": "2026-06-16T11:51:15.944Z"
-    },
-    {
-      "id": "log-1781610674856-595",
-      "userId": "school_admin",
-      "userName": "school_admin",
-      "userRole": "Main Admin",
-      "action": "Update Role",
-      "details": "Updated role: Receptionist",
-      "ipAddress": "::ffff:127.0.0.1",
-      "timestamp": "2026-06-16T11:51:14.856Z"
-    },
-    {
-      "id": "log-1781610673848-341",
-      "userId": "school_admin",
-      "userName": "school_admin",
-      "userRole": "Main Admin",
-      "action": "Update Role",
-      "details": "Updated role: Receptionist",
-      "ipAddress": "::ffff:127.0.0.1",
-      "timestamp": "2026-06-16T11:51:13.848Z"
-    },
-    {
-      "id": "log-1781610672936-892",
-      "userId": "school_admin",
-      "userName": "school_admin",
-      "userRole": "Main Admin",
-      "action": "Update Role",
-      "details": "Updated role: Receptionist",
-      "ipAddress": "::ffff:127.0.0.1",
-      "timestamp": "2026-06-16T11:51:12.936Z"
-    },
-    {
-      "id": "log-1781610672104-504",
-      "userId": "school_admin",
-      "userName": "school_admin",
-      "userRole": "Main Admin",
-      "action": "Update Role",
-      "details": "Updated role: Receptionist",
-      "ipAddress": "::ffff:127.0.0.1",
-      "timestamp": "2026-06-16T11:51:12.104Z"
-    },
-    {
-      "id": "log-1781610671065-289",
-      "userId": "school_admin",
-      "userName": "school_admin",
-      "userRole": "Main Admin",
-      "action": "Update Role",
-      "details": "Updated role: Receptionist",
-      "ipAddress": "::ffff:127.0.0.1",
-      "timestamp": "2026-06-16T11:51:11.065Z"
-    },
-    {
-      "id": "log-1781610519787-952",
-      "userId": "school_admin",
-      "userName": "school_admin",
-      "userRole": "Main Admin",
-      "action": "Update Role",
-      "details": "Updated role: Teacher",
-      "ipAddress": "::ffff:127.0.0.1",
-      "timestamp": "2026-06-16T11:48:39.787Z"
-    },
-    {
-      "id": "log-1781610518882-721",
-      "userId": "school_admin",
-      "userName": "school_admin",
-      "userRole": "Main Admin",
-      "action": "Update Role",
-      "details": "Updated role: Teacher",
-      "ipAddress": "::ffff:127.0.0.1",
-      "timestamp": "2026-06-16T11:48:38.882Z"
-    },
-    {
-      "id": "log-1781610518242-989",
-      "userId": "school_admin",
-      "userName": "school_admin",
-      "userRole": "Main Admin",
-      "action": "Update Role",
-      "details": "Updated role: Teacher",
-      "ipAddress": "::ffff:127.0.0.1",
-      "timestamp": "2026-06-16T11:48:38.242Z"
-    },
-    {
-      "id": "log-1781610516338-573",
-      "userId": "school_admin",
-      "userName": "school_admin",
-      "userRole": "Main Admin",
-      "action": "Update Role",
-      "details": "Updated role: Teacher",
-      "ipAddress": "::ffff:127.0.0.1",
-      "timestamp": "2026-06-16T11:48:36.338Z"
-    },
-    {
-      "id": "log-1781610515483-356",
-      "userId": "school_admin",
-      "userName": "school_admin",
-      "userRole": "Main Admin",
-      "action": "Update Role",
-      "details": "Updated role: Teacher",
-      "ipAddress": "::ffff:127.0.0.1",
-      "timestamp": "2026-06-16T11:48:35.483Z"
-    },
-    {
-      "id": "log-1781610514435-360",
-      "userId": "school_admin",
-      "userName": "school_admin",
-      "userRole": "Main Admin",
-      "action": "Update Role",
-      "details": "Updated role: Teacher",
-      "ipAddress": "::ffff:127.0.0.1",
-      "timestamp": "2026-06-16T11:48:34.435Z"
-    },
-    {
-      "id": "log-1781610513458-27",
-      "userId": "school_admin",
-      "userName": "school_admin",
-      "userRole": "Main Admin",
-      "action": "Update Role",
-      "details": "Updated role: Teacher",
-      "ipAddress": "::ffff:127.0.0.1",
-      "timestamp": "2026-06-16T11:48:33.458Z"
-    },
-    {
-      "id": "log-1781610512035-235",
-      "userId": "school_admin",
-      "userName": "school_admin",
-      "userRole": "Main Admin",
-      "action": "Update Role",
-      "details": "Updated role: Teacher",
-      "ipAddress": "::ffff:127.0.0.1",
-      "timestamp": "2026-06-16T11:48:32.035Z"
-    },
-    {
-      "id": "log-1781610511229-569",
-      "userId": "school_admin",
-      "userName": "school_admin",
-      "userRole": "Main Admin",
-      "action": "Update Role",
-      "details": "Updated role: Teacher",
-      "ipAddress": "::ffff:127.0.0.1",
-      "timestamp": "2026-06-16T11:48:31.229Z"
-    },
-    {
-      "id": "log-1781610510259-907",
-      "userId": "school_admin",
-      "userName": "school_admin",
-      "userRole": "Main Admin",
-      "action": "Update Role",
-      "details": "Updated role: Teacher",
-      "ipAddress": "::ffff:127.0.0.1",
-      "timestamp": "2026-06-16T11:48:30.259Z"
-    },
-    {
-      "id": "log-1781610508450-264",
-      "userId": "school_admin",
-      "userName": "school_admin",
-      "userRole": "Main Admin",
-      "action": "Update Role",
-      "details": "Updated role: Teacher",
-      "ipAddress": "::ffff:127.0.0.1",
-      "timestamp": "2026-06-16T11:48:28.450Z"
-    },
-    {
-      "id": "log-1781610507875-524",
-      "userId": "school_admin",
-      "userName": "school_admin",
-      "userRole": "Main Admin",
-      "action": "Update Role",
-      "details": "Updated role: Teacher",
-      "ipAddress": "::ffff:127.0.0.1",
-      "timestamp": "2026-06-16T11:48:27.875Z"
-    },
-    {
-      "id": "log-1781610506235-8",
-      "userId": "school_admin",
-      "userName": "school_admin",
-      "userRole": "Main Admin",
-      "action": "Update Role",
-      "details": "Updated role: Teacher",
-      "ipAddress": "::ffff:127.0.0.1",
-      "timestamp": "2026-06-16T11:48:26.235Z"
-    },
-    {
-      "id": "log-1781610505251-64",
-      "userId": "school_admin",
-      "userName": "school_admin",
-      "userRole": "Main Admin",
-      "action": "Update Role",
-      "details": "Updated role: Teacher",
-      "ipAddress": "::ffff:127.0.0.1",
-      "timestamp": "2026-06-16T11:48:25.251Z"
-    },
-    {
-      "id": "log-1781610504011-264",
-      "userId": "school_admin",
-      "userName": "school_admin",
-      "userRole": "Main Admin",
-      "action": "Update Role",
-      "details": "Updated role: Teacher",
-      "ipAddress": "::ffff:127.0.0.1",
-      "timestamp": "2026-06-16T11:48:24.011Z"
-    },
-    {
-      "id": "log-1781610501987-638",
-      "userId": "school_admin",
-      "userName": "school_admin",
-      "userRole": "Main Admin",
-      "action": "Update Role",
-      "details": "Updated role: Teacher",
-      "ipAddress": "::ffff:127.0.0.1",
-      "timestamp": "2026-06-16T11:48:21.987Z"
-    },
-    {
-      "id": "log-1781610500739-538",
-      "userId": "school_admin",
-      "userName": "school_admin",
-      "userRole": "Main Admin",
-      "action": "Update Role",
-      "details": "Updated role: Teacher",
-      "ipAddress": "::ffff:127.0.0.1",
-      "timestamp": "2026-06-16T11:48:20.739Z"
-    },
-    {
-      "id": "log-1781610499683-270",
-      "userId": "school_admin",
-      "userName": "school_admin",
-      "userRole": "Main Admin",
-      "action": "Update Role",
-      "details": "Updated role: Teacher",
-      "ipAddress": "::ffff:127.0.0.1",
-      "timestamp": "2026-06-16T11:48:19.683Z"
-    },
-    {
-      "id": "log-1781610498058-36",
-      "userId": "school_admin",
-      "userName": "school_admin",
-      "userRole": "Main Admin",
-      "action": "Update Role",
-      "details": "Updated role: Teacher",
-      "ipAddress": "::ffff:127.0.0.1",
-      "timestamp": "2026-06-16T11:48:18.058Z"
-    },
-    {
-      "id": "log-1781610497426-693",
-      "userId": "school_admin",
-      "userName": "school_admin",
-      "userRole": "Main Admin",
-      "action": "Update Role",
-      "details": "Updated role: Teacher",
-      "ipAddress": "::ffff:127.0.0.1",
-      "timestamp": "2026-06-16T11:48:17.427Z"
-    },
-    {
-      "id": "log-1781610493962-0",
-      "userId": "school_admin",
-      "userName": "school_admin",
-      "userRole": "Main Admin",
-      "action": "Update Role",
-      "details": "Updated role: Teacher",
-      "ipAddress": "::ffff:127.0.0.1",
-      "timestamp": "2026-06-16T11:48:13.962Z"
-    },
-    {
-      "id": "log-1781610398801-162",
-      "userId": "school_admin",
-      "userName": "school_admin",
-      "userRole": "Main Admin",
-      "action": "Update Role",
-      "details": "Updated role: Accountant",
-      "ipAddress": "::ffff:127.0.0.1",
-      "timestamp": "2026-06-16T11:46:38.801Z"
-    },
-    {
-      "id": "log-1781610342959-787",
-      "userId": "school_admin",
-      "userName": "school_admin",
-      "userRole": "Main Admin",
-      "action": "Update Role",
-      "details": "Updated role: Accountant",
-      "ipAddress": "::ffff:127.0.0.1",
-      "timestamp": "2026-06-16T11:45:42.959Z"
-    },
-    {
-      "id": "log-1781610341775-574",
-      "userId": "school_admin",
-      "userName": "school_admin",
-      "userRole": "Main Admin",
-      "action": "Update Role",
-      "details": "Updated role: Accountant",
-      "ipAddress": "::ffff:127.0.0.1",
-      "timestamp": "2026-06-16T11:45:41.775Z"
-    },
-    {
-      "id": "log-1781610341062-372",
-      "userId": "school_admin",
-      "userName": "school_admin",
-      "userRole": "Main Admin",
-      "action": "Update Role",
-      "details": "Updated role: Accountant",
-      "ipAddress": "::ffff:127.0.0.1",
-      "timestamp": "2026-06-16T11:45:41.062Z"
-    },
-    {
-      "id": "log-1781610340182-279",
-      "userId": "school_admin",
-      "userName": "school_admin",
-      "userRole": "Main Admin",
-      "action": "Update Role",
-      "details": "Updated role: Accountant",
-      "ipAddress": "::ffff:127.0.0.1",
-      "timestamp": "2026-06-16T11:45:40.182Z"
-    },
-    {
-      "id": "log-1781610339358-547",
-      "userId": "school_admin",
-      "userName": "school_admin",
-      "userRole": "Main Admin",
-      "action": "Update Role",
-      "details": "Updated role: Accountant",
-      "ipAddress": "::ffff:127.0.0.1",
-      "timestamp": "2026-06-16T11:45:39.358Z"
-    },
-    {
-      "id": "log-1781610338358-434",
-      "userId": "school_admin",
-      "userName": "school_admin",
-      "userRole": "Main Admin",
-      "action": "Update Role",
-      "details": "Updated role: Accountant",
-      "ipAddress": "::ffff:127.0.0.1",
-      "timestamp": "2026-06-16T11:45:38.358Z"
-    },
     {
       "id": "log-1781008145791-427",
       "userId": "school_admin",
@@ -8858,6 +8360,688 @@
       "ipAddress": "::ffff:127.0.0.1",
       "timestamp": "2026-06-16T06:49:10.459Z",
       "tenantId": "greenvalley"
+    },
+    {
+      "id": "log-1781610338358-434",
+      "userId": "school_admin",
+      "userName": "school_admin",
+      "userRole": "Main Admin",
+      "action": "Update Role",
+      "details": "Updated role: Accountant",
+      "ipAddress": "::ffff:127.0.0.1",
+      "timestamp": "2026-06-16T11:45:38.358Z",
+      "tenantId": "greenvalley"
+    },
+    {
+      "id": "log-1781610339358-547",
+      "userId": "school_admin",
+      "userName": "school_admin",
+      "userRole": "Main Admin",
+      "action": "Update Role",
+      "details": "Updated role: Accountant",
+      "ipAddress": "::ffff:127.0.0.1",
+      "timestamp": "2026-06-16T11:45:39.358Z",
+      "tenantId": "greenvalley"
+    },
+    {
+      "id": "log-1781610340182-279",
+      "userId": "school_admin",
+      "userName": "school_admin",
+      "userRole": "Main Admin",
+      "action": "Update Role",
+      "details": "Updated role: Accountant",
+      "ipAddress": "::ffff:127.0.0.1",
+      "timestamp": "2026-06-16T11:45:40.182Z",
+      "tenantId": "greenvalley"
+    },
+    {
+      "id": "log-1781610341062-372",
+      "userId": "school_admin",
+      "userName": "school_admin",
+      "userRole": "Main Admin",
+      "action": "Update Role",
+      "details": "Updated role: Accountant",
+      "ipAddress": "::ffff:127.0.0.1",
+      "timestamp": "2026-06-16T11:45:41.062Z",
+      "tenantId": "greenvalley"
+    },
+    {
+      "id": "log-1781610341775-574",
+      "userId": "school_admin",
+      "userName": "school_admin",
+      "userRole": "Main Admin",
+      "action": "Update Role",
+      "details": "Updated role: Accountant",
+      "ipAddress": "::ffff:127.0.0.1",
+      "timestamp": "2026-06-16T11:45:41.775Z",
+      "tenantId": "greenvalley"
+    },
+    {
+      "id": "log-1781610342959-787",
+      "userId": "school_admin",
+      "userName": "school_admin",
+      "userRole": "Main Admin",
+      "action": "Update Role",
+      "details": "Updated role: Accountant",
+      "ipAddress": "::ffff:127.0.0.1",
+      "timestamp": "2026-06-16T11:45:42.959Z",
+      "tenantId": "greenvalley"
+    },
+    {
+      "id": "log-1781610398801-162",
+      "userId": "school_admin",
+      "userName": "school_admin",
+      "userRole": "Main Admin",
+      "action": "Update Role",
+      "details": "Updated role: Accountant",
+      "ipAddress": "::ffff:127.0.0.1",
+      "timestamp": "2026-06-16T11:46:38.801Z",
+      "tenantId": "greenvalley"
+    },
+    {
+      "id": "log-1781610493962-0",
+      "userId": "school_admin",
+      "userName": "school_admin",
+      "userRole": "Main Admin",
+      "action": "Update Role",
+      "details": "Updated role: Teacher",
+      "ipAddress": "::ffff:127.0.0.1",
+      "timestamp": "2026-06-16T11:48:13.962Z",
+      "tenantId": "greenvalley"
+    },
+    {
+      "id": "log-1781610497426-693",
+      "userId": "school_admin",
+      "userName": "school_admin",
+      "userRole": "Main Admin",
+      "action": "Update Role",
+      "details": "Updated role: Teacher",
+      "ipAddress": "::ffff:127.0.0.1",
+      "timestamp": "2026-06-16T11:48:17.427Z",
+      "tenantId": "greenvalley"
+    },
+    {
+      "id": "log-1781610498058-36",
+      "userId": "school_admin",
+      "userName": "school_admin",
+      "userRole": "Main Admin",
+      "action": "Update Role",
+      "details": "Updated role: Teacher",
+      "ipAddress": "::ffff:127.0.0.1",
+      "timestamp": "2026-06-16T11:48:18.058Z",
+      "tenantId": "greenvalley"
+    },
+    {
+      "id": "log-1781610499683-270",
+      "userId": "school_admin",
+      "userName": "school_admin",
+      "userRole": "Main Admin",
+      "action": "Update Role",
+      "details": "Updated role: Teacher",
+      "ipAddress": "::ffff:127.0.0.1",
+      "timestamp": "2026-06-16T11:48:19.683Z",
+      "tenantId": "greenvalley"
+    },
+    {
+      "id": "log-1781610500739-538",
+      "userId": "school_admin",
+      "userName": "school_admin",
+      "userRole": "Main Admin",
+      "action": "Update Role",
+      "details": "Updated role: Teacher",
+      "ipAddress": "::ffff:127.0.0.1",
+      "timestamp": "2026-06-16T11:48:20.739Z",
+      "tenantId": "greenvalley"
+    },
+    {
+      "id": "log-1781610501987-638",
+      "userId": "school_admin",
+      "userName": "school_admin",
+      "userRole": "Main Admin",
+      "action": "Update Role",
+      "details": "Updated role: Teacher",
+      "ipAddress": "::ffff:127.0.0.1",
+      "timestamp": "2026-06-16T11:48:21.987Z",
+      "tenantId": "greenvalley"
+    },
+    {
+      "id": "log-1781610504011-264",
+      "userId": "school_admin",
+      "userName": "school_admin",
+      "userRole": "Main Admin",
+      "action": "Update Role",
+      "details": "Updated role: Teacher",
+      "ipAddress": "::ffff:127.0.0.1",
+      "timestamp": "2026-06-16T11:48:24.011Z",
+      "tenantId": "greenvalley"
+    },
+    {
+      "id": "log-1781610505251-64",
+      "userId": "school_admin",
+      "userName": "school_admin",
+      "userRole": "Main Admin",
+      "action": "Update Role",
+      "details": "Updated role: Teacher",
+      "ipAddress": "::ffff:127.0.0.1",
+      "timestamp": "2026-06-16T11:48:25.251Z",
+      "tenantId": "greenvalley"
+    },
+    {
+      "id": "log-1781610506235-8",
+      "userId": "school_admin",
+      "userName": "school_admin",
+      "userRole": "Main Admin",
+      "action": "Update Role",
+      "details": "Updated role: Teacher",
+      "ipAddress": "::ffff:127.0.0.1",
+      "timestamp": "2026-06-16T11:48:26.235Z",
+      "tenantId": "greenvalley"
+    },
+    {
+      "id": "log-1781610507875-524",
+      "userId": "school_admin",
+      "userName": "school_admin",
+      "userRole": "Main Admin",
+      "action": "Update Role",
+      "details": "Updated role: Teacher",
+      "ipAddress": "::ffff:127.0.0.1",
+      "timestamp": "2026-06-16T11:48:27.875Z",
+      "tenantId": "greenvalley"
+    },
+    {
+      "id": "log-1781610508450-264",
+      "userId": "school_admin",
+      "userName": "school_admin",
+      "userRole": "Main Admin",
+      "action": "Update Role",
+      "details": "Updated role: Teacher",
+      "ipAddress": "::ffff:127.0.0.1",
+      "timestamp": "2026-06-16T11:48:28.450Z",
+      "tenantId": "greenvalley"
+    },
+    {
+      "id": "log-1781610510259-907",
+      "userId": "school_admin",
+      "userName": "school_admin",
+      "userRole": "Main Admin",
+      "action": "Update Role",
+      "details": "Updated role: Teacher",
+      "ipAddress": "::ffff:127.0.0.1",
+      "timestamp": "2026-06-16T11:48:30.259Z",
+      "tenantId": "greenvalley"
+    },
+    {
+      "id": "log-1781610511229-569",
+      "userId": "school_admin",
+      "userName": "school_admin",
+      "userRole": "Main Admin",
+      "action": "Update Role",
+      "details": "Updated role: Teacher",
+      "ipAddress": "::ffff:127.0.0.1",
+      "timestamp": "2026-06-16T11:48:31.229Z",
+      "tenantId": "greenvalley"
+    },
+    {
+      "id": "log-1781610512035-235",
+      "userId": "school_admin",
+      "userName": "school_admin",
+      "userRole": "Main Admin",
+      "action": "Update Role",
+      "details": "Updated role: Teacher",
+      "ipAddress": "::ffff:127.0.0.1",
+      "timestamp": "2026-06-16T11:48:32.035Z",
+      "tenantId": "greenvalley"
+    },
+    {
+      "id": "log-1781610513458-27",
+      "userId": "school_admin",
+      "userName": "school_admin",
+      "userRole": "Main Admin",
+      "action": "Update Role",
+      "details": "Updated role: Teacher",
+      "ipAddress": "::ffff:127.0.0.1",
+      "timestamp": "2026-06-16T11:48:33.458Z",
+      "tenantId": "greenvalley"
+    },
+    {
+      "id": "log-1781610514435-360",
+      "userId": "school_admin",
+      "userName": "school_admin",
+      "userRole": "Main Admin",
+      "action": "Update Role",
+      "details": "Updated role: Teacher",
+      "ipAddress": "::ffff:127.0.0.1",
+      "timestamp": "2026-06-16T11:48:34.435Z",
+      "tenantId": "greenvalley"
+    },
+    {
+      "id": "log-1781610515483-356",
+      "userId": "school_admin",
+      "userName": "school_admin",
+      "userRole": "Main Admin",
+      "action": "Update Role",
+      "details": "Updated role: Teacher",
+      "ipAddress": "::ffff:127.0.0.1",
+      "timestamp": "2026-06-16T11:48:35.483Z",
+      "tenantId": "greenvalley"
+    },
+    {
+      "id": "log-1781610516338-573",
+      "userId": "school_admin",
+      "userName": "school_admin",
+      "userRole": "Main Admin",
+      "action": "Update Role",
+      "details": "Updated role: Teacher",
+      "ipAddress": "::ffff:127.0.0.1",
+      "timestamp": "2026-06-16T11:48:36.338Z",
+      "tenantId": "greenvalley"
+    },
+    {
+      "id": "log-1781610518242-989",
+      "userId": "school_admin",
+      "userName": "school_admin",
+      "userRole": "Main Admin",
+      "action": "Update Role",
+      "details": "Updated role: Teacher",
+      "ipAddress": "::ffff:127.0.0.1",
+      "timestamp": "2026-06-16T11:48:38.242Z",
+      "tenantId": "greenvalley"
+    },
+    {
+      "id": "log-1781610518882-721",
+      "userId": "school_admin",
+      "userName": "school_admin",
+      "userRole": "Main Admin",
+      "action": "Update Role",
+      "details": "Updated role: Teacher",
+      "ipAddress": "::ffff:127.0.0.1",
+      "timestamp": "2026-06-16T11:48:38.882Z",
+      "tenantId": "greenvalley"
+    },
+    {
+      "id": "log-1781610519787-952",
+      "userId": "school_admin",
+      "userName": "school_admin",
+      "userRole": "Main Admin",
+      "action": "Update Role",
+      "details": "Updated role: Teacher",
+      "ipAddress": "::ffff:127.0.0.1",
+      "timestamp": "2026-06-16T11:48:39.787Z",
+      "tenantId": "greenvalley"
+    },
+    {
+      "id": "log-1781610671065-289",
+      "userId": "school_admin",
+      "userName": "school_admin",
+      "userRole": "Main Admin",
+      "action": "Update Role",
+      "details": "Updated role: Receptionist",
+      "ipAddress": "::ffff:127.0.0.1",
+      "timestamp": "2026-06-16T11:51:11.065Z",
+      "tenantId": "greenvalley"
+    },
+    {
+      "id": "log-1781610672104-504",
+      "userId": "school_admin",
+      "userName": "school_admin",
+      "userRole": "Main Admin",
+      "action": "Update Role",
+      "details": "Updated role: Receptionist",
+      "ipAddress": "::ffff:127.0.0.1",
+      "timestamp": "2026-06-16T11:51:12.104Z",
+      "tenantId": "greenvalley"
+    },
+    {
+      "id": "log-1781610672936-892",
+      "userId": "school_admin",
+      "userName": "school_admin",
+      "userRole": "Main Admin",
+      "action": "Update Role",
+      "details": "Updated role: Receptionist",
+      "ipAddress": "::ffff:127.0.0.1",
+      "timestamp": "2026-06-16T11:51:12.936Z",
+      "tenantId": "greenvalley"
+    },
+    {
+      "id": "log-1781610673848-341",
+      "userId": "school_admin",
+      "userName": "school_admin",
+      "userRole": "Main Admin",
+      "action": "Update Role",
+      "details": "Updated role: Receptionist",
+      "ipAddress": "::ffff:127.0.0.1",
+      "timestamp": "2026-06-16T11:51:13.848Z",
+      "tenantId": "greenvalley"
+    },
+    {
+      "id": "log-1781610674856-595",
+      "userId": "school_admin",
+      "userName": "school_admin",
+      "userRole": "Main Admin",
+      "action": "Update Role",
+      "details": "Updated role: Receptionist",
+      "ipAddress": "::ffff:127.0.0.1",
+      "timestamp": "2026-06-16T11:51:14.856Z",
+      "tenantId": "greenvalley"
+    },
+    {
+      "id": "log-1781610675944-863",
+      "userId": "school_admin",
+      "userName": "school_admin",
+      "userRole": "Main Admin",
+      "action": "Update Role",
+      "details": "Updated role: Receptionist",
+      "ipAddress": "::ffff:127.0.0.1",
+      "timestamp": "2026-06-16T11:51:15.944Z",
+      "tenantId": "greenvalley"
+    },
+    {
+      "id": "log-1781610676672-748",
+      "userId": "school_admin",
+      "userName": "school_admin",
+      "userRole": "Main Admin",
+      "action": "Update Role",
+      "details": "Updated role: Receptionist",
+      "ipAddress": "::ffff:127.0.0.1",
+      "timestamp": "2026-06-16T11:51:16.672Z",
+      "tenantId": "greenvalley"
+    },
+    {
+      "id": "log-1781610677488-206",
+      "userId": "school_admin",
+      "userName": "school_admin",
+      "userRole": "Main Admin",
+      "action": "Update Role",
+      "details": "Updated role: Receptionist",
+      "ipAddress": "::ffff:127.0.0.1",
+      "timestamp": "2026-06-16T11:51:17.488Z",
+      "tenantId": "greenvalley"
+    },
+    {
+      "id": "log-1781610678075-357",
+      "userId": "school_admin",
+      "userName": "school_admin",
+      "userRole": "Main Admin",
+      "action": "Update Role",
+      "details": "Updated role: Receptionist",
+      "ipAddress": "::ffff:127.0.0.1",
+      "timestamp": "2026-06-16T11:51:18.075Z",
+      "tenantId": "greenvalley"
+    },
+    {
+      "id": "log-1781610678993-765",
+      "userId": "school_admin",
+      "userName": "school_admin",
+      "userRole": "Main Admin",
+      "action": "Update Role",
+      "details": "Updated role: Receptionist",
+      "ipAddress": "::ffff:127.0.0.1",
+      "timestamp": "2026-06-16T11:51:18.993Z",
+      "tenantId": "greenvalley"
+    },
+    {
+      "id": "log-1781610679720-202",
+      "userId": "school_admin",
+      "userName": "school_admin",
+      "userRole": "Main Admin",
+      "action": "Update Role",
+      "details": "Updated role: Receptionist",
+      "ipAddress": "::ffff:127.0.0.1",
+      "timestamp": "2026-06-16T11:51:19.720Z",
+      "tenantId": "greenvalley"
+    },
+    {
+      "id": "log-1781610681081-732",
+      "userId": "school_admin",
+      "userName": "school_admin",
+      "userRole": "Main Admin",
+      "action": "Update Role",
+      "details": "Updated role: Receptionist",
+      "ipAddress": "::ffff:127.0.0.1",
+      "timestamp": "2026-06-16T11:51:21.081Z",
+      "tenantId": "greenvalley"
+    },
+    {
+      "id": "log-1781610685272-926",
+      "userId": "school_admin",
+      "userName": "school_admin",
+      "userRole": "Main Admin",
+      "action": "Update Role",
+      "details": "Updated role: Receptionist",
+      "ipAddress": "::ffff:127.0.0.1",
+      "timestamp": "2026-06-16T11:51:25.272Z",
+      "tenantId": "greenvalley"
+    },
+    {
+      "id": "log-1781610687730-383",
+      "userId": "school_admin",
+      "userName": "school_admin",
+      "userRole": "Main Admin",
+      "action": "Update Role",
+      "details": "Updated role: Receptionist",
+      "ipAddress": "::ffff:127.0.0.1",
+      "timestamp": "2026-06-16T11:51:27.730Z",
+      "tenantId": "greenvalley"
+    },
+    {
+      "id": "log-1781610688840-689",
+      "userId": "school_admin",
+      "userName": "school_admin",
+      "userRole": "Main Admin",
+      "action": "Update Role",
+      "details": "Updated role: Receptionist",
+      "ipAddress": "::ffff:127.0.0.1",
+      "timestamp": "2026-06-16T11:51:28.840Z",
+      "tenantId": "greenvalley"
+    },
+    {
+      "id": "log-1781610689969-730",
+      "userId": "school_admin",
+      "userName": "school_admin",
+      "userRole": "Main Admin",
+      "action": "Update Role",
+      "details": "Updated role: Receptionist",
+      "ipAddress": "::ffff:127.0.0.1",
+      "timestamp": "2026-06-16T11:51:29.969Z",
+      "tenantId": "greenvalley"
+    },
+    {
+      "id": "log-1781610690944-583",
+      "userId": "school_admin",
+      "userName": "school_admin",
+      "userRole": "Main Admin",
+      "action": "Update Role",
+      "details": "Updated role: Receptionist",
+      "ipAddress": "::ffff:127.0.0.1",
+      "timestamp": "2026-06-16T11:51:30.944Z",
+      "tenantId": "greenvalley"
+    },
+    {
+      "id": "log-1781610691949-436",
+      "userId": "school_admin",
+      "userName": "school_admin",
+      "userRole": "Main Admin",
+      "action": "Update Role",
+      "details": "Updated role: Receptionist",
+      "ipAddress": "::ffff:127.0.0.1",
+      "timestamp": "2026-06-16T11:51:31.949Z",
+      "tenantId": "greenvalley"
+    },
+    {
+      "id": "log-1781610702282-780",
+      "userId": "school_admin",
+      "userName": "school_admin",
+      "userRole": "Main Admin",
+      "action": "Update Role",
+      "details": "Updated role: Principle",
+      "ipAddress": "::ffff:127.0.0.1",
+      "timestamp": "2026-06-16T11:51:42.282Z",
+      "tenantId": "greenvalley"
+    },
+    {
+      "id": "log-1781610703057-620",
+      "userId": "school_admin",
+      "userName": "school_admin",
+      "userRole": "Main Admin",
+      "action": "Update Role",
+      "details": "Updated role: Principle",
+      "ipAddress": "::ffff:127.0.0.1",
+      "timestamp": "2026-06-16T11:51:43.057Z",
+      "tenantId": "greenvalley"
+    },
+    {
+      "id": "log-1781610703849-274",
+      "userId": "school_admin",
+      "userName": "school_admin",
+      "userRole": "Main Admin",
+      "action": "Update Role",
+      "details": "Updated role: Principle",
+      "ipAddress": "::ffff:127.0.0.1",
+      "timestamp": "2026-06-16T11:51:43.849Z",
+      "tenantId": "greenvalley"
+    },
+    {
+      "id": "log-1781610710985-805",
+      "userId": "school_admin",
+      "userName": "school_admin",
+      "userRole": "Main Admin",
+      "action": "Update Role",
+      "details": "Updated role: Principle",
+      "ipAddress": "::ffff:127.0.0.1",
+      "timestamp": "2026-06-16T11:51:50.985Z",
+      "tenantId": "greenvalley"
+    },
+    {
+      "id": "log-1781610711720-878",
+      "userId": "school_admin",
+      "userName": "school_admin",
+      "userRole": "Main Admin",
+      "action": "Update Role",
+      "details": "Updated role: Principle",
+      "ipAddress": "::ffff:127.0.0.1",
+      "timestamp": "2026-06-16T11:51:51.720Z",
+      "tenantId": "greenvalley"
+    },
+    {
+      "id": "log-1781610712545-812",
+      "userId": "school_admin",
+      "userName": "school_admin",
+      "userRole": "Main Admin",
+      "action": "Update Role",
+      "details": "Updated role: Principle",
+      "ipAddress": "::ffff:127.0.0.1",
+      "timestamp": "2026-06-16T11:51:52.545Z",
+      "tenantId": "greenvalley"
+    },
+    {
+      "id": "log-1781610713368-700",
+      "userId": "school_admin",
+      "userName": "school_admin",
+      "userRole": "Main Admin",
+      "action": "Update Role",
+      "details": "Updated role: Principle",
+      "ipAddress": "::ffff:127.0.0.1",
+      "timestamp": "2026-06-16T11:51:53.368Z",
+      "tenantId": "greenvalley"
+    },
+    {
+      "id": "log-1781610714091-51",
+      "userId": "school_admin",
+      "userName": "school_admin",
+      "userRole": "Main Admin",
+      "action": "Update Role",
+      "details": "Updated role: Principle",
+      "ipAddress": "::ffff:127.0.0.1",
+      "timestamp": "2026-06-16T11:51:54.091Z",
+      "tenantId": "greenvalley"
+    },
+    {
+      "id": "log-1781610715105-468",
+      "userId": "school_admin",
+      "userName": "school_admin",
+      "userRole": "Main Admin",
+      "action": "Update Role",
+      "details": "Updated role: Principle",
+      "ipAddress": "::ffff:127.0.0.1",
+      "timestamp": "2026-06-16T11:51:55.105Z",
+      "tenantId": "greenvalley"
+    },
+    {
+      "id": "log-1781610715698-364",
+      "userId": "school_admin",
+      "userName": "school_admin",
+      "userRole": "Main Admin",
+      "action": "Update Role",
+      "details": "Updated role: Principle",
+      "ipAddress": "::ffff:127.0.0.1",
+      "timestamp": "2026-06-16T11:51:55.698Z",
+      "tenantId": "greenvalley"
+    },
+    {
+      "id": "log-1781610716216-18",
+      "userId": "school_admin",
+      "userName": "school_admin",
+      "userRole": "Main Admin",
+      "action": "Update Role",
+      "details": "Updated role: Principle",
+      "ipAddress": "::ffff:127.0.0.1",
+      "timestamp": "2026-06-16T11:51:56.216Z",
+      "tenantId": "greenvalley"
+    },
+    {
+      "id": "log-1781610717154-895",
+      "userId": "school_admin",
+      "userName": "school_admin",
+      "userRole": "Main Admin",
+      "action": "Update Role",
+      "details": "Updated role: Principle",
+      "ipAddress": "::ffff:127.0.0.1",
+      "timestamp": "2026-06-16T11:51:57.154Z",
+      "tenantId": "greenvalley"
+    },
+    {
+      "id": "log-1781610717738-88",
+      "userId": "school_admin",
+      "userName": "school_admin",
+      "userRole": "Main Admin",
+      "action": "Update Role",
+      "details": "Updated role: Principle",
+      "ipAddress": "::ffff:127.0.0.1",
+      "timestamp": "2026-06-16T11:51:57.738Z",
+      "tenantId": "greenvalley"
+    },
+    {
+      "id": "log-1781610719897-890",
+      "userId": "school_admin",
+      "userName": "school_admin",
+      "userRole": "Main Admin",
+      "action": "Update Role",
+      "details": "Updated role: Principle",
+      "ipAddress": "::ffff:127.0.0.1",
+      "timestamp": "2026-06-16T11:51:59.898Z",
+      "tenantId": "greenvalley"
+    },
+    {
+      "id": "log-1781610720812-145",
+      "userId": "school_admin",
+      "userName": "school_admin",
+      "userRole": "Main Admin",
+      "action": "Update Role",
+      "details": "Updated role: Principle",
+      "ipAddress": "::ffff:127.0.0.1",
+      "timestamp": "2026-06-16T11:52:00.812Z",
+      "tenantId": "greenvalley"
+    },
+    {
+      "id": "log-1781610721537-618",
+      "userId": "school_admin",
+      "userName": "school_admin",
+      "userRole": "Main Admin",
+      "action": "Update Role",
+      "details": "Updated role: Principle",
+      "ipAddress": "::ffff:127.0.0.1",
+      "timestamp": "2026-06-16T11:52:01.537Z",
+      "tenantId": "greenvalley"
     }
   ],
   "grades": [
@@ -8944,7 +9128,32 @@
       "publishedAt": "2026-06-16T11:12:15.086Z"
     }
   ],
-  "publishedTeacherTimetables": [],
+  "publishedTeacherTimetables": [
+    {
+      "teacher": "Bruce Wayne",
+      "slots": [
+        {
+          "cohort": "XI (Arts)-A",
+          "day": "Monday",
+          "time": "09:00 AM - 10:00 AM",
+          "subject": ""
+        }
+      ],
+      "publishedAt": "2026-06-17T08:20:13.177Z"
+    },
+    {
+      "teacher": "uttam Rajpurohit",
+      "slots": [
+        {
+          "cohort": "XI (Arts)-A",
+          "day": "Thursday",
+          "time": "11:00 AM - 12:00 PM",
+          "subject": ""
+        }
+      ],
+      "publishedAt": "2026-06-17T08:20:14.455Z"
+    }
+  ],
   "academicCalendarEvents": [],
   "academicCalendarImports": [
     {
@@ -9093,5 +9302,27 @@
   "attendanceRecords": [],
   "attendanceLogs": [],
   "attendanceReports": [],
-  "expenseHistory": []
+  "expenseHistory": [],
+  "teacherTimetables": [
+    {
+      "id": "TT-TEACHER-1781684399238-0",
+      "cohort": "XI (Arts)-A",
+      "day": "Monday",
+      "time": "09:00 AM - 10:00 AM",
+      "subject": "",
+      "teacher": "Bruce Wayne",
+      "room": "",
+      "session": "2026-2027"
+    },
+    {
+      "id": "TT-TEACHER-1781684407595-0",
+      "cohort": "XI (Arts)-A",
+      "day": "Thursday",
+      "time": "11:00 AM - 12:00 PM",
+      "subject": "",
+      "teacher": "uttam Rajpurohit",
+      "room": "",
+      "session": "2026-2027"
+    }
+  ]
 }

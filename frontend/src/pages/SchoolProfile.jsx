@@ -31,6 +31,7 @@ const getSchoolSubdomainUrl = (subdomain, path = '') => {
     return `${protocol}//${subdomain}.${hostname}${port ? `:${port}` : ''}${path}`;
   }
 };
+import { cachedFetch } from '../utils/apiCache';
 import { 
   School as SchoolIcon,
   Users,
@@ -231,14 +232,14 @@ export default function SchoolProfile({ schoolDetails, fetchSchoolDetails, isDev
     setLoading(true);
     try {
       // 1. Fetch schools list
-      const resSchools = await fetch('/api/platform/schools');
+      const resSchools = await cachedFetch('/api/platform/schools');
       if (resSchools.ok) {
         const dataSchools = await resSchools.json();
         setSchools(dataSchools);
       }
       
       // 2. Fetch platform analytics
-      const resAnalytics = await fetch('/api/platform/analytics');
+      const resAnalytics = await cachedFetch('/api/platform/analytics');
       if (resAnalytics.ok) {
         const dataAnalytics = await resAnalytics.json();
         setAnalytics(dataAnalytics);
@@ -338,13 +339,13 @@ export default function SchoolProfile({ schoolDetails, fetchSchoolDetails, isDev
     try {
       let res;
       if (modalMode === 'add') {
-        res = await fetch('/api/platform/schools', {
+        res = await cachedFetch('/api/platform/schools', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify(formData)
         });
       } else {
-        res = await fetch(`/api/platform/schools/${selectedSchool.id}`, {
+        res = await cachedFetch(`/api/platform/schools/${selectedSchool.id}`, {
           method: 'PUT',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify(formData)
@@ -381,7 +382,7 @@ export default function SchoolProfile({ schoolDetails, fetchSchoolDetails, isDev
     if (!confirm(confirmMsg)) return;
 
     try {
-      const res = await fetch(`/api/platform/schools/${school.id}/${action}`, {
+      const res = await cachedFetch(`/api/platform/schools/${school.id}/${action}`, {
         method: 'POST'
       });
       if (res.ok) {
@@ -404,7 +405,7 @@ export default function SchoolProfile({ schoolDetails, fetchSchoolDetails, isDev
     }
 
     try {
-      const res = await fetch(`/api/platform/schools/${school.id}`, {
+      const res = await cachedFetch(`/api/platform/schools/${school.id}`, {
         method: 'DELETE'
       });
       if (res.ok) {
@@ -426,7 +427,7 @@ export default function SchoolProfile({ schoolDetails, fetchSchoolDetails, isDev
     }
 
     try {
-      const res = await fetch(`/api/platform/schools/${passwordResetSchool.id}/reset-password`, {
+      const res = await cachedFetch(`/api/platform/schools/${passwordResetSchool.id}/reset-password`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ password: newAdminPassword })

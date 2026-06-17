@@ -27,6 +27,7 @@ import {
 import StudentDirectory from './StudentDirectory';
 import TeacherList from './TeacherList';
 import { fetchActiveGrades, fetchActiveSections } from '../utils/grades';
+import { cachedFetch } from '../utils/apiCache';
 
 const parseGradeName = (fullName) => {
   if (!fullName) return { baseGrade: '', department: '' };
@@ -88,7 +89,7 @@ export default function TeacherPanel({ setActiveView, onLogout, teacherView, set
     try {
       setLoadingCohort(true);
       // Fetch for today's present date '2026-06-01'
-      const res = await fetch('/api/attendance/reports/class?date=2026-06-01');
+      const res = await cachedFetch('/api/attendance/reports/class?date=2026-06-01');
       if (res.ok) {
         const data = await res.json();
         setCohortData(data);
@@ -331,7 +332,7 @@ export function MarkAttendanceView({ date, setDate, studentClass, setClass, sect
         section,
         search
       }).toString();
-      const res = await fetch(`/api/attendance?${queryParams}`);
+      const res = await cachedFetch(`/api/attendance?${queryParams}`);
       if (res.ok) {
         const data = await res.json();
         setRoster(data);
@@ -394,7 +395,7 @@ export function MarkAttendanceView({ date, setDate, studentClass, setClass, sect
           remarks: r.remarks
         }));
 
-      const res = await fetch('/api/attendance', {
+      const res = await cachedFetch('/api/attendance', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
@@ -425,7 +426,7 @@ export function MarkAttendanceView({ date, setDate, studentClass, setClass, sect
   const submitAttendance = async () => {
     try {
       setSubmitting(true);
-      const res = await fetch('/api/attendance/submit', {
+      const res = await cachedFetch('/api/attendance/submit', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ date, studentClass, section })
@@ -910,7 +911,7 @@ export function AttendanceHistoryView({ showToast }) {
   const fetchSubmittedDates = async () => {
     try {
       setLoadingSubmitted(true);
-      const res = await fetch('/api/attendance/submitted-dates');
+      const res = await cachedFetch('/api/attendance/submitted-dates');
       if (res.ok) {
         const data = await res.json();
         setSubmittedDates(data);
@@ -932,7 +933,7 @@ export function AttendanceHistoryView({ showToast }) {
         search
       });
       if (submittedOnly) queryParams.set('submitted', 'true');
-      const res = await fetch(`/api/attendance?${queryParams.toString()}`);
+      const res = await cachedFetch(`/api/attendance?${queryParams.toString()}`);
       if (res.ok) {
         const data = await res.json();
         setRoster(data);
@@ -987,7 +988,7 @@ export function AttendanceHistoryView({ showToast }) {
           remarks: r.remarks
         }));
 
-      const res = await fetch('/api/attendance', {
+      const res = await cachedFetch('/api/attendance', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
@@ -1398,7 +1399,7 @@ export function StudentReportsView({ showToast }) {
         section,
         search
       }).toString();
-      const res = await fetch(`/api/attendance/reports/student?${queryParams}`);
+      const res = await cachedFetch(`/api/attendance/reports/student?${queryParams}`);
       if (res.ok) {
         const data = await res.json();
         setReports(data);
@@ -1596,7 +1597,7 @@ export function ClassReportsView({ showToast }) {
   const fetchReports = async () => {
     try {
       setLoading(true);
-      const res = await fetch('/api/attendance/reports/class');
+      const res = await cachedFetch('/api/attendance/reports/class');
       if (res.ok) {
         const data = await res.json();
         setReports(data);
@@ -1722,7 +1723,7 @@ export function MonthlyCalendarView({ showToast }) {
         search: searchName,
         limit: 100
       }).toString();
-      const res = await fetch(`/api/students?${queryParams}`);
+      const res = await cachedFetch(`/api/students?${queryParams}`);
       if (res.ok) {
         const data = await res.json();
         setStudentsList(data.students || []);
@@ -1757,7 +1758,7 @@ export function MonthlyCalendarView({ showToast }) {
         month: selectedMonth,
         year: selectedYear
       }).toString();
-      const res = await fetch(`/api/attendance/calendar?${queryParams}`);
+      const res = await cachedFetch(`/api/attendance/calendar?${queryParams}`);
       if (res.ok) {
         const data = await res.json();
         setCalendarLogs(data);
@@ -2020,8 +2021,8 @@ export function ClassTimetableView({ showToast }) {
     try {
       setLoading(true);
       const [resTimetables, resTimeslots] = await Promise.all([
-        fetch('/api/academics/timetables'),
-        fetch('/api/academics/timeslots')
+        cachedFetch('/api/academics/timetables'),
+        cachedFetch('/api/academics/timeslots')
       ]);
 
       if (resTimetables.ok && resTimeslots.ok) {
@@ -2239,7 +2240,7 @@ export function YearlyAttendanceView({ showToast }) {
         search: searchName,
         limit: 100
       }).toString();
-      const res = await fetch(`/api/students?${queryParams}`);
+      const res = await cachedFetch(`/api/students?${queryParams}`);
       if (res.ok) {
         const data = await res.json();
         setStudentsList(data.students || []);
@@ -2277,7 +2278,7 @@ export function YearlyAttendanceView({ showToast }) {
         studentClass: selectedGrade,
         section: selectedSection
       }).toString();
-      const res = await fetch(`/api/attendance/reports/student?${queryParams}`);
+      const res = await cachedFetch(`/api/attendance/reports/student?${queryParams}`);
       if (res.ok) {
         const data = await res.json();
         const matchedReport = data.find(r => r.id === selectedStudent);

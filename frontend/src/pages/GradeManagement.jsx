@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import { cachedFetch } from '../utils/apiCache';
 import { 
   GraduationCap, 
   List, 
@@ -69,12 +70,12 @@ export default function GradeManagement({ currentSubView, setAdminView, showToas
     try {
       const headers = { 'Content-Type': 'application/json' };
       const [gradesRes, deptsRes, mapsRes, logsRes, settingsRes, sectionsRes] = await Promise.all([
-        fetch('/api/grades'),
-        fetch('/api/grades/departments'),
-        fetch('/api/grades/mappings'),
-        fetch('/api/rbac/audit-logs'),
-        fetch('/api/grades/settings'),
-        fetch('/api/grades/sections')
+        cachedFetch('/api/grades'),
+        cachedFetch('/api/grades/departments'),
+        cachedFetch('/api/grades/mappings'),
+        cachedFetch('/api/rbac/audit-logs'),
+        cachedFetch('/api/grades/settings'),
+        cachedFetch('/api/grades/sections')
       ]);
 
       if (gradesRes.ok) setGrades(await gradesRes.json());
@@ -126,7 +127,7 @@ export default function GradeManagement({ currentSubView, setAdminView, showToas
 
     const formattedName = convertToRoman(newGrade.name.trim());
     try {
-      const res = await fetch('/api/grades', {
+      const res = await cachedFetch('/api/grades', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
@@ -155,7 +156,7 @@ export default function GradeManagement({ currentSubView, setAdminView, showToas
 
     const formattedName = convertToRoman(editingGrade.name.trim());
     try {
-      const res = await fetch(`/api/grades/${editingGrade.id}`, {
+      const res = await cachedFetch(`/api/grades/${editingGrade.id}`, {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
@@ -180,7 +181,7 @@ export default function GradeManagement({ currentSubView, setAdminView, showToas
     if (!window.confirm(`Are you sure you want to delete Grade "${name}"? This action will remove all mappings.`)) return;
 
     try {
-      const res = await fetch(`/api/grades/${id}`, { method: 'DELETE' });
+      const res = await cachedFetch(`/api/grades/${id}`, { method: 'DELETE' });
       const data = await res.json();
       if (res.ok) {
         showToast(`Grade ${name} successfully deleted.`, 'success');
@@ -199,7 +200,7 @@ export default function GradeManagement({ currentSubView, setAdminView, showToas
     if (!newDept.name.trim()) return;
 
     try {
-      const res = await fetch('/api/grades/departments', {
+      const res = await cachedFetch('/api/grades/departments', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ name: newDept.name.trim() })
@@ -222,7 +223,7 @@ export default function GradeManagement({ currentSubView, setAdminView, showToas
     if (!editingDept.name.trim()) return;
 
     try {
-      const res = await fetch(`/api/grades/departments/${editingDept.id}`, {
+      const res = await cachedFetch(`/api/grades/departments/${editingDept.id}`, {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
@@ -245,7 +246,7 @@ export default function GradeManagement({ currentSubView, setAdminView, showToas
   const handleDeleteDept = async (id, name) => {
     if (!window.confirm(`Are you sure you want to delete Department "${name}"?`)) return;
     try {
-      const res = await fetch(`/api/grades/departments/${id}`, { method: 'DELETE' });
+      const res = await cachedFetch(`/api/grades/departments/${id}`, { method: 'DELETE' });
       const data = await res.json();
       if (res.ok) {
         showToast(`Department "${name}" removed.`, 'success');
@@ -265,7 +266,7 @@ export default function GradeManagement({ currentSubView, setAdminView, showToas
     if (existing) {
       // Delete Mapping
       try {
-        const res = await fetch(`/api/grades/mappings/${existing.id}`, { method: 'DELETE' });
+        const res = await cachedFetch(`/api/grades/mappings/${existing.id}`, { method: 'DELETE' });
         const data = await res.json();
         if (res.ok) {
           showToast('Mapping removed.', 'success');
@@ -279,7 +280,7 @@ export default function GradeManagement({ currentSubView, setAdminView, showToas
     } else {
       // Create Mapping
       try {
-        const res = await fetch('/api/grades/mappings', {
+        const res = await cachedFetch('/api/grades/mappings', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({ gradeId, departmentId })
@@ -303,7 +304,7 @@ export default function GradeManagement({ currentSubView, setAdminView, showToas
     if (!newSection.name.trim()) return;
 
     try {
-      const res = await fetch('/api/grades/sections', {
+      const res = await cachedFetch('/api/grades/sections', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ name: newSection.name.trim() })
@@ -327,7 +328,7 @@ export default function GradeManagement({ currentSubView, setAdminView, showToas
     if (!editingSection.name.trim()) return;
 
     try {
-      const res = await fetch(`/api/grades/sections/${editingSection.id}`, {
+      const res = await cachedFetch(`/api/grades/sections/${editingSection.id}`, {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
@@ -351,7 +352,7 @@ export default function GradeManagement({ currentSubView, setAdminView, showToas
   const handleDeleteSection = async (id, name) => {
     if (!window.confirm(`Are you sure you want to delete Section "${name}"?`)) return;
     try {
-      const res = await fetch(`/api/grades/sections/${id}`, { method: 'DELETE' });
+      const res = await cachedFetch(`/api/grades/sections/${id}`, { method: 'DELETE' });
       const data = await res.json();
       if (res.ok) {
         showToast(`Section "${name}" deleted.`, 'success');
@@ -368,7 +369,7 @@ export default function GradeManagement({ currentSubView, setAdminView, showToas
   const handleSaveSettings = async (e) => {
     e.preventDefault();
     try {
-      const res = await fetch('/api/grades/settings', {
+      const res = await cachedFetch('/api/grades/settings', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ academicSession: settings.academicSession })
@@ -519,7 +520,7 @@ export default function GradeManagement({ currentSubView, setAdminView, showToas
       for (const gId of masterGradeIds) {
         const grade = grades.find(g => g.id === gId);
         if (grade) {
-          const res = await fetch(`/api/grades/${gId}`, { method: 'DELETE' });
+          const res = await cachedFetch(`/api/grades/${gId}`, { method: 'DELETE' });
           if (res.ok) {
             deletesSucceeded++;
           } else {

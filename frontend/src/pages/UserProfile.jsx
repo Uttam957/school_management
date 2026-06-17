@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
+import { cachedFetch } from '../utils/apiCache';
 import { 
   User, 
   Mail, 
@@ -43,7 +44,7 @@ export default function UserProfile({ onProfileUpdate, showToast, onLogout }) {
   const fetchProfile = async () => {
     try {
       setLoading(true);
-      const res = await fetch('/api/auth/profile');
+      const res = await cachedFetch('/api/auth/profile');
       if (res.ok) {
         const data = await res.json();
         setProfile(data);
@@ -146,7 +147,7 @@ export default function UserProfile({ onProfileUpdate, showToast, onLogout }) {
         formData.append('photo', avatarFile);
       }
 
-      const res = await fetch('/api/auth/profile', {
+      const res = await cachedFetch('/api/auth/profile', {
         method: 'PUT',
         body: formData
       });
