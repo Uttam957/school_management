@@ -1,23 +1,26 @@
 import React, { useState, useEffect, useRef } from 'react';
 import Sidebar from './components/Sidebar';
 import Header from './components/Header';
-import StudentDirectory from './pages/StudentDirectory';
-import AddTeacher from './pages/AddTeacher';
-import TeacherList from './pages/TeacherList';
-import AddStaff from './pages/AddStaff';
-import StaffDirectory from './pages/StaffDirectory';
-import AccountManagementPortal from './pages/AccountManagementPortal';
-import SchoolProfile from './pages/SchoolProfile';
-import AttendanceManager from './pages/AttendanceManager';
-import RegisterStudent from './pages/RegisterStudent';
-import AdminPanel from './pages/AdminPanel';
-import SchoolLogin from './pages/SchoolLogin';
-import AdminLogin from './pages/AdminLogin';
-import AcademicPanel from './pages/AcademicPanel';
-import UserProfile from './pages/UserProfile';
 import { CheckCircle, AlertCircle } from 'lucide-react';
 
 import './App.css';
+
+// Lazy load page components to enable code splitting and optimize initial bundle size
+const StudentDirectory = React.lazy(() => import('./pages/StudentDirectory'));
+const AddTeacher = React.lazy(() => import('./pages/AddTeacher'));
+const TeacherList = React.lazy(() => import('./pages/TeacherList'));
+const AddStaff = React.lazy(() => import('./pages/AddStaff'));
+const StaffDirectory = React.lazy(() => import('./pages/StaffDirectory'));
+const AccountManagementPortal = React.lazy(() => import('./pages/AccountManagementPortal'));
+const SchoolProfile = React.lazy(() => import('./pages/SchoolProfile'));
+const AttendanceManager = React.lazy(() => import('./pages/AttendanceManager'));
+const RegisterStudent = React.lazy(() => import('./pages/RegisterStudent'));
+const AdminPanel = React.lazy(() => import('./pages/AdminPanel'));
+const SchoolLogin = React.lazy(() => import('./pages/SchoolLogin'));
+const AdminLogin = React.lazy(() => import('./pages/AdminLogin'));
+const AcademicPanel = React.lazy(() => import('./pages/AcademicPanel'));
+const UserProfile = React.lazy(() => import('./pages/UserProfile'));
+
 
 // Global Fetch Interceptor for Tenant ID & Auth Token
 const originalFetch = window.fetch;
@@ -63,6 +66,29 @@ window.fetch = function (url, options = {}) {
   }
   return originalFetch(url, options);
 };
+
+// Premium, center-aligned loading spinner for lazy loaded routes
+const PageLoading = () => (
+  <div style={{
+    display: 'flex',
+    alignItems: 'center',
+    justifyContent: 'center',
+    minHeight: '80vh',
+    width: '100%',
+    flexDirection: 'column',
+    gap: '16px'
+  }}>
+    <div style={{
+      width: '40px',
+      height: '40px',
+      border: '4px solid var(--border-glass)',
+      borderTopColor: 'hsl(var(--color-primary))',
+      borderRadius: '50%',
+      animation: 'spin 0.8s linear infinite'
+    }} />
+    <span style={{ fontSize: '0.85rem', color: 'var(--text-muted)', fontWeight: 600, letterSpacing: '0.05em' }}>Loading portal...</span>
+  </div>
+);
 
 const getInitialAuthState = (targetRole) => {
   const path = window.location.pathname;
@@ -512,10 +538,12 @@ export default function App() {
     }
 
     return (
-      <SchoolLogin 
-        tenantSubdomain={loginTenant} 
-        onLoginSuccess={handleLoginSuccess} 
-      />
+      <React.Suspense fallback={<PageLoading />}>
+        <SchoolLogin 
+          tenantSubdomain={loginTenant} 
+          onLoginSuccess={handleLoginSuccess} 
+        />
+      </React.Suspense>
     );
   }
 
@@ -531,19 +559,21 @@ export default function App() {
         boxSizing: 'border-box',
         overflowY: 'auto'
       }}>
-        {activeSubadminLogin === 'admin' && (
-          <AdminLogin 
-            onLogin={() => {
-              sessionStorage.setItem('role', 'Admin Dashboard');
-              sessionStorage.setItem('portal_role', 'Admin Dashboard');
-              setIsAdmin(true);
-              setIsSchoolAdmin(false);
-              setAdminView('dashboard');
-              setActiveSubadminLogin(null);
-            }} 
-            onCancel={() => setActiveSubadminLogin(null)} 
-          />
-        )}
+        <React.Suspense fallback={<PageLoading />}>
+          {activeSubadminLogin === 'admin' && (
+            <AdminLogin 
+              onLogin={() => {
+                sessionStorage.setItem('role', 'Admin Dashboard');
+                sessionStorage.setItem('portal_role', 'Admin Dashboard');
+                setIsAdmin(true);
+                setIsSchoolAdmin(false);
+                setAdminView('dashboard');
+                setActiveSubadminLogin(null);
+              }} 
+              onCancel={() => setActiveSubadminLogin(null)} 
+            />
+          )}
+        </React.Suspense>
       </div>
     );
   }
@@ -603,7 +633,9 @@ export default function App() {
         />
 
         <main style={{ flex: 1, marginTop: '10px' }}>
-          {renderCurrentView()}
+          <React.Suspense fallback={<PageLoading />}>
+            {renderCurrentView()}
+          </React.Suspense>
         </main>
       </div>
 
