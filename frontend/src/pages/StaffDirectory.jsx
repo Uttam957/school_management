@@ -80,8 +80,13 @@ const DESIGNATION_DETAILS = {
 };
 
 export default function StaffDirectory({ readOnly = true, onAddClick, onEditClick }) {
-  const [staffList, setStaffList] = useState([]);
-  const [loading, setLoading] = useState(true);
+  const [staffList, setStaffList] = useState(() => {
+    const cached = sessionStorage.getItem('cached_staff_list');
+    return cached ? JSON.parse(cached) : [];
+  });
+  const [loading, setLoading] = useState(() => {
+    return !sessionStorage.getItem('cached_staff_list');
+  });
   const [searchQuery, setSearchQuery] = useState('');
   const [designationFilter, setDesignationFilter] = useState('All');
   const [statusFilter, setStatusFilter] = useState('All');
@@ -214,6 +219,7 @@ export default function StaffDirectory({ readOnly = true, onAddClick, onEditClic
       if (res.ok) {
         const data = await res.json();
         setStaffList(data);
+        sessionStorage.setItem('cached_staff_list', JSON.stringify(data));
       }
     } catch (err) {
       console.error('Error loading staff roster:', err);

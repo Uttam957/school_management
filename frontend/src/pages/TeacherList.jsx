@@ -59,21 +59,31 @@ export default function TeacherList({ setActiveView, readOnly = true, onAddClick
   // Inspector Drawer
   const [selectedTeacher, setSelectedTeacher] = useState(null);
   const [qrLoading, setQrLoading] = useState(false);
-  const [roles, setRoles] = useState([]);
-  const [departments, setDepartments] = useState([]);
+  const [roles, setRoles] = useState(() => {
+    const cached = sessionStorage.getItem('cached_teacher_roles');
+    return cached ? JSON.parse(cached) : [];
+  });
+  const [departments, setDepartments] = useState(() => {
+    const cached = sessionStorage.getItem('cached_teacher_departments');
+    return cached ? JSON.parse(cached) : [];
+  });
 
   useEffect(() => {
     fetch('/api/rbac/roles')
       .then(res => res.json())
       .then(data => {
-        setRoles(data.filter(r => r.active));
+        const activeRoles = data.filter(r => r.active);
+        setRoles(activeRoles);
+        sessionStorage.setItem('cached_teacher_roles', JSON.stringify(activeRoles));
       })
       .catch(err => console.error('Error fetching roles:', err));
 
     fetch('/api/grades/departments')
       .then(res => res.json())
       .then(data => {
-        setDepartments(data.filter(d => d.status === 'Active' || !d.status));
+        const activeDepts = data.filter(d => d.status === 'Active' || !d.status);
+        setDepartments(activeDepts);
+        sessionStorage.setItem('cached_teacher_departments', JSON.stringify(activeDepts));
       })
       .catch(err => console.error('Error fetching departments:', err));
   }, []);
@@ -212,7 +222,19 @@ export default function TeacherList({ setActiveView, readOnly = true, onAddClick
       return;
     }
     try {
-      setLoading(true);
+      // Show cached data instantly (skip loading spinner if we have cache)
+      const cacheKey = `cached_teachers_${searchQuery}_${departmentFilter}_${typeFilter}_${statusFilter}_${roleFilter}_${sortBy}_${sortOrder}_${page}`;
+      const cached = sessionStorage.getItem(cacheKey);
+      if (cached) {
+        const cachedData = JSON.parse(cached);
+        setTeachers(cachedData.teachers || []);
+        setTotalCount(cachedData.totalCount || 0);
+        setTotalPages(cachedData.totalPages || 1);
+        setLoading(false);
+      } else {
+        setLoading(true);
+      }
+
       const queryParams = new URLSearchParams({
         search: searchQuery,
         department: departmentFilter,
@@ -231,6 +253,8 @@ export default function TeacherList({ setActiveView, readOnly = true, onAddClick
         setTeachers(data.teachers || []);
         setTotalCount(data.totalCount || 0);
         setTotalPages(data.totalPages || 1);
+        // Cache for instant display on re-visit
+        sessionStorage.setItem(cacheKey, JSON.stringify(data));
       }
     } catch (err) {
       console.error('Error loading teachers registry:', err);

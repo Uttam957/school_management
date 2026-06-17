@@ -29,15 +29,23 @@ import { fetchActiveGrades, fetchActiveSections } from '../utils/grades';
 export default function StudentDirectory({ readOnly = true, onAddClick, onEditClick }) {
   const [students, setStudents] = useState([]);
   const [loading, setLoading] = useState(true);
-  const [activeGrades, setActiveGrades] = useState([]);
-  const [sections, setSections] = useState([]);
+  const [activeGrades, setActiveGrades] = useState(() => {
+    const cached = sessionStorage.getItem('cached_active_grades');
+    return cached ? JSON.parse(cached) : [];
+  });
+  const [sections, setSections] = useState(() => {
+    const cached = sessionStorage.getItem('cached_active_sections');
+    return cached ? JSON.parse(cached) : [];
+  });
 
   useEffect(() => {
     const loadGradesAndSections = async () => {
       const grades = await fetchActiveGrades();
       setActiveGrades(grades);
+      sessionStorage.setItem('cached_active_grades', JSON.stringify(grades));
       const activeSections = await fetchActiveSections();
       setSections(activeSections);
+      sessionStorage.setItem('cached_active_sections', JSON.stringify(activeSections));
     };
     loadGradesAndSections();
   }, []);
@@ -340,7 +348,19 @@ export default function StudentDirectory({ readOnly = true, onAddClick, onEditCl
       return;
     }
     try {
-      setLoading(true);
+      // Show cached data instantly (skip loading spinner if we have cache)
+      const cacheKey = `cached_students_${classFilter}_${sectionFilter}_${yearFilter}_${sortBy}_${sortOrder}_${page}`;
+      const cached = sessionStorage.getItem(cacheKey);
+      if (cached) {
+        const cachedData = JSON.parse(cached);
+        setStudents(cachedData.students || []);
+        setTotalCount(cachedData.totalCount || 0);
+        setTotalPages(cachedData.totalPages || 1);
+        setLoading(false);
+      } else {
+        setLoading(true);
+      }
+
       const queryParams = new URLSearchParams({
         search: searchQuery,
         class: classFilter,
@@ -359,6 +379,8 @@ export default function StudentDirectory({ readOnly = true, onAddClick, onEditCl
         setStudents(data.students || []);
         setTotalCount(data.totalCount || 0);
         setTotalPages(data.totalPages || 1);
+        // Cache for instant display on re-visit
+        sessionStorage.setItem(cacheKey, JSON.stringify(data));
       }
     } catch (err) {
       console.error('Error loading students registry:', err);

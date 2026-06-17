@@ -13,14 +13,13 @@ export default function AdminLogin({ onLogin, onCancel }) {
     setError('');
     setLoading(true);
 
-    setTimeout(() => {
-      if (email === 'dev@admin.com' && password === 'admin123') {
-        onLogin();
-      } else {
-        setError('Invalid email or password. Please try again.');
-      }
-      setLoading(false);
-    }, 800);
+    // Instant credential check — no artificial delay
+    if (email === 'dev@admin.com' && password === 'admin123') {
+      onLogin();
+    } else {
+      setError('Invalid email or password. Please try again.');
+    }
+    setLoading(false);
   };
 
   return (
@@ -85,7 +84,7 @@ export default function AdminLogin({ onLogin, onCancel }) {
             disabled={loading}
           >
             {loading ? (
-              <span className="admin-login-spinner"></span>
+              <><span className="admin-login-spinner"></span> Signing in...</>
             ) : (
               <>
                 <Shield size={18} />

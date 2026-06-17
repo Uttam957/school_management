@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, Suspense } from 'react';
 import { 
   Users, 
   UserCheck, 
@@ -18,40 +18,54 @@ import {
   Mars,
   RefreshCw
 } from 'lucide-react';
-import StudentDirectory from './StudentDirectory';
-import TeacherList from './TeacherList';
-import StaffDirectory from './StaffDirectory';
-import AcademicPanel from './AcademicPanel';
-import { 
-  StudentReportsView, 
-  ClassReportsView, 
-  MonthlyCalendarView
-} from './TeacherPanel';
-import {
-  MarkAttendanceView,
-  AttendanceHistoryView
-} from './AdminAttendanceViews';
 import { fetchActiveGrades, fetchActiveSections } from '../utils/grades';
-import {
-  CollectFeesView,
-  FeeStructureView,
-  PayrollView,
-  TeacherSalaryStructureView,
-  ExpensesView,
-  IncomeView,
-  ReportsView,
-  StaffPaymentsView,
-  StaffPaymentStructureView
-} from './AccountantPanel';
-import RegisterStudent from './RegisterStudent';
-import StudentManager from './StudentManager';
-import AddTeacher from './AddTeacher';
-import AddStaff from './AddStaff';
-import ExpensePanel from './ExpensePanel';
-import AttendanceManager from './AttendanceManager';
-import RolesPermissions from './RolesPermissions';
-import GradeManagement from './GradeManagement';
-import UserProfile from './UserProfile';
+
+// ── Lazy-load all sub-page components for instant section switching ──
+const StudentDirectory = React.lazy(() => import('./StudentDirectory'));
+const TeacherList = React.lazy(() => import('./TeacherList'));
+const StaffDirectory = React.lazy(() => import('./StaffDirectory'));
+const AcademicPanel = React.lazy(() => import('./AcademicPanel'));
+const RegisterStudent = React.lazy(() => import('./RegisterStudent'));
+const StudentManager = React.lazy(() => import('./StudentManager'));
+const AddTeacher = React.lazy(() => import('./AddTeacher'));
+const AddStaff = React.lazy(() => import('./AddStaff'));
+const ExpensePanel = React.lazy(() => import('./ExpensePanel'));
+const AttendanceManager = React.lazy(() => import('./AttendanceManager'));
+const RolesPermissions = React.lazy(() => import('./RolesPermissions'));
+const GradeManagement = React.lazy(() => import('./GradeManagement'));
+const UserProfile = React.lazy(() => import('./UserProfile'));
+
+// Lazy-load named exports via wrapper modules
+const LazyTeacherPanel = React.lazy(() => import('./TeacherPanel').then(m => ({ default: m.StudentReportsView })));
+const LazyClassReportsView = React.lazy(() => import('./TeacherPanel').then(m => ({ default: m.ClassReportsView })));
+const LazyMonthlyCalendarView = React.lazy(() => import('./TeacherPanel').then(m => ({ default: m.MonthlyCalendarView })));
+const LazyMarkAttendanceView = React.lazy(() => import('./AdminAttendanceViews').then(m => ({ default: m.MarkAttendanceView })));
+const LazyAttendanceHistoryView = React.lazy(() => import('./AdminAttendanceViews').then(m => ({ default: m.AttendanceHistoryView })));
+const LazyCollectFeesView = React.lazy(() => import('./AccountantPanel').then(m => ({ default: m.CollectFeesView })));
+const LazyFeeStructureView = React.lazy(() => import('./AccountantPanel').then(m => ({ default: m.FeeStructureView })));
+const LazyPayrollView = React.lazy(() => import('./AccountantPanel').then(m => ({ default: m.PayrollView })));
+const LazyTeacherSalaryStructureView = React.lazy(() => import('./AccountantPanel').then(m => ({ default: m.TeacherSalaryStructureView })));
+const LazyExpensesView = React.lazy(() => import('./AccountantPanel').then(m => ({ default: m.ExpensesView })));
+const LazyIncomeView = React.lazy(() => import('./AccountantPanel').then(m => ({ default: m.IncomeView })));
+const LazyReportsView = React.lazy(() => import('./AccountantPanel').then(m => ({ default: m.ReportsView })));
+const LazyStaffPaymentsView = React.lazy(() => import('./AccountantPanel').then(m => ({ default: m.StaffPaymentsView })));
+const LazyStaffPaymentStructureView = React.lazy(() => import('./AccountantPanel').then(m => ({ default: m.StaffPaymentStructureView })));
+
+// Lightweight skeleton fallback for lazy-loaded sections
+const SectionLoading = () => (
+  <div style={{
+    display: 'flex', alignItems: 'center', justifyContent: 'center',
+    minHeight: '300px', width: '100%', flexDirection: 'column', gap: '12px'
+  }}>
+    <div style={{
+      width: '32px', height: '32px',
+      border: '3px solid var(--border-glass)',
+      borderTopColor: 'hsl(var(--color-primary))',
+      borderRadius: '50%',
+      animation: 'spin 0.7s linear infinite'
+    }} />
+  </div>
+);
 
 // ─── Overview Stats Card (Theme-Aware) ──────────────────────────────────────
 function GenderRatioBar({ maleCount, femaleCount, total }) {
@@ -589,23 +603,23 @@ export default function AdminPanel({ setActiveView, onLogout, adminView, setAdmi
         return <AttendanceManager />;
 
       case 'collect-fees':
-        return <CollectFeesView showToast={showToast} />;
+        return <LazyCollectFeesView showToast={showToast} />;
       case 'fee-structure':
-        return <FeeStructureView showToast={showToast} />;
+        return <LazyFeeStructureView showToast={showToast} />;
       case 'payroll':
-        return <PayrollView showToast={showToast} />;
+        return <LazyPayrollView showToast={showToast} />;
       case 'teacher-pay-structure':
-        return <TeacherSalaryStructureView showToast={showToast} />;
+        return <LazyTeacherSalaryStructureView showToast={showToast} />;
       case 'staff-pay':
-        return <StaffPaymentsView showToast={showToast} />;
+        return <LazyStaffPaymentsView showToast={showToast} />;
       case 'staff-pay-structure':
-        return <StaffPaymentStructureView showToast={showToast} />;
+        return <LazyStaffPaymentStructureView showToast={showToast} />;
       case 'expenses':
-        return <ExpensesView showToast={showToast} />;
+        return <LazyExpensesView showToast={showToast} />;
       case 'income':
-        return <IncomeView showToast={showToast} />;
+        return <LazyIncomeView showToast={showToast} />;
       case 'reports':
-        return <ReportsView showToast={showToast} />;
+        return <LazyReportsView showToast={showToast} />;
       case 'register-student':
         return (
           <RegisterStudent 
@@ -629,14 +643,14 @@ export default function AdminPanel({ setActiveView, onLogout, adminView, setAdmi
 
       case 'attendance-history':
         return (
-          <AttendanceHistoryView 
+          <LazyAttendanceHistoryView 
             date={selectedDate}
             showToast={showToast}
           />
         );
       case 'class-reports':
         return (
-          <ClassReportsView showToast={showToast} />
+          <LazyClassReportsView showToast={showToast} />
         );
       case 'attendance':
         return (
@@ -719,7 +733,7 @@ export default function AdminPanel({ setActiveView, onLogout, adminView, setAdmi
 
             {/* Dynamic Attendance Sub-views */}
             {attendanceTab === 'mark-attendance' && (
-              <MarkAttendanceView 
+              <LazyMarkAttendanceView 
                 date={selectedDate}
                 setDate={setSelectedDate}
                 studentClass={selectedClass}
@@ -733,11 +747,11 @@ export default function AdminPanel({ setActiveView, onLogout, adminView, setAdmi
             )}
 
             {attendanceTab === 'student-reports' && (
-              <StudentReportsView showToast={showToast} />
+              <LazyTeacherPanel showToast={showToast} />
             )}
 
             {attendanceTab === 'monthly-calendar' && (
-              <MonthlyCalendarView showToast={showToast} />
+              <LazyMonthlyCalendarView showToast={showToast} />
             )}
           </div>
         );
@@ -763,9 +777,11 @@ export default function AdminPanel({ setActiveView, onLogout, adminView, setAdmi
   };
 
   return (
-    <div key={adminView} className="animate-slide-up" style={{ display: 'flex', flexDirection: 'column', gap: '24px' }}>
-      {/* Admin Content */}
-      {renderAdminContent()}
+    <div className="animate-slide-up" style={{ display: 'flex', flexDirection: 'column', gap: '24px' }}>
+      {/* Admin Content — wrapped in Suspense for lazy-loaded components */}
+      <Suspense fallback={<SectionLoading />}>
+        {renderAdminContent()}
+      </Suspense>
     </div>
   );
 }
