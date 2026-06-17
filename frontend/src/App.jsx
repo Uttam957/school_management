@@ -23,10 +23,19 @@ import './App.css';
 const originalFetch = window.fetch;
 window.fetch = function (url, options = {}) {
   let targetUrl = typeof url === 'string' ? url : (url.url || '');
-  if (targetUrl.startsWith('/') || targetUrl.includes('/api/')) {
+  
+  const apiBase = import.meta.env.VITE_API_URL; // e.g. "https://school-management-backend.onrender.com"
+  if (apiBase && (targetUrl.startsWith('/api') || targetUrl.startsWith('/uploads'))) {
+    targetUrl = `${apiBase}${targetUrl}`;
+    if (typeof url === 'string') {
+      url = targetUrl;
+    }
+  }
+
+  if (targetUrl.startsWith('/') || targetUrl.includes('/api/') || (apiBase && targetUrl.startsWith(apiBase))) {
     options.headers = options.headers || {};
     // Skip tenant header for platform-level API calls
-    if (targetUrl.startsWith('/api/platform/')) {
+    if (targetUrl.startsWith('/api/platform/') || (apiBase && targetUrl.startsWith(`${apiBase}/api/platform/`))) {
       delete options.headers['x-tenant-id'];
     } else if (!options.headers['x-tenant-id']) {
       const host = window.location.hostname;
