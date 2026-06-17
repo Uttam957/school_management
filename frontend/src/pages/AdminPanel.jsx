@@ -763,7 +763,7 @@ export default function AdminPanel({ setActiveView, onLogout, adminView, setAdmi
   };
 
   return (
-    <div className="animate-slide-up" style={{ display: 'flex', flexDirection: 'column', gap: '24px' }}>
+    <div key={adminView} className="animate-slide-up" style={{ display: 'flex', flexDirection: 'column', gap: '24px' }}>
       {/* Admin Content */}
       {renderAdminContent()}
     </div>

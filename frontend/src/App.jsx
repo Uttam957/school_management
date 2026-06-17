@@ -644,7 +644,9 @@ export default function App() {
 
         <main style={{ flex: 1, marginTop: '10px' }}>
           <React.Suspense fallback={<PageLoading />}>
-            {renderCurrentView()}
+            <div key={activeView} className="animate-slide-up">
+              {renderCurrentView()}
+            </div>
           </React.Suspense>
         </main>
       </div>
